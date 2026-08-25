@@ -1,0 +1,73 @@
+name: Cross-Language Harness
+
+# The FR-P4 end-to-end proof: Java broker + providers/consumers in BOTH
+# languages against each other (see itest/README.md). Runs on every
+# branch push, every PR, and the snapshot/main integration branches —
+# the reusable verify workflow only builds Java, so this is where the
+# TS unit tests and the cross-language scenarios live.
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness:
+    name: TS tests + host harness + podman harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: "temurin"
+          java-version: 21
+          cache: gradle
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Enable pnpm (corepack)
+        run: corepack enable pnpm
+
+      - name: TS unit tests
+        working-directory: ddsr-ts-client
+        run: |
+          corepack pnpm install --frozen-lockfile
+          corepack pnpm -r build
+          corepack pnpm exec vitest run
+
+      - name: Host harness (scenarios A + B)
+        run: ./itest/run-harness.sh
+
+      - name: Podman harness (scenarios A + B + C incl. MQTT wire proof)
+        run: ./itest/run-harness-podman.sh
+
+      - name: Upload harness logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: harness-logs
+          path: |
+            itest/work/
+            itest/work-podman/
+          if-no-files-found: ignore

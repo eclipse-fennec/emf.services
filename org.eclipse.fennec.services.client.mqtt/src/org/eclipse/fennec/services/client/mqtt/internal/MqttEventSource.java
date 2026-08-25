@@ -14,13 +14,12 @@
 package org.eclipse.fennec.services.client.mqtt.internal;
 
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;

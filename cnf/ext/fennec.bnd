@@ -41,10 +41,10 @@
 	fennecMCP,\
 	jakartaREST
 
-base-version: 1.0.0
+base-version: 0.1.0
 javac.source: 21
 javac.target: 21
--require-bnd: "(version>=7.1.0)"
+-require-bnd: "(version>=7.2.0)"
 -jpms-module-info:
 
 # Maven Central (read-only) — not provided by workspace-minimal.

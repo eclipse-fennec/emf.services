@@ -20,8 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
@@ -199,5 +201,150 @@ class DdsrBrokerConcurrencyTest {
 				.extracting(ServiceImplementation::getName)
 				.containsExactly("impl-shared");
 		assertThat(rehydratedLookup.getAllServiceReferences("Payment", null, null)).hasSize(1);
+	}
+
+	private static ConsumerSession session(String consumerId) {
+		ConsumerSession session = ServicesFactory.eINSTANCE.createConsumerSession();
+		session.setConsumerId(consumerId);
+		return session;
+	}
+
+	/**
+	 * Sessions racing the provider lifecycle: publishers and withdrawers
+	 * churn registrations while consumers PUT/DELETE sessions against
+	 * whatever references they can see, an expiry sweeper reaps, and a
+	 * snapshotter persists. End invariants: every remaining acquisition
+	 * resolves onto a live, lookup-visible reference; the snapshot stays
+	 * loadable and free of session traces.
+	 */
+	@Test
+	void parallelSessionsStayConsistentAgainstTheProviderLifecycle() throws Exception {
+		Path snapshot = tmp.resolve("concurrent-sessions.xmi");
+		DdsrBrokerImpl broker = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend());
+		assertThat(isError(broker.addCatalogEntry(serviceInterface("Payment"), "test"))).isFalse();
+
+		final int publisherThreads = 4;
+		final int consumerThreads = 4;
+		List<Throwable> failures = java.util.Collections.synchronizedList(new ArrayList<>());
+		CountDownLatch start = new CountDownLatch(1);
+		CountDownLatch done = new CountDownLatch(publisherThreads + consumerThreads + 2);
+		AtomicInteger unexpectedDiagnostics = new AtomicInteger();
+
+		List<Thread> threads = new ArrayList<>();
+		// Publish/withdraw churn.
+		for (int t = 0; t < publisherThreads; t++) {
+			int thread = t;
+			threads.add(new Thread(() -> {
+				try {
+					start.await();
+					for (int i = 0; i < ITERATIONS; i++) {
+						ServiceProvider p = provider("prov-" + thread, "impl-" + thread + "-" + i);
+						ServiceImplementation impl = p.getImplementations().get(0);
+						if (isError(broker.publishImplementation(p, impl))) {
+							unexpectedDiagnostics.incrementAndGet();
+							continue;
+						}
+						ServiceProvider owner = (ServiceProvider) impl.eContainer();
+						if (isError(broker.withdrawImplementation(owner, impl))) {
+							unexpectedDiagnostics.incrementAndGet();
+						}
+					}
+				} catch (Throwable failure) {
+					failures.add(failure);
+				} finally {
+					done.countDown();
+				}
+			}, "session-publisher-" + t));
+		}
+		// Consumers acquiring whatever is visible right now.
+		for (int t = 0; t < consumerThreads; t++) {
+			String consumerId = "consumer-" + t;
+			threads.add(new Thread(() -> {
+				try {
+					start.await();
+					for (int i = 0; i < ITERATIONS; i++) {
+						List<String> visible = broker.getServiceReferences("Payment", null, null).stream()
+								.map(r -> r.getId()).toList();
+						if (isError(broker.putSession(session(consumerId), visible))) {
+							unexpectedDiagnostics.incrementAndGet();
+						}
+						if (i % 10 == 9 && isError(broker.deleteSession(consumerId))) {
+							unexpectedDiagnostics.incrementAndGet();
+						}
+					}
+					// Leave a final session behind for the invariants below.
+					List<String> visible = broker.getServiceReferences("Payment", null, null).stream()
+							.map(r -> r.getId()).toList();
+					if (isError(broker.putSession(session(consumerId), visible))) {
+						unexpectedDiagnostics.incrementAndGet();
+					}
+				} catch (Throwable failure) {
+					failures.add(failure);
+				} finally {
+					done.countDown();
+				}
+			}, consumerId));
+		}
+		// The renewal race (case 19): a sweeper expiring EVERYTHING it
+		// sees, racing the consumers' re-PUTs — afterwards a session is
+		// either freshly present or cleanly gone, never half.
+		threads.add(new Thread(() -> {
+			try {
+				start.await();
+				for (int i = 0; i < ITERATIONS * 2; i++) {
+					broker.expireSessions(Instant.now().plusSeconds(3600));
+				}
+			} catch (Throwable failure) {
+				failures.add(failure);
+			} finally {
+				done.countDown();
+			}
+		}, "expiry-sweeper"));
+		threads.add(new Thread(() -> {
+			try {
+				start.await();
+				for (int i = 0; i < ITERATIONS; i++) {
+					if (isError(broker.snapshot())) {
+						unexpectedDiagnostics.incrementAndGet();
+					}
+					broker.getRegistry().getImplementations().forEach(impl -> impl.getFlavors().size());
+				}
+			} catch (Throwable failure) {
+				failures.add(failure);
+			} finally {
+				done.countDown();
+			}
+		}, "session-snapshotter"));
+
+		threads.forEach(Thread::start);
+		start.countDown();
+		assertThat(done.await(60, TimeUnit.SECONDS)).as("workers must finish").isTrue();
+		assertThat(failures).as("no worker may die: %s", failures).isEmpty();
+		assertThat(unexpectedDiagnostics.get()).isZero();
+
+		// Every remaining acquisition must resolve onto a live reference
+		// that the lookup still serves — no lease may point at a withdrawn
+		// or expired registration.
+		List<String> liveIds = broker.getServiceReferences("Payment", null, null).stream()
+				.map(r -> r.getId()).toList();
+		for (int t = 0; t < consumerThreads; t++) {
+			var stored = broker.getSession("consumer-" + t);
+			if (stored.isEmpty()) {
+				continue; // cleanly gone is a legal outcome of the race
+			}
+			assertThat(stored.orElseThrow().acquiredReferenceIds())
+					.as("acquisitions of consumer-%s must all be live", t)
+					.isSubsetOf(liveIds);
+		}
+
+		// All publishers withdrew their publishes — nothing may linger.
+		assertThat(broker.liveRegistry().getImplementations()).isEmpty();
+		assertThat(liveIds).isEmpty();
+
+		// The snapshot survived the churn and carries no session traces.
+		String xmi = java.nio.file.Files.readString(snapshot);
+		assertThat(xmi).doesNotContain("ConsumerSession").doesNotContain("acquisitions");
+		DdsrBrokerImpl rehydrated = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend());
+		assertThat(rehydrated.sessionCount()).isZero();
 	}
 }

@@ -340,7 +340,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION,
 					"provider and implementation must not be null");
 		}
-		if (implementation.eContainer() != provider) {
+		// Ownership is only checkable while the impl is contained
+		// somewhere. A DETACHED impl (eContainer() == null) is what a
+		// double withdraw on the same live objects looks like — that
+		// falls through to the live resolution below and ends as
+		// IMPL_NOT_PUBLISHED, not as an ownership violation.
+		if (implementation.eContainer() != null && implementation.eContainer() != provider) {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION,
 					"implementation must belong to the given provider");
 		}

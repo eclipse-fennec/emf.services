@@ -149,9 +149,15 @@ public class LookupResource {
 	}
 
 	private static ConsumerCapability parseCapability(String flavorsCsv, String consumerId, String fingerprint) {
-		if (flavorsCsv == null || flavorsCsv.isBlank()) {
+		boolean hasFlavors = flavorsCsv != null && !flavorsCsv.isBlank();
+		boolean hasConsumerId = consumerId != null && !consumerId.isBlank();
+		boolean hasFingerprint = fingerprint != null && !fingerprint.isBlank();
+		if (!hasFlavors && !hasConsumerId && !hasFingerprint) {
 			return null;
 		}
+		// A capability may exist for the fingerprint or consumerId alone;
+		// empty supportedFlavors mean "no flavor constraint" (the backend
+		// treats them that way), NOT "speaks nothing".
 		ConsumerCapability cap = ServicesFactory.eINSTANCE.createConsumerCapability();
 		if (consumerId != null && !consumerId.isBlank()) {
 			cap.setConsumerId(consumerId);
@@ -163,6 +169,9 @@ public class LookupResource {
 			requested.setName("ddsr.fingerprint");
 			requested.setValue(fingerprint.trim());
 			cap.getProperties().add(requested);
+		}
+		if (!hasFlavors) {
+			return cap;
 		}
 		for (String s : flavorsCsv.split(",")) {
 			String t = s.trim();

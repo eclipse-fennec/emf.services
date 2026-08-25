@@ -56,6 +56,11 @@ final class ConsumerImpl implements DdsrConsumer {
 		this.listeners = new ServiceListenerRegistry(eventSource, this::refreshFromSnapshot);
 	}
 
+	/** Reference ids known from lookups — the session acquisition list (ACQUISITION.md §4). */
+	public java.util.Set<String> knownReferenceIds() {
+		return listeners.knownReferenceIds();
+	}
+
 	@Override
 	public AutoCloseable addServiceListener(String interfaceName, String filter,
 			DdsrServiceListener listener) {

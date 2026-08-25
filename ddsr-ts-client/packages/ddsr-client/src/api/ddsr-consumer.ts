@@ -26,12 +26,12 @@ export interface DdsrConsumer {
    * @param interfaceName  the ServiceInterface.name to look up
    * @param filter         optional LDAP filter (no-op for now, passed to broker)
    */
-  find(interfaceName: string, filter?: string): Promise<ServiceLocator[]>;
+  find(interfaceName: string, filter?: string, fingerprint?: string): Promise<ServiceLocator[]>;
 
   /**
    * Convenience: find the best matching locator (first result), or undefined.
    */
-  findOne(interfaceName: string, filter?: string): Promise<ServiceLocator | undefined>;
+  findOne(interfaceName: string, filter?: string, fingerprint?: string): Promise<ServiceLocator | undefined>;
 
   /**
    * Get a typed service proxy. For known services with generated interfaces,

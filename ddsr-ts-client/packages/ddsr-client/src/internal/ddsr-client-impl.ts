@@ -29,8 +29,14 @@ export interface DdsrClientOptions {
   flavorPlugins?: FlavorPlugin[];
   /** X-DDSR-Requestor for catalog operations (audit). */
   requestor?: string;
-  /** consumerId sent with lookups. */
+  /** consumerId sent with lookups and used for the broker session. */
   consumerId?: string;
+  /**
+   * Renewal interval of the idempotent session PUT (acquire+release+
+   * heartbeat in one, ACQUISITION.md §4); requires consumerId. Should
+   * be half the broker's expiry. Default 600; 0 disables sessions.
+   */
+  sessionIntervalSeconds?: number;
   /** CSV FlavorKind filter for the event stream; default "REST". */
   eventFlavors?: string;
   /** Flat SSE reconnect delay in seconds; default 3 (Java parity). */
@@ -106,7 +112,38 @@ export class DdsrClientImpl implements DdsrClient {
 
     const provider = new DdsrProviderImpl(broker);
     const catalog = new DdsrCatalogImpl(broker);
-    return new DdsrClientImpl(options.brokerUrl, provider, consumer, catalog);
+    const client = new DdsrClientImpl(options.brokerUrl, provider, consumer, catalog);
+    client.broker = broker;
+    client.consumerId = options.consumerId;
+    const interval = options.sessionIntervalSeconds ?? 600;
+    if (options.consumerId && interval > 0) {
+      // First PUT shortly after construction, then the flat interval —
+      // the current set of known reference ids IS the acquisition list.
+      client.sessionTimer = setInterval(() => {
+        void client.renewSession();
+      }, interval * 1000);
+      // Node: the timer must not keep the process alive on its own.
+      (client.sessionTimer as { unref?: () => void }).unref?.();
+    }
+    return client;
+  }
+
+  private broker: BrokerHttp | undefined;
+  private consumerId: string | undefined;
+  private sessionTimer: ReturnType<typeof setInterval> | undefined;
+
+  /** Exposed for tests and for an eager first lease after lookups. */
+  async renewSession(): Promise<void> {
+    if (!this.broker || !this.consumerId) return;
+    try {
+      await this.broker.putConsumerSession(
+        this.consumerId,
+        [...this.consumer.listeners.knownReferenceIds()]
+      );
+    } catch (error) {
+      // Best-effort: a missed renewal is ordinary silence for the TTL.
+      console.error(`[ddsr] session renewal failed, retrying next interval: ${String(error)}`);
+    }
   }
 
   /**
@@ -116,8 +153,20 @@ export class DdsrClientImpl implements DdsrClient {
    * service must keep its endpoint serving until close() resolves.
    */
   async close(): Promise<void> {
+    if (this.sessionTimer) {
+      clearInterval(this.sessionTimer);
+      this.sessionTimer = undefined;
+    }
     try {
       await this.provider.withdrawAll();
+      // Shutdown-notify BEFORE the streams close (FR-P3 order): the
+      // broker releases the leases immediately instead of waiting for
+      // the TTL. Best-effort — a dead broker must not stall shutdown.
+      if (this.broker && this.consumerId) {
+        await this.broker.deleteConsumerSession(this.consumerId).catch(error => {
+          console.error(`[ddsr] session release failed, broker will expire it: ${String(error)}`);
+        });
+      }
     } finally {
       await this.consumer.listeners.close();
     }

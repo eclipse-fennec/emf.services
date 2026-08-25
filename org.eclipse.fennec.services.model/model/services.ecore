@@ -1032,9 +1032,9 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="registration" eType="#//ServiceRegistration"
-        eOpposite="#//ServiceRegistration/reference">
+        eOpposite="#//ServiceRegistration/reference" transient="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal."/>
+        <details key="documentation" value="Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal. TRANSIENT: broker-side registrations are runtime handles without a containment home in the persisted registry — a serialized link would tear every snapshot apart."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eOperations name="getProperty" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EJavaObject">
@@ -1059,7 +1059,7 @@
       <details key="documentation" value="Provider-side handle to a registered service, equivalent to org.osgi.framework.ServiceRegistration. The provider holds onto this to unregister later or to modify properties."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="reference" lowerBound="1"
-        eType="#//ServiceReference" eOpposite="#//ServiceReference/registration">
+        eType="#//ServiceReference" eOpposite="#//ServiceReference/registration" transient="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Consumer-side view of the same service, paired via eOpposite. Both Registration and Reference are owned (containment) by the LocalServiceRegistry, not by each other."/>
       </eAnnotations>

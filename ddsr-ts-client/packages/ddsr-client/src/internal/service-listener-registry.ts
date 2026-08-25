@@ -87,6 +87,15 @@ export class ServiceListenerRegistry {
     return [...new Set(this.entries.map(e => e.interfaceName))];
   }
 
+  /**
+   * The reference ids this consumer currently knows from lookups —
+   * exactly the acquisition list of the session protocol
+   * (ACQUISITION.md §4).
+   */
+  knownReferenceIds(): string[] {
+    return [...this.interfacesByReference.keys()];
+  }
+
   /** Remember which interfaces a reference serves (from lookup results). */
   noteReference(referenceId: string | undefined, interfaceNames: string[]): void {
     if (!referenceId || interfaceNames.length === 0) return;

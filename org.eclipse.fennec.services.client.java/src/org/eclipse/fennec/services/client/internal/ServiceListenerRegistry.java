@@ -67,6 +67,15 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 	/** Reference id → interface names, learned from registrations and lookups. */
 	private final Map<String, Set<String>> interfacesByReference = new ConcurrentHashMap<>();
 
+	/**
+	 * The reference ids this consumer currently knows from lookups —
+	 * exactly the acquisition list of the session protocol
+	 * (ACQUISITION.md §4: "der Client hat alles schon").
+	 */
+	public Set<String> knownReferenceIds() {
+		return Set.copyOf(interfacesByReference.keySet());
+	}
+
 	private final EventSource eventSource;
 
 	private final Runnable onStreamEstablished;

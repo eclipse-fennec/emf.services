@@ -57,14 +57,21 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     this.consumerId = consumerId;
   }
 
-  async find(interfaceName: string, filter?: string): Promise<ServiceLocator[]> {
+  /**
+   * @param fingerprint contract addressing (ACQUISITION.md §11.2): when
+   *   set, the broker only returns implementations whose catalog
+   *   contract hashes to exactly this sd1 value — compatibility by
+   *   identity, no range semantics.
+   */
+  async find(interfaceName: string, filter?: string, fingerprint?: string): Promise<ServiceLocator[]> {
     const flavors = this.supportedFlavors.length > 0 ? this.supportedFlavors.join(',') : undefined;
-    const roots = await this.broker.getReferences(interfaceName, filter, flavors, this.consumerId);
+    const roots = await this.broker.getReferences(
+      interfaceName, filter, flavors, this.consumerId, fingerprint);
     return this.parseLocators(roots, interfaceName);
   }
 
-  async findOne(interfaceName: string, filter?: string): Promise<ServiceLocator | undefined> {
-    const locators = await this.find(interfaceName, filter);
+  async findOne(interfaceName: string, filter?: string, fingerprint?: string): Promise<ServiceLocator | undefined> {
+    const locators = await this.find(interfaceName, filter, fingerprint);
     return locators[0];
   }
 

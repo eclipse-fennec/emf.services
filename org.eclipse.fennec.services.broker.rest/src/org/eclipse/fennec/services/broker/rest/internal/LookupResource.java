@@ -22,6 +22,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.ConsumerCapability;
+import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.LocalServiceRegistry;
@@ -84,11 +85,12 @@ public class LookupResource {
 			@QueryParam("interface") String interfaceName,
 			@QueryParam("filter") String filter,
 			@QueryParam("flavors") String flavorsCsv,
-			@QueryParam("consumerId") String consumerId) {
+			@QueryParam("consumerId") String consumerId,
+			@QueryParam("fingerprint") String fingerprint) {
 		if (interfaceName == null || interfaceName.isBlank()) {
 			return Response.status(400).entity("query parameter 'interface' is required").build();
 		}
-		ConsumerCapability cap = parseCapability(flavorsCsv, consumerId);
+		ConsumerCapability cap = parseCapability(flavorsCsv, consumerId, fingerprint);
 		List<ServiceReference> hits = broker.getServiceReferences(interfaceName, emptyToNull(filter), cap);
 
 		// Gather the live objects we want in the response. LinkedHashSet
@@ -146,13 +148,21 @@ public class LookupResource {
 		return Response.ok(new XmiBundle(roots)).type(MediaType.APPLICATION_XML).build();
 	}
 
-	private static ConsumerCapability parseCapability(String flavorsCsv, String consumerId) {
+	private static ConsumerCapability parseCapability(String flavorsCsv, String consumerId, String fingerprint) {
 		if (flavorsCsv == null || flavorsCsv.isBlank()) {
 			return null;
 		}
 		ConsumerCapability cap = ServicesFactory.eINSTANCE.createConsumerCapability();
 		if (consumerId != null && !consumerId.isBlank()) {
 			cap.setConsumerId(consumerId);
+		}
+		if (fingerprint != null && !fingerprint.isBlank()) {
+			// Contract addressing (ACQUISITION.md §11.2): only references
+			// whose broker-computed sd1 matches exactly are returned.
+			StringProperty requested = ServicesFactory.eINSTANCE.createStringProperty();
+			requested.setName("ddsr.fingerprint");
+			requested.setValue(fingerprint.trim());
+			cap.getProperties().add(requested);
 		}
 		for (String s : flavorsCsv.split(",")) {
 			String t = s.trim();

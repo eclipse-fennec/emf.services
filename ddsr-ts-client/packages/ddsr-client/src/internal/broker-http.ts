@@ -12,10 +12,10 @@
  ********************************************************************/
 
 import type { EObject } from '@emfts/core';
-import type { Diagnostic, ServiceInterface, ServiceProvider } from '@ddsr/model';
+import type { ConsumerSession, Diagnostic, ServiceInterface, ServiceProvider, ServiceReference } from '@ddsr/model';
 import { DDSRFactory } from '@ddsr/model';
 import { serializeToXmi, deserializeFromXmi } from '../xmi/xmi-support';
-import { asRoots, firstOfClass } from './emf-util';
+import { asRoots, eClassName, firstOfClass } from './emf-util';
 
 export interface BrokerHttpOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -80,12 +80,14 @@ export class BrokerHttp {
     interfaceName: string,
     filter?: string,
     flavors?: string,
-    consumerId?: string
+    consumerId?: string,
+    fingerprint?: string
   ): Promise<unknown[]> {
     const params = new URLSearchParams({ interface: interfaceName });
     if (filter) params.set('filter', filter);
     if (flavors) params.set('flavors', flavors);
     if (consumerId) params.set('consumerId', consumerId);
+    if (fingerprint) params.set('fingerprint', fingerprint);
     const response = await this.fetchFn(`${this.base}/references?${params}`, {
       headers: { Accept: 'application/xml' },
     });
@@ -140,6 +142,69 @@ export class BrokerHttp {
     const text = await response.text();
     if (!text.trim()) return undefined;
     return firstOfClass<ServiceInterface>(asRoots(deserializeFromXmi(text)), 'ServiceInterface');
+  }
+
+  /**
+   * PUT /consumers/{id} — the idempotent full replace of the acquisition
+   * stage (ACQUISITION.md §4): acquire = add an id and PUT, release =
+   * remove and PUT, heartbeat = an unchanged PUT. The wire form follows
+   * the publish convention: the acquisition list travels as sibling
+   * ServiceReference id-stubs (the model's acquisitions reference is
+   * transient and never serialized).
+   */
+  async putConsumerSession(
+    consumerId: string,
+    acquiredReferenceIds: string[],
+    session?: ConsumerSession
+  ): Promise<Diagnostic> {
+    const factory = DDSRFactory.eINSTANCE;
+    const body = session ?? factory.createConsumerSession();
+    if (!body.consumerId) body.consumerId = consumerId;
+    const roots: EObject[] = [body as unknown as EObject];
+    for (const referenceId of acquiredReferenceIds) {
+      const stub = factory.createServiceReference();
+      stub.id = referenceId;
+      roots.push(stub as unknown as EObject);
+    }
+    const response = await this.fetchFn(`${this.base}/consumers/${encodeURIComponent(consumerId)}`, {
+      method: 'PUT',
+      headers: this.xmlHeaders(),
+      body: serializeToXmi(roots[0], ...roots.slice(1)),
+    });
+    return this.readDiagnostic(response);
+  }
+
+  /** DELETE /consumers/{id} — shutdown-notify, releases all leases at once. */
+  async deleteConsumerSession(consumerId: string): Promise<Diagnostic> {
+    const response = await this.fetchFn(`${this.base}/consumers/${encodeURIComponent(consumerId)}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/xml' },
+    });
+    return this.readDiagnostic(response);
+  }
+
+  /** GET /consumers/{id} — what does the broker believe about this consumer? */
+  async getConsumerSession(
+    consumerId: string
+  ): Promise<{ session: ConsumerSession; acquiredReferenceIds: string[] } | undefined> {
+    const response = await this.fetchFn(`${this.base}/consumers/${encodeURIComponent(consumerId)}`, {
+      headers: { Accept: 'application/xml' },
+    });
+    if (response.status === 404) return undefined;
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`session read failed: ${response.status} — ${text.slice(0, 300)}`);
+    }
+    const text = await response.text();
+    if (!text.trim()) return undefined;
+    const roots = asRoots(deserializeFromXmi(text));
+    const session = firstOfClass<ConsumerSession>(roots, 'ConsumerSession');
+    if (!session) return undefined;
+    const acquiredReferenceIds = roots
+      .filter(r => eClassName(r) === 'ServiceReference')
+      .map(r => (r as ServiceReference).id)
+      .filter((id): id is string => !!id);
+    return { session, acquiredReferenceIds };
   }
 
   private async sendImplementation(

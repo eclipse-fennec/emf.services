@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.emf.common.util.URI;
@@ -42,6 +45,7 @@ import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.eclipse.fennec.services.CatalogStatus;
+import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
@@ -78,13 +82,23 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	private final EventSink events;
 
 	/**
-	 * Side-map registration → implementation. Containment in the model
-	 * runs Provider → Implementation, but registrations live under the
-	 * registry, so the link from a Reference back to its owning
-	 * Implementation is not directly traversable. We track it here.
+	 * The runtime home of the provider-side handles. Registrations have
+	 * no containment place in the persisted RemoteServiceRegistry — they
+	 * carry their links as model references instead
+	 * ({@code registration.provider/.implementation/.reference}, paired
+	 * resp. transient), which replaced the former
+	 * {@code implByRegistration} side-map (ACQUISITION.md §8). Insertion
+	 * order (deterministic), guarded by the broker lock.
 	 */
-	private final Map<ServiceRegistration, ServiceImplementation> implByRegistration = Collections
-			.synchronizedMap(new IdentityHashMap<>());
+	private final List<ServiceRegistration> registrations = new ArrayList<>();
+
+	/**
+	 * Consumer sessions by consumerId (ACQUISITION.md §3/§4). Runtime
+	 * state by design: deliberately NOT part of the persisted registry —
+	 * after a restart, consumers rebuild their sessions via their
+	 * regular PUTs. Guarded by the broker lock.
+	 */
+	private final Map<String, ConsumerSession> sessions = new LinkedHashMap<>();
 
 	/**
 	 * Serializes {@link #persist()} against itself: {@code snapshot()}
@@ -169,8 +183,10 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			ServiceRegistration reg = ServicesFactory.eINSTANCE.createServiceRegistration();
 			reg.setReference(ref);
 			reg.setUnregistered(false);
+			reg.setProvider(provider);
+			reg.setImplementation(impl);
 			ref.setRegistration(reg);
-			implByRegistration.put(reg, impl);
+			registrations.add(reg);
 			decorateReference(ref, impl);
 
 			lookup.serviceAdded(impl, ref);
@@ -288,8 +304,10 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			ServiceRegistration reg = ServicesFactory.eINSTANCE.createServiceRegistration();
 			reg.setReference(ref);
 			reg.setUnregistered(false);
+			reg.setProvider(provider);
+			reg.setImplementation(implementation);
 			ref.setRegistration(reg);
-			implByRegistration.put(reg, implementation);
+			registrations.add(reg);
 			decorateReference(ref, implementation);
 
 			lookup.serviceAdded(implementation, ref);
@@ -299,7 +317,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				// Rollback in-memory state on persist failure.
 				registry.getImplementations().remove(implementation);
 				lookup.serviceRemoved(implementation, ref);
-				implByRegistration.remove(reg);
+				registrations.remove(reg);
 				return d;
 			}
 			// Order matters for a consumer holding the old reference: the
@@ -345,16 +363,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				}
 			}
 
-			// Find and drop the matching registration / reference pair.
-			ServiceRegistration toRemove = null;
-			synchronized (implByRegistration) {
-				for (Map.Entry<ServiceRegistration, ServiceImplementation> e : implByRegistration.entrySet()) {
-					if (e.getValue() == liveImpl) {
-						toRemove = e.getKey();
-						break;
-					}
-				}
-			}
+			// Find and drop the matching registration / reference pair
+			// (deterministic: insertion order of the registrations list).
+			ServiceRegistration toRemove = findRegistrationByImplementation(liveImpl);
 			ServiceReference withdrawn = toRemove != null ? toRemove.getReference() : null;
 
 			// Build the event material BEFORE anything is detached, so the
@@ -371,9 +382,22 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			int indexInProvider = liveProvider.getImplementations().indexOf(liveImpl);
 			int indexInRegistry = registry.getImplementations().indexOf(liveImpl);
 
+			// A withdrawn registration must never stay acquired: release
+			// the leases (holders re-acquire live refs on their next PUT).
+			// Remembered for the persist-failure rollback below.
+			List<ConsumerSession> leaseHolders = toRemove != null
+					? List.copyOf(toRemove.getUsingSessions())
+					: List.of();
 			if (toRemove != null) {
 				lookup.serviceRemoved(liveImpl, toRemove.getReference());
-				implByRegistration.remove(toRemove);
+				registrations.remove(toRemove);
+				toRemove.getUsingSessions().clear();
+				// The transient links (implementation/provider/reference)
+				// stay on the dead pair for event building and rollback,
+				// but the flag makes it non-resolvable: a withdrawn
+				// reference must stop answering getImplementationForReference
+				// (parity with the former side-map removal).
+				toRemove.setUnregistered(true);
 			}
 
 			registry.getImplementations().remove(liveImpl);
@@ -397,7 +421,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				liveProvider.getImplementations().add(indexInProvider, liveImpl);
 				registry.getImplementations().add(indexInRegistry, liveImpl);
 				if (toRemove != null) {
-					implByRegistration.put(toRemove, liveImpl);
+					registrations.add(toRemove);
+					toRemove.setUnregistered(false);
+					toRemove.getUsingSessions().addAll(leaseHolders);
 					lookup.serviceAdded(liveImpl, toRemove.getReference());
 				}
 				return d;
@@ -451,15 +477,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (isError(d)) {
 			return null;
 		}
-		// Return the most recently created registration for this impl.
-		synchronized (implByRegistration) {
-			for (Map.Entry<ServiceRegistration, ServiceImplementation> e : implByRegistration.entrySet()) {
-				if (e.getValue() == implementation) {
-					return e.getKey();
-				}
-			}
+		lock.readLock().lock();
+		try {
+			return findRegistrationByImplementation(implementation);
+		} finally {
+			lock.readLock().unlock();
 		}
-		return null;
 	}
 
 	// ============================================================
@@ -481,7 +504,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			ConsumerCapability capability) {
 		lock.readLock().lock();
 		try {
-			return lookup.getServiceReferences(interfaceName, filter, capability);
+			return filterByRequestedFingerprint(
+					lookup.getServiceReferences(interfaceName, filter, capability), capability);
 		} finally {
 			lock.readLock().unlock();
 		}
@@ -492,7 +516,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			ConsumerCapability capability) {
 		lock.readLock().lock();
 		try {
-			return lookup.getAllServiceReferences(interfaceName, filter, capability);
+			return filterByRequestedFingerprint(
+					lookup.getAllServiceReferences(interfaceName, filter, capability), capability);
 		} finally {
 			lock.readLock().unlock();
 		}
@@ -680,10 +705,225 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		}
 		lock.readLock().lock();
 		try {
-			return implByRegistration.get(reg);
+			// The transient link survives on a withdrawn pair (needed for
+			// event building and rollback) — the flag is what says "dead".
+			return reg.isUnregistered() ? null : reg.getImplementation();
 		} finally {
 			lock.readLock().unlock();
 		}
+	}
+
+	// ============================================================
+	// Session operations (ACQUISITION.md §3/§4)
+	// ============================================================
+
+	@Override
+	public Diagnostic putSession(ConsumerSession session, Collection<String> acquiredReferenceIds) {
+		if (session == null || session.getConsumerId() == null || session.getConsumerId().isBlank()) {
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
+					"session and session.consumerId must not be null or blank");
+		}
+		lock.writeLock().lock();
+		try {
+			String consumerId = session.getConsumerId();
+			// Full replace: the previous session's leases are released
+			// first — the incoming list is the complete, current truth.
+			ConsumerSession previous = sessions.remove(consumerId);
+			if (previous != null) {
+				releaseAcquisitions(previous);
+			}
+			session.setLastRenewal(new Date());
+			int accepted = 0;
+			List<String> unknown = new ArrayList<>();
+			if (acquiredReferenceIds != null) {
+				for (String referenceId : acquiredReferenceIds) {
+					ServiceRegistration registration = findRegistrationByReferenceId(referenceId);
+					if (registration == null) {
+						// Over-claiming is harmless: stale or foreign ids
+						// (e.g. from before a broker restart) are skipped
+						// and reported, never rejected (ACQUISITION.md §5).
+						unknown.add(referenceId);
+						continue;
+					}
+					if (!session.getAcquisitions().contains(registration)) {
+						session.getAcquisitions().add(registration);
+						accepted++;
+					}
+				}
+			}
+			sessions.put(consumerId, session);
+			// Deliberately NO persist and NO event: sessions are runtime
+			// state (ACQUISITION.md §6).
+			return DdsrDiagnostics.ok("session accepted, " + accepted + " acquisition(s)"
+					+ (unknown.isEmpty() ? "" : ", skipped unknown reference id(s): " + unknown));
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	@Override
+	public Diagnostic deleteSession(String consumerId) {
+		if (consumerId == null || consumerId.isBlank()) {
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
+					"consumerId must not be null or blank");
+		}
+		lock.writeLock().lock();
+		try {
+			ConsumerSession removed = sessions.remove(consumerId);
+			if (removed == null) {
+				// Idempotent: a shutdown-notify may race the TTL expiry.
+				return DdsrDiagnostics.ok("no session for '" + consumerId + "' — nothing to release");
+			}
+			releaseAcquisitions(removed);
+			return DdsrDiagnostics.ok("session removed, all acquisitions released");
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	@Override
+	public Optional<SessionSnapshot> getSession(String consumerId) {
+		if (consumerId == null || consumerId.isBlank()) {
+			return Optional.empty();
+		}
+		lock.readLock().lock();
+		try {
+			ConsumerSession stored = sessions.get(consumerId);
+			if (stored == null) {
+				return Optional.empty();
+			}
+			// Manual detached copy — NOT EcoreUtil.copy: copying the
+			// bidirectional (transient) acquisitions would touch the live
+			// registrations' usingSessions via the eOpposite.
+			ConsumerSession view = ServicesFactory.eINSTANCE.createConsumerSession();
+			view.setConsumerId(stored.getConsumerId());
+			view.setLastRenewal(stored.getLastRenewal());
+			if (stored.getCapabilities() != null) {
+				view.setCapabilities(EcoreUtil.copy(stored.getCapabilities()));
+			}
+			List<String> ids = new ArrayList<>(stored.getAcquisitions().size());
+			for (ServiceRegistration registration : stored.getAcquisitions()) {
+				ServiceReference reference = registration.getReference();
+				if (reference != null && reference.getId() != null) {
+					ids.add(reference.getId());
+				}
+			}
+			return Optional.of(new SessionSnapshot(view, ids));
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	@Override
+	public int expireSessions(Instant cutoff) {
+		if (cutoff == null) {
+			return 0;
+		}
+		lock.writeLock().lock();
+		try {
+			int expired = 0;
+			var iterator = sessions.entrySet().iterator();
+			while (iterator.hasNext()) {
+				ConsumerSession session = iterator.next().getValue();
+				Date lastRenewal = session.getLastRenewal();
+				if (lastRenewal == null || lastRenewal.toInstant().isBefore(cutoff)) {
+					releaseAcquisitions(session);
+					iterator.remove();
+					expired++;
+				}
+			}
+			return expired;
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	@Override
+	public int sessionCount() {
+		lock.readLock().lock();
+		try {
+			return sessions.size();
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	/** Clears the acquisitions; the eOpposite removes the session from every registration's usingSessions. */
+	private static void releaseAcquisitions(ConsumerSession session) {
+		session.getAcquisitions().clear();
+	}
+
+	private ServiceRegistration findRegistrationByImplementation(ServiceImplementation implementation) {
+		for (ServiceRegistration registration : registrations) {
+			if (registration.getImplementation() == implementation) {
+				return registration;
+			}
+		}
+		return null;
+	}
+
+	private ServiceRegistration findRegistrationByReferenceId(String referenceId) {
+		if (referenceId == null || referenceId.isBlank()) {
+			return null;
+		}
+		for (ServiceRegistration registration : registrations) {
+			ServiceReference reference = registration.getReference();
+			if (reference != null && referenceId.equals(reference.getId())) {
+				return registration;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Contract addressing (ACQUISITION.md §11.2): when the consumer's
+	 * capability carries a {@code ddsr.fingerprint} property, only
+	 * references whose broker-computed contract fingerprint matches
+	 * exactly are returned. Compatibility = identical sd1 — the
+	 * comparison runs against the CATALOG truth (decorateReference hashes
+	 * the catalog entries the impl was rewired to at publish), so a
+	 * provider whose local contract drifted falls out of compatible
+	 * lookups. No range semantics: fingerprints are identity, versions
+	 * communicate intent (§11.3).
+	 */
+	private static List<ServiceReference> filterByRequestedFingerprint(List<ServiceReference> references,
+			ConsumerCapability capability) {
+		String requested = requestedFingerprint(capability);
+		if (requested == null) {
+			return references;
+		}
+		List<ServiceReference> matching = new ArrayList<>(references.size());
+		for (ServiceReference reference : references) {
+			if (carriesFingerprint(reference, requested)) {
+				matching.add(reference);
+			}
+		}
+		return matching;
+	}
+
+	private static String requestedFingerprint(ConsumerCapability capability) {
+		if (capability == null) {
+			return null;
+		}
+		for (Property property : capability.getProperties()) {
+			if ("ddsr.fingerprint".equals(property.getName()) && property instanceof StringProperty sp) {
+				String value = sp.getValue();
+				return value == null || value.isBlank() ? null : value;
+			}
+		}
+		return null;
+	}
+
+	private static boolean carriesFingerprint(ServiceReference reference, String requested) {
+		for (Property property : reference.getProperties()) {
+			String name = property.getName();
+			if (name != null && name.startsWith("ddsr.fingerprint")
+					&& property instanceof StringProperty sp
+					&& requested.equals(sp.getValue())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// ============================================================
@@ -833,23 +1073,18 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 * replaced by a fresher copy with the same (name, version):
 	 * detach from its provider, remove from {@code registry.implementations},
 	 * tell the lookup backend its reference is gone, and clean up
-	 * the {@code implByRegistration} map.
+	 * the registrations list.
 	 */
 	private ServiceReference retireImplementation(ServiceProvider provider, ServiceImplementation oldImpl) {
 		provider.getImplementations().remove(oldImpl);
 		registry.getImplementations().remove(oldImpl);
-		ServiceRegistration deadReg = null;
-		synchronized (implByRegistration) {
-			for (java.util.Map.Entry<ServiceRegistration, ServiceImplementation> e
-					: implByRegistration.entrySet()) {
-				if (e.getValue() == oldImpl) {
-					deadReg = e.getKey();
-					break;
-				}
-			}
-			if (deadReg != null) {
-				implByRegistration.remove(deadReg);
-			}
+		ServiceRegistration deadReg = findRegistrationByImplementation(oldImpl);
+		if (deadReg != null) {
+			registrations.remove(deadReg);
+			// A replaced registration releases its leases; holders
+			// re-acquire the successor on their next session PUT.
+			deadReg.getUsingSessions().clear();
+			deadReg.setUnregistered(true);
 		}
 		if (deadReg != null && deadReg.getReference() != null) {
 			lookup.serviceRemoved(oldImpl, deadReg.getReference());

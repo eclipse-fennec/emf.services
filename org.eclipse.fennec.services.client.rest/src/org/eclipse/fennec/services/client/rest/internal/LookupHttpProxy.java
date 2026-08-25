@@ -20,6 +20,8 @@ import java.util.List;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.ConsumerCapability;
+import org.eclipse.fennec.services.Property;
+import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.LocalServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
@@ -100,6 +102,10 @@ public final class LookupHttpProxy implements BrokerLookup {
 		if (capability != null && capability.getConsumerId() != null && !capability.getConsumerId().isBlank()) {
 			t = t.queryParam("consumerId", capability.getConsumerId());
 		}
+		String requestedFingerprint = requestedFingerprint(capability);
+		if (requestedFingerprint != null) {
+			t = t.queryParam("fingerprint", requestedFingerprint);
+		}
 		XmiBundle bundle = t.request(MediaType.APPLICATION_XML).get(XmiBundle.class);
 		LocalServiceRegistry envelope = null;
 		for (EObject root : bundle.roots()) {
@@ -123,5 +129,24 @@ public final class LookupHttpProxy implements BrokerLookup {
 			sb.append(k.getName());
 		}
 		return sb.toString();
+	}
+
+	/**
+	 * Contract addressing (ACQUISITION.md §11.2): a
+	 * {@code ddsr.fingerprint} StringProperty on the capability travels
+	 * as the {@code fingerprint} query parameter.
+	 */
+	private static String requestedFingerprint(ConsumerCapability capability) {
+		if (capability == null) {
+			return null;
+		}
+		for (Property property : capability.getProperties()) {
+			if ("ddsr.fingerprint".equals(property.getName())
+					&& property instanceof StringProperty sp
+					&& sp.getValue() != null && !sp.getValue().isBlank()) {
+				return sp.getValue();
+			}
+		}
+		return null;
 	}
 }

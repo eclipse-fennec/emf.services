@@ -132,6 +132,20 @@ GET    /consumers/{consumerId}    → Diagnose (was glaubt der Broker über mich
   `subscribedInterfaces()` des SDK sind genau die `acquisitions`-Liste;
   `close()`/Shutdown-Hooks rufen das `DELETE` (Java und TS symmetrisch,
   FR-P3-Ordnung: erst Withdraw/Release, dann Endpoint/Streams).
+- **Wire-Realisierung (umgesetzt):** Das PUT-Dokument ist ein
+  Multi-Root-XMI nach der Publish-Konvention — die `ConsumerSession`
+  (consumerId + capabilities containment) plus
+  **Geschwister-`ServiceReference`-Stubs, die nur ihre `id` tragen**;
+  die Stub-Liste *ist* die Acquisition-Liste. Das Modell-Feature
+  `acquisitions` ist transient und reist nie im XMI (ebenso
+  `usingSessions` und das `reference`⟷`registration`-Paar: die
+  Provider-Handles sind broker-seitig Laufzeitobjekte ohne
+  Containment-Heimat — ein serialisierter Link würde jeden Snapshot
+  zerreißen). `GET` antwortet formsymmetrisch. Der Pfad besitzt die
+  Identität; eine widersprechende Body-Id ist ein 400. **Stale
+  Acquire** (Ref-Id, die es nicht mehr gibt — etwa nach
+  Broker-Neustart mit regenerierten Ids): wird übersprungen und im
+  Diagnostic benannt, nie abgelehnt (§5).
 - Nebengewinn: dieselbe Session-Struktur ist der natürliche Träger für
   die **Interessenlage der Event-Subscription** — das dokumentierte
   A2-Loch, dass `EventSource.open()` keine Interessen transportiert.
@@ -324,7 +338,27 @@ und wird damit sichtbar.
 „noch da und unverändert?" beantwortet der Broker, ohne den kalten
 Eintrag zu rehydrieren.
 
-## 12. Umsetzungsreihenfolge (wenn es so weit ist)
+## 12. Umsetzungsreihenfolge
+
+**Stand 2026-08-25: Schritte 1–3 sind umgesetzt** (Branch
+feat/acquisition): Broker hält Sessions als Laufzeit-Map mit
+TTL-Verfall (`org.eclipse.fennec.services.broker.core`,
+`session.expiry.seconds` Default 1200, Sweep bei einem Viertel),
+`PUT/GET/DELETE /consumers/{id}`, Side-Map `implByRegistration` durch
+die Modell-Refs `registration.provider/.implementation` ersetzt
+(deterministische Insertion-Order statt IdentityHashMap-Scan);
+Withdraw/Republish **lösen die Leases der betroffenen Registration**
+(Rollback bei Persist-Fehler stellt sie wieder her); SDKs beidseitig
+(Java: `SessionsHttpProxy` + Renewal-Scheduler im Client-Component,
+`session.interval.seconds` Default 600, DELETE im Shutdown vor dem
+Stream-Close; TS: `putConsumerSession`/`deleteConsumerSession`/
+`getConsumerSession` + Timer in `DdsrClientImpl`, gleiche
+close()-Ordnung). Aus §11.2 ist die **Lookup-Contract-Adressierung**
+umgesetzt: `GET /references?...&fingerprint=sd1:…` filtert exakt gegen
+die broker-berechneten Katalog-Fingerprints (Java via
+`ddsr.fingerprint`-Property an der ConsumerCapability, TS via
+`find(interface, filter, fingerprint)`). Schritt 4 (Auto-Retire/Drain)
+ist bewusst abgetrennt und kommt mit der Policy-Maschinerie.
 
 1. Ecore: `ConsumerSession`, `LocalServiceRegistry.sessions`,
    eOpposite `ServiceRegistration.usingSessions`, dazu

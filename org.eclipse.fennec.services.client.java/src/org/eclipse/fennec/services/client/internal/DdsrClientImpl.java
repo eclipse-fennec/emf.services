@@ -49,6 +49,11 @@ public final class DdsrClientImpl implements DdsrClient {
 		return consumer;
 	}
 
+	/** Reference ids known from lookups — the session acquisition list. */
+	public java.util.Set<String> knownReferenceIds() {
+		return consumer.knownReferenceIds();
+	}
+
 	@Override
 	public void close() {
 		// no SDK-owned resources — the transport (BrokerCatalog /

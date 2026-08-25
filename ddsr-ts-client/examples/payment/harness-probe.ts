@@ -31,6 +31,7 @@
 
 import { RestFlavorPlugin } from '@ddsr/flavor-rest';
 import {
+  BrokerHttp,
   DdsrClientImpl,
   FINGERPRINT_PROPERTY,
   fingerprint,
@@ -59,7 +60,9 @@ async function main(): Promise<void> {
     flavorPlugins: [new RestFlavorPlugin()],
     consumerId: 'harness-probe-ts',
     reconnectSeconds: 1,
+    sessionIntervalSeconds: 0, // renewed explicitly below, deterministic
   });
+  const brokerHttp = new BrokerHttp({ brokerUrl: BROKER_URL });
 
   let unregistering: number | undefined;
   client.consumer.addServiceListener('Payment', undefined, event => {
@@ -102,6 +105,22 @@ async function main(): Promise<void> {
   const remaining = Number(await locator.invoke('charge', { amount: 12.5, currency: 'EUR' }));
   check('invoke-charge', Number.isFinite(remaining), `${remaining}`);
 
+  // 4b. acquisition stage (ACQUISITION §3/§4): after the session PUT the
+  // broker must list our lease on the Payment reference; contract
+  // addressing must find the impl by its sd1 and reject a foreign hash.
+  await client.renewSession();
+  const brokerSession = await brokerHttp.getConsumerSession('harness-probe-ts');
+  check('session-visible',
+    brokerSession !== undefined
+      && brokerSession.acquiredReferenceIds.includes(locator.reference.id ?? ''),
+    `broker lists ${JSON.stringify(brokerSession?.acquiredReferenceIds)}`);
+  const byFingerprint = await client.consumer.find('Payment', undefined, localFp);
+  check('lookup-by-fingerprint', byFingerprint.length >= 1, `${byFingerprint.length} hit(s)`);
+  const byWrongFingerprint = await client.consumer.find('Payment', undefined,
+    'sd1:0000000000000000000000000000000000000000000000000000000000000000');
+  check('lookup-wrong-fingerprint-empty', byWrongFingerprint.length === 0,
+    `${byWrongFingerprint.length} hit(s)`);
+
   if (failures.length > 0) fail(failures.join(' | '));
 
   // 5. lifecycle: harness stops the provider after this marker
@@ -112,6 +131,9 @@ async function main(): Promise<void> {
   if (unregistering === undefined) fail('no UNREGISTERING within 60s of PROBE_READY');
 
   await client.close();
+  // 5b. FR-P3 shutdown-notify: close() released the session at the broker.
+  const gone = await brokerHttp.getConsumerSession('harness-probe-ts');
+  if (gone !== undefined) fail('session still present at broker after close()');
   console.log('PROBE_OK');
   process.exit(0);
 }

@@ -4,7 +4,10 @@ name: Cross-Language Harness
 # languages against each other (see itest/README.md). Runs on every
 # branch push, every PR, and the snapshot/main integration branches —
 # the reusable verify workflow only builds Java, so this is where the
-# TS unit tests and the cross-language scenarios live.
+# TS build/unit tests and the cross-language scenarios live.
+#
+# Job order is a deliberate gate: the (comparatively expensive) harness
+# only starts after BOTH the Java build and the npm build+tests passed.
 on:
   push:
     branches:
@@ -21,9 +24,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  harness:
-    name: TS tests + host harness + podman harness
+  build-java:
+    name: Java build (gate)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: "temurin"
+          java-version: 21
+          cache: gradle
+
+      - name: Gradle build
+        run: ./gradlew build
+
+  build-ts:
+    name: npm build + TS unit tests (gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Enable pnpm (corepack)
+        run: corepack enable pnpm
+
+      - name: Build and test
+        working-directory: ddsr-ts-client
+        run: |
+          corepack pnpm install --frozen-lockfile
+          corepack pnpm -r build
+          corepack pnpm exec vitest run
+
+  harness:
+    name: Host + podman harness
+    runs-on: ubuntu-latest
+    needs: [build-java, build-ts]
     timeout-minutes: 40
     steps:
       - name: Harden the runner
@@ -48,13 +103,6 @@ jobs:
 
       - name: Enable pnpm (corepack)
         run: corepack enable pnpm
-
-      - name: TS unit tests
-        working-directory: ddsr-ts-client
-        run: |
-          corepack pnpm install --frozen-lockfile
-          corepack pnpm -r build
-          corepack pnpm exec vitest run
 
       - name: Host harness (scenarios A + B)
         run: ./itest/run-harness.sh

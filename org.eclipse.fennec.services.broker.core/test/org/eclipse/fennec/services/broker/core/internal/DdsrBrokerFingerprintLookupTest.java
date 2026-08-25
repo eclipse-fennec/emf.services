@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
+import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -260,5 +261,26 @@ class DdsrBrokerFingerprintLookupTest {
 		assertThat(fingerprintValues)
 				.as("the reference advertises the broker-computed catalog contract")
 				.containsExactly(catalogFingerprint);
+	}
+
+	@Test
+	void everyReturnedReferenceCarriesTheImplementationFingerprint() {
+		ServiceProvider prov = provider("prov-a", "impl-a", serviceInterface("Payment", "charge", "getBalance"));
+		publish(prov);
+
+		ServiceReference reference = broker.getServiceReferences("Payment", null, null).get(0);
+		String advertised = reference.getProperties().stream()
+				.filter(prop -> "ddsr.impl.fingerprint".equals(prop.getName()))
+				.map(prop -> ((StringProperty) prop).getValue())
+				.findFirst().orElse(null);
+
+		// the broker computes im1 AFTER rewiring the impl onto the live
+		// catalog entry, so the value composes over the CATALOG sd1 — the
+		// registry-held impl is exactly that rewired one
+		ServiceImplementation held = broker.getImplementationForReference(reference);
+		assertThat(advertised)
+				.as("the reference advertises the broker-computed im1 (reconnect anchor)")
+				.isEqualTo(ServiceImplementationFingerprint.fingerprint(held))
+				.startsWith("im1:");
 	}
 }

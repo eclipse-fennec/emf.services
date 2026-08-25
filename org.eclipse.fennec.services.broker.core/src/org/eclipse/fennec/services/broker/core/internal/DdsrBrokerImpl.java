@@ -44,6 +44,7 @@ import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
+import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.ConsumerCapability;
@@ -1187,6 +1188,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			for (ServiceInterface si : interfaces) {
 				addFingerprint(reference, "ddsr.fingerprint." + si.getName(), si);
 			}
+		}
+		// im1 beside the sd1s (ACQUISITION.md §11.1): computed AFTER the
+		// publish path rewired the impl onto the live catalog entries, so
+		// the contract components are the catalog truth. Providers compare
+		// it on reconnect to decide lease-renew vs re-publish.
+		String implFingerprint = ServiceImplementationFingerprint.fingerprint(implementation);
+		if (implFingerprint != null) {
+			StringProperty property = ServicesFactory.eINSTANCE.createStringProperty();
+			property.setName("ddsr.impl.fingerprint");
+			property.setValue(implFingerprint);
+			reference.getProperties().add(property);
 		}
 	}
 

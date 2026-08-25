@@ -297,6 +297,29 @@ Consumer haben den sd1-Check heute schon: lokal berechneter Wert gegen
 die `ddsr.fingerprint`-Reference-Property (die FR-P4-Harness prüft
 genau das).
 
+**Stand 2026-08-25: umgesetzt** (Branch feat/im1-fingerprint, Issue #6).
+Das Schema ist als `im1` eingefroren — kanonische Grammatik im Javadoc
+von `ServiceImplementationFingerprint` (xmi.codec, geteilt mit dem
+Broker), TS-Spiegel `service-implementation-fingerprint.ts`; beide
+Sprachen sind über die Goldens `itest/fixtures/fingerprint/
+payment-impl.{xmi,canonical.txt,im1}` byte-identisch gepinnt.
+Ausgeschlossen sind `description` und `componentDescription`
+(Doku-/Deployment-Detail, nicht Endpoint-Identität). Der Broker
+dekoriert jede Reference zusätzlich mit `ddsr.impl.fingerprint` —
+berechnet NACH dem Katalog-Rewire, die `c|sd1:…`-Zeilen sind also
+Katalogwahrheit. Der Identitätsvergleich beim Reconnect läuft rein
+inhaltsbasiert: ein im1-Match unter gleichem `provider.name` IST die
+eigene Registrierung (im1 enthält implementationId, Endpoints und die
+sd1-Tokens). `publish()` ist damit in beiden SDKs idempotent: im1-Match
+→ Publish übersprungen, Registration wiederverwendet, Consumer sehen
+keinen UNREGISTERING/REGISTERED-Churn; Drift → Re-Publish (der Broker
+retired den Alt-Eintrag), Richtung wird geloggt (sd1 gleich →
+Endpoint-Drift INFO, sd1 ungleich → Contract-Drift WARNING — Publish
+bleibt der sichere Default, der Broker validiert gegen den Live-Katalog).
+Die Zeile „nur Lease erneuern" aus der Tabelle heißt praktisch: der
+wiederverwendete Publish-Pfad kommt ohne Broker-Mutation aus, die
+Session-Erneuerung (§4) läuft ohnehin.
+
 ### 11.2 Contract-Adressierung: Lookup und Katalog über `(name, sd1)`
 
 Interface-Fingerprints tragen auf der Consumer-Seite mehr als den
@@ -359,6 +382,11 @@ die broker-berechneten Katalog-Fingerprints (Java via
 `ddsr.fingerprint`-Property an der ConsumerCapability, TS via
 `find(interface, filter, fingerprint)`). Schritt 4 (Auto-Retire/Drain)
 ist bewusst abgetrennt und kommt mit der Policy-Maschinerie.
+
+**Stand 2026-08-25, Nachtrag:** aus Schritt 5 ist der
+**Fingerprint-Reconnect für Provider** umgesetzt (im1, §11.1 — Branch
+feat/im1-fingerprint); offen aus Schritt 5 bleibt der Cold-Cache (§10),
+aus §11.2 der Katalog-Schlüssel `(name, sd1)` (Issue #6-Rest).
 
 1. Ecore: `ConsumerSession`, `LocalServiceRegistry.sessions`,
    eOpposite `ServiceRegistration.usingSessions`, dazu

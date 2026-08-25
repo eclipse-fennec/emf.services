@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="payments-fixture">
+    <implementations name="payments-fixture-rest" implementationId="fixture:payments:1.0.0" serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="rest" host="http://localhost:9090" basePath="/payments">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="charge" method="POST" path="/charge" operation="/1/@operations.0"/>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getBalance" path="/balance" operation="/1/@operations.1"/>
+      </flavors>
+      <properties xsi:type="services:StringProperty" name="ddsr.provider.lang" value="java"/>
+      <properties xsi:type="services:IntProperty" name="service.ranking" value="10"/>
+      <properties xsi:type="services:LongProperty" name="payments.maxAmountCents" value="5000000000"/>
+      <properties xsi:type="services:DoubleProperty" name="payments.feeRate" value="0.025"/>
+      <properties xsi:type="services:FloatProperty" name="payments.timeoutSeconds" value="1.5"/>
+      <properties xsi:type="services:ShortProperty" name="payments.maxRetries" value="3"/>
+      <properties xsi:type="services:BoolProperty" name="payments.sandbox" value="true"/>
+      <properties xsi:type="services:StringListProperty" name="payments.tags">
+        <value>demo</value>
+        <value>payments</value>
+      </properties>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceInterface name="Payment" version="1.0.0" description="Payment processing service — charges accounts and reports balances.">
+    <operations name="charge" returnType="double" description="Charge an amount. Returns the remaining balance.">
+      <parameters name="amount" type="double" description="Amount to charge."/>
+      <parameters name="currency" index="1" type="string" optional="true" defaultValue="EUR" description="ISO 4217 currency code."/>
+    </operations>
+    <operations name="getBalance" returnType="double" description="Get current account balance.">
+      <parameters name="accountId" type="string" description="The account identifier."/>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

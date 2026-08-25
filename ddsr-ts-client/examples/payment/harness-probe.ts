@@ -86,6 +86,11 @@ async function main(): Promise<void> {
   const localFp = fingerprint(locator.serviceInterface);
   check('fingerprint-match', brokerFp === localFp, `broker=${brokerFp} local=${localFp}`);
   check('fingerprint-golden', localFp === GOLDEN, `${localFp}`);
+  // im1 rides beside the sd1 (ACQUISITION §11.1) — the probe holds no
+  // impl model to recompute it, but its presence proves the broker
+  // decorates the reconnect anchor across the wire.
+  const implFp = propertyOf(locator.reference, 'ddsr.impl.fingerprint');
+  check('impl-fingerprint-present', typeof implFp === 'string' && implFp.startsWith('im1:'), `${implFp}`);
 
   // 3. typed properties (the agreed cross-language property set, D8)
   const p = propertiesOf(locator.reference);

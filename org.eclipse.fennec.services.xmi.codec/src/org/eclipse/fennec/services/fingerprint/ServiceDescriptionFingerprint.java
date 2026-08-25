@@ -175,7 +175,7 @@ public final class ServiceDescriptionFingerprint {
 
 	// ------------------------------------------------------------------
 
-	private static List<Property> sortedByName(List<Property> properties) {
+	static List<Property> sortedByName(List<Property> properties) {
 		List<Property> sorted = new ArrayList<>(properties);
 		sorted.sort(Comparator.comparing(Property::getName,
 				Comparator.nullsFirst(Comparator.naturalOrder())));
@@ -187,7 +187,7 @@ public final class ServiceDescriptionFingerprint {
 	 * rendering. Also used to fold property values into other canonical
 	 * contexts, so the value rules live in exactly one place.
 	 */
-	private static String propertyLine(Property property) {
+	static String propertyLine(Property property) {
 		String tag;
 		String value;
 		if (property instanceof StringProperty p) {
@@ -231,7 +231,7 @@ public final class ServiceDescriptionFingerprint {
 		return "pr|" + tag + "|" + esc(property.getName()) + "|value=" + value;
 	}
 
-	private static String esc(String raw) {
+	static String esc(String raw) {
 		if (raw == null || raw.isEmpty()) {
 			return "";
 		}
@@ -249,12 +249,12 @@ public final class ServiceDescriptionFingerprint {
 		return out.toString();
 	}
 
-	private static String escListElement(String raw) {
+	static String escListElement(String raw) {
 		String escaped = esc(raw);
 		return escaped.replace(",", "\\,");
 	}
 
-	private static String sha256Hex(String content) {
+	static String sha256Hex(String content) {
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 			byte[] hash = digest.digest(content.getBytes(StandardCharsets.UTF_8));

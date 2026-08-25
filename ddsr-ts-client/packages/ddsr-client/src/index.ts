@@ -36,5 +36,6 @@ export type { ShutdownHookOptions } from './lifecycle/shutdown-hooks';
 export { serializeToXmi, deserializeFromXmi } from './xmi/xmi-support';
 export { propertyValue, propertiesOf, propertyOf, props, FINGERPRINT_PROPERTY } from './properties';
 export { fingerprint, canonicalForm, FINGERPRINT_SCHEME } from './fingerprint/service-description-fingerprint';
+export { implementationFingerprint, implementationCanonicalForm, IMPL_FINGERPRINT_SCHEME } from './fingerprint/service-implementation-fingerprint';
 export type { PropertyValue } from './properties';
 export { eClassName, toArray, asRoots, firstOfClass } from './internal/emf-util';

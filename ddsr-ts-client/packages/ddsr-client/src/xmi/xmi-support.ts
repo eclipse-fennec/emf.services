@@ -13,12 +13,18 @@
 
 import type { EObject } from '@emfts/core';
 import { EResourceSetImpl, EPackageRegistry, URI, XMIResource } from '@emfts/core';
-import { DDSRPackage } from '@ddsr/model';
+import { DDSRFactory, DDSRPackage } from '@ddsr/model';
 
 // Register the DDSR package in the global EPackage registry so the XMI
 // loader can resolve "ddsr:" prefixed elements to the correct EClasses.
 const ddsr = DDSRPackage.eINSTANCE;
 EPackageRegistry.INSTANCE.set(DDSRPackage.eNS_URI, ddsr);
+// Touch the factory singleton eagerly: the generated package wires its
+// structural features only when the factory is first accessed. Without
+// this, a process that PARSES before it ever create*()s anything gets
+// featureless stubs back (every attribute undefined) — a load-order
+// trap that test-import order used to paper over.
+void DDSRFactory.eINSTANCE;
 
 function createResourceSet(): InstanceType<typeof EResourceSetImpl> {
   const rs = new EResourceSetImpl();

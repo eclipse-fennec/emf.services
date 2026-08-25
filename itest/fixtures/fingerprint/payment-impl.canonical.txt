@@ -1,0 +1,13 @@
+IM|fixture:payments:1.0.0|name=payments-fixture-rest|version=
+  c|sd1:baafb26e152b76e0e6e713bb86a5e418c2d014d855b24df4d938a517c59807c0
+  F|RestFlavor|rest|kind=REST|host=http://localhost:9090|basePath=/payments|contentTypes=0:
+    o|RestOperationFlavor|charge|operation=charge|consumes=0:|produces=0:|method=POST|path=/charge|returnCodes=0:
+    o|RestOperationFlavor|getBalance|operation=getBalance|consumes=0:|produces=0:|method=GET|path=/balance|returnCodes=0:
+  pr|S|ddsr.provider.lang|value=java
+  pr|d|payments.feeRate|value=bits:3f9999999999999a
+  pr|l|payments.maxAmountCents|value=5000000000
+  pr|s|payments.maxRetries|value=3
+  pr|b|payments.sandbox|value=true
+  pr|SL|payments.tags|value=2:demo,payments
+  pr|f|payments.timeoutSeconds|value=bits:3fc00000
+  pr|i|service.ranking|value=10

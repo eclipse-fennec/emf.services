@@ -23,9 +23,15 @@ org.eclipse.fennec.services.broker.core         # API + In-Memory-Impl
                                    #   DdsrBrokerImpl: state + XMI-Persistenz
 
 org.eclipse.fennec.services.broker.rest         # JAX-RS-Endpoints
-                                   #   /catalog, /catalog/{name}, /catalog/{name}/deprecate
-                                   #   /implementations
-                                   #   /references?interface=&filter=&flavors=&consumerId=
+                                   #   vollständige Endpoint-Tabelle: WIRE_FORMAT.md
+                                   #   /catalog, /catalog/{name}[?fingerprint=],
+                                   #     /catalog/{name}/deprecate
+                                   #   /implementations (publish),
+                                   #     /implementations/withdraw (POST — kanonisch, D15)
+                                   #   /references?interface=&filter=&flavors=&consumerId=&fingerprint=
+                                   #   /consumers/{id} (Sessions, PUT/GET/DELETE)
+                                   #   /events (SSE; Heartbeat-PID
+                                   #     org.eclipse.fennec.services.broker.rest.sse)
                                    #   /registry
                                    #   BrokerSelfPublisher: legt die drei Broker-APIs
                                    #     in den Katalog und published sich selbst

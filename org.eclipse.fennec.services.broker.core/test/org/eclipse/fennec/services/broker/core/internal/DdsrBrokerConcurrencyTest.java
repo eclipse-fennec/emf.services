@@ -16,15 +16,14 @@ package org.eclipse.fennec.services.broker.core.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.fennec.services.ConsumerSession;
-import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
@@ -33,6 +32,7 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceProvider;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

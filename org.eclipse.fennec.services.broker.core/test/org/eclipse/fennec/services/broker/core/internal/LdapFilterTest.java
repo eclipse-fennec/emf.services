@@ -17,12 +17,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import org.eclipse.fennec.services.BoolProperty;
-import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.DoubleProperty;
 import org.eclipse.fennec.services.FloatProperty;
 import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.LongProperty;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ShortProperty;
 import org.eclipse.fennec.services.StringListProperty;
 import org.eclipse.fennec.services.StringProperty;

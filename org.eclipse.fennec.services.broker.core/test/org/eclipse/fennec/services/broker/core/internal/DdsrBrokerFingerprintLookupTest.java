@@ -20,8 +20,8 @@ import java.util.List;
 
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.DiagnosticSeverity;
+import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;

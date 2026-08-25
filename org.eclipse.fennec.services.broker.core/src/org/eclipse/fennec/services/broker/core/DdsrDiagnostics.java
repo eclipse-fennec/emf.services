@@ -13,9 +13,9 @@
 
 package org.eclipse.fennec.services.broker.core;
 
-import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
+import org.eclipse.fennec.services.ServicesFactory;
 
 /**
  * Static factory methods for {@link Diagnostic} values commonly returned

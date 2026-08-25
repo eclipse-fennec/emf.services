@@ -10,6 +10,9 @@ hero:
     alt: Eclipse Fennec logo
   actions:
     - theme: brand
+      text: Getting started
+      link: /guides/getting-started
+    - theme: alt
       text: Vision & Requirements
       link: /guides/requirements
     - theme: alt

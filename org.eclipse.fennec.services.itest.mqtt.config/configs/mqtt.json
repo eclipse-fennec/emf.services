@@ -1,0 +1,9 @@
+{
+  "org.eclipse.fennec.services.broker.mqtt": {
+    "broker.url": "tcp://localhost:1883"
+  },
+  "org.eclipse.fennec.services.client.mqtt": {
+    "broker.url": "tcp://localhost:1883",
+    "service.ranking:Integer": 100
+  }
+}

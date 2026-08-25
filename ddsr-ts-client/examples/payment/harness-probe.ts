@@ -30,6 +30,8 @@
  */
 
 import { RestFlavorPlugin } from '@ddsr/flavor-rest';
+import { MqttFlavorPlugin } from '@ddsr/transport-mqtt';
+import type { MqttFlavor, MqttOperationFlavor, ServiceOperation } from '@ddsr/model';
 import {
   BrokerHttp,
   DdsrClientImpl,
@@ -41,6 +43,10 @@ import {
 
 const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 const EXPECTED_LANG = process.env.EXPECT_LANG ?? 'java';
+// When set, the provider announces an MqttFlavor and the probe invokes
+// over it (A2 Etappe 2) — the value is unused beyond being truthy, the
+// broker address comes from the ANNOUNCED flavor.
+const EXPECT_MQTT = process.env.EXPECT_MQTT === '1';
 const GOLDEN = 'sd1:baafb26e152b76e0e6e713bb86a5e418c2d014d855b24df4d938a517c59807c0';
 
 const failures: string[] = [];
@@ -109,6 +115,32 @@ async function main(): Promise<void> {
   check('invoke-getBalance', Number.isFinite(balance), `${balance}`);
   const remaining = Number(await locator.invoke('charge', { amount: 12.5, currency: 'EUR' }));
   check('invoke-charge', Number.isFinite(remaining), `${remaining}`);
+
+  // 4c. invocation over the announced MQTT flavor (A2 Etappe 2). The
+  // plugin connects to the broker the FLAVOR names — the provider says
+  // where it listens; nothing here is configured out of band.
+  if (EXPECT_MQTT) {
+    const flavors = locator.flavors() as Array<{ eClass?: () => { name?: string } }>;
+    const mqttFlavor = flavors.find(f => f.eClass?.()?.name === 'MqttFlavor') as MqttFlavor | undefined;
+    check('mqtt-flavor-announced', mqttFlavor !== undefined,
+      `${flavors.map(f => f.eClass?.()?.name).join(',')}`);
+    if (mqttFlavor) {
+      const plugin = new MqttFlavorPlugin({ timeoutMs: 15000 });
+      const operations = [...locator.serviceInterface.operations] as ServiceOperation[];
+      const getBalanceOp = operations.find(o => o.name === 'getBalance')!;
+      const opFlavors = [...mqttFlavor.operationFlavors] as MqttOperationFlavor[];
+      const getBalanceFlavor = opFlavors.find(of => (of.operation?.name ?? of.name) === 'getBalance')!;
+      try {
+        const viaMqtt = Number(await plugin.invoke(
+          getBalanceOp, { accountId: 'harness-account' }, mqttFlavor, getBalanceFlavor));
+        check('mqtt-invoke-getBalance', Number.isFinite(viaMqtt), `${viaMqtt}`);
+      } catch (error) {
+        check('mqtt-invoke-getBalance', false, String(error));
+      } finally {
+        await plugin.close();
+      }
+    }
+  }
 
   // 4b. acquisition stage (ACQUISITION §3/§4): after the session PUT the
   // broker must list our lease on the Payment reference; contract

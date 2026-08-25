@@ -268,6 +268,35 @@ Java-Client                            TS-Server (192.168.1.5:9090)
 
 Selbes Pattern für Java-Provider, nur andere `host` im Locator.
 
+### 3.x MQTT-Invocation (A2 Etappe 2): Request/Response über Topics
+
+Eingefroren mit der TS-Referenzimplementierung
+(`ddsr-transport-mqtt/src/mqtt-rpc.ts`); MQTT 3.1.1-kompatibel — die
+MQTT-5-Properties `response-topic`/`correlation-data` existieren im
+paho-v3-Stack nicht, also reisen beide im Envelope:
+
+```
+Request-Topic:   MqttOperationFlavor.requestTopic,
+                 sonst <MqttFlavor.requestTopic>/<operation.name>
+Reply-Topic:     vom CONSUMER gewählt: <base>/<correlationId> mit
+                 base = MqttOperationFlavor.responseTopic
+                      | MqttFlavor.responseTopic
+                      | <requestTopic>/reply
+Request (JSON):  {"correlationId":"<uuid>","replyTo":"<topic>","args":{…}}
+Response (JSON): {"correlationId":"<uuid>","result":<wert>}
+                 | {"correlationId":"<uuid>","error":"<meldung>"}
+QoS:             MqttOperationFlavor.qos | MqttFlavor.defaultQos
+                 | AT_LEAST_ONCE;   retained: nie
+```
+
+Ein Reply-Topic pro Request: die Subscription sieht nie eine fremde
+Antwort, die Korrelation ist trotzdem doppelt abgesichert
+(correlationId im Envelope). Der DDSR-Broker ist an der Invocation
+nicht beteiligt — Discovery/Acquisition only (ACQUISITION.md §1); die
+Adresse des MQTT-Brokers kommt aus `MqttFlavor.brokers`, exakt wie
+`RestFlavor.host` beim REST-Pfad. Handler-Fehler antworten mit dem
+error-Envelope statt eines Consumer-Timeouts.
+
 ---
 
 ## 4. Konfiguration

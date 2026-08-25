@@ -1,0 +1,16 @@
+Bundle-Name: Gecko DDSR Harness MQTT Configuration
+Bundle-Description: \
+	Harness-only configuration bundle (FR-P4 Scenario D): wakes the \
+	dormant MQTT event transports (configurationPolicy REQUIRE) with \
+	localhost Mosquitto settings. Included ONLY in the broker-mqtt / \
+	client-mqtt launch variants — production launches ship the MQTT \
+	bundles unconfigured. A configuration for a component that is not \
+	in the launch is ignored, so one bundle serves both variants. \
+	Deliberately a bundle rather than configurator.initial: the initial \
+	property is parsed while the jakarta.json provider bundle may not \
+	be started yet, and JAVA_TOOL_OPTIONS strips the double quotes any \
+	inline JSON needs.
+
+-includeresource: \
+	OSGI-INF/configurator/=configs/
+Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'

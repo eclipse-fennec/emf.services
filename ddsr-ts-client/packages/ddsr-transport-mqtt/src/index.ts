@@ -13,3 +13,12 @@
 
 export { MqttEventSource, DEFAULT_TOPIC_PREFIX } from './mqtt-event-source';
 export type { MqttEventSourceOptions, MqttClientLike } from './mqtt-event-source';
+export { MqttFlavorPlugin } from './mqtt-flavor-plugin';
+export type { MqttFlavorPluginOptions } from './mqtt-flavor-plugin';
+export { MqttOperationServer } from './mqtt-operation-server';
+export type { MqttOperationServerOptions, OperationHandlers } from './mqtt-operation-server';
+export {
+  requestTopicFor, replyBaseFor, qosFor,
+  encodeRequest, decodeRequest, encodeResponse, decodeResponse, connectMqtt,
+} from './mqtt-rpc';
+export type { MqttRpcRequest, MqttRpcResponse, MqttRpcClientLike } from './mqtt-rpc';

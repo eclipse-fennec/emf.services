@@ -22,7 +22,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getCollectionSizeConstraint()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 sizeBoundsNonNegative='(minSize = null or minSize &gt;= 0) and (maxSize = null or maxSize &gt;= 0)' sizeBoundsOrdered='minSize = null or maxSize = null or minSize &lt;= maxSize'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='sizeBoundsNonNegative sizeBoundsOrdered'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 sizeBoundsNonNegative='(minSize = null or minSize &gt;= 0) and (maxSize = null or maxSize &gt;= 0)' sizeBoundsOrdered='minSize = null or maxSize = null or minSize &lt;= maxSize'"
  * @generated
  */
 @ProviderType

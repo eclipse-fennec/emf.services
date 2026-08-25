@@ -12,6 +12,7 @@ import org.eclipse.emf.common.notify.NotificationChain;
 import org.eclipse.emf.common.util.EList;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.InternalEObject;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
@@ -41,6 +42,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getProvider <em>Provider</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getImplementation <em>Implementation</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getUsingSessions <em>Using Sessions</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getConsumerCount <em>Consumer Count</em>}</li>
  * </ul>
  *
  * @generated
@@ -105,6 +107,16 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 	 * @ordered
 	 */
 	protected EList<ConsumerSession> usingSessions;
+
+	/**
+	 * The cached setting delegate for the '{@link #getConsumerCount() <em>Consumer Count</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getConsumerCount()
+	 * @generated
+	 * @ordered
+	 */
+	protected EStructuralFeature.Internal.SettingDelegate CONSUMER_COUNT__ESETTING_DELEGATE = ((EStructuralFeature.Internal)ServicesPackage.Literals.SERVICE_REGISTRATION__CONSUMER_COUNT).getSettingDelegate();
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -309,6 +321,16 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 	 * @generated
 	 */
 	@Override
+	public int getConsumerCount() {
+		return (Integer)CONSUMER_COUNT__ESETTING_DELEGATE.dynamicGet(this, null, 0, true, false);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public void unregister() {
 		// TODO: implement this method
 		// Ensure that you remove @generated or mark it @generated NOT
@@ -383,6 +405,8 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				return basicGetImplementation();
 			case ServicesPackage.SERVICE_REGISTRATION__USING_SESSIONS:
 				return getUsingSessions();
+			case ServicesPackage.SERVICE_REGISTRATION__CONSUMER_COUNT:
+				return getConsumerCount();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -461,6 +485,8 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				return implementation != null;
 			case ServicesPackage.SERVICE_REGISTRATION__USING_SESSIONS:
 				return usingSessions != null && !usingSessions.isEmpty();
+			case ServicesPackage.SERVICE_REGISTRATION__CONSUMER_COUNT:
+				return CONSUMER_COUNT__ESETTING_DELEGATE.dynamicIsSet(this, null, 0);
 		}
 		return super.eIsSet(featureID);
 	}

@@ -26,7 +26,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getRemoteServiceRegistry()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 publishedImplsHaveFlavor='implementations-&gt;forAll(i | i.flavors-&gt;notEmpty())' publishedImplsReferenceCatalog='implementations-&gt;forAll(i | i.serviceInterfaces-&gt;forAll(si | catalog-&gt;includes(si)))' publishedImplsOwnedByListedProvider='implementations-&gt;forAll(i | providers-&gt;includes(i.eContainer().oclAsType(ddsr::ServiceProvider)))'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='publishedImplsHaveFlavor publishedImplsReferenceCatalog publishedImplsOwnedByListedProvider'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 publishedImplsHaveFlavor='implementations-&gt;forAll(i | i.flavors-&gt;notEmpty())' publishedImplsReferenceCatalog='implementations-&gt;forAll(i | i.serviceInterfaces-&gt;forAll(si | catalog-&gt;includes(si)))' publishedImplsOwnedByListedProvider='implementations-&gt;forAll(i | providers-&gt;exists(p | p.implementations-&gt;includes(i)))'"
  * @generated
  */
 @ProviderType

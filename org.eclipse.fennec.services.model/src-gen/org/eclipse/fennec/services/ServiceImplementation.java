@@ -28,7 +28,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceImplementation()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 atLeastOneInterface='serviceInterfaces-&gt;notEmpty()' operationFlavorsCoverInterfaces='flavors-&gt;forAll(f | f.operationFlavors-&gt;forAll(of | serviceInterfaces-&gt;exists(si | si.operations-&gt;includes(of.operation))))'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='atLeastOneInterface operationFlavorsCoverInterfaces'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 atLeastOneInterface='serviceInterfaces-&gt;notEmpty()' operationFlavorsCoverInterfaces='flavors-&gt;forAll(f | f.operationFlavors-&gt;forAll(of | serviceInterfaces-&gt;exists(si | si.operations-&gt;includes(of.operation))))'"
  * @generated
  */
 @ProviderType

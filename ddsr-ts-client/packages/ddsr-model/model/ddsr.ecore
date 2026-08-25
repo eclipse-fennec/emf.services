@@ -11,6 +11,10 @@
     <details key="resource" value="XMI"/>
     <details key="documentation" value="Gecko DDSR — Dynamic Distributed Service Registry. Language-neutral model of an OSGi-inspired service registry that spans Java, TypeScript, and Python. Combines OSGi DS (declarative components, references, lifecycle) with OSGi service-registry events and a UDDI-style central Broker (Remote Registry). The model is the contract between Java and TypeScript implementations — see REQUIREMENTS.md NFR-Behavioral-Parity."/>
   </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="settingDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
+  </eAnnotations>
 
   <!-- ============================================================ -->
   <!--  EEnums                                                       -->
@@ -211,6 +215,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="VersionedElement" abstract="true" interface="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="validSemver"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Mixin for elements that carry a semver version (ServiceInterface, ServiceProvider, ServiceImplementation, ServiceException). Together with NamedElement, (name, version) forms a stable identity across catalog releases."/>
     </eAnnotations>
@@ -394,6 +401,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="NumericRangeConstraint" eSuperTypes="#//ParameterConstraint">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="atLeastOneBound rangeOrdered"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Numeric range. EDouble is used for all numeric types — the implementation casts back into the parameter's actual numeric type for comparison. Unset min = no lower bound; unset max = no upper bound. At least one of min/max should be set (OCL invariant TODO)."/>
     </eAnnotations>
@@ -426,6 +436,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="StringPatternConstraint" eSuperTypes="#//ParameterConstraint">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="lengthBoundsNonNegative lengthBoundsOrdered"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="String-valued parameter constraint. Pattern uses ECMA-262 regex syntax (natively supported in TS, accepted by Java java.util.regex and Python re with the same minimal subset). Length bounds apply to the unicode code-point length."/>
     </eAnnotations>
@@ -510,6 +523,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="CollectionSizeConstraint" eSuperTypes="#//ParameterConstraint">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="sizeBoundsNonNegative sizeBoundsOrdered"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize]."/>
     </eAnnotations>
@@ -557,6 +573,9 @@
   <!-- ============================================================ -->
 
   <eClassifiers xsi:type="ecore:EClass" name="ServiceInterface" eSuperTypes="#//NamedElement #//VersionedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="replacedByIsDeprecated"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="The core catalog citizen: a versioned, identified service contract carrying operations and exceptions. Lives containment in RemoteServiceRegistry.catalog. Providers reference it (non-containment) from their ServiceImplementations; consumers look up services by its name."/>
     </eAnnotations>
@@ -601,7 +620,7 @@
     </eStructuralFeatures>
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
       <details key="immutableAfterPublish" value="-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant — placeholder."/>
-      <details key="replacedByIsDeprecated" value="replacedBy = null or status = ddsr::CatalogStatus::DEPRECATED"/>
+      <details key="replacedByIsDeprecated" value="replacedBy = null or status.toString() = 'DEPRECATED'"/>
     </eAnnotations>
   </eClassifiers>
 
@@ -801,6 +820,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ServiceImplementation" eSuperTypes="#//NamedElement #//VersionedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="atLeastOneInterface operationFlavorsCoverInterfaces"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A concrete realization of one or more ServiceInterfaces by a single provider, optionally reachable over one or more transport flavors. Distinct from ComponentDescription because not all implementations are DS-driven (plain Java services, hand-wired TS modules, ad-hoc Python objects). When DS-driven, componentDescription points back to the description."/>
     </eAnnotations>
@@ -1055,6 +1077,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ServiceRegistration">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="unregisteredNotInRegistry"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Provider-side handle to a registered service, equivalent to org.osgi.framework.ServiceRegistration. The provider holds onto this to unregister later or to modify properties."/>
     </eAnnotations>
@@ -1086,6 +1111,15 @@
         eType="#//ConsumerSession" eOpposite="#//ConsumerSession/acquisitions" transient="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions — the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource — a serialized link would tear every registry save/copy apart (not contained in a resource)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerCount" changeable="false"
+        volatile="true" transient="true" derived="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Derived usage count (ACQUISITION.md par.9): the number of sessions currently holding a lease. Computed via the OCL setting delegate — never stored (stored counters drift on consumer crash). Runtime-only like the relation it derives from: volatile/transient, requires the Fennec OCL engine to be present; without a registered delegate factory the getter fails rather than lying."/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+        <details key="derivation" value="self.usingSessions->size()"/>
       </eAnnotations>
     </eStructuralFeatures>
     <eOperations name="unregister">
@@ -1137,6 +1171,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ComponentConfiguration" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="failureOnlyWhenFailed"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Runtime instance of a ComponentDescription with resolved configuration and references. Models org.osgi.service.component.runtime.dto.ComponentConfigurationDTO. The id attribute carries OSGi component.id; it is intentionally NOT marked iD=true because NamedElement.name is already the XMI identifier."/>
     </eAnnotations>
@@ -1186,7 +1223,7 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="failureOnlyWhenFailed" value="(state = ddsr::ComponentState::FAILED_ACTIVATION) = (failure &lt;&gt; null)"/>
+      <details key="failureOnlyWhenFailed" value="(state.toString() = 'FAILED_ACTIVATION') = (failure &lt;&gt; null)"/>
     </eAnnotations>
   </eClassifiers>
 
@@ -1507,6 +1544,9 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="RemoteServiceRegistry" eSuperTypes="#//ServiceRegistry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="publishedImplsHaveFlavor publishedImplsReferenceCatalog publishedImplsOwnedByListedProvider"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="The central Broker. Holds the API catalog (ServiceInterface containments) and the global implementation index (non-containment references back to ServiceImplementations that live under their providers). Provider/consumer wire traffic does NOT flow through here — only directory traffic."/>
     </eAnnotations>
@@ -1611,7 +1651,7 @@
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
       <details key="publishedImplsHaveFlavor" value="implementations->forAll(i | i.flavors->notEmpty())"/>
       <details key="publishedImplsReferenceCatalog" value="implementations->forAll(i | i.serviceInterfaces->forAll(si | catalog->includes(si)))"/>
-      <details key="publishedImplsOwnedByListedProvider" value="implementations->forAll(i | providers->includes(i.eContainer().oclAsType(ddsr::ServiceProvider)))"/>
+      <details key="publishedImplsOwnedByListedProvider" value="implementations->forAll(i | providers->exists(p | p.implementations->includes(i)))"/>
     </eAnnotations>
   </eClassifiers>
 

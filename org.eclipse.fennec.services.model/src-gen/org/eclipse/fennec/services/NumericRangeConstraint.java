@@ -24,7 +24,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getNumericRangeConstraint()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 atLeastOneBound='min &lt;&gt; null or max &lt;&gt; null' rangeOrdered='min = null or max = null or min &lt;= max'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='atLeastOneBound rangeOrdered'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 atLeastOneBound='min &lt;&gt; null or max &lt;&gt; null' rangeOrdered='min = null or max = null or min &lt;= max'"
  * @generated
  */
 @ProviderType

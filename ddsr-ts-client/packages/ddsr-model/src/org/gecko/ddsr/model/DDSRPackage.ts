@@ -184,6 +184,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_REGISTRATION__PROVIDER: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__IMPLEMENTATION: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__USING_SESSIONS: null as unknown as EAttribute | EReference,
+    SERVICE_REGISTRATION__CONSUMER_COUNT: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION: null as unknown as EClass,
     CONSUMER_SESSION__CONSUMER_ID: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__LAST_RENEWAL: null as unknown as EAttribute | EReference,
@@ -1543,6 +1544,14 @@ export class DDSRPackage extends BasicEPackage {
     serviceRegistration_usingSessions.setUpperBound(-1);
     serviceRegistrationClass.getEStructuralFeatures().push(serviceRegistration_usingSessions);
     DDSRPackage.Literals.SERVICE_REGISTRATION__USING_SESSIONS = serviceRegistration_usingSessions;
+
+    // Create consumerCount feature
+    const serviceRegistration_consumerCount = new BasicEAttribute();
+    serviceRegistration_consumerCount.setName('consumerCount');
+    serviceRegistration_consumerCount.setLowerBound(0);
+    serviceRegistration_consumerCount.setUpperBound(1);
+    serviceRegistrationClass.getEStructuralFeatures().push(serviceRegistration_consumerCount);
+    DDSRPackage.Literals.SERVICE_REGISTRATION__CONSUMER_COUNT = serviceRegistration_consumerCount;
 
     // Create ConsumerSession class
     const consumerSessionClass = new BasicEClass();

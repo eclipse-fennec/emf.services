@@ -22,6 +22,7 @@ export interface ServiceRegistration extends EObject {
   provider: ServiceProvider;
   implementation: ServiceImplementation;
   usingSessions: ConsumerSession[];
+  consumerCount?: number;
 
   unregister(): void;
   setProperties(props: Property): void;

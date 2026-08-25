@@ -26,6 +26,7 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
   static readonly PROVIDER: number = 2;
   static readonly IMPLEMENTATION: number = 3;
   static readonly USING_SESSIONS: number = 4;
+  static readonly CONSUMER_COUNT: number = 5;
 
   // Private fields
   private _reference?: ServiceReference;
@@ -33,6 +34,7 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
   private _provider?: ServiceProvider;
   private _implementation?: ServiceImplementation;
   private _usingSessions: ConsumerSession[] = [];
+  private _consumerCount?: number;
 
   /**
    * Returns the EClass of this object
@@ -162,6 +164,30 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
     }
   }
 
+  get consumerCount(): number {
+    return this._consumerCount!;
+  }
+
+  set consumerCount(value: number) {
+    const oldValue = this._consumerCount;
+    this._consumerCount = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistrationImpl.CONSUMER_COUNT),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceRegistrationImpl.CONSUMER_COUNT,
+        merge: () => false
+      });
+    }
+  }
+
   // Reflective API
 
   /**
@@ -180,6 +206,8 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return this.implementation;
       case ServiceRegistrationImpl.USING_SESSIONS:
         return this.usingSessions;
+      case ServiceRegistrationImpl.CONSUMER_COUNT:
+        return this.consumerCount;
       default:
         return super.eGet(feature);
     }
@@ -211,6 +239,10 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         this.usingSessions = newValue as ConsumerSession[];
         super.eSet(feature, newValue);
         break;
+      case ServiceRegistrationImpl.CONSUMER_COUNT:
+        this.consumerCount = newValue as number;
+        super.eSet(feature, newValue);
+        break;
       default:
         super.eSet(feature, newValue);
     }
@@ -232,6 +264,8 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return this._implementation !== undefined;
       case ServiceRegistrationImpl.USING_SESSIONS:
         return this._usingSessions !== undefined && this._usingSessions.length > 0;
+      case ServiceRegistrationImpl.CONSUMER_COUNT:
+        return this._consumerCount !== undefined;
       default:
         return super.eIsSet(feature);
     }
@@ -257,6 +291,9 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return;
       case ServiceRegistrationImpl.USING_SESSIONS:
         this._usingSessions = [];
+        return;
+      case ServiceRegistrationImpl.CONSUMER_COUNT:
+        this._consumerCount = undefined;
         return;
       default:
         super.eUnset(feature);

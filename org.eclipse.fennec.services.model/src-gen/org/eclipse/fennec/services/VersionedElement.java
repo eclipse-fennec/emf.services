@@ -24,6 +24,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getVersionedElement()
  * @model interface="true" abstract="true"
+ *        annotation="http://www.eclipse.org/emf/2002/Ecore constraints='validSemver'"
  *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 validSemver='version = null or version.matches(\'^\\\\d+\\\\.\\\\d+\\\\.\\\\d+(-[0-9A-Za-z.-]+)?$\')'"
  * @generated
  */

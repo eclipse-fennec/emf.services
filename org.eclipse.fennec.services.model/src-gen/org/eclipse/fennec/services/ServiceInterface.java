@@ -29,7 +29,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 immutableAfterPublish='-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant \u2014 placeholder.' replacedByIsDeprecated='replacedBy = null or status = ddsr::CatalogStatus::DEPRECATED'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='replacedByIsDeprecated'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 immutableAfterPublish='-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant \u2014 placeholder.' replacedByIsDeprecated='replacedBy = null or status.toString() = \'DEPRECATED\''"
  * @generated
  */
 @ProviderType

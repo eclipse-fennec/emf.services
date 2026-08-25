@@ -8,6 +8,7 @@ import org.eclipse.emf.ecore.EEnum;
 import org.eclipse.emf.ecore.EOperation;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EValidator;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
@@ -83,6 +84,8 @@ import org.eclipse.fennec.services.StringPatternConstraint;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.UnsatisfiedReference;
 import org.eclipse.fennec.services.VersionedElement;
+
+import org.eclipse.fennec.services.util.ServicesValidator;
 
 /**
  * <!-- begin-user-doc -->
@@ -632,6 +635,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 
 		// Initialize created meta-data
 		theServicesPackage.initializePackageContents();
+
+		// Register package validator
+		EValidator.Registry.INSTANCE.put
+			(theServicesPackage,
+			 new EValidator.Descriptor() {
+				 @Override
+				 public EValidator getEValidator() {
+					 return ServicesValidator.INSTANCE;
+				 }
+			 });
 
 		// Mark meta-data to indicate it can't be changed
 		theServicesPackage.freeze();
@@ -2187,6 +2200,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getServiceRegistration_ConsumerCount() {
+		return (EAttribute)serviceRegistrationEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EOperation getServiceRegistration__Unregister() {
 		return serviceRegistrationEClass.getEOperations().get(0);
 	}
@@ -3420,6 +3443,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__PROVIDER);
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__IMPLEMENTATION);
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__USING_SESSIONS);
+		createEAttribute(serviceRegistrationEClass, SERVICE_REGISTRATION__CONSUMER_COUNT);
 		createEOperation(serviceRegistrationEClass, SERVICE_REGISTRATION___UNREGISTER);
 		createEOperation(serviceRegistrationEClass, SERVICE_REGISTRATION___SET_PROPERTIES__ELIST);
 
@@ -3791,7 +3815,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getServiceReference_Id(), ecorePackage.getEString(), "id", null, 1, 1, ServiceReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceReference_Properties(), this.getProperty(), null, "properties", null, 0, -1, ServiceReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceReference_Provider(), this.getServiceProvider(), null, "provider", null, 1, 1, ServiceReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getServiceReference_Registration(), this.getServiceRegistration(), this.getServiceRegistration_Reference(), "registration", null, 0, 1, ServiceReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceReference_Registration(), this.getServiceRegistration(), this.getServiceRegistration_Reference(), "registration", null, 0, 1, ServiceReference.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		EOperation op = initEOperation(getServiceReference__GetProperty__String(), ecorePackage.getEJavaObject(), "getProperty", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, ecorePackage.getEString(), "key", 0, 1, IS_UNIQUE, IS_ORDERED);
@@ -3799,11 +3823,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEOperation(getServiceReference__GetPropertyKeys(), ecorePackage.getEString(), "getPropertyKeys", 0, -1, IS_UNIQUE, IS_ORDERED);
 
 		initEClass(serviceRegistrationEClass, ServiceRegistration.class, "ServiceRegistration", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEReference(getServiceRegistration_Reference(), this.getServiceReference(), this.getServiceReference_Registration(), "reference", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceRegistration_Reference(), this.getServiceReference(), this.getServiceReference_Registration(), "reference", null, 1, 1, ServiceRegistration.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceRegistration_Unregistered(), ecorePackage.getEBoolean(), "unregistered", "false", 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_Provider(), this.getServiceProvider(), null, "provider", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_Implementation(), this.getServiceImplementation(), null, "implementation", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_UsingSessions(), this.getConsumerSession(), this.getConsumerSession_Acquisitions(), "usingSessions", null, 0, -1, ServiceRegistration.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceRegistration_ConsumerCount(), ecorePackage.getEInt(), "consumerCount", null, 0, 1, ServiceRegistration.class, IS_TRANSIENT, IS_VOLATILE, !IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, IS_DERIVED, IS_ORDERED);
 
 		initEOperation(getServiceRegistration__Unregister(), null, "unregister", 0, 1, IS_UNIQUE, IS_ORDERED);
 
@@ -4072,6 +4097,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createVersionAnnotations();
 		// http://www.eclipse.org/emf/2002/GenModel
 		createGenModelAnnotations();
+		// http://www.eclipse.org/emf/2002/Ecore
+		createEcoreAnnotations();
 		// http://www.eclipse.org/fennec/m2x/ocl/1.0
 		create_1Annotations();
 	}
@@ -5068,7 +5095,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getServiceReference_Registration(),
 		   source,
 		   new String[] {
-			   "documentation", "Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal."
+			   "documentation", "Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal. TRANSIENT: broker-side registrations are runtime handles without a containment home in the persisted registry \u2014 a serialized link would tear every snapshot apart."
 		   });
 		addAnnotation
 		  (serviceRegistrationEClass,
@@ -5123,6 +5150,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions \u2014 the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource \u2014 a serialized link would tear every registry save/copy apart (not contained in a resource)."
+		   });
+		addAnnotation
+		  (getServiceRegistration_ConsumerCount(),
+		   source,
+		   new String[] {
+			   "documentation", "Derived usage count (ACQUISITION.md par.9): the number of sessions currently holding a lease. Computed via the OCL setting delegate \u2014 never stored (stored counters drift on consumer crash). Runtime-only like the relation it derives from: volatile/transient, requires the Fennec OCL engine to be present; without a registered delegate factory the getter fails rather than lying."
 		   });
 		addAnnotation
 		  (consumerSessionEClass,
@@ -5757,6 +5790,77 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	}
 
 	/**
+	 * Initializes the annotations for <b>http://www.eclipse.org/emf/2002/Ecore</b>.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected void createEcoreAnnotations() {
+		String source = "http://www.eclipse.org/emf/2002/Ecore";
+		addAnnotation
+		  (this,
+		   source,
+		   new String[] {
+			   "settingDelegates", "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+			   "validationDelegates", "http://www.eclipse.org/fennec/m2x/ocl/1.0"
+		   });
+		addAnnotation
+		  (versionedElementEClass,
+		   source,
+		   new String[] {
+			   "constraints", "validSemver"
+		   });
+		addAnnotation
+		  (numericRangeConstraintEClass,
+		   source,
+		   new String[] {
+			   "constraints", "atLeastOneBound rangeOrdered"
+		   });
+		addAnnotation
+		  (stringPatternConstraintEClass,
+		   source,
+		   new String[] {
+			   "constraints", "lengthBoundsNonNegative lengthBoundsOrdered"
+		   });
+		addAnnotation
+		  (collectionSizeConstraintEClass,
+		   source,
+		   new String[] {
+			   "constraints", "sizeBoundsNonNegative sizeBoundsOrdered"
+		   });
+		addAnnotation
+		  (serviceInterfaceEClass,
+		   source,
+		   new String[] {
+			   "constraints", "replacedByIsDeprecated"
+		   });
+		addAnnotation
+		  (serviceImplementationEClass,
+		   source,
+		   new String[] {
+			   "constraints", "atLeastOneInterface operationFlavorsCoverInterfaces"
+		   });
+		addAnnotation
+		  (serviceRegistrationEClass,
+		   source,
+		   new String[] {
+			   "constraints", "unregisteredNotInRegistry"
+		   });
+		addAnnotation
+		  (componentConfigurationEClass,
+		   source,
+		   new String[] {
+			   "constraints", "failureOnlyWhenFailed"
+		   });
+		addAnnotation
+		  (remoteServiceRegistryEClass,
+		   source,
+		   new String[] {
+			   "constraints", "publishedImplsHaveFlavor publishedImplsReferenceCatalog publishedImplsOwnedByListedProvider"
+		   });
+	}
+
+	/**
 	 * Initializes the annotations for <b>http://www.eclipse.org/fennec/m2x/ocl/1.0</b>.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -5796,7 +5900,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "immutableAfterPublish", "-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant \u2014 placeholder.",
-			   "replacedByIsDeprecated", "replacedBy = null or status = ddsr::CatalogStatus::DEPRECATED"
+			   "replacedByIsDeprecated", "replacedBy = null or status.toString() = \'DEPRECATED\'"
 		   });
 		addAnnotation
 		  (serviceImplementationEClass,
@@ -5812,10 +5916,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "unregisteredNotInRegistry", "not unregistered or LocalServiceRegistry.allInstances()->forAll(r | not r.registrations->includes(self))"
 		   });
 		addAnnotation
+		  (getServiceRegistration_ConsumerCount(),
+		   source,
+		   new String[] {
+			   "derivation", "self.usingSessions->size()"
+		   });
+		addAnnotation
 		  (componentConfigurationEClass,
 		   source,
 		   new String[] {
-			   "failureOnlyWhenFailed", "(state = ddsr::ComponentState::FAILED_ACTIVATION) = (failure <> null)"
+			   "failureOnlyWhenFailed", "(state.toString() = \'FAILED_ACTIVATION\') = (failure <> null)"
 		   });
 		addAnnotation
 		  (remoteServiceRegistryEClass,
@@ -5823,7 +5933,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   new String[] {
 			   "publishedImplsHaveFlavor", "implementations->forAll(i | i.flavors->notEmpty())",
 			   "publishedImplsReferenceCatalog", "implementations->forAll(i | i.serviceInterfaces->forAll(si | catalog->includes(si)))",
-			   "publishedImplsOwnedByListedProvider", "implementations->forAll(i | providers->includes(i.eContainer().oclAsType(ddsr::ServiceProvider)))"
+			   "publishedImplsOwnedByListedProvider", "implementations->forAll(i | providers->exists(p | p.implementations->includes(i)))"
 		   });
 	}
 

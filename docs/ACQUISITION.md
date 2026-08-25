@@ -239,6 +239,26 @@ Cache-Key nach demselben Modell-Fingerprint-Prinzip wie emf.osgi/sd1) —
 Auswertungskosten pro Zugriff sind also beherrschbar. Fallback bleibt
 eine schlichte Java-Ableitung; die OCL-Variante ist die modellierte.
 
+**Stand 2026-08-25: umgesetzt** (Branch feat/ocl-activation, Issue #7).
+`consumerCount` ist im Modell (derived/volatile/transient, OCL
+`self.usingSessions->size()`), das EPackage deklariert
+setting- UND validationDelegates auf den fennec-OCL-Namespace, und die
+kuratierten Invarianten sind über `constraints`-Annotationen scharf
+(validSemver, Range-/Length-/Size-Bounds, replacedByIsDeprecated,
+atLeastOneInterface, operationFlavorsCoverInterfaces,
+unregisteredNotInRegistry, failureOnlyWhenFailed, die drei
+Registry-Invarianten; `immutableAfterPublish` bleibt Prosa/Doku). Die
+Broker-Launches tragen die OCL-Engine als runrequire — die
+Delegate-Factories kommen als DS-Services, die emf.osgi-Registry
+verdrahtet sie global. Zwei Portabilitäts-Anpassungen an den
+Ausdrücken: Enum-Vergleiche laufen über `toString()` (die Engine
+liefert für EnumLiteralExp das EEnumLiteral, generierte Modelle den
+typsicheren Enumerator — direkte Gleichheit wäre immer false; upstream
+an m2x gemeldet), und `eContainer().oclAsType(...)` wurde durch reine
+Modell-Navigation ersetzt. Achtung Delegate-Caching: EMF cached den
+Setting-Delegate pro Feature und Instanz — die Factory muss vor dem
+ersten `getConsumerCount()`-Zugriff registriert sein.
+
 ## 10. Hot/Cold-Cache: Registrierungen ohne Consumer auslagern
 
 Mit belastbarer Nutzungsinformation wird eine Speicher-Policy möglich:

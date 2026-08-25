@@ -174,7 +174,13 @@ final class InMemoryLookupBackend implements LookupBackend {
 		}
 		List<FlavorKind> supported = capability.getSupportedFlavors();
 		if (supported == null || supported.isEmpty()) {
-			return false;
+			// An empty declaration is the absence of a constraint, not
+			// "speaks nothing": capabilities can exist for the consumerId
+			// or the contract fingerprint alone (LookupResource builds
+			// them that way), and those lookups must behave like ones
+			// without a capability — same rule as the empty event-flavor
+			// filter ("deliver rather than withhold").
+			return true;
 		}
 		ServiceImplementation impl = implByRef.get(ref);
 		if (impl == null || impl.getFlavors().isEmpty()) {

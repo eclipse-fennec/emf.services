@@ -11,3 +11,5 @@ minimumReleaseAgeExclude:
 # 2.1.4 is the first fully patched 2.x (semver-compatible for minimatch & co).
 overrides:
   "brace-expansion@2": "^2.1.4"
+# GHSA-fx2h-pf6j-xcff: vite server.fs.deny bypass (high); 8.0.16 patcht.
+  "vite@8": "^8.0.16"

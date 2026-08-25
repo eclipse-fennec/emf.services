@@ -21,7 +21,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;

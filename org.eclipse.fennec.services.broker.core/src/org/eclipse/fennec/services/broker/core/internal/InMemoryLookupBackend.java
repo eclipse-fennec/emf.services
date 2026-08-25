@@ -13,22 +13,22 @@
 
 package org.eclipse.fennec.services.broker.core.internal;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.broker.core.LookupBackend;
 
 /**
  * Default {@link LookupBackend}: maintains references in a simple

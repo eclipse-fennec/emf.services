@@ -23,8 +23,10 @@
  */
 
 import { createServer } from 'node:http';
-import { DdsrClientImpl, attachShutdownHooks, fingerprint } from '@ddsr/client';
-import { BROKER_URL, PROVIDER_NAME, SERVICE_URL, buildPaymentInterface, buildPaymentProvider } from './payment-api';
+import { DdsrClientImpl, attachShutdownHooks, fingerprint, toArray } from '@ddsr/client';
+import type { MqttFlavor } from '@ddsr/model';
+import { MqttOperationServer } from '@ddsr/transport-mqtt';
+import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, buildPaymentInterface, buildPaymentProvider } from './payment-api';
 
 const log = (m: string) => console.log(`[ts-provider] ${m}`);
 
@@ -70,16 +72,43 @@ async function main(): Promise<void> {
   log(`local fingerprint: ${fingerprint(payment)}`);
   await client.catalog.ensureEntry(payment);
 
-  const { provider, implementation } = buildPaymentProvider(PROVIDER_NAME, SERVICE_URL, payment);
+  const { provider, implementation } = buildPaymentProvider(PROVIDER_NAME, SERVICE_URL, payment, MQTT_URL);
+
+  // The MQTT endpoint listens BEFORE the implementation is announced —
+  // same order as the HTTP server above (never advertise a dead
+  // endpoint). Both transports share the same balances state.
+  let mqttServer: MqttOperationServer | undefined;
+  if (MQTT_URL) {
+    const mqttFlavor = toArray<MqttFlavor>(implementation.flavors)
+      .find(f => (f as { eClass?: () => { name?: string } }).eClass?.()?.name === 'MqttFlavor')!;
+    mqttServer = new MqttOperationServer(mqttFlavor, {
+      charge: (args) => {
+        const amount = Number(args.amount);
+        const balance = (balances.get(DEFAULT_ACCOUNT) ?? 1000) - amount;
+        balances.set(DEFAULT_ACCOUNT, balance);
+        log(`mqtt charge(${amount} ${args.currency ?? 'EUR'}) -> ${balance}`);
+        return balance;
+      },
+      getBalance: (args) => {
+        const account = String(args.accountId ?? DEFAULT_ACCOUNT);
+        return balances.get(account) ?? balances.get(DEFAULT_ACCOUNT) ?? 1000;
+      },
+    }, { log: (m) => log(`mqtt: ${m}`) });
+    await mqttServer.start();
+    log(`serving Payment over MQTT at ${MQTT_URL}`);
+  }
+
   const registration = await client.provider.publish(provider, implementation);
   log(`published as reference ${registration.reference.id}`);
 
   attachShutdownHooks(client, {
-    afterClose: () =>
-      new Promise<void>((resolve, reject) => {
-        log('unregistration confirmed by broker — stopping the endpoint now');
+    afterClose: async () => {
+      log('unregistration confirmed by broker — stopping the endpoint now');
+      await mqttServer?.stop();
+      await new Promise<void>((resolve, reject) => {
         server.close(error => (error ? reject(error) : resolve()));
-      }),
+      });
+    },
     log,
   });
   log('running — Ctrl-C withdraws before the endpoint stops');

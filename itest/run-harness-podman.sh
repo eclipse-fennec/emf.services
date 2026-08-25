@@ -76,14 +76,19 @@ log "gradle export + image build"
 rm -rf "$WORK"; mkdir -p "$WORK"
 # clean slate: leftovers from earlier runs would otherwise be --replace'd
 # mid-scenario (e.g. a broker torn down while a provider activates)
-podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java >/dev/null 2>&1 || true
+podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java \
+  ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
       "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client.jar
+rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker-mqtt.jar \
+      "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client-mqtt.jar
 (cd "$ROOT" && ./gradlew build \
   :org.eclipse.fennec.services.broker.rest:export.broker \
+  :org.eclipse.fennec.services.broker.rest:export.broker-mqtt \
   :org.eclipse.fennec.services.examples.payment:export.payment-provider \
-  :org.eclipse.fennec.services.client.java:export.client) >"$WORK/gradle.log" 2>&1 \
+  :org.eclipse.fennec.services.client.java:export.client \
+  :org.eclipse.fennec.services.client.java:export.client-mqtt) >"$WORK/gradle.log" 2>&1 \
   || { tail -30 "$WORK/gradle.log"; exit 1; }
 
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=broker.jar \
@@ -92,6 +97,10 @@ podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=p
   -t ddsr/payment-java "$ROOT/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=client.jar \
   -t ddsr/client-java "$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/"
+podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=broker-mqtt.jar \
+  -t ddsr/broker-mqtt "$ROOT/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/"
+podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=client-mqtt.jar \
+  -t ddsr/client-mqtt "$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.ts" -t ddsr/ts "$ROOT/ddsr-ts-client/"
 
 # --------------------------------------------------------------- broker
@@ -168,4 +177,84 @@ grep -q "MQTT_PROBE_OK" "$WORK/mqtt-probe.log" \
   || { echo "SCENARIO C FAILED"; cat "$WORK/mqtt-probe.log"; exit 1; }
 echo "Scenario C OK: broker-shaped event document delivered and decoded over real MQTT/TCP"
 
-log "HARNESS (podman) PASSED (A + B + C)"
+# ============================================================ Scenario D
+log "Scenario D: Java MQTT wire proof (broker sink + client source over mosquitto TCP)"
+# Fresh broker+client pair from the -mqtt launch variants: same
+# bundles plus org.eclipse.fennec.services.itest.mqtt.config, which
+# wakes the dormant MQTT transports (configurationPolicy REQUIRE) with
+# localhost Mosquitto settings and ranks the client's MQTT EventSource
+# above SSE. Config as a BUNDLE on purpose: configurator.initial is
+# parsed before the jakarta.json provider bundle starts ("Invalid
+# JSON"), and JAVA_TOOL_OPTIONS strips the double quotes inline JSON
+# would need.
+podman rm -f ddsr-client-java ddsr-broker >/dev/null 2>&1 || true
+run_container ddsr-broker-mqtt ddsr/broker-mqtt
+wait_for_url "$BROKER_URL/catalog" 60
+wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883" 60
+
+run_container ddsr-client-mqtt ddsr/client-mqtt
+wait_for_log ddsr-client-mqtt "client transport connected to tcp://localhost:1883" 90
+
+run_container ddsr-payment-mqtt ddsr/payment-java
+wait_for_log ddsr-payment-mqtt "published payments-java" 150
+wait_for_log ddsr-client-mqtt "EVENT REGISTERED" 60
+
+podman stop -t 20 ddsr-payment-mqtt >/dev/null
+wait_for_log ddsr-client-mqtt "EVENT UNREGISTERING" 60
+
+podman logs ddsr-client-mqtt >"$WORK/client-mqtt.log" 2>&1
+# Ordering control: SSE may legitimately carry the stream for a moment
+# (RestEventSource activates before the configurator ranks MQTT in; the
+# SDK then closes and reopens the stream on the greedy rebind). What
+# pins the EVENTs onto MQTT is the order: the LAST stream (re)open
+# before the events must be the MQTT subscription, with no SSE
+# subscription after it.
+mqtt_sub=$(grep -n "subscribed to ddsr/events/#" "$WORK/client-mqtt.log" | tail -1 | cut -d: -f1)
+sse_sub=$(grep -n "subscribed to http" "$WORK/client-mqtt.log" | tail -1 | cut -d: -f1)
+first_event=$(grep -n "EVENT REGISTERED" "$WORK/client-mqtt.log" | head -1 | cut -d: -f1)
+if [ -z "$mqtt_sub" ] || [ -n "$sse_sub" ] && [ "$sse_sub" -gt "$mqtt_sub" ]; then
+  echo "SCENARIO D FAILED: events flowed over SSE, not MQTT (mqtt_sub=$mqtt_sub sse_sub=$sse_sub)"
+  cat "$WORK/client-mqtt.log"; exit 1
+fi
+if [ -z "$first_event" ] || [ "$first_event" -lt "$mqtt_sub" ]; then
+  echo "SCENARIO D FAILED: EVENT not after the MQTT subscription (event=$first_event mqtt_sub=$mqtt_sub)"
+  cat "$WORK/client-mqtt.log"; exit 1
+fi
+grep -q "provider=payments-java" "$WORK/client-mqtt.log" \
+  || { echo "SCENARIO D FAILED: event without provider payload"; cat "$WORK/client-mqtt.log"; exit 1; }
+echo "Scenario D OK: Java lifecycle events delivered over real MQTT/TCP (REGISTERED + UNREGISTERING)"
+
+# ============================================================ Scenario E
+log "Scenario E: MQTT service flavor (A2 Etappe 2) — TS provider serves Payment over MQTT, probe invokes it"
+# The TS provider announces BOTH flavors on one implementation (the DoD
+# scenario's "same interface, different transports") and listens on the
+# mosquitto container; the probe reads the broker address from the
+# ANNOUNCED MqttFlavor and calls getBalance over topics.
+podman rm -f ddsr-payment-mqtt >/dev/null 2>&1 || true
+podman run -d --replace --name ddsr-provider-ts-mqtt --network=host \
+  -e BROKER_URL="$BROKER_URL" -e SERVICE_URL="http://localhost:9090/payments" \
+  -e MQTT_URL="mqtt://localhost:1883" ddsr/ts >/dev/null
+CONTAINERS+=(ddsr-provider-ts-mqtt)
+wait_for_log ddsr-provider-ts-mqtt "published as reference" 120
+wait_for_log ddsr-provider-ts-mqtt "serving Payment over MQTT" 30
+
+podman run -d --replace --name ddsr-probe-mqtt --network=host \
+  -e BROKER_URL="$BROKER_URL" -e EXPECT_LANG=typescript -e EXPECT_MQTT=1 \
+  ddsr/ts harness-probe.ts >/dev/null
+CONTAINERS+=(ddsr-probe-mqtt)
+wait_for_log ddsr-probe-mqtt "PROBE_READY" 150
+
+podman stop -t 20 ddsr-provider-ts-mqtt >/dev/null
+probe_mqtt_rc=$(podman wait ddsr-probe-mqtt)
+podman logs ddsr-probe-mqtt >"$WORK/probe-e.log" 2>&1
+if [ "$probe_mqtt_rc" != "0" ]; then
+  echo "SCENARIO E FAILED"; cat "$WORK/probe-e.log"; exit 1
+fi
+grep -q "✓ mqtt-flavor-announced" "$WORK/probe-e.log" \
+  || { echo "SCENARIO E FAILED: provider did not announce the MqttFlavor"; cat "$WORK/probe-e.log"; exit 1; }
+grep -q "✓ mqtt-invoke-getBalance" "$WORK/probe-e.log" \
+  || { echo "SCENARIO E FAILED: invocation over MQTT failed"; cat "$WORK/probe-e.log"; exit 1; }
+echo "Scenario E OK: Payment invoked over the announced MQTT flavor (request/response via mosquitto)"
+grep -E '  [✓✗] mqtt' "$WORK/probe-e.log" || true
+
+log "HARNESS (podman) PASSED (A + B + C + D + E)"

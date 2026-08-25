@@ -1,3 +1,6 @@
+# Harness launch variant (FR-P4 Scenario D): identical to the base
+# launch plus the itest MQTT config bundle, which wakes the dormant
+# MQTT transports against the Mosquitto container.
 -runfw: org.apache.felix.framework
 
 -runee: JavaSE-21
@@ -19,6 +22,7 @@
 jersey.deps:
 
 -runrequires: \
+	bnd.identity;id='org.eclipse.fennec.services.itest.mqtt.config',\
 	bnd.identity;id='org.eclipse.fennec.services.broker.rest',\
 	bnd.identity;id='org.eclipse.fennec.mcp.gogo.runtime.config',\
 	bnd.identity;id='org.eclipse.fennec.services.broker.core',\
@@ -115,4 +119,5 @@ jersey.deps:
 	org.objectweb.asm.commons;version='[9.9.1,9.9.2)',\
 	org.objectweb.asm.tree;version='[9.9.1,9.9.2)',\
 	org.objectweb.asm.tree.analysis;version='[9.9.1,9.9.2)',\
-	org.objectweb.asm.util;version='[9.9.1,9.9.2)'
+	org.objectweb.asm.util;version='[9.9.1,9.9.2)',\
+	org.eclipse.fennec.services.itest.mqtt.config;version=snapshot

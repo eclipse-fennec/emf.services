@@ -104,6 +104,17 @@ Die Strategie ist Property von `OperationChannel` (genauer: vom Response-Channel
 
 **Implementations-Konsequenz:** der heutige `RestServiceInvoker` ist eine `SYNCHRONOUS`-Implementierung. Für `HEADER_BASED` und `TOPIC_BASED` braucht es einen `AsyncInvoker` mit pending-call-Map (`correlation-id → CompletableFuture<Response>`), Timeout-Cleanup, und einer Subscription auf den Response-Channel.
 
+**Stand 2026-08-25 (A2 Etappe 2, Issue #3):** genau diese
+`TOPIC_BASED`-Variante ist im v1-Modell umgesetzt — TS-seitig als
+`MqttFlavorPlugin` (Consumer, pending-Map über correlationId +
+per-Request-Reply-Topic) und `MqttOperationServer` (Provider-Dispatch).
+Da paho v3 nur MQTT 3.1.1 spricht (keine `response-topic`/
+`correlation-data`-Properties), reisen beide im Request-Envelope; die
+eingefrorene Konvention lebt in
+`ddsr-ts-client/packages/ddsr-transport-mqtt/src/mqtt-rpc.ts` und ist
+in ARCHITECTURE.md §3 dokumentiert. Die FR-P4-Harness (Szenario E)
+weist die Invocation über einen echten Mosquitto nach.
+
 ## 6. Capability/Requirement-Matching
 
 Anstatt `supportedFlavors` (heute) als Spezial-Filter zu führen, **modelliert DDSR ein generelles Capability/Requirement-System** analog zu OSGi `Provide-Capability` / `Require-Capability`. Provider und Consumer deklarieren beide Listen, der Broker resolked.

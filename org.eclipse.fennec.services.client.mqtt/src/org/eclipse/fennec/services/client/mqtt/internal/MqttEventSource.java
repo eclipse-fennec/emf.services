@@ -84,6 +84,7 @@ public final class MqttEventSource implements EventSource {
 		try {
 			AutoCloseable subscription = subscriber.subscribe(topicPrefix + "/#",
 					(topic, payload) -> deliver(handler, payload));
+			LOG.info("[DDSR-MQTT] subscribed to " + topicPrefix + "/#");
 			// The subscription being live is what "established" means here.
 			// Paho reconnects on its own and re-subscribes, and each time it
 			// does the consumer has to re-snapshot (FR-Sync-Reconnect) — the

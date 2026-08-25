@@ -73,7 +73,8 @@ function parameter(
 export function buildPaymentProvider(
   providerName: string,
   serviceUrl: string,
-  serviceInterface: ServiceInterface
+  serviceInterface: ServiceInterface,
+  mqttUrl?: string
 ): { provider: ServiceProvider; implementation: ServiceImplementation } {
   const provider = factory.createServiceProvider();
   provider.name = providerName;
@@ -115,6 +116,33 @@ export function buildPaymentProvider(
   flavor.operationFlavors.push(balanceFlavor);
 
   implementation.flavors.push(flavor);
+
+  // A2 Etappe 2: with an MQTT broker configured the SAME implementation
+  // additionally announces the MqttFlavor — same interface, second
+  // transport (the DoD scenario's "intentional: same interface,
+  // different transports"). Topics follow the frozen request/response
+  // convention (mqtt-rpc.ts): <requestTopic>/<operation>, replies on
+  // consumer-chosen per-request topics.
+  if (mqttUrl) {
+    const mqtt = factory.createMqttFlavor();
+    mqtt.name = 'payments-mqtt';
+    mqtt.kind = 'MQTT';
+    mqtt.brokers.push(mqttUrl);
+    mqtt.requestTopic = `ddsr/rpc/${providerName}`;
+
+    const chargeMqtt = factory.createMqttOperationFlavor();
+    chargeMqtt.name = 'charge';
+    chargeMqtt.operation = operations.find(o => o.name === 'charge')!;
+    mqtt.operationFlavors.push(chargeMqtt);
+
+    const balanceMqtt = factory.createMqttOperationFlavor();
+    balanceMqtt.name = 'getBalance';
+    balanceMqtt.operation = operations.find(o => o.name === 'getBalance')!;
+    mqtt.operationFlavors.push(balanceMqtt);
+
+    implementation.flavors.push(mqtt);
+  }
+
   provider.implementations.push(implementation);
   return { provider, implementation };
 }
@@ -122,3 +150,5 @@ export function buildPaymentProvider(
 export const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 export const SERVICE_URL = process.env.SERVICE_URL ?? 'http://localhost:9090/payments';
 export const PROVIDER_NAME = process.env.PROVIDER_NAME ?? 'payments-ts';
+/** Optional: when set, the provider additionally serves Payment over MQTT. */
+export const MQTT_URL = process.env.MQTT_URL;

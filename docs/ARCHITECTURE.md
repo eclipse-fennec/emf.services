@@ -6,6 +6,79 @@ sich widersprechen, gilt dieses Dokument.
 
 ---
 
+## 0. Überblick (Diagramme)
+
+Komponentensicht — der Broker ist Discovery+Acquisition, die Invocation
+läuft peer-to-peer über den annoncierten Flavor:
+
+```mermaid
+flowchart LR
+  subgraph Broker["Broker (Java)"]
+    core["broker.core<br/>Registry + Katalog + Sessions<br/>+ Fingerprints + Cold-Cache"]
+    rest["broker.rest<br/>JAX-RS + SSE"]
+    bmqtt["broker.mqtt<br/>EventSink"]
+    core --- rest
+    core --- bmqtt
+  end
+  codec["xmi.codec<br/>Wire-Codec + sd1/im1"]
+  subgraph JavaSDK["Java-SDK"]
+    cj["client.java<br/>Provider/Consumer/Locator"]
+    cr["client.rest"]
+    cm["client.mqtt<br/>EventSource"]
+    cj --- cr
+    cj --- cm
+  end
+  subgraph TS["TypeScript-SDK"]
+    tsc["ddsr-client"]
+    tsr["ddsr-flavor-rest"]
+    tsm["ddsr-transport-mqtt<br/>Events + RPC"]
+    tsc --- tsr
+    tsc --- tsm
+  end
+  cr <-- "REST /ddsr/rest + SSE" --> rest
+  tsc <-- "REST + SSE" --> rest
+  bmqtt -- "ddsr/events/#" --> mq[("MQTT-Broker<br/>(z. B. Mosquitto)")]
+  mq --> cm
+  mq --> tsm
+  tsr <-. "Invocation: RestFlavor.host" .-> prov["Provider-Endpoint<br/>(REST oder MQTT-Topics)"]
+  tsm <-. "Invocation: MqttFlavor.brokers" .-> mq
+  Broker --- codec
+  JavaSDK --- codec
+```
+
+Lifecycle-Garantie (FR-P3): Consumer werden informiert, **bevor** der
+Provider-Endpoint verschwindet — der Shutdown blockiert auf die
+Broker-Bestätigung:
+
+```mermaid
+sequenceDiagram
+  participant P as Provider
+  participant B as Broker
+  participant C as Consumer
+  Note over P: SIGTERM / deactivate
+  P->>B: POST /implementations/withdraw
+  B->>B: Registration retiren,<br/>Leases lösen
+  B-->>C: UNREGISTERING (SSE/MQTT)
+  B->>B: Snapshot persistieren
+  B-->>P: Diagnostic OK
+  Note over P: erst JETZT:<br/>Endpoint stoppen
+```
+
+Die drei Nutzungsstufen und wo Fingerprints greifen
+(Details: ACQUISITION.md, FINGERPRINTS.md):
+
+```mermaid
+flowchart TD
+  D["1 · Discovery<br/>GET /references?interface=…&fingerprint=sd1:…<br/>Events: REGISTERED/UNREGISTERING"]
+  A["2 · Acquisition<br/>PUT /consumers/{id} — Session mit Leases<br/>(idempotenter Vollabgleich, TTL)"]
+  I["3 · Invocation<br/>peer-to-peer über den Flavor<br/>(REST-URL oder MQTT-Topics)"]
+  D --> A --> I
+  D -. "sd1 adressiert den Contract" .-> D
+  A -. "im1 beantwortet den Provider-Reconnect" .-> A
+```
+
+---
+
 ## 1. Bundle-Layout
 
 ```

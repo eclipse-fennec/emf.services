@@ -19,4 +19,6 @@ export const GUIDES = [
   { file: 'HARNESS.md', slug: 'harness', title: 'Cross-language harness' },
 ];
 
-export const EXAMPLES = [];
+export const EXAMPLES = [
+  { file: 'EXAMPLE_PAYMENT.md', slug: 'payment', title: 'The Payment example' },
+];

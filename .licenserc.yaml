@@ -21,6 +21,16 @@ header:
     - 'licenses'
     # golden fingerprint fixtures are hash-pinned byte-for-byte
     - 'itest/fixtures/**'
+    # generated code (emfts-codegen resp. EMF codegen into legacy src/)
+    - 'ddsr-ts-client/packages/ddsr-model/src/**'
+    - 'org.eclipse.fennec.services.examples.model/src/**'
+    # container build files and configs
+    - '**/Containerfile*'
+    - '**/*.conf'
+    - '**/.dockerignore'
+    # pnpm workspace metadata
+    - '**/*.yaml'
+    - '**/*.yml'
     - '**/package-info.java'
     - '**/packageinfo'
     - '**/module-info.java'

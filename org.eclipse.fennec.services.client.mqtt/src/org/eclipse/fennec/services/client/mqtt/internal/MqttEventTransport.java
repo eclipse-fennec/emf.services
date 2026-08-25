@@ -14,12 +14,13 @@
 package org.eclipse.fennec.services.client.mqtt.internal;
 
 import java.util.logging.Logger;
+
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
-import org.eclipse.fennec.services.client.EventSource;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;

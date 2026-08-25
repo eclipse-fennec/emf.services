@@ -91,6 +91,15 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 						+ "The expiry sweep runs at a quarter of this value. 0 disables expiry.",
 				required = false)
 		long session_expiry_seconds() default 1200;
+
+		@AttributeDefinition(
+				name = "Cold cache after (seconds)",
+				description = "Optional storage policy (ACQUISITION.md \u00a710): a registration that held "
+						+ "no lease and saw no lookup on its interfaces for this long is parked on disk "
+						+ "but stays discoverable (the next lookup rehydrates it). The sweep runs at a "
+						+ "quarter of this value. 0 (default) disables the policy.",
+				required = false)
+		long cold_after_seconds() default 0;
 	}
 
 	@Reference(
@@ -162,13 +171,16 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 			LookupBackend backend = externalLookup != null ? externalLookup : new InMemoryLookupBackend();
 			this.delegate = new DdsrBrokerImpl(snapshotPath, backend, this::fanOut);
 			long expirySeconds = config.session_expiry_seconds();
-			if (expirySeconds > 0) {
-				long sweepSeconds = Math.max(1, expirySeconds / 4);
+			long coldSeconds = config.cold_after_seconds();
+			if (expirySeconds > 0 || coldSeconds > 0) {
 				sessionExpiry = Executors.newSingleThreadScheduledExecutor(task -> {
-					Thread thread = new Thread(task, "ddsr-session-expiry");
+					Thread thread = new Thread(task, "ddsr-broker-maintenance");
 					thread.setDaemon(true);
 					return thread;
 				});
+			}
+			if (expirySeconds > 0) {
+				long sweepSeconds = Math.max(1, expirySeconds / 4);
 				sessionExpiry.scheduleAtFixedRate(() -> {
 					try {
 						DdsrBrokerImpl current = delegate;
@@ -181,6 +193,23 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 						}
 					} catch (RuntimeException sweepFailure) {
 						LOG.warning("[DDSR] session expiry sweep failed, continuing: " + sweepFailure);
+					}
+				}, sweepSeconds, sweepSeconds, TimeUnit.SECONDS);
+			}
+			if (coldSeconds > 0) {
+				long sweepSeconds = Math.max(1, coldSeconds / 4);
+				sessionExpiry.scheduleAtFixedRate(() -> {
+					try {
+						DdsrBrokerImpl current = delegate;
+						if (current == null) {
+							return;
+						}
+						int moved = current.coldifyIdle(Instant.now().minusSeconds(coldSeconds));
+						if (moved > 0) {
+							LOG.info("[DDSR] parked " + moved + " idle registration(s) in the cold cache");
+						}
+					} catch (RuntimeException sweepFailure) {
+						LOG.warning("[DDSR] cold-cache sweep failed, continuing: " + sweepFailure);
 					}
 				}, sweepSeconds, sweepSeconds, TimeUnit.SECONDS);
 			}

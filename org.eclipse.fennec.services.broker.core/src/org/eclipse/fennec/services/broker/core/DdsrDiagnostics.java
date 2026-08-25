@@ -33,7 +33,21 @@ public final class DdsrDiagnostics {
 	public static final int CODE_NETWORK_PARTITION           = 100;
 	public static final int CODE_CATALOG_HAS_LIVE_IMPLS      = 200;
 	public static final int CODE_CATALOG_ENTRY_NOT_FOUND     = 201;
+	/**
+	 * Historic: name-keyed catalogs refused a second entry under an
+	 * existing name. Since the catalog key became {@code (name, sd1)}
+	 * (ACQUISITION.md §11.2) this code is no longer produced — an
+	 * identical add is idempotent OK, a different contract under the
+	 * same name coexists. Kept for wire compatibility.
+	 */
 	public static final int CODE_CATALOG_ENTRY_ALREADY_EXISTS = 202;
+	/**
+	 * A name-only reference (stub sibling, catalog URL, or bodyless
+	 * REST call) names several coexisting catalog contracts — the
+	 * caller must address the contract by content (full ServiceInterface)
+	 * or by its {@code sd1} fingerprint.
+	 */
+	public static final int CODE_CATALOG_ENTRY_AMBIGUOUS     = 203;
 	public static final int CODE_IMPL_INTERFACE_NOT_IN_CATALOG = 210;
 	public static final int CODE_IMPL_OWNERSHIP_VIOLATION    = 211;
 	public static final int CODE_IMPL_NOT_PUBLISHED          = 212;

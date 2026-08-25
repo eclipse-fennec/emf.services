@@ -351,13 +351,86 @@ class DdsrBrokerImplTest {
 	// ------------------------------------------------------------------
 
 	@Test
-	void addingTheSameCatalogEntryTwiceIsRejected() {
+	void addingTheSameCatalogEntryTwiceIsIdempotent() {
 		assertThat(isError(broker.addCatalogEntry(serviceInterface("Payment", "charge"), "test"))).isFalse();
 
 		Diagnostic d = broker.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 
-		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_CATALOG_ENTRY_ALREADY_EXISTS);
+		assertThat(isError(d)).as("identical content is a no-op, not a conflict").isFalse();
+		assertThat(d.getMessage()).contains("already present");
 		assertThat(broker.getRegistry().getCatalog()).hasSize(1);
+	}
+
+	@Test
+	void aDifferentContractUnderTheSameNameCoexists() {
+		// (name, sd1) key (ACQUISITION §11.2): same name, different
+		// signature — two independent catalog entries, no conflict.
+		assertThat(isError(broker.addCatalogEntry(serviceInterface("Payment", "charge"), "test"))).isFalse();
+
+		Diagnostic d = broker.addCatalogEntry(serviceInterface("Payment", "charge", "refund"), "test");
+
+		assertThat(isError(d)).isFalse();
+		assertThat(d.getMessage()).contains("coexists");
+		assertThat(broker.getRegistry().getCatalog()).hasSize(2);
+	}
+
+	@Test
+	void aNameOnlyStubIsAmbiguousAcrossCoexistingContracts() {
+		broker.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "refund"), "test");
+
+		// name-only stub (no operations) cannot pick between the two
+		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment"));
+		Diagnostic d = broker.publishImplementation(p, soleImpl(p));
+
+		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_CATALOG_ENTRY_AMBIGUOUS);
+	}
+
+	@Test
+	void fullContentAddressesItsContractAmongCoexistingOnes() {
+		broker.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "refund"), "test");
+
+		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge", "refund"));
+		Diagnostic d = broker.publishImplementation(p, soleImpl(p));
+
+		assertThat(isError(d)).as("content picks the exact contract: %s", d.getMessage()).isFalse();
+		// rewired onto the two-operation entry, not the one-operation one
+		assertThat(soleImpl(p).getServiceInterfaces().get(0).getOperations()).hasSize(2);
+	}
+
+	@Test
+	void aDriftedFullContractIsRefusedNotSilentlyRewired() {
+		// The fingerprint promise: never false-equal. A full contract that
+		// matches no catalog entry is drift — the publisher adds its
+		// contract first (it coexists), instead of being silently rewired
+		// onto a same-named different contract.
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
+
+		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
+		Diagnostic d = broker.publishImplementation(p, soleImpl(p));
+
+		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG);
+		assertThat(d.getMessage()).contains("contract drift");
+	}
+
+	@Test
+	void removingOneOfTwoCoexistingContractsIsScopedByIdentity() {
+		ServiceInterface small = serviceInterface("Payment", "charge");
+		ServiceInterface big = serviceInterface("Payment", "charge", "refund");
+		broker.addCatalogEntry(small, "test");
+		broker.addCatalogEntry(big, "test");
+		// a live impl publishes against the BIG contract only
+		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge", "refund"));
+		assertThat(isError(broker.publishImplementation(p, soleImpl(p)))).isFalse();
+
+		// the unused small contract is removable despite the shared name…
+		assertThat(isError(broker.removeCatalogEntry(serviceInterface("Payment", "charge"), "test")))
+				.as("strict-reject must not be blocked by a same-named sibling")
+				.isFalse();
+		// …the used big one is not
+		Diagnostic blocked = broker.removeCatalogEntry(serviceInterface("Payment", "charge", "refund"), "test");
+		assertThat(blocked.getCode()).isEqualTo(DdsrDiagnostics.CODE_CATALOG_HAS_LIVE_IMPLS);
 	}
 
 	@Test

@@ -110,9 +110,16 @@ export class BrokerHttp {
     return this.readDiagnostic(response);
   }
 
-  /** PUT /catalog/{name}/deprecate — optional body with reason/replacedBy. */
-  async deprecateCatalogEntry(name: string, details?: ServiceInterface, requestor?: string): Promise<Diagnostic> {
-    const response = await this.fetchFn(`${this.base}/catalog/${encodeURIComponent(name)}/deprecate`, {
+  /**
+   * PUT /catalog/{name}/deprecate — optional body with reason/replacedBy.
+   * With the (name, sd1) catalog key the optional fingerprint addresses
+   * one of several coexisting contracts; a bare name works only while
+   * it is unambiguous.
+   */
+  async deprecateCatalogEntry(name: string, details?: ServiceInterface, requestor?: string,
+      fingerprint?: string): Promise<Diagnostic> {
+    const response = await this.fetchFn(
+      `${this.base}/catalog/${encodeURIComponent(name)}/deprecate${fingerprintQuery(fingerprint)}`, {
       method: 'PUT',
       headers: this.xmlHeaders(requestor),
       body: details ? serializeToXmi(details as unknown as EObject) : undefined,
@@ -120,18 +127,24 @@ export class BrokerHttp {
     return this.readDiagnostic(response);
   }
 
-  /** DELETE /catalog/{name}. */
-  async removeCatalogEntry(name: string, requestor?: string): Promise<Diagnostic> {
-    const response = await this.fetchFn(`${this.base}/catalog/${encodeURIComponent(name)}`, {
+  /** DELETE /catalog/{name} — optional fingerprint, see deprecateCatalogEntry. */
+  async removeCatalogEntry(name: string, requestor?: string, fingerprint?: string): Promise<Diagnostic> {
+    const response = await this.fetchFn(
+      `${this.base}/catalog/${encodeURIComponent(name)}${fingerprintQuery(fingerprint)}`, {
       method: 'DELETE',
       headers: { Accept: 'application/xml', [REQUESTOR_HEADER]: requestor ?? this.requestor },
     });
     return this.readDiagnostic(response);
   }
 
-  /** GET /catalog/{name} — undefined on 404 (plain-text body, no Diagnostic). */
-  async getCatalogEntry(name: string): Promise<ServiceInterface | undefined> {
-    const response = await this.fetchFn(`${this.base}/catalog/${encodeURIComponent(name)}`, {
+  /**
+   * GET /catalog/{name} — undefined on 404 (plain-text body, no
+   * Diagnostic). Several coexisting contracts under one name answer 409
+   * unless the fingerprint picks one.
+   */
+  async getCatalogEntry(name: string, fingerprint?: string): Promise<ServiceInterface | undefined> {
+    const response = await this.fetchFn(
+      `${this.base}/catalog/${encodeURIComponent(name)}${fingerprintQuery(fingerprint)}`, {
       headers: { Accept: 'application/xml' },
     });
     if (response.status === 404) return undefined;
@@ -280,4 +293,9 @@ export function normalizeDiagnostic(diagnostic: Diagnostic): Diagnostic {
 export function isError(diagnostic: Diagnostic | undefined): boolean {
   const severity = diagnostic?.severity;
   return severity === 'ERROR' || severity === 'CANCEL';
+}
+
+/** Query-string fragment addressing one of several coexisting contracts. */
+function fingerprintQuery(fingerprint: string | undefined): string {
+  return fingerprint ? `?fingerprint=${encodeURIComponent(fingerprint)}` : '';
 }

@@ -8,8 +8,11 @@ permissions:
   pages: write
   id-token: write
 
+# NOT group "pages": the reusable workflow's deploy JOB declares its own
+# job-level `concurrency: pages`; if the calling workflow holds the same
+# group, the job deadlocks and fails instantly with zero steps.
 concurrency:
-  group: pages
+  group: docs-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

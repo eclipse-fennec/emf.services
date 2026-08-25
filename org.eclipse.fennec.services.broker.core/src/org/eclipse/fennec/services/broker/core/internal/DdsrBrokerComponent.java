@@ -21,6 +21,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
+import org.eclipse.fennec.services.broker.core.BrokerSessions;
+import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.DdsrBroker;
@@ -38,6 +40,12 @@ import org.eclipse.fennec.services.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
@@ -58,7 +66,8 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * used as the default.
  */
 @Component(
-		service = { DdsrBroker.class, BrokerCatalog.class, BrokerImplementations.class, BrokerLookup.class },
+		service = { DdsrBroker.class, BrokerCatalog.class, BrokerImplementations.class, BrokerLookup.class,
+				BrokerSessions.class },
 		configurationPid = "org.eclipse.fennec.services.broker.core",
 		immediate = true)
 @Designate(ocd = DdsrBrokerComponent.Config.class)
@@ -74,6 +83,14 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 				description = "File system path of the XMI snapshot. Persisted synchronously after each mutation.",
 				required = false)
 		String snapshot_path() default "./broker-state.xmi";
+
+		@AttributeDefinition(
+				name = "Session expiry (seconds)",
+				description = "A consumer session expires this long after its last PUT (renewal interval "
+						+ "should be half of it, per UPDATE_POLICY/ACQUISITION: 600s renew, 1200s expire). "
+						+ "The expiry sweep runs at a quarter of this value. 0 disables expiry.",
+				required = false)
+		long session_expiry_seconds() default 1200;
 	}
 
 	@Reference(
@@ -98,6 +115,8 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	 * instead of an NPE.
 	 */
 	private volatile DdsrBrokerImpl delegate;
+
+	private ScheduledExecutorService sessionExpiry;
 
 	private DdsrBrokerImpl required() {
 		DdsrBrokerImpl current = delegate;
@@ -142,6 +161,29 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 			Path snapshotPath = Paths.get(config.snapshot_path());
 			LookupBackend backend = externalLookup != null ? externalLookup : new InMemoryLookupBackend();
 			this.delegate = new DdsrBrokerImpl(snapshotPath, backend, this::fanOut);
+			long expirySeconds = config.session_expiry_seconds();
+			if (expirySeconds > 0) {
+				long sweepSeconds = Math.max(1, expirySeconds / 4);
+				sessionExpiry = Executors.newSingleThreadScheduledExecutor(task -> {
+					Thread thread = new Thread(task, "ddsr-session-expiry");
+					thread.setDaemon(true);
+					return thread;
+				});
+				sessionExpiry.scheduleAtFixedRate(() -> {
+					try {
+						DdsrBrokerImpl current = delegate;
+						if (current == null) {
+							return;
+						}
+						int expired = current.expireSessions(Instant.now().minusSeconds(expirySeconds));
+						if (expired > 0) {
+							LOG.info("[DDSR] expired " + expired + " consumer session(s) without renewal");
+						}
+					} catch (RuntimeException sweepFailure) {
+						LOG.warning("[DDSR] session expiry sweep failed, continuing: " + sweepFailure);
+					}
+				}, sweepSeconds, sweepSeconds, TimeUnit.SECONDS);
+			}
 			LOG.info("[DDSR] BrokerCore activated, snapshot=" + snapshotPath.toAbsolutePath());
 		} catch (Throwable t) {
 			LOG.log(Level.WARNING, "[DDSR] BrokerCore activation FAILED", t);
@@ -151,6 +193,10 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 
 	@Deactivate
 	void deactivate() {
+		if (sessionExpiry != null) {
+			sessionExpiry.shutdownNow();
+			sessionExpiry = null;
+		}
 		if (delegate != null) {
 			// Best-effort final snapshot — already persisted after every
 			// mutation, but defensive in case mutations happened during
@@ -222,5 +268,30 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	@Override
 	public ServiceImplementation getImplementationForReference(ServiceReference reference) {
 		return required().getImplementationForReference(reference);
+	}
+
+	@Override
+	public Diagnostic putSession(ConsumerSession session, Collection<String> acquiredReferenceIds) {
+		return required().putSession(session, acquiredReferenceIds);
+	}
+
+	@Override
+	public Diagnostic deleteSession(String consumerId) {
+		return required().deleteSession(consumerId);
+	}
+
+	@Override
+	public Optional<SessionSnapshot> getSession(String consumerId) {
+		return required().getSession(consumerId);
+	}
+
+	@Override
+	public int expireSessions(Instant cutoff) {
+		return required().expireSessions(cutoff);
+	}
+
+	@Override
+	public int sessionCount() {
+		return required().sessionCount();
 	}
 }

@@ -15,11 +15,19 @@ package org.eclipse.fennec.services.client.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
+import org.eclipse.fennec.services.broker.core.BrokerSessions;
+import org.eclipse.fennec.services.ConsumerCapability;
+import org.eclipse.fennec.services.ConsumerSession;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.client.DdsrConsumer;
@@ -67,9 +75,17 @@ public final class DdsrClientComponent implements DdsrClient {
 
 		@AttributeDefinition(
 				name = "Consumer ID",
-				description = "Optional symbolic identity attached to lookups for auditing",
+				description = "Symbolic identity attached to lookups and to the broker session. "
+						+ "Generated (consumer-<uuid>) when empty.",
 				required = false)
 		String consumer_id() default "";
+
+		@AttributeDefinition(
+				name = "Session renewal (seconds)",
+				description = "Interval of the idempotent session PUT (acquire+release+heartbeat in one, "
+						+ "ACQUISITION.md §4). Should be half the broker's expiry. 0 disables sessions.",
+				required = false)
+		long session_interval_seconds() default 600;
 	}
 
 	// Target the REST-flavor proxies explicitly. broker.core's embedded
@@ -110,6 +126,22 @@ public final class DdsrClientComponent implements DdsrClient {
 	@Reference(target = "(ddsr.broker.transport=rest)")
 	private BrokerImplementations implementations;
 
+	/**
+	 * Optional like the event transport: a client without a session
+	 * proxy simply does not lease — it only loses drain protection
+	 * (ACQUISITION.md §5), nothing functional.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
+			policyOption = ReferencePolicyOption.GREEDY,
+			target = "(ddsr.broker.transport=rest)")
+	private volatile BrokerSessions sessions;
+
+	private ScheduledExecutorService sessionRenewal;
+
+	private String consumerId;
+
+	private List<FlavorKind> supportedFlavors;
+
 	@Reference(target = "(ddsr.broker.transport=rest)")
 	private BrokerLookup lookup;
 
@@ -119,16 +151,30 @@ public final class DdsrClientComponent implements DdsrClient {
 	void activate(Config config) {
 		try {
 			List<FlavorKind> flavors = parseFlavors(config.supported_flavors());
+			this.supportedFlavors = flavors;
 			String consumerId = config.consumer_id() == null || config.consumer_id().isBlank()
-					? null
+					? "consumer-" + UUID.randomUUID()
 					: config.consumer_id();
+			this.consumerId = consumerId;
 			// Indirection, not the value: the reference is optional and
 			// dynamic, so reading it once at activation would freeze
 			// whatever happened to be bound at that moment — the same
 			// mistake the broker side avoids with its fan-out.
 			this.delegate = new DdsrClientImpl(implementations, lookup, flavors, consumerId,
 					this::openEventStream);
-			LOG.info("[DDSR-Client] activated, flavors=" + flavors);
+			long renewalSeconds = config.session_interval_seconds();
+			if (renewalSeconds > 0) {
+				sessionRenewal = Executors.newSingleThreadScheduledExecutor(task -> {
+					Thread thread = new Thread(task, "ddsr-session-renewal");
+					thread.setDaemon(true);
+					return thread;
+				});
+				// First PUT shortly after activation (once lookups may have
+				// happened), then the flat renewal interval.
+				sessionRenewal.scheduleAtFixedRate(this::renewSession,
+						Math.min(renewalSeconds, 5), renewalSeconds, TimeUnit.SECONDS);
+			}
+			LOG.info("[DDSR-Client] activated, flavors=" + flavors + ", consumerId=" + consumerId);
 		} catch (Throwable t) {
 			LOG.log(Level.WARNING, "[DDSR-Client] activation FAILED", t);
 			throw t;
@@ -150,8 +196,55 @@ public final class DdsrClientComponent implements DdsrClient {
 		return current.open(handler);
 	}
 
+	/**
+	 * The idempotent full replace (ACQUISITION.md §4): the current set of
+	 * known reference ids IS the acquisition list; an unchanged PUT is
+	 * the heartbeat. No transport or no delegate → silently no lease.
+	 */
+	private void renewSession() {
+		try {
+			BrokerSessions current = sessions;
+			DdsrClientImpl client = delegate;
+			if (current == null || client == null) {
+				return;
+			}
+			ConsumerSession session = ServicesFactory.eINSTANCE.createConsumerSession();
+			session.setConsumerId(consumerId);
+			ConsumerCapability capability = ServicesFactory.eINSTANCE.createConsumerCapability();
+			capability.setConsumerId(consumerId);
+			if (supportedFlavors != null) {
+				capability.getSupportedFlavors().addAll(supportedFlavors);
+			}
+			session.setCapabilities(capability);
+			current.putSession(session, client.knownReferenceIds());
+		} catch (RuntimeException renewalFailure) {
+			// Lease renewal is best-effort: the broker treats a missed
+			// renewal as any other silence (TTL), so log and carry on.
+			LOG.warning("[DDSR-Client] session renewal failed, retrying next interval: " + renewalFailure);
+		}
+	}
+
 	@Deactivate
 	void deactivate() {
+		if (sessionRenewal != null) {
+			sessionRenewal.shutdownNow();
+			sessionRenewal = null;
+		}
+		// Shutdown-notify BEFORE the streams close (FR-P3 order): the
+		// broker releases the leases immediately instead of waiting for
+		// the TTL. Best-effort — a dead broker must not stall shutdown.
+		BrokerSessions current = sessions;
+		if (current != null && consumerId != null) {
+			try {
+				current.deleteSession(consumerId);
+				// stdout, not JUL: shutdown path — JUL's cleanup hook may
+				// already have reset the LogManager (DECISIONS_PARITY D14).
+				System.out.println("[DDSR-Client] session released at broker: " + consumerId);
+			} catch (RuntimeException deleteFailure) {
+				System.err.println("[DDSR-Client] session release failed, broker will expire it: "
+						+ deleteFailure);
+			}
+		}
 		if (delegate != null) {
 			delegate.close();
 			delegate = null;

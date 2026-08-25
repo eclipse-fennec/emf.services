@@ -18,7 +18,7 @@ import org.eclipse.fennec.services.RemoteServiceRegistry;
 /**
  * The DDSR broker — Java face of the Remote Service Registry. Composite
  * role-union of {@link BrokerCatalog}, {@link BrokerImplementations},
- * and {@link BrokerLookup}; matches the three ServiceInterfaces
+ * {@link BrokerLookup} and {@link BrokerSessions}; matches the three ServiceInterfaces
  * published into the catalog by {@code BrokerSelfPublisher}.
  *
  * <p>Embedded consumers should normally reference the narrowest role
@@ -37,5 +37,5 @@ import org.eclipse.fennec.services.RemoteServiceRegistry;
  * exclusive (see {@code NFR-RemoteRegistry-Concurrency} in
  * REQUIREMENTS).
  */
-public interface DdsrBroker extends BrokerCatalog, BrokerImplementations, BrokerLookup {
+public interface DdsrBroker extends BrokerCatalog, BrokerImplementations, BrokerLookup, BrokerSessions {
 }

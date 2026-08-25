@@ -37,6 +37,7 @@ public final class DdsrDiagnostics {
 	public static final int CODE_IMPL_INTERFACE_NOT_IN_CATALOG = 210;
 	public static final int CODE_IMPL_OWNERSHIP_VIOLATION    = 211;
 	public static final int CODE_IMPL_NOT_PUBLISHED          = 212;
+	public static final int CODE_SESSION_INVALID             = 230;
 	public static final int CODE_INTERFACE_DEPRECATED        = 300;
 	public static final int CODE_PERSISTENCE_FAILED          = 500;
 

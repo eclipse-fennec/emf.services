@@ -70,7 +70,8 @@ export function canonicalForm(serviceInterface: ServiceInterface | undefined): s
 
 // --------------------------------------------------------------------
 
-function sortByName<T extends { name?: string }>(items: T[]): T[] {
+// Shared with the im1 mirror (Java: package-private helpers).
+export function sortByName<T extends { name?: string }>(items: T[]): T[] {
   // nulls first, then natural (code point) order — same as the Java
   // Comparator.nullsFirst(naturalOrder()) over Java Strings.
   return [...items].sort((a, b) => {
@@ -83,7 +84,7 @@ function sortByName<T extends { name?: string }>(items: T[]): T[] {
   });
 }
 
-function propertyLine(property: Property): string {
+export function propertyLine(property: Property): string {
   const raw = (property as { value?: unknown }).value;
   let tag: string;
   let value: string;
@@ -163,7 +164,7 @@ function numberOf(raw: unknown): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function esc(raw: string | undefined | null): string {
+export function esc(raw: string | undefined | null): string {
   if (!raw) return '';
   let out = '';
   for (const c of raw) {
@@ -178,6 +179,6 @@ function esc(raw: string | undefined | null): string {
   return out;
 }
 
-function escListElement(raw: string): string {
+export function escListElement(raw: string): string {
   return esc(raw).replaceAll(',', '\\,');
 }

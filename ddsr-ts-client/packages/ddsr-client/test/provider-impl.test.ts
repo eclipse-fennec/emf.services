@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { DdsrProviderImpl } from '../src/internal/provider-impl';
 import { BrokerHttp } from '../src/internal/broker-http';
 import { DdsrClientError } from '../src/api/errors';
+import { implementationFingerprint } from '../src/fingerprint/service-implementation-fingerprint';
 import {
   OK_DIAGNOSTIC_XMI,
   errorDiagnosticXmi,
@@ -39,8 +40,32 @@ describe('DdsrProviderImpl', () => {
     expect(registration.reference.id).toBe('ref-77');
     expect(registration.diagnostic().severity).toBe('OK');
     expect(provider.registrationOf('ref-77')).toBe(registration);
-    // publish roundtrip + discovery roundtrip
-    expect(requests.map(r => r.method)).toEqual(['POST', 'GET']);
+    // reconnect pre-check + publish roundtrip + discovery roundtrip
+    // (the fake's held reference carries no im1 decoration, so the
+    // pre-check reports drift and the publish goes through)
+    expect(requests.map(r => r.method)).toEqual(['GET', 'POST', 'GET']);
+  });
+
+  it('publish is idempotent on reconnect — im1 match skips the roundtrip', async () => {
+    const fixture = paymentProvider('payments-ts');
+    const localIm1 = implementationFingerprint(fixture.implementation)!;
+    // the broker-held reference advertises exactly our im1
+    const heldXmi = lookupResultXmi('payments-ts', 'ref-held').replace(
+      '<properties xsi:type="services:StringProperty" name="ddsr.fingerprint"',
+      `<properties xsi:type="services:StringProperty" name="ddsr.impl.fingerprint" value="${localIm1}"/>` +
+      '<properties xsi:type="services:StringProperty" name="ddsr.fingerprint"'
+    );
+    const { fetchFn, requests } = fakeFetch([
+      { urlIncludes: '/references', body: heldXmi },
+    ]);
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+
+    const registration = await provider.publish(fixture.provider, fixture.implementation);
+
+    expect(registration.reference.id).toBe('ref-held');
+    expect(registration.diagnostic().message).toContain('im1 match');
+    // reconnect pre-check only — no publish POST, no discovery GET
+    expect(requests.map(r => r.method)).toEqual(['GET']);
   });
 
   it('publish throws a DdsrClientError carrying the diagnostic on ERROR', async () => {

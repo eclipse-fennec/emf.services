@@ -25,6 +25,9 @@ import type { Registration } from '../api/registration';
 import { DdsrClientError } from '../api/errors';
 import { BrokerHttp, isError } from './broker-http';
 import { eClassName, toArray } from './emf-util';
+import { fingerprint as sd1 } from '../fingerprint/service-description-fingerprint';
+import { implementationFingerprint } from '../fingerprint/service-implementation-fingerprint';
+import { propertyValue } from '../properties';
 
 /**
  * DdsrProvider implementation over the broker REST API — the TS mirror
@@ -64,6 +67,22 @@ export class DdsrProviderImpl implements DdsrProvider {
     const stubs = interfaceStubs(implementation);
     if (stubs.length === 0) {
       throw new DdsrClientError('implementation references no ServiceInterface');
+    }
+
+    // Idempotent reconnect (ACQUISITION.md §11.1): if the broker still
+    // holds an identical registration — im1 match — reuse it instead of
+    // re-publishing. Consumers then see no UNREGISTERING/REGISTERED
+    // churn for a provider that merely restarted.
+    const held = await this.brokerHeldReference(provider, implementation, stubs[0].name);
+    if (held) {
+      console.info(
+        `[ddsr] publish skipped for '${implementation.implementationId}': ` +
+        `broker already holds an identical registration (im1 match), reusing ${held.id}`
+      );
+      const reused = new RegistrationImpl(
+        this.broker, provider, implementation, stubs, held, synthAlreadyPublished());
+      this.registrations.set(held.id ?? '', reused);
+      return reused;
     }
 
     const diagnostic = await this.broker.publishImplementation(provider, stubs);
@@ -110,6 +129,57 @@ export class DdsrProviderImpl implements DdsrProvider {
   }
 
   /**
+   * The three-valued reconnect check (TS mirror of the Java client's
+   * brokerHeldReference): a reference the broker already holds counts
+   * as OURS, unchanged, exactly when its provider name matches and its
+   * `ddsr.impl.fingerprint` decoration equals the locally computed im1
+   * — im1 composes implementationId, endpoints and the sd1 contract
+   * tokens, so an exact match can only be this implementation. Any
+   * drift returns undefined (publish; the broker retires the old
+   * entry), with the drift direction logged: sd1 equal → endpoint/
+   * property drift, sd1 different → contract drift (warning).
+   */
+  private async brokerHeldReference(
+    provider: ServiceProvider,
+    implementation: ServiceImplementation,
+    interfaceName: string | undefined
+  ): Promise<ServiceReference | undefined> {
+    if (!interfaceName || !provider.name) return undefined;
+    const localIm1 = implementationFingerprint(implementation);
+    let drifted: ServiceReference | undefined;
+    try {
+      for (const root of await this.broker.getReferences(interfaceName)) {
+        if (eClassName(root) !== 'LocalServiceRegistry') continue;
+        const registry = root as LocalServiceRegistry;
+        for (const reference of toArray<ServiceReference>(registry.references)) {
+          if (reference.provider?.name !== provider.name) continue;
+          if (stringProperty(reference, 'ddsr.impl.fingerprint') === localIm1) {
+            return reference;
+          }
+          drifted ??= reference;
+        }
+      }
+    } catch {
+      // unreachable broker — publish normally, the transport reports it
+      return undefined;
+    }
+    if (drifted) {
+      if (sd1Match(drifted, implementation)) {
+        console.info(
+          `[ddsr] re-publishing '${implementation.implementationId}': broker holds ` +
+          `${drifted.id} with same contract (sd1) but drifted endpoint/properties (im1)`
+        );
+      } else {
+        console.warn(
+          `[ddsr] re-publishing '${implementation.implementationId}': broker holds ` +
+          `${drifted.id} with a DIFFERENT contract (sd1 drift) — catalog and local model disagree`
+        );
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * The publish response carries no reference id, so mirror the Java
    * client: look the interface up and match by implementationId (and,
    * as fallback, by provider name).
@@ -148,6 +218,25 @@ export class DdsrProviderImpl implements DdsrProvider {
 
 function interfaceStubs(implementation: ServiceImplementation): ServiceInterface[] {
   return toArray<ServiceInterface>(implementation.serviceInterfaces);
+}
+
+function stringProperty(reference: ServiceReference, name: string): string | undefined {
+  for (const property of toArray<{ name?: string }>(reference.properties)) {
+    if (property.name === name && eClassName(property) === 'StringProperty') {
+      const value = propertyValue(property as never);
+      return value === undefined ? undefined : String(value);
+    }
+  }
+  return undefined;
+}
+
+/** All local sd1 values equal the broker's decoration on the reference. */
+function sd1Match(reference: ServiceReference, implementation: ServiceImplementation): boolean {
+  const interfaces = toArray<ServiceInterface>(implementation.serviceInterfaces);
+  return interfaces.every(si => {
+    const key = interfaces.length === 1 ? 'ddsr.fingerprint' : `ddsr.fingerprint.${si.name}`;
+    return stringProperty(reference, key) === sd1(si);
+  });
 }
 
 function pendingReference(implementation: ServiceImplementation): ServiceReference {
@@ -213,6 +302,15 @@ class RegistrationImpl implements Registration {
     })();
     return this.inFlight;
   }
+}
+
+function synthAlreadyPublished(): Diagnostic {
+  const diagnostic = DDSRFactory.eINSTANCE.createDiagnostic();
+  diagnostic.severity = 'OK';
+  diagnostic.code = 0;
+  diagnostic.source = 'org.gecko.ddsr.client.ts';
+  diagnostic.message = 'already published — broker holds an identical registration (im1 match)';
+  return diagnostic;
 }
 
 function synthOk(): Diagnostic {

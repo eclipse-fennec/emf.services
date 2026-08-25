@@ -20,7 +20,8 @@ Private-Package: \
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
-	org.eclipse.fennec.services.broker.core;version=snapshot
+	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
 
 # Plain JUnit, no OSGi runtime — the listener registry takes its event
 # source as a constructor argument, so it needs no framework.

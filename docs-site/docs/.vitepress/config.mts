@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 import { GUIDES, EXAMPLES } from '../../guides.mjs'
 
 // Per-project docs are served under a versioned sub-path, matching the org
@@ -37,10 +38,12 @@ if (exampleItems.length) {
   sidebar['/examples/'] = [{ text: 'Examples', items: exampleItems }]
 }
 
-export default defineConfig({
+// withMermaid wraps the config so ```mermaid fences render as diagrams
+// (client-side, no external assets).
+export default withMermaid(defineConfig({
   title: 'Fennec Services',
   description:
-    'Lucene as a capability-honest search backend for EMF — plain Java first, OSGi-ready.',
+    'Cross-language service registry on EMF — one Ecore service model, REST/SSE and MQTT transports, SDKs for Java and TypeScript.',
   lang: 'en-US',
   base,
   cleanUrls: true,
@@ -88,4 +91,4 @@ export default defineConfig({
       copyright: 'Copyright © Eclipse Foundation and contributors',
     },
   },
-})
+}))

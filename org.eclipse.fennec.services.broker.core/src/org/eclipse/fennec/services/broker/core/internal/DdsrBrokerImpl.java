@@ -39,6 +39,7 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
+import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.broker.core.DdsrBroker;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventSink;
@@ -72,6 +73,9 @@ import org.eclipse.fennec.services.StringProperty;
  */
 public final class DdsrBrokerImpl implements DdsrBroker {
 
+	private static final java.util.logging.Logger LOG =
+			java.util.logging.Logger.getLogger(DdsrBrokerImpl.class.getName());
+
 	/** XMI URI scheme for the in-memory resource (file-backed when persisted). */
 	private static final String DEFAULT_SNAPSHOT_PATH = "./broker-state.xmi";
 
@@ -100,6 +104,35 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 * regular PUTs. Guarded by the broker lock.
 	 */
 	private final Map<String, ConsumerSession> sessions = new LinkedHashMap<>();
+
+	/**
+	 * Cold cache (ACQUISITION.md §10, optional policy — default off):
+	 * registrations that held no lease and saw no lookup on their
+	 * interfaces for the configured duration are moved out of the hot
+	 * registry into one self-contained XMI file each (wire convention:
+	 * provider root + full contract siblings), leaving this in-memory
+	 * stub behind. Cold is NOT undiscoverable: a lookup on one of the
+	 * stub's interface names lazily rehydrates the entry through the
+	 * regular publish path. Keyed by provider/impl identity, guarded by
+	 * the broker lock; rebuilt from the cold directory on restart.
+	 */
+	private final Map<String, ColdEntry> coldEntries = new LinkedHashMap<>();
+
+	/** Last lookup instant per interface name — feeds the cold-idle rule. */
+	private final Map<String, Instant> lastLookupByInterface = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/**
+	 * When a registration was last known active (published, rehydrated,
+	 * or holding a lease at sweep time) — the other half of the
+	 * cold-idle rule. Identity-keyed runtime state, pruned each sweep.
+	 */
+	private final Map<ServiceRegistration, Instant> registrationSince = new IdentityHashMap<>();
+
+	/** In-memory remainder of a coldified registration. */
+	private record ColdEntry(String key, List<String> interfaceNames,
+			List<String> addressingFingerprints, String implementationId,
+			String providerName, Path file) {
+	}
 
 	/**
 	 * Serializes {@link #persist()} against itself: {@code snapshot()}
@@ -155,6 +188,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			this.registry = freshRegistry();
 			this.resource.getContents().add(this.registry);
 		}
+		loadColdStubs();
 	}
 
 	private RemoteServiceRegistry freshRegistry() {
@@ -229,11 +263,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 							+ "send it as <serviceInterfaces href=\"<broker>/catalog/{name}\"/> "
 							+ "or as a sibling root with name+version set");
 				}
-				ServiceInterface inCatalog = findCatalogEntryByName(name);
-				if (inCatalog == null) {
-					return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG,
-							"service interface '" + name + "' is not in the catalog");
+				CatalogResolution resolution = resolveCatalogEntry(si, name,
+						DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG);
+				if (resolution.refusal() != null) {
+					return resolution.refusal();
 				}
+				ServiceInterface inCatalog = resolution.entry();
 				if (inCatalog.getStatus() == CatalogStatus.DEPRECATED) {
 					anyDeprecated = true;
 					if (deprecationNote.length() > 0) {
@@ -309,6 +344,19 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			reg.setImplementation(implementation);
 			ref.setRegistration(reg);
 			registrations.add(reg);
+			registrationSince.put(reg, Instant.now());
+			// A (re-)publish supersedes a cold twin of the same identity —
+			// e.g. a provider restarting while its old registration is
+			// parked cold. The stub goes, the file goes.
+			ColdEntry coldTwin = coldEntries.remove(
+					coldKey(provider.getName(), implementation.getName(), implementation.getVersion()));
+			if (coldTwin != null) {
+				try {
+					Files.deleteIfExists(coldTwin.file());
+				} catch (IOException cleanupFailure) {
+					LOG.warning("[DDSR] could not delete superseded cold file " + coldTwin.file());
+				}
+			}
 			decorateReference(ref, implementation);
 
 			lookup.serviceAdded(implementation, ref);
@@ -497,6 +545,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	@Override
 	public ServiceReference getServiceReference(String interfaceName) {
+		touchAndRehydrate(interfaceName);
 		lock.readLock().lock();
 		try {
 			return lookup.getServiceReference(interfaceName, null, null);
@@ -508,6 +557,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	@Override
 	public List<ServiceReference> getServiceReferences(String interfaceName, String filter,
 			ConsumerCapability capability) {
+		touchAndRehydrate(interfaceName);
 		lock.readLock().lock();
 		try {
 			return filterByRequestedFingerprint(
@@ -520,6 +570,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	@Override
 	public List<ServiceReference> getAllServiceReferences(String interfaceName, String filter,
 			ConsumerCapability capability) {
+		touchAndRehydrate(interfaceName);
 		lock.readLock().lock();
 		try {
 			return filterByRequestedFingerprint(
@@ -541,9 +592,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		}
 		lock.writeLock().lock();
 		try {
-			if (findCatalogEntryByName(serviceInterface.getName()) != null) {
-				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_ALREADY_EXISTS,
-						"catalog entry already exists: " + serviceInterface.getName());
+			// (name, sd1) key (§11.2): identical content is an idempotent
+			// no-op; a different contract under the same name COEXISTS as
+			// its own entry — consumers address the contract they speak
+			// via the fingerprint, never by name alone.
+			String sd1 = addressingFingerprint(serviceInterface);
+			List<ServiceInterface> sameName = findCatalogEntriesByName(serviceInterface.getName());
+			for (ServiceInterface entry : sameName) {
+				if (sd1.equals(addressingFingerprint(entry))) {
+					return DdsrDiagnostics.ok("catalog entry already present (identical content), fingerprint="
+							+ sd1);
+				}
 			}
 			registry.getCatalog().add(serviceInterface);
 			Diagnostic d = persist();
@@ -557,8 +616,10 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// Hand the broker's fingerprint of the accepted entry back to
 			// the publisher, so producer and broker can compare views
 			// without another round trip (DECISIONS_PARITY D6).
-			return DdsrDiagnostics.ok("catalog entry added, fingerprint="
-					+ ServiceDescriptionFingerprint.fingerprint(serviceInterface));
+			return DdsrDiagnostics.ok("catalog entry added, fingerprint=" + sd1
+					+ (sameName.isEmpty() ? ""
+							: " (coexists with " + sameName.size()
+							+ " other contract(s) named '" + serviceInterface.getName() + "')"));
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -572,11 +633,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		}
 		lock.writeLock().lock();
 		try {
-			ServiceInterface inCatalog = findCatalogEntryByName(serviceInterface.getName());
-			if (inCatalog == null) {
-				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND,
-						"catalog entry not found: " + serviceInterface.getName());
+			CatalogResolution resolution = resolveCatalogEntry(serviceInterface,
+					serviceInterface.getName(), DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND);
+			if (resolution.refusal() != null) {
+				return resolution.refusal();
 			}
+			ServiceInterface inCatalog = resolution.entry();
 			CatalogStatus previousStatus = inCatalog.getStatus();
 			String previousReason = inCatalog.getDeprecationReason();
 			ServiceInterface previousReplacedBy = inCatalog.getReplacedBy();
@@ -609,21 +671,36 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		}
 		lock.writeLock().lock();
 		try {
-			ServiceInterface inCatalog = findCatalogEntryByName(serviceInterface.getName());
-			if (inCatalog == null) {
-				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND,
-						"catalog entry not found: " + serviceInterface.getName());
+			CatalogResolution resolution = resolveCatalogEntry(serviceInterface,
+					serviceInterface.getName(), DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND);
+			if (resolution.refusal() != null) {
+				return resolution.refusal();
 			}
+			ServiceInterface inCatalog = resolution.entry();
 			// Strict-Reject: any live implementation that references this
 			// interface blocks the removal (REQUIREMENTS FR-Catalog-Removal-StrictReject).
+			// Identity, not name: the publish path rewires every live impl
+			// onto its catalog entry, and with (name, sd1) coexistence a
+			// same-named SIBLING contract must not block this removal.
 			for (ServiceImplementation impl : registry.getImplementations()) {
 				for (ServiceInterface si : impl.getServiceInterfaces()) {
-					if (si.getName().equals(inCatalog.getName())) {
+					if (si == inCatalog) {
 						return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_HAS_LIVE_IMPLS,
 								"cannot remove catalog entry '" + inCatalog.getName()
 										+ "': implementation '"
 										+ impl.getName() + "' still publishes it");
 					}
+				}
+			}
+			// Cold entries count as live for strict-reject: they are still
+			// discoverable and would fail to rehydrate without their contract.
+			String address = addressingFingerprint(inCatalog);
+			for (ColdEntry cold : coldEntries.values()) {
+				if (cold.addressingFingerprints().contains(address)) {
+					return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_HAS_LIVE_IMPLS,
+							"cannot remove catalog entry '" + inCatalog.getName()
+									+ "': cold implementation '" + cold.implementationId()
+									+ "' still references it");
 				}
 			}
 			// Keep the position so a rollback restores the catalog exactly,
@@ -859,6 +936,253 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		session.getAcquisitions().clear();
 	}
 
+	// ============================================================
+	// Cold cache (ACQUISITION.md §10)
+	// ============================================================
+
+	/**
+	 * Moves every registration cold that has been idle since before the
+	 * cutoff: no lease at sweep time (a lease at sweep time restarts its
+	 * idle clock), published/rehydrated before the cutoff, and no lookup
+	 * on any of its interface names since the cutoff. A coldified
+	 * registration announces {@code UNREGISTERING} (its reference id
+	 * becomes invalid — the OSGi lifecycle promise holds), but stays
+	 * discoverable through its stub: the next lookup rehydrates it via
+	 * the regular publish path, announcing {@code REGISTERED} with a
+	 * fresh reference. Returns the number of registrations moved.
+	 */
+	public int coldifyIdle(Instant cutoff) {
+		if (cutoff == null) {
+			return 0;
+		}
+		lock.writeLock().lock();
+		try {
+			Instant now = Instant.now();
+			registrationSince.keySet().retainAll(new java.util.HashSet<>(registrations));
+			int moved = 0;
+			for (ServiceRegistration reg : new ArrayList<>(registrations)) {
+				if (reg.isUnregistered() || reg.getImplementation() == null || reg.getProvider() == null) {
+					continue;
+				}
+				Instant since = registrationSince.computeIfAbsent(reg, r -> now);
+				if (!reg.getUsingSessions().isEmpty()) {
+					registrationSince.put(reg, now);
+					continue;
+				}
+				if (!since.isBefore(cutoff) || anyInterfaceLookedUpSince(reg.getImplementation(), cutoff)) {
+					continue;
+				}
+				if (moveCold(reg)) {
+					moved++;
+				}
+			}
+			return moved;
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	/** Number of cold entries currently parked on disk. */
+	public int coldCount() {
+		lock.readLock().lock();
+		try {
+			return coldEntries.size();
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	private boolean anyInterfaceLookedUpSince(ServiceImplementation impl, Instant cutoff) {
+		for (ServiceInterface si : impl.getServiceInterfaces()) {
+			Instant last = lastLookupByInterface.get(si.getName());
+			if (last != null && !last.isBefore(cutoff)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Serialize provider stub + impl + full contracts, retire the hot entry, keep the stub. */
+	private boolean moveCold(ServiceRegistration reg) {
+		ServiceImplementation impl = reg.getImplementation();
+		ServiceProvider provider = reg.getProvider();
+		String key = coldKey(provider.getName(), impl.getName(), impl.getVersion());
+
+		List<String> names = new ArrayList<>();
+		List<String> fingerprints = new ArrayList<>();
+		EcoreUtil.Copier copier = new EcoreUtil.Copier();
+		ServiceImplementation implCopy = (ServiceImplementation) copier.copy(impl);
+		List<ServiceInterface> contractCopies = new ArrayList<>();
+		for (ServiceInterface si : impl.getServiceInterfaces()) {
+			contractCopies.add((ServiceInterface) copier.copy(si));
+			names.add(si.getName());
+			fingerprints.add(addressingFingerprint(si));
+		}
+		copier.copyReferences();
+
+		ServiceProvider providerStub = ServicesFactory.eINSTANCE.createServiceProvider();
+		providerStub.setName(provider.getName());
+		providerStub.setVersion(provider.getVersion());
+		providerStub.getImplementations().add(implCopy);
+
+		Path file = coldDir().resolve(coldFileName(key));
+		try {
+			Files.createDirectories(coldDir());
+			Resource coldResource = new XMIResourceImpl(URI.createFileURI(file.toAbsolutePath().toString()));
+			coldResource.getContents().add(providerStub);
+			coldResource.getContents().addAll(contractCopies);
+			Map<Object, Object> opts = new HashMap<>();
+			opts.put(org.eclipse.emf.ecore.xmi.XMIResource.OPTION_ENCODING, "UTF-8");
+			coldResource.save(opts);
+		} catch (IOException writeFailure) {
+			LOG.warning("[DDSR] cold-cache write failed for " + key + ", entry stays hot: " + writeFailure);
+			return false;
+		}
+
+		ServiceReference retiredRef = retireImplementation(provider, impl);
+		registrationSince.remove(reg);
+		coldEntries.put(key, new ColdEntry(key, names, fingerprints,
+				impl.getImplementationId(), provider.getName(), file));
+		Diagnostic d = persist();
+		if (isError(d)) {
+			// Degraded but recoverable: the entry is discoverable through
+			// its stub, and rehydration republishes it.
+			LOG.warning("[DDSR] persist after coldify failed for " + key + ": " + d.getMessage());
+		}
+		emit(ServiceEventType.UNREGISTERING, retiredRef);
+		LOG.fine(() -> "[DDSR] coldified " + key + " -> " + file);
+		return true;
+	}
+
+	/**
+	 * Rehydrate every cold entry serving the given interface name —
+	 * called on the lookup path BEFORE the index query, so "cold" is
+	 * never "undiscoverable". Runs the regular publish path (catalog
+	 * validation, decoration, REGISTERED event); an entry that no longer
+	 * publishes cleanly (e.g. its contract left the catalog) is dropped
+	 * from the stub index with a warning — the file stays for forensics.
+	 */
+	/** Lookup-path hook: record interface activity, then wake matching cold entries. */
+	private void touchAndRehydrate(String interfaceName) {
+		if (interfaceName != null) {
+			lastLookupByInterface.put(interfaceName, Instant.now());
+		}
+		rehydrateColdFor(interfaceName);
+	}
+
+	private void rehydrateColdFor(String interfaceName) {
+		if (interfaceName == null || coldEntries.isEmpty()) {
+			return;
+		}
+		lock.writeLock().lock();
+		try {
+			for (ColdEntry entry : new ArrayList<>(coldEntries.values())) {
+				if (!entry.interfaceNames().contains(interfaceName)) {
+					continue;
+				}
+				coldEntries.remove(entry.key());
+				Diagnostic d = rehydrate(entry);
+				if (isError(d)) {
+					LOG.warning("[DDSR] cold entry " + entry.key() + " failed to rehydrate and was dropped: "
+							+ d.getMessage());
+				} else {
+					try {
+						Files.deleteIfExists(entry.file());
+					} catch (IOException cleanupFailure) {
+						LOG.warning("[DDSR] rehydrated but could not delete cold file " + entry.file());
+					}
+				}
+			}
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	private Diagnostic rehydrate(ColdEntry entry) {
+		ResourceSet coldSet = new ResourceSetImpl();
+		coldSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
+				.put("xmi", new XMIResourceFactoryImpl());
+		try {
+			Resource coldResource = coldSet.getResource(
+					URI.createFileURI(entry.file().toAbsolutePath().toString()), true);
+			for (EObject root : coldResource.getContents()) {
+				if (root instanceof ServiceProvider provider && !provider.getImplementations().isEmpty()) {
+					return publishImplementation(provider, provider.getImplementations().get(0));
+				}
+			}
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_PERSISTENCE_FAILED,
+					"cold file carries no provider root: " + entry.file());
+		} catch (RuntimeException loadFailure) {
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_PERSISTENCE_FAILED,
+					"cold file unreadable: " + entry.file() + " — " + loadFailure);
+		}
+	}
+
+	/** Rebuild the stub index from the cold directory (broker restart). */
+	private void loadColdStubs() {
+		Path dir = coldDir();
+		if (!Files.isDirectory(dir)) {
+			return;
+		}
+		try (var files = Files.list(dir)) {
+			files.filter(f -> f.getFileName().toString().endsWith(".xmi")).forEach(this::loadColdStub);
+		} catch (IOException scanFailure) {
+			LOG.warning("[DDSR] cold directory unreadable, cold entries stay parked: " + scanFailure);
+		}
+	}
+
+	private void loadColdStub(Path file) {
+		ResourceSet coldSet = new ResourceSetImpl();
+		coldSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
+				.put("xmi", new XMIResourceFactoryImpl());
+		try {
+			Resource coldResource = coldSet.getResource(
+					URI.createFileURI(file.toAbsolutePath().toString()), true);
+			for (EObject root : coldResource.getContents()) {
+				if (!(root instanceof ServiceProvider provider) || provider.getImplementations().isEmpty()) {
+					continue;
+				}
+				ServiceImplementation impl = provider.getImplementations().get(0);
+				List<String> names = new ArrayList<>();
+				List<String> fingerprints = new ArrayList<>();
+				for (ServiceInterface si : impl.getServiceInterfaces()) {
+					names.add(si.getName());
+					fingerprints.add(addressingFingerprint(si));
+				}
+				String key = coldKey(provider.getName(), impl.getName(), impl.getVersion());
+				coldEntries.put(key, new ColdEntry(key, names, fingerprints,
+						impl.getImplementationId(), provider.getName(), file));
+				return;
+			}
+			LOG.warning("[DDSR] cold file without provider root ignored: " + file);
+		} catch (RuntimeException parseFailure) {
+			LOG.warning("[DDSR] unreadable cold file ignored: " + file + " — " + parseFailure);
+		}
+	}
+
+	private Path coldDir() {
+		Path parent = snapshotPath.toAbsolutePath().getParent();
+		return parent.resolve(snapshotPath.getFileName() + ".cold");
+	}
+
+	private static String coldKey(String providerName, String implName, String implVersion) {
+		return providerName + "|" + implName + "|" + (implVersion == null ? "" : implVersion);
+	}
+
+	private static String coldFileName(String key) {
+		try {
+			byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+					.digest(key.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+			StringBuilder hex = new StringBuilder();
+			for (int i = 0; i < 12; i++) {
+				hex.append(String.format("%02x", digest[i]));
+			}
+			return hex + ".xmi";
+		} catch (java.security.NoSuchAlgorithmException impossible) {
+			throw new IllegalStateException("JVM without SHA-256", impossible);
+		}
+	}
+
 	private ServiceRegistration findRegistrationByImplementation(ServiceImplementation implementation) {
 		for (ServiceRegistration registration : registrations) {
 			if (registration.getImplementation() == implementation) {
@@ -936,16 +1260,78 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	// Helpers
 	// ============================================================
 
-	private ServiceInterface findCatalogEntryByName(String name) {
+	private List<ServiceInterface> findCatalogEntriesByName(String name) {
+		List<ServiceInterface> entries = new ArrayList<>();
 		if (name == null) {
-			return null;
+			return entries;
 		}
 		for (ServiceInterface si : registry.getCatalog()) {
 			if (name.equals(si.getName())) {
-				return si;
+				entries.add(si);
 			}
 		}
-		return null;
+		return entries;
+	}
+
+	/** Resolution outcome: exactly one of entry / refusal is set. */
+	private record CatalogResolution(ServiceInterface entry, Diagnostic refusal) {
+		static CatalogResolution of(ServiceInterface entry) {
+			return new CatalogResolution(entry, null);
+		}
+		static CatalogResolution refuse(Diagnostic refusal) {
+			return new CatalogResolution(null, refusal);
+		}
+	}
+
+	/**
+	 * Contract addressing (ACQUISITION.md §11.2): the catalog key is
+	 * {@code (name, sd1)} — same-named entries with different contracts
+	 * coexist. An incoming ServiceInterface that carries content
+	 * (operations or exceptions) addresses its entry EXACTLY by that
+	 * content: its sd1 must match one of the same-named entries — a miss
+	 * is contract drift, not a lookup fallback. A stub (name-only
+	 * sibling, catalog-URL proxy, or bodyless REST call) resolves by
+	 * name alone and requires the name to be unambiguous.
+	 *
+	 * @param notFoundCode the code for "no entry under this name" —
+	 *                     differs between the publish path
+	 *                     ({@code CODE_IMPL_INTERFACE_NOT_IN_CATALOG})
+	 *                     and catalog governance
+	 *                     ({@code CODE_CATALOG_ENTRY_NOT_FOUND})
+	 */
+	private CatalogResolution resolveCatalogEntry(ServiceInterface incoming, String name, int notFoundCode) {
+		List<ServiceInterface> entries = findCatalogEntriesByName(name);
+		if (entries.isEmpty()) {
+			return CatalogResolution.refuse(DdsrDiagnostics.error(notFoundCode,
+					"service interface '" + name + "' is not in the catalog"));
+		}
+		boolean carriesContent = !((org.eclipse.emf.ecore.InternalEObject) incoming).eIsProxy()
+				&& (!incoming.getOperations().isEmpty() || !incoming.getExceptions().isEmpty());
+		if (carriesContent) {
+			String sd1 = addressingFingerprint(incoming);
+			for (ServiceInterface entry : entries) {
+				if (sd1.equals(addressingFingerprint(entry))) {
+					return CatalogResolution.of(entry);
+				}
+			}
+			return CatalogResolution.refuse(DdsrDiagnostics.error(notFoundCode,
+					"contract drift: '" + name + "' is in the catalog ("
+					+ entries.size() + " contract(s)), but none matches the submitted content ("
+					+ sd1 + ")"));
+		}
+		if (entries.size() > 1) {
+			return CatalogResolution.refuse(DdsrDiagnostics.error(
+					DdsrDiagnostics.CODE_CATALOG_ENTRY_AMBIGUOUS,
+					"interface name '" + name + "' names " + entries.size()
+					+ " coexisting catalog contracts — address the contract by content "
+					+ "(full ServiceInterface) or by its sd1 fingerprint"));
+		}
+		return CatalogResolution.of(entries.get(0));
+	}
+
+	/** See {@link ContractAddressing} — status-neutral sd1 for catalog addressing. */
+	private static String addressingFingerprint(ServiceInterface si) {
+		return ContractAddressing.fingerprint(si);
 	}
 
 	/**
@@ -1087,6 +1473,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		ServiceRegistration deadReg = findRegistrationByImplementation(oldImpl);
 		if (deadReg != null) {
 			registrations.remove(deadReg);
+			registrationSince.remove(deadReg);
 			// A replaced registration releases its leases; holders
 			// re-acquire the successor on their next session PUT.
 			deadReg.getUsingSessions().clear();

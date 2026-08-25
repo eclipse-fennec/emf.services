@@ -13,7 +13,12 @@
 
 package org.eclipse.fennec.services.broker.rest.internal;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
+import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -35,6 +40,7 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -73,18 +79,71 @@ public class CatalogResource {
 	 * Canonical per-entry URL. Lets remote publishers reference a
 	 * catalog SI by URL (cross-document href) instead of shipping the
 	 * SI as a sibling root in the publish body.
+	 * <p>
+	 * With the {@code (name, sd1)} catalog key (ACQUISITION.md §11.2)
+	 * several contracts may share a name: the optional
+	 * {@code ?fingerprint=sd1:…} query addresses one exactly; a bare
+	 * name is only served while it is unambiguous (409 otherwise, listing
+	 * the coexisting fingerprints).
 	 */
 	@GET
 	@Path("/{name}")
 	@Produces(MediaType.APPLICATION_XML)
-	public Response getByName(@PathParam("name") String name) {
+	public Response getByName(@PathParam("name") String name,
+			@QueryParam("fingerprint") String fingerprint) {
+		List<ServiceInterface> matches = entriesNamed(name);
+		if (fingerprint != null && !fingerprint.isBlank()) {
+			for (ServiceInterface si : matches) {
+				if (ContractAddressing.matches(si, fingerprint)) {
+					return Response.ok(si).build();
+				}
+			}
+			return Response.status(404)
+					.entity("no catalog entry named '" + name + "' with fingerprint " + fingerprint).build();
+		}
+		if (matches.isEmpty()) {
+			return Response.status(404)
+					.entity("no catalog entry named '" + name + "'").build();
+		}
+		if (matches.size() > 1) {
+			return Response.status(409)
+					.entity("interface name '" + name + "' names " + matches.size()
+							+ " coexisting contracts — address one via ?fingerprint=; available: "
+							+ matches.stream().map(ContractAddressing::fingerprint)
+									.collect(Collectors.joining(", ")))
+					.build();
+		}
+		return Response.ok(matches.get(0)).build();
+	}
+
+	private List<ServiceInterface> entriesNamed(String name) {
+		List<ServiceInterface> matches = new ArrayList<>();
 		for (ServiceInterface si : broker.getRegistry().getCatalog()) {
 			if (name.equals(si.getName())) {
-				return Response.ok(si).build();
+				matches.add(si);
 			}
 		}
-		return Response.status(404)
-				.entity("no catalog entry named '" + name + "'").build();
+		return matches;
+	}
+
+	/**
+	 * Resolve the governance target: with a fingerprint the exact entry
+	 * (as a full copy, so the broker's content addressing hits it even
+	 * when several contracts share the name); without one a name-only
+	 * stub — the broker then applies its own unambiguity rule.
+	 */
+	private ServiceInterface governanceTarget(String name, String fingerprint) {
+		if (fingerprint != null && !fingerprint.isBlank()) {
+			for (ServiceInterface si : entriesNamed(name)) {
+				if (ContractAddressing.matches(si, fingerprint)) {
+					return si;
+				}
+			}
+			return null;
+		}
+		ServiceInterface stub = ServicesFactory.eINSTANCE.createServiceInterface();
+		stub.setName(name);
+		return stub;
 	}
 
 	@POST
@@ -100,15 +159,25 @@ public class CatalogResource {
 	@Path("/{name}/deprecate")
 	@Consumes(MediaType.APPLICATION_XML)
 	@Produces(MediaType.APPLICATION_XML)
-	public Response deprecate(@PathParam("name") String name, ServiceInterface si,
+	public Response deprecate(@PathParam("name") String name,
+			@QueryParam("fingerprint") String fingerprint, ServiceInterface si,
 			@HeaderParam("X-DDSR-Requestor") @DefaultValue("anonymous") String requestor) {
-		if (si == null) {
-			// Caller passed no body — synthesize a minimal stub so the
-			// broker can locate the entry by name.
-			si = ServicesFactory.eINSTANCE.createServiceInterface();
+		ServiceInterface target = governanceTarget(name, fingerprint);
+		if (target == null) {
+			return Response.status(404)
+					.entity("no catalog entry named '" + name + "' with fingerprint " + fingerprint).build();
 		}
-		si.setName(name);
-		Diagnostic d = broker.deprecateCatalogEntry(si, requestor);
+		if (si != null) {
+			// Carry the caller's governance fields onto the resolved target.
+			if (si.getDeprecationReason() != null) {
+				target.setDeprecationReason(si.getDeprecationReason());
+			}
+			if (si.getReplacedBy() != null) {
+				target.setReplacedBy(si.getReplacedBy());
+			}
+		}
+		target.setName(name);
+		Diagnostic d = broker.deprecateCatalogEntry(target, requestor);
 		return HttpDiagnostics.toResponse(d);
 	}
 
@@ -116,10 +185,14 @@ public class CatalogResource {
 	@Path("/{name}")
 	@Produces(MediaType.APPLICATION_XML)
 	public Response remove(@PathParam("name") String name,
+			@QueryParam("fingerprint") String fingerprint,
 			@HeaderParam("X-DDSR-Requestor") @DefaultValue("anonymous") String requestor) {
-		ServiceInterface si = ServicesFactory.eINSTANCE.createServiceInterface();
-		si.setName(name);
-		Diagnostic d = broker.removeCatalogEntry(si, requestor);
+		ServiceInterface target = governanceTarget(name, fingerprint);
+		if (target == null) {
+			return Response.status(404)
+					.entity("no catalog entry named '" + name + "' with fingerprint " + fingerprint).build();
+		}
+		Diagnostic d = broker.removeCatalogEntry(target, requestor);
 		return HttpDiagnostics.toResponse(d);
 	}
 }

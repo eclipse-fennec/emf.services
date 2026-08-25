@@ -268,6 +268,25 @@ Katalog ist winzig); der Wert ist architektonisch — der Broker skaliert
 mit der Katalog-, nicht mit der Hot-Set-Größe. Entwurf als **optionale
 Policy** (Default aus), Umsetzung frühestens nach §3–§5.
 
+**Stand 2026-08-25: umgesetzt** (Branch feat/catalog-contract-key,
+Issue #6). Konfiguration `cold.after.seconds` am Broker-Component
+(Default 0 = aus; Sweep bei einem Viertel des Werts). Idle-Regel: kein
+Lease zum Sweep-Zeitpunkt (ein Lease setzt die Idle-Uhr zurück), seit
+dem Cutoff weder publiziert/rehydriert noch ein Lookup auf einem der
+Interface-Namen. Kalt-Ablage als selbst-enthaltenes XMI pro Eintrag
+(Provider-Stub + Impl + volle Contract-Siblings — die Publish-Wire-Form)
+unter `<snapshot>.cold/`; der In-Memory-Stub trägt Interface-Namen,
+Adressierungs-sd1s und implementationId und wird beim Broker-Neustart
+aus dem Cold-Verzeichnis rekonstruiert. Rehydrierung läuft lazy auf dem
+Lookup-Pfad ÜBER den regulären Publish (Katalog-Validierung,
+Dekoration inkl. im1). Lifecycle ehrlich gehalten: Coldify announced
+UNREGISTERING (die Reference-Id wird ungültig — Referenzen sind ohnehin
+nicht restart-stabil), Rehydrierung REGISTERED mit frischer Reference;
+der sd1 an der Reference bleibt identisch. Kalte Einträge zählen für
+den Strict-Reject des Katalogs als lebendig (sie könnten sonst nie
+wieder rehydrieren), und ein Re-Publish gleicher Identität ersetzt den
+kalten Zwilling (Provider-Neustart während kalt).
+
 ## 11. Fingerprint-gestützter Reconnect und Contract-Adressierung
 
 ### 11.1 Komposition: der Impl-Fingerprint faltet die Vertrags-Fingerprints ein
@@ -338,6 +357,33 @@ Drift-Check: sie machen den Contract **adressierbar**.
   exakt kennt. Das entschärft nebenbei M1 (Namen nicht global
   eindeutig).
 
+**Stand 2026-08-25: der `(name, sd1)`-Schlüssel ist umgesetzt** (Branch
+feat/catalog-contract-key, Issue #6). Regeln:
+
+- `addCatalogEntry`: identischer Inhalt → idempotentes OK; gleicher
+  Name, anderer Contract → koexistierender Eintrag (Code 202 wird nicht
+  mehr produziert, bleibt aus Wire-Kompatibilität dokumentiert).
+- **Auflösung** (`resolveCatalogEntry`): eine eingehende SI **mit
+  Inhalt** (Operations/Exceptions) adressiert exakt per Inhalt — kein
+  Treffer ist Contract-Drift und wird abgelehnt statt still auf den
+  gleichnamigen Katalog-Contract umverdrahtet (die alte Rewire-Semantik
+  war genau das False-Equal, das Fingerprints ausschließen sollen; der
+  Publisher legt seinen Contract stattdessen selbst in den Katalog —
+  er koexistiert ja). Ein **Stub** (nur Name, Katalog-URL-Proxy oder
+  körperloser REST-Call) löst per Name auf und verlangt Eindeutigkeit —
+  sonst `CODE_CATALOG_ENTRY_AMBIGUOUS` (203).
+- **Adressierungs-Fingerprint** (`ContractAddressing`): der sd1 enthält
+  per eingefrorener Grammatik `status=` — eine Deprecation dürfe die
+  Adresse aber nicht verschieben. Adressiert wird deshalb über den sd1
+  einer lifecycle-normalisierten Kopie (status→ACTIVE,
+  deprecationReason/replacedBy geleert); der rohe sd1 bleibt, was an
+  Referenzen dekoriert und von Consumern verglichen wird.
+- **REST:** `GET/DELETE /catalog/{name}` und `PUT …/deprecate` nehmen
+  optional `?fingerprint=sd1:…`; ein nackter Name antwortet bei
+  Koexistenz mit 409 (GET) bzw. dem Ambiguitäts-Diagnostic. Der
+  Strict-Reject beim Remove prüft per Identität, nicht per Name — ein
+  gleichnamiger Schwester-Contract blockiert nicht.
+
 ### 11.3 Abgrenzung: Identität gratis, Kompatibilität nicht
 
 Was Fingerprints gratis liefern, ist **Identitäts-Versionierung**
@@ -385,8 +431,11 @@ ist bewusst abgetrennt und kommt mit der Policy-Maschinerie.
 
 **Stand 2026-08-25, Nachtrag:** aus Schritt 5 ist der
 **Fingerprint-Reconnect für Provider** umgesetzt (im1, §11.1 — Branch
-feat/im1-fingerprint); offen aus Schritt 5 bleibt der Cold-Cache (§10),
-aus §11.2 der Katalog-Schlüssel `(name, sd1)` (Issue #6-Rest).
+feat/im1-fingerprint); mit feat/catalog-contract-key sind auch der
+**Katalog-Schlüssel `(name, sd1)`** (§11.2) und der **Cold-Cache**
+(§10) umgesetzt — damit ist Schritt 5 komplett und Issue #6
+abgeschlossen. Offen bleibt Schritt 4 (Auto-Retire/Drain, bewusst
+zurückgestellt).
 
 1. Ecore: `ConsumerSession`, `LocalServiceRegistry.sessions`,
    eOpposite `ServiceRegistration.usingSessions`, dazu

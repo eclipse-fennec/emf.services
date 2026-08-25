@@ -166,21 +166,21 @@ class DdsrBrokerFingerprintLookupTest {
 
 	@Test
 	void theCatalogContractDecidesNotTheProvidersStub() {
-		// The provider's local view drifted: its stub knows only one of
-		// the two catalog operations. The broker rewires the impl onto the
-		// live catalog entry at publish.
-		ServiceInterface driftedStub = serviceInterface("Payment", "charge");
-		String driftedFingerprint = ServiceDescriptionFingerprint.fingerprint(driftedStub);
-		publish(provider("prov-a", "impl-a", driftedStub));
+		// A name-only stub resolves to the catalog contract — the broker
+		// rewires the impl onto the live entry, and lookups address the
+		// CATALOG truth. (A full contract that drifts from the catalog is
+		// refused instead — pinned in DdsrBrokerImplTest.)
+		ServiceInterface nameOnlyStub = serviceInterface("Payment");
+		publish(provider("prov-a", "impl-a", nameOnlyStub));
 
 		String catalogFingerprint = ServiceDescriptionFingerprint.fingerprint(catalogEntry);
-		assertThat(catalogFingerprint).isNotEqualTo(driftedFingerprint);
-
 		assertThat(broker.getServiceReferences("Payment", null, speaks(catalogFingerprint)))
 				.as("a consumer speaking the CATALOG contract finds the impl")
 				.hasSize(1);
-		assertThat(broker.getServiceReferences("Payment", null, speaks(driftedFingerprint)))
-				.as("the provider's drifted local view is not an addressable contract")
+		String foreignFingerprint = ServiceDescriptionFingerprint.fingerprint(
+				serviceInterface("Payment", "charge"));
+		assertThat(broker.getServiceReferences("Payment", null, speaks(foreignFingerprint)))
+				.as("a contract nobody published is not addressable")
 				.isEmpty();
 	}
 

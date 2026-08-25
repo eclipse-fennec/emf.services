@@ -3803,7 +3803,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getServiceRegistration_Unregistered(), ecorePackage.getEBoolean(), "unregistered", "false", 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_Provider(), this.getServiceProvider(), null, "provider", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_Implementation(), this.getServiceImplementation(), null, "implementation", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getServiceRegistration_UsingSessions(), this.getConsumerSession(), this.getConsumerSession_Acquisitions(), "usingSessions", null, 0, -1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceRegistration_UsingSessions(), this.getConsumerSession(), this.getConsumerSession_Acquisitions(), "usingSessions", null, 0, -1, ServiceRegistration.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEOperation(getServiceRegistration__Unregister(), null, "unregister", 0, 1, IS_UNIQUE, IS_ORDERED);
 
@@ -3814,7 +3814,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getConsumerSession_ConsumerId(), ecorePackage.getEString(), "consumerId", null, 1, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getConsumerSession_LastRenewal(), ecorePackage.getEDate(), "lastRenewal", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getConsumerSession_Capabilities(), this.getConsumerCapability(), null, "capabilities", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getConsumerSession_Acquisitions(), this.getServiceRegistration(), this.getServiceRegistration_UsingSessions(), "acquisitions", null, 0, -1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getConsumerSession_Acquisitions(), this.getServiceRegistration(), this.getServiceRegistration_UsingSessions(), "acquisitions", null, 0, -1, ConsumerSession.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(componentConfigurationEClass, ComponentConfiguration.class, "ComponentConfiguration", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getComponentConfiguration_Id(), ecorePackage.getEString(), "id", null, 1, 1, ComponentConfiguration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5122,7 +5122,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getServiceRegistration_UsingSessions(),
 		   source,
 		   new String[] {
-			   "documentation", "Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions \u2014 the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash."
+			   "documentation", "Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions \u2014 the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource \u2014 a serialized link would tear every registry save/copy apart (not contained in a resource)."
 		   });
 		addAnnotation
 		  (consumerSessionEClass,
@@ -5152,7 +5152,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getConsumerSession_Acquisitions(),
 		   source,
 		   new String[] {
-			   "documentation", "The registrations this consumer claims to be using \u2014 the OWNING side of the acquisition relation. Points at the stable ServiceRegistration, not at the ServiceReference: references are the wire artefact and their ids regenerate on broker restart. Over-claiming is harmless (delays drain), under-claiming only hurts the consumer itself (loses drain protection)."
+			   "documentation", "The registrations this consumer claims to be using \u2014 the OWNING side of the acquisition relation. Points at the stable ServiceRegistration, not at the ServiceReference: references are the wire artefact and their ids regenerate on broker restart. Over-claiming is harmless (delays drain), under-claiming only hurts the consumer itself (loses drain protection). TRANSIENT: the wire form of a session carries sibling ServiceReference id-stubs instead (same convention as publish)."
 		   });
 		addAnnotation
 		  (componentConfigurationEClass,

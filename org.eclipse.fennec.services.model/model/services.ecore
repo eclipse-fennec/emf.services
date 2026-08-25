@@ -1083,9 +1083,9 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="usingSessions" upperBound="-1"
-        eType="#//ConsumerSession" eOpposite="#//ConsumerSession/acquisitions">
+        eType="#//ConsumerSession" eOpposite="#//ConsumerSession/acquisitions" transient="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions — the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash."/>
+        <details key="documentation" value="Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions — the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource — a serialized link would tear every registry save/copy apart (not contained in a resource)."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eOperations name="unregister">
@@ -1129,9 +1129,9 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="acquisitions" upperBound="-1"
-        eType="#//ServiceRegistration" eOpposite="#//ServiceRegistration/usingSessions">
+        eType="#//ServiceRegistration" eOpposite="#//ServiceRegistration/usingSessions" transient="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="The registrations this consumer claims to be using — the OWNING side of the acquisition relation. Points at the stable ServiceRegistration, not at the ServiceReference: references are the wire artefact and their ids regenerate on broker restart. Over-claiming is harmless (delays drain), under-claiming only hurts the consumer itself (loses drain protection)."/>
+        <details key="documentation" value="The registrations this consumer claims to be using — the OWNING side of the acquisition relation. Points at the stable ServiceRegistration, not at the ServiceReference: references are the wire artefact and their ids regenerate on broker restart. Over-claiming is harmless (delays drain), under-claiming only hurts the consumer itself (loses drain protection). TRANSIENT: the wire form of a session carries sibling ServiceReference id-stubs instead (same convention as publish)."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>

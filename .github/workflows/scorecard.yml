@@ -1,0 +1,25 @@
+name: OpenSSF Scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '27 4 * * 1'
+  push:
+    branches:
+      - main
+
+permissions: read-all
+
+concurrency:
+  group: scorecard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scorecard:
+    # Scorecard needs its scopes on the calling job (see docs §6.5).
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
+    uses: eclipse-fennec/.github/.github/workflows/reusable-scorecard.yml@9292fbff296548018fa9e4b0f6ad49ba7c639501 # v1.1.1

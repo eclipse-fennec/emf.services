@@ -1,0 +1,23 @@
+{
+  "name": "@ddsr/example-payment",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "provider": "tsx provider.ts",
+    "consumer": "tsx consumer.ts",
+    "smoke": "tsx smoke-test.ts"
+  },
+  "dependencies": {
+    "@ddsr/client": "workspace:*",
+    "@ddsr/flavor-rest": "workspace:*",
+    "@ddsr/model": "workspace:*",
+    "@ddsr/transport-mqtt": "workspace:*",
+    "@emfts/core": "0.1.1-next.18",
+    "mqtt": "^5.15.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.21.0"
+  }
+}

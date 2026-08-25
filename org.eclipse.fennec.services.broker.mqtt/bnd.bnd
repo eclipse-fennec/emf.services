@@ -1,0 +1,26 @@
+Bundle-Name: Gecko DDSR Broker MQTT Event Transport
+Bundle-Description: \
+	Publishes broker lifecycle events to an MQTT topic. One implementation \
+	of the transport-agnostic EventSink from broker.core — the broker knows \
+	nothing about MQTT, and neither broker.core nor the SSE transport change \
+	because this bundle exists.
+
+-library: enableEMF
+
+Private-Package: \
+	org.eclipse.fennec.services.broker.mqtt.internal
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.paho.client.mqttv3;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+# Plain JUnit: the sink takes its MQTT client as a constructor argument,
+# so it is exercised against a fake without a broker or an OSGi runtime.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

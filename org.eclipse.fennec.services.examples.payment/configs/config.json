@@ -1,0 +1,27 @@
+{
+  ":configurator:resource-version": 1,
+
+  "org.apache.felix.http~paymentsHttp":
+  {
+    "org.osgi.service.http.port": "9091",
+    "org.osgi.service.http.host": "0.0.0.0",
+    "org.apache.felix.http.context_path": "payments",
+    "org.apache.felix.http.name": "Payments HTTP",
+    "org.apache.felix.http.runtime.init.id": "paymentsHttp"
+  },
+  "JakartarsServletWhiteboardRuntimeComponent~paymentsRest":
+  {
+    "jersey.jakartars.whiteboard.name": "Payments Rest",
+    "osgi.http.whiteboard.target": "(id=paymentsHttp)"
+  },
+  "org.eclipse.fennec.services.client.rest":
+  {
+    "broker.url": "http://localhost:8887/ddsr/rest"
+  },
+  "org.eclipse.fennec.services.examples.payment":
+  {
+    "public.url": "http://localhost:9091/payments",
+    "broker.url": "http://localhost:8887/ddsr/rest",
+    "provider.name": "payments-java"
+  }
+}

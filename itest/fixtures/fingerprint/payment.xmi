@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:services="http://eclipse.org/fennec/services/1.0" name="Payment" version="1.0.0" description="Payment processing service — charges accounts and reports balances.">
+  <operations name="charge" returnType="double" description="Charge an amount. Returns the remaining balance.">
+    <parameters name="amount" type="double" description="Amount to charge."/>
+    <parameters name="currency" index="1" type="string" optional="true" defaultValue="EUR" description="ISO 4217 currency code."/>
+  </operations>
+  <operations name="getBalance" returnType="double" description="Get current account balance.">
+    <parameters name="accountId" type="string" description="The account identifier."/>
+  </operations>
+</services:ServiceInterface>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="BrokerCatalog"
+    version="1.0.0"
+    description="DDSR broker catalog management: list, add, deprecate, remove ServiceInterface entries.">
+  <operations name="listCatalog"
+      description="Return the current registry snapshot including the catalog.">
+    <returnType>RemoteServiceRegistry</returnType>
+  </operations>
+  <operations name="addCatalogEntry"
+      description="Add a new ServiceInterface to the catalog. Rejects duplicates by name."
+      exceptions="//@exceptions.0">
+    <parameters name="serviceInterface" index="0" type="ServiceInterface"
+        description="The interface to add, fully populated."/>
+    <parameters name="requestor" index="1" type="string" optional="true" defaultValue="anonymous"
+        description="Symbolic identity that initiated the change (governance audit)."/>
+    <returnType>Diagnostic</returnType>
+  </operations>
+  <operations name="deprecateCatalogEntry"
+      description="Soft-deprecate an existing entry. Existing implementations keep working; new publishes emit a WARNING."
+      exceptions="//@exceptions.1">
+    <parameters name="name" index="0" type="string"
+        description="Name of the ServiceInterface to deprecate."/>
+    <parameters name="deprecationReason" index="1" type="string" optional="true"
+        description="Free-form reason surfaced in the WARNING diagnostic."/>
+    <parameters name="requestor" index="2" type="string" optional="true" defaultValue="anonymous"/>
+    <returnType>Diagnostic</returnType>
+  </operations>
+  <operations name="removeCatalogEntry"
+      description="Strict-Reject removal: rejects while any implementation references the interface."
+      exceptions="//@exceptions.1 //@exceptions.2">
+    <parameters name="name" index="0" type="string"/>
+    <parameters name="requestor" index="1" type="string" optional="true" defaultValue="anonymous"/>
+    <returnType>Diagnostic</returnType>
+  </operations>
+  <exceptions name="CatalogEntryAlreadyExists" type="org.eclipse.fennec.services.broker.exception.CatalogEntryAlreadyExists"
+      description="An entry with the same name already exists. HTTP 409, code 202."/>
+  <exceptions name="CatalogEntryNotFound" type="org.eclipse.fennec.services.broker.exception.CatalogEntryNotFound"
+      description="No entry found for the given name. HTTP 404, code 201."/>
+  <exceptions name="CatalogHasLiveImplementations" type="org.eclipse.fennec.services.broker.exception.CatalogHasLiveImplementations"
+      description="Cannot remove: live implementations still reference the interface. HTTP 409, code 200."/>
+</services:ServiceInterface>

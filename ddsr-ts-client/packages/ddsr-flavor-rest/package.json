@@ -1,0 +1,29 @@
+{
+  "name": "@ddsr/flavor-rest",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DDSR REST Flavor Plugin",
+  "license": "EPL-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@emfts/core": "0.1.1-next.18",
+    "@ddsr/model": "workspace:*",
+    "@ddsr/client": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.0",
+    "vitest": "^4.0.0",
+    "sax": "^1.4.3"
+  }
+}

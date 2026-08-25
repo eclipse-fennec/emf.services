@@ -1,0 +1,34 @@
+Bundle-Name: Gecko DDSR XMI Codec
+Bundle-Description: \
+	Shared XMI <-> EObject codec plus JAX-RS MessageBody providers. \
+	Used by broker.rest (server side, picked up by the Jakartars Whiteboard) \
+	and by client.rest (registered on a Jakarta Client instance).
+
+-library: enableJakartaREST, enableEMF
+
+Export-Package: \
+	org.eclipse.fennec.services.xmi.codec,\
+	org.eclipse.fennec.services.fingerprint
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot
+
+# Plain JUnit, no OSGi runtime — the codec is static and the only OSGi
+# API it touches (ComponentServiceObjects) is trivially mockable.
+#
+# junit-platform-launcher is not part of the ${junit} macro from the
+# fennec osgitest library, but Gradle needs one that matches the
+# platform-engine version. Without it Gradle falls back to its own
+# bundled launcher and test discovery dies with "OutputDirectoryCreator
+# not available; probably due to unaligned versions".
+#
+# jersey-common supplies the jakarta.ws.rs.ext.RuntimeDelegate provider.
+# Constructing a WebApplicationException with a Status builds a Response
+# under the hood, which needs one — without it the codec's own 400 path
+# blows up with ClassNotFoundException instead of throwing.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.glassfish.jersey.core.jersey-common;version=latest

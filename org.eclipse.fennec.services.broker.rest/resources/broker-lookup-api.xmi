@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="BrokerLookup"
+    version="1.0.0"
+    description="DDSR broker consumer-side lookup of ServiceReferences with optional filter and flavor matching.">
+  <operations name="getServiceReferences"
+      description="Return matching ServiceReferences, filtered by interface name, optional LDAP filter, and consumer-supported flavors.">
+    <parameters name="interfaceName" index="0" type="string"
+        description="Name of the ServiceInterface to look up. Required.">
+      <constraints xsi:type="services:RequiredConstraint"/>
+    </parameters>
+    <parameters name="filter" index="1" type="string" optional="true"
+        description="Optional LDAP filter over service properties."/>
+    <parameters name="flavors" index="2" type="string" optional="true"
+        description="Comma-separated list of FlavorKind values supported by the consumer (REST, MQTT, ...)."/>
+    <parameters name="consumerId" index="3" type="string" optional="true"
+        description="Optional consumer identity for audit / policy attribution."/>
+    <returnType>LocalServiceRegistry</returnType>
+  </operations>
+</services:ServiceInterface>

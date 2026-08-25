@@ -1,0 +1,22 @@
+Bundle-Name: Gecko DDSR Java Client — REST Flavor
+Bundle-Description: \
+	Registers BrokerCatalog, BrokerImplementations and BrokerLookup as OSGi \
+	services that proxy operations to a remote DDSR broker over HTTP+XMI \
+	using the Jakarta REST Client API and the shared xmi.codec providers. \
+	Embedded callers (DdsrProvider/Consumer in client.java) reference the \
+	same three interfaces — the wire is transparent.
+
+-library: enableJakartaREST, enableEMF
+
+Private-Package: org.eclipse.fennec.services.client.rest.internal
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.service.condition;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot

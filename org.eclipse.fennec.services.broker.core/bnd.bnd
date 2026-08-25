@@ -1,0 +1,35 @@
+Bundle-Name: Gecko DDSR Broker Core
+Bundle-Description: \
+	In-memory RemoteServiceRegistry with XMI snapshot persistence. \
+	Pluggable LookupBackend (InMemory default; Lucene via separate module).
+
+-library: enableEMF
+
+Export-Package: \
+	org.eclipse.fennec.services.broker.core
+
+Private-Package: \
+	org.eclipse.fennec.services.broker.core.internal
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.condition;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.service.cm;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+# Plain JUnit, no OSGi runtime: DdsrBrokerImpl is deliberately pure Java
+# (see its class comment) and takes its collaborators as constructor
+# arguments, so it needs no framework to exercise.
+#
+# junit-platform-launcher is not part of the ${junit} macro from the
+# fennec osgitest library, but Gradle needs one matching the
+# platform-engine version — otherwise test discovery dies with
+# "OutputDirectoryCreator not available; probably due to unaligned
+# versions".
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

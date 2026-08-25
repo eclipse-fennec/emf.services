@@ -1,0 +1,749 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="ddsr2" nsURI="http://geckoprojects.org/ddsr/2.0" nsPrefix="ddsr2">
+  <eAnnotations source="Version">
+    <details key="value" value="1.0"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="complianceLevel" value="17.0"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="basePackage" value="org.gecko.model"/>
+    <details key="resource" value="XMI"/>
+    <details key="documentation" value="DDSR v2 model. Extends the v1 catalog/provider/registry kernel with three new axes: (1) generalized OperationChannel-based wire model that decouples request and response paths (see docs/WIRE_CHANNELS.md), (2) Capability/Requirement matching in OSGi style between Provider and Consumer, (3) explicit UpdatePolicy per ServiceInterface with EVERGREEN / DEPRECATE_AND_DRAIN / HARD_CUTOVER variants and Heartbeat-driven drain (see docs/UPDATE_POLICY.md). Designed to run in parallel to the v1 model in the same workspace; v1 stays under org.gecko.ddsr.model.ddsr, v2 lives under org.gecko.model.ddsr2 — no name collisions."/>
+  </eAnnotations>
+
+  <!-- ============================================================ -->
+  <!--  Enums                                                        -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EEnum" name="DiagnosticSeverity">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Severity levels for Diagnostic. OK / INFO / WARNING are non-blocking outcomes — proceed. ERROR / CANCEL are blocking — abort the operation (hook chain rejects, publish refuses, …)."/>
+    </eAnnotations>
+    <eLiterals name="OK"/>
+    <eLiterals name="INFO" value="1"/>
+    <eLiterals name="WARNING" value="2"/>
+    <eLiterals name="ERROR" value="4"/>
+    <eLiterals name="CANCEL" value="8"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="InteractionStyle">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Declarative interaction style of a ServiceOperation. REQUEST_RESPONSE = sync RPC (Default; both channels present, single round-trip). FIRE_AND_FORGET = consumer-to-producer one-shot, no response channel. EVENT_STREAM = consumer subscribes once, producer streams events back (long-lived response channel). COMMAND_STREAM = consumer streams commands to producer (long-lived request channel, no per-message response). BIDIRECTIONAL_STREAM = both channels long-lived, control + event pattern. The style is a hint for readability and validation — actual wire behavior is determined by the channel configuration on OperationFlavor."/>
+    </eAnnotations>
+    <eLiterals name="REQUEST_RESPONSE"/>
+    <eLiterals name="FIRE_AND_FORGET" value="1"/>
+    <eLiterals name="EVENT_STREAM" value="2"/>
+    <eLiterals name="COMMAND_STREAM" value="3"/>
+    <eLiterals name="BIDIRECTIONAL_STREAM" value="4"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="CorrelationStrategy">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How a response is correlated to its request when request and response live on different channels. SYNCHRONOUS = response returned in same connection / RPC frame (REST GET/POST, gRPC unary). HEADER_BASED = correlation id transported as message header/property (MQTT correlation-data, JMS JMSCorrelationID, AMQP RPC). TOPIC_BASED = consumer opens a response topic and includes its identity in the request (MQTT response-topic). NONE = no correlation; only valid for FIRE_AND_FORGET or pure event streams."/>
+    </eAnnotations>
+    <eLiterals name="SYNCHRONOUS"/>
+    <eLiterals name="HEADER_BASED" value="1"/>
+    <eLiterals name="TOPIC_BASED" value="2"/>
+    <eLiterals name="NONE" value="3"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="BackPressureStrategy">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Behavior when a stream consumer can't keep up with the producer. NONE = no flow control (producer keeps emitting; downstream may drop or OOM). DROP_OLDEST = buffer is bounded; oldest entries evicted. DROP_NEWEST = buffer is bounded; new entries discarded when full. BLOCK = producer is blocked until consumer drains buffer (Reactive-Streams-style demand signaling)."/>
+    </eAnnotations>
+    <eLiterals name="NONE"/>
+    <eLiterals name="DROP_OLDEST" value="1"/>
+    <eLiterals name="DROP_NEWEST" value="2"/>
+    <eLiterals name="BLOCK" value="3"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="DeliveryGuarantee">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="End-to-end delivery semantic the channel claims to provide. AT_MOST_ONCE = fire-and-forget; messages may be lost on failure, never duplicated. AT_LEAST_ONCE = messages always delivered, may be duplicated under failure. EXACTLY_ONCE = messages delivered once and only once (requires de-duplication on consumer or broker side). Maps to MQTT QoS levels and similar transport semantics."/>
+    </eAnnotations>
+    <eLiterals name="AT_MOST_ONCE"/>
+    <eLiterals name="AT_LEAST_ONCE" value="1"/>
+    <eLiterals name="EXACTLY_ONCE" value="2"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="UpdatePolicy">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How the broker handles a new version of a ServiceInterface or ServiceImplementation. EVERGREEN = old and new run in parallel indefinitely; retire is manual (Broker API itself, infrastructure services). DEPRECATE_AND_DRAIN = new version coexists with old; old marked deprecated; new find() returns new; old auto-retired when last reference drops (Heartbeat-driven). HARD_CUTOVER = new version published, short configurable failover window, then broker sends UNREGISTERING and retires old (security fix, breaking change). See docs/UPDATE_POLICY.md for full protocol."/>
+    </eAnnotations>
+    <eLiterals name="EVERGREEN"/>
+    <eLiterals name="DEPRECATE_AND_DRAIN" value="1"/>
+    <eLiterals name="HARD_CUTOVER" value="2"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="ParameterBinding">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Where a ServiceParameter is transported on the wire. BODY = serialized payload (XMI, JSON, …). QUERY = query parameter (for REST GET / Query-style channels). HEADER = transport header / message property. PATH = REST path segment. Resolves OPEN_ISSUES W3 (mixed body args)."/>
+    </eAnnotations>
+    <eLiterals name="BODY"/>
+    <eLiterals name="QUERY" value="1"/>
+    <eLiterals name="HEADER" value="2"/>
+    <eLiterals name="PATH" value="3"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="ServiceEventType">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Lifecycle event types pushed by the broker on its event stream. REGISTERED / MODIFIED / UNREGISTERING follow OSGi ServiceEvent semantics. UPGRADE_AVAILABLE = a newer version of the implementation has been published under DEPRECATE_AND_DRAIN policy; greedy consumers should rebind. RETIRED = an implementation has been fully removed; consumers should already be unbound. Values are bitwise-combinable for filter subscriptions."/>
+    </eAnnotations>
+    <eLiterals name="REGISTERED" value="1"/>
+    <eLiterals name="MODIFIED" value="2"/>
+    <eLiterals name="UNREGISTERING" value="4"/>
+    <eLiterals name="MODIFIED_ENDMATCH" value="8"/>
+    <eLiterals name="UPGRADE_AVAILABLE" value="16"/>
+    <eLiterals name="RETIRED" value="32"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="CloseReason">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Reason carried by a StreamCloseFrame when an open stream is being terminated. CONSUMER_LEFT = consumer-initiated unsubscribe. PROVIDER_RETIRED = provider-initiated shutdown. BROKER_CUTOVER = broker-initiated retire as part of HARD_CUTOVER update policy. IDLE_TIMEOUT = no activity longer than the channel's keepAliveInterval. PROTOCOL_VIOLATION = peer sent a wire frame that violates the channel contract. INTERNAL_ERROR = catch-all for unexpected failures."/>
+    </eAnnotations>
+    <eLiterals name="CONSUMER_LEFT"/>
+    <eLiterals name="PROVIDER_RETIRED" value="1"/>
+    <eLiterals name="BROKER_CUTOVER" value="2"/>
+    <eLiterals name="IDLE_TIMEOUT" value="3"/>
+    <eLiterals name="PROTOCOL_VIOLATION" value="4"/>
+    <eLiterals name="INTERNAL_ERROR" value="5"/>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  Abstract bases                                               -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="NamedElement" abstract="true">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Abstract base for model elements that carry a human-readable name. Unlike v1, the name is NOT an iD attribute — global uniqueness is enforced selectively on subclasses (ServiceInterface, ServiceProvider). Cross-document references go through dedicated iD attributes (ServiceReference.id) or positional URI fragments."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Human-readable identifier. NOT globally unique by default; subclasses (ServiceInterface, ServiceProvider, ServiceImplementation) enforce uniqueness in their own scope, typically via (name, version) tuples."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="Diagnostic">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Carrier for outcome reporting from broker operations and hook decisions. Returned from publish / withdraw / lookup endpoints in place of HTTP exception bodies (see ARCHITECTURE.md §2.8). severity decides if the operation proceeds; code is a stable enum-like string identifier; message is free-text human detail; children carry nested diagnostics for chained validations."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="severity" eType="#//DiagnosticSeverity">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Severity decides whether the operation proceeds (OK/INFO/WARNING) or is blocked (ERROR/CANCEL). Hook chains evaluate this to short-circuit the pipeline; the first ERROR or CANCEL aborts."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="code" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Stable enum-like identifier suitable for programmatic dispatch and i18n lookup. Examples: CATALOG_ENTRY_ALREADY_EXISTS, INTERFACE_NOT_FOUND, POLICY_VIOLATION, CUTOVER_GRACE_MISSING. Avoid free-form English here; use message for that."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="message" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Human-readable detail of the diagnostic; locale-dependent. Do not parse programmatically — use code for dispatch decisions, message only for display."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="children" upperBound="-1"
+        eType="#//Diagnostic" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Nested diagnostics from sub-validations. Allows accumulating multiple findings under a single root diagnostic (e.g. a publish that fails on three different schema rules returns one Diagnostic with three children)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  Capability / Requirement                                     -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="Capability">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A capability provided by a ServiceImplementation, ServiceProvider, or Flavor. Modeled in OSGi style: a namespace plus a map of attributes. Examples: namespace='ddsr.transport', attributes={version='mqtt-v5', qos='2'}; namespace='ddsr.contentType', attributes={type='application/json+cloudevents'}; namespace='ddsr.interaction', attributes={style='EVENT_STREAM,BIDIRECTIONAL_STREAM'}. See docs/WIRE_CHANNELS.md §6."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Top-level grouping for capabilities. Convention: dotted notation, project-prefixed (ddsr.transport, ddsr.contentType, ddsr.interaction, ddsr.qos, ddsr.security, …). Only Capabilities and Requirements with matching namespace are considered together during resolution."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attributes" upperBound="-1"
+        eType="#//StringEntry" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Free-form key/value pairs describing this capability. Used as the matching surface for Requirement.filter — the LDAP filter is evaluated against these attributes."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="Requirement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A requirement declared by a Consumer that must be satisfied by some Capability of a candidate ServiceImplementation. namespace matches against Capability.namespace; filter is an OSGi-style LDAP filter applied to Capability.attributes. The broker's resolver picks only implementations whose capabilities satisfy ALL of the consumer's requirements. Examples: namespace='ddsr.transport', filter='(version=mqtt-*)'; namespace='ddsr.contentType', filter='(type=application/*)'."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The capability namespace this requirement matches against. Only Capabilities with the same namespace are considered for this requirement."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="filter" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="OSGi-style LDAP filter applied to Capability.attributes. Examples: (version=mqtt-*), (&amp;(type=application/*)(charset=utf-8)), (!(qos=0)). Empty filter matches any Capability in the namespace."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="StringEntry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Generic (String, String) map entry. Used to carry the attribute map of Capability and properties of ServiceRegistration. EMF doesn't ship a native EStringToEStringMap with stable XMI serialization for cross-language reading; explicit entry classes are clearer in the wire body."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Map entry key. Unique within the enclosing collection; duplicates are a model error and rejected on publish."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Map entry value. Free-form String; semantics are defined by the enclosing context (Capability.attributes, ServiceRegistration.properties, …)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  Catalog: ServiceInterface, ServiceOperation, ServiceParameter -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceCatalog">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The set of ServiceInterfaces known to the broker. Hand-authored in the prototype (catalog-static, see project DoD); will grow runtime-mutation in Stufe 4+."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="serviceInterfaces" upperBound="-1"
+        eType="#//ServiceInterface" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="All ServiceInterfaces known to this catalog. Hand-authored in the prototype; runtime mutation (add/deprecate/remove) deferred to Stufe 4+."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceInterface" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A language-neutral service interface. Identified by name + version (both must be unique within a catalog). updatePolicy is the default policy for ServiceImplementations of this interface; individual implementations may override via ServiceImplementation.updatePolicy. deprecated marks an interface that should not receive new implementations; replacedBy points at the successor interface."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="version" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="OSGi-style semantic version (major.minor[.micro[.qualifier]]). Combined with name, uniquely identifies this interface across the catalog. Consumers reference a version range; bumping follows OSGi semver (micro=internal, minor=additive, major=breaking)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Free-text description surfaced in catalog browsers, generated SDK documentation, and admin tooling."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="updatePolicy" eType="#//UpdatePolicy"
+        defaultValueLiteral="DEPRECATE_AND_DRAIN">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Default policy applied when a new ServiceImplementation of this interface is published. ServiceImplementation.updatePolicy may override per-implementation. See docs/UPDATE_POLICY.md for protocol details of each variant."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deprecated" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="When true, this interface no longer accepts new implementations and is hidden from non-greedy lookups by default. Existing implementations continue to serve until withdrawn or until DEPRECATE_AND_DRAIN finishes."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="replacedBy" eType="#//ServiceInterface">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Successor interface this one was superseded by. Used by tooling to suggest migrations and by the broker to redirect lookups when both interfaces are present."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operations" upperBound="-1"
+        eType="#//ServiceOperation" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The operations offered by this interface. Order is significant — positional URI fragments (#//@operations.N) are used as cross-document references from ServiceImplementations' OperationFlavors."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceOperation" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A named operation on a ServiceInterface. interactionStyle declares the intent (REQUEST_RESPONSE, EVENT_STREAM, …); the actual wire channels are configured per ServiceImplementation via OperationFlavor. parameters and returnType describe the data contract; cardinality on returnType expresses finite collections (Cardinality=ZERO_OR_MANY means a finite list) — for unbounded streams use interactionStyle=EVENT_STREAM."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Free-text description; surfaces in generated SDK documentation and tooling."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interactionStyle" eType="#//InteractionStyle"
+        defaultValueLiteral="REQUEST_RESPONSE">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Declarative intent of this operation. Hint for SDK code generators and validation; the broker checks that each ServiceImplementation's OperationFlavor.interactionStyle matches this value."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameters" upperBound="-1"
+        eType="#//ServiceParameter" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Operation input parameters in declaration order. Argument values from the consumer side are matched to parameters by position, then routed onto the channel per ServiceParameter.binding."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="returnType" eType="#//ServiceParameter"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Output parameter; null for void / FIRE_AND_FORGET operations. cardinalityUpper expresses finite collections (use -1 for unbounded element count of a single response); for unbounded streams over time use interactionStyle=EVENT_STREAM instead."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceParameter" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A parameter or return-type slot on a ServiceOperation. typeName carries a language-neutral type reference (primitive name, fully-qualified class name, or an EMF model-URI for EObject parameters). cardinalityLower/cardinalityUpper describe multiplicity (use upper=-1 for unbounded). binding tells the channel where the value travels on the wire (BODY/QUERY/HEADER/PATH). Resolves OPEN_ISSUES W3."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="typeName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Language-neutral type reference. Primitive (String, int, double, boolean, …), fully-qualified Java class name (java.util.UUID, …), or an EMF model URI for EObject parameters (e.g. http://geckoprojects.org/ddsr/2.0#//ServiceReference)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cardinalityLower" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Minimum number of values (inclusive). 0 = optional, 1 = required."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cardinalityUpper" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum number of values (inclusive). 1 = single value, -1 = unbounded collection. For unbounded streams over time prefer interactionStyle=EVENT_STREAM over cardinality=unbounded."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="binding" eType="#//ParameterBinding"
+        defaultValueLiteral="BODY">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where this parameter is carried on the wire. Resolves OPEN_ISSUES W3 (mixed body args): allows mixing one BODY parameter with QUERY/HEADER/PATH parameters in the same operation."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  Flavors: abstract Flavor + concrete subclasses               -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="Flavor" abstract="true" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Abstract transport flavor. Concrete subclasses (RestFlavor, MqttFlavor, GrpcFlavor, …) add transport-specific properties (host, basePath; broker, topicPrefix; …). capabilities declare what InteractionStyles, content-types, correlation strategies etc. this flavor can transport — used by the broker's resolver to match consumer Requirements (docs/WIRE_CHANNELS.md §6, §7)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="capabilities" upperBound="-1"
+        eType="#//Capability" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Capabilities declared by this flavor — typically the InteractionStyles it supports, content-types it can encode, correlation strategies, security modes, compression options. Used by the broker's resolver when matching consumer Requirements."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="RestFlavor" eSuperTypes="#//Flavor">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="HTTP/REST transport flavor. host = scheme://host:port; basePath = leading path segment under which operations are exposed. Default capabilities (assumed if none declared): ddsr.transport=http, ddsr.interaction.styles=REQUEST_RESPONSE+EVENT_STREAM-via-SSE."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Scheme + authority of the service endpoint, e.g. http://192.168.1.6:9091 or https://api.example.com."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="basePath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Path prefix prepended to per-operation paths. Operations declare their per-call path under this prefix; full URL = host + basePath + per-operation-path."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="MqttFlavor" eSuperTypes="#//Flavor">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="MQTT (broker-mediated) transport flavor. brokerUrl points at the MQTT broker; topicPrefix is prepended to operation-specific topics. Capabilities typically declare ddsr.transport=mqtt-v5, supported correlation strategies (TOPIC_BASED, HEADER_BASED), and full InteractionStyle set."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="brokerUrl" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="URL of the MQTT broker, e.g. tcp://mqtt.example.com:1883 or ssl://mqtt.example.com:8883. The DDSR broker and consumer connect to this MQTT broker as MQTT clients."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="topicPrefix" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Topic prefix prepended to per-operation topics. Per-operation topic structure is flavor-specific, conventionally &lt;prefix&gt;/&lt;service&gt;/&lt;operation&gt; for commands and &lt;prefix&gt;/&lt;service&gt;/&lt;operation&gt;/events for streams."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  OperationFlavor + OperationChannel + StreamOptions           -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="OperationFlavor" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Per-operation wire configuration of a ServiceImplementation. Carries the InteractionStyle (echoes the operation's intent for validation) and the request/response channel pair. Symmetric case (REQUEST_RESPONSE over a single transport): requestChannel and responseChannel reference the SAME OperationChannel object. Asymmetric case (split channel, e.g. async RPC): two distinct OperationChannel objects, response side requires non-NONE correlationStrategy."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operation" eType="#//ServiceOperation">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The ServiceOperation this flavor configures. Cross-reference into the catalog; published implementations carry this as a positional URI fragment (#//@operations.N) into the broker's catalog resource."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interactionStyle" eType="#//InteractionStyle"
+        defaultValueLiteral="REQUEST_RESPONSE">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Echoes the operation's declared style; the broker validates that this matches ServiceOperation.interactionStyle on publish. Mismatch is rejected with a Diagnostic of severity=ERROR."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="requestChannel" eType="#//OperationChannel"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The channel over which the consumer's request travels. null only for pure-subscribe-only operations where the consumer addresses the broker just once at subscribe time."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="responseChannel" eType="#//OperationChannel"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The channel over which producer responses travel. null for FIRE_AND_FORGET. For symmetric REQUEST_RESPONSE this is the SAME OperationChannel instance as requestChannel — XMI cross-doc-ref points to the same object, making the symmetric case a Default-Shorthand."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="streamOptions" eType="#//StreamOptions"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Stream tuning; set only when at least one of the channels carries a long-lived stream (EVENT_STREAM / COMMAND_STREAM / BIDIRECTIONAL_STREAM). Ignored for REQUEST_RESPONSE / FIRE_AND_FORGET."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="OperationChannel">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A single direction of a wire channel for one operation. Bundles flavor (the transport mechanism), correlationStrategy (how a response is paired with its request — only meaningful for response-side channels in asymmetric setups), and an optional timeout. To express a symmetric (single-channel) operation, point both OperationFlavor.requestChannel and OperationFlavor.responseChannel to the same OperationChannel instance."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="flavor" eType="#//Flavor">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Transport flavor this channel runs on. Reference (not containment) — multiple channels typically share the same Flavor instance to avoid duplicating transport config."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="correlationStrategy" eType="#//CorrelationStrategy"
+        defaultValueLiteral="SYNCHRONOUS">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="How responses are paired with their requests on this channel. Mostly relevant on response-side channels in asymmetric setups; symmetric REQUEST_RESPONSE channels keep SYNCHRONOUS as the natural default."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeoutMillis" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
+        defaultValueLiteral="0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Per-call timeout in milliseconds. 0 = use the flavor's default. Applies to the round-trip in symmetric channels and to the pending-call lifetime for asymmetric setups."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="StreamOptions">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Stream-specific tuning for an OperationFlavor whose interaction style involves a long-lived channel. Only meaningful for EVENT_STREAM / COMMAND_STREAM / BIDIRECTIONAL_STREAM. bufferSize=0 means unbounded (compatible only with NONE backpressure). keepAliveMillis controls heartbeat-frame cadence on the stream channel itself (separate from the registry-level Consumer Heartbeat that drives drain)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="backpressure" eType="#//BackPressureStrategy"
+        defaultValueLiteral="NONE">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Producer behavior when the consumer can't keep up. NONE is the simplest but riskiest (potential OOM); BLOCK gives Reactive-Streams-style demand semantics."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="bufferSize" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum number of buffered messages. 0 = unbounded (only compatible with backpressure=NONE). For DROP_* strategies, this is the eviction threshold; for BLOCK, the producer suspends when the buffer is full."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" eType="#//DeliveryGuarantee"
+        defaultValueLiteral="AT_MOST_ONCE">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="End-to-end delivery semantic. Maps to transport-specific QoS levels — e.g. MQTT QoS 0/1/2. Stronger guarantees require de-duplication state on consumer or broker side."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="keepAliveMillis" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
+        defaultValueLiteral="0">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Frequency of stream-level keep-alive frames. 0 = transport default. Distinct from the registry-level ConsumerHeartbeat which is broker-bound (10 min) — this is stream-bound (typically seconds)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  Provider + Implementation                                    -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceProvider" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A registered service provider. Identified by (name, version) — globally unique within a registry. symbolicName carries an additional stable identifier (e.g. OSGi bundle symbolic name). capabilities are provider-level (apply to all implementations unless overridden); per-implementation capabilities are added on ServiceImplementation."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="version" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Provider version. Combined with name forms the dedup key for publishImplementation (see ARCHITECTURE.md §2.6) — re-publish of the same (name, version) reuses the existing provider entry."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="symbolicName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Stable provider identifier, conventionally the OSGi bundle symbolic name. Used by tooling to correlate providers with their source artifacts; not part of the dedup key."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="capabilities" upperBound="-1"
+        eType="#//Capability" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Provider-level capabilities inherited by all of its ServiceImplementations. Examples: ddsr.security (mTLS certs), ddsr.region (geographic), ddsr.tenant. Per-implementation capabilities augment these."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="implementations" upperBound="-1"
+        eType="#//ServiceImplementation" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Concrete implementations this provider offers. Containment — implementations live and die with their provider; withdrawing the provider implicitly retires all of its implementations."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceImplementation" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A concrete implementation of one or more ServiceInterfaces by a ServiceProvider. (name, version) is dedup-key (see ARCHITECTURE.md §2.6). publishedVia records the flavor through which this implementation registered with the broker. discoverableVia lists flavors over which the broker should expose this implementation in lookups (typically equal to the broker's default discovery flavor; can be specialized for federation scenarios). updatePolicy / replaces / deprecated / cutoverGraceMillis implement the update-policy state machine (see docs/UPDATE_POLICY.md). operationFlavors hold the per-operation wire configuration."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="version" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Implementation version. Combined with name forms the dedup key — re-publish of same (name, version) triggers retire/replace of the old, gated by updatePolicy."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Free-text description; surfaces in admin tooling and generated SDK documentation."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="serviceInterfaces" upperBound="-1"
+        eType="#//ServiceInterface">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The ServiceInterfaces this implementation implements. Cross-reference into the catalog (see ARCHITECTURE.md §2.4 for the cross-doc href encoding). An implementation may implement multiple interfaces (multi-interface impl)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="capabilities" upperBound="-1"
+        eType="#//Capability" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Implementation-specific capabilities. Augment or override the provider's capabilities; resolution against consumer Requirements considers the union of provider + implementation capabilities."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="publishedVia" eType="#//Flavor"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The flavor through which this implementation registered with the broker. Containment — the flavor instance describes the wire endpoint at the moment of publish (host, basePath, brokerUrl, …)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="discoverableVia" upperBound="-1"
+        eType="#//Flavor">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Flavors over which the broker offers this implementation in lookups. Reference (not containment) — usually points to the broker's default discovery flavors. May be specialized for federated multi-broker setups (Stufe 4+)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operationFlavors" upperBound="-1"
+        eType="#//OperationFlavor" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Per-operation wire configuration. One entry per (ServiceOperation, transport-mix) pair the implementation supports — an operation may have multiple OperationFlavor entries on the same impl (e.g. REST and MQTT both supported, selected at lookup time per consumer Requirements)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="updatePolicy" eType="#//UpdatePolicy">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Per-implementation override of ServiceInterface.updatePolicy. If unset (null), the interface's default applies. Allows two implementations of the same interface to follow different policies (e.g. one EVERGREEN sidecar plus one DEPRECATE_AND_DRAIN main path)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="replaces" eType="#//ServiceImplementation">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The implementation this one supersedes. Set on publish to trigger UpdatePolicy state-machine. DEPRECATE_AND_DRAIN: marks the replaced impl as deprecated and starts drain. HARD_CUTOVER: schedules cutover timer (cutoverGraceMillis)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deprecated" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="When true, this implementation is excluded from non-greedy lookups and is awaiting drain (DEPRECATE_AND_DRAIN) or imminent retire (HARD_CUTOVER). Greedy lookups still see it until retire."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutoverGraceMillis" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"
+        defaultValueLiteral="30000">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Only used when updatePolicy=HARD_CUTOVER. Length of the failover window (ms) between publishing the new version and broadcasting UNREGISTERING for the old. Default 30s; tune per service profile (interactive longer, batch shorter)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  Registry + ServiceReference + Consumer + Heartbeat           -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceRegistry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The broker's live registry. catalog holds known interfaces; providers + implementations are the registered services (Provider as containment root, Implementation as Containment-child of Provider); references are issued on lookup; consumers tracks who currently holds references (used for Heartbeat-driven drain in UpdatePolicy)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="catalog" eType="#//ServiceCatalog"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The catalog of known ServiceInterfaces this registry serves. Containment — catalog state belongs to the registry."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1"
+        eType="#//ServiceProvider" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Registered ServiceProviders. Containment — providers are state owned by the registry and persisted into broker-state.xmi."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="references" upperBound="-1"
+        eType="#//ServiceReference" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Live ServiceReferences issued by the registry. Containment — references are state owned by the registry. Not stable across restarts; reindex() generates fresh UUIDs on rehydration."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="consumers" upperBound="-1"
+        eType="#//Consumer" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Connected consumers tracked by Heartbeat. Drives drain calculations under UpdatePolicy.DEPRECATE_AND_DRAIN and stale-cleanup (resolves OPEN_ISSUES C3)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceReference">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A handle issued by the broker on lookup that identifies one (provider, implementation) pair. id is iD (UUID) — uniquely identifies the reference globally; references are NOT stable across broker restarts (reindex generates fresh UUIDs)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="UUID assigned by the registry on lookup. iD attribute — globally unique. NOT stable across registry restarts; reindex() generates fresh UUIDs on rehydration so consumers must re-lookup after a broker restart."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="provider" eType="#//ServiceProvider">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The provider this reference resolves to. Cross-reference into the registry."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="implementation" eType="#//ServiceImplementation">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The implementation this reference resolves to. One reference points at exactly one (provider, implementation) tuple."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operationFlavors" upperBound="-1"
+        eType="#//OperationFlavor">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The set of OperationFlavors usable through this reference. Subset of ServiceImplementation.operationFlavors filtered by consumer Requirements at lookup time."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="Consumer" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A connected consumer. The broker tracks consumers explicitly (unlike v1) so that Heartbeat-driven drain in UpdatePolicy.DEPRECATE_AND_DRAIN can know when the last reference to a deprecated implementation is gone. id is iD (UUID, assigned on first contact). capability holds the consumer's declared requirements. activeRefs lists references the consumer claims to still be using (refreshed on each Heartbeat). lastHeartbeatEpochMillis is the wall-clock timestamp of the most recent ConsumerHeartbeat; after 2× the heartbeat interval (default 20 minutes) the broker considers the consumer dead and frees all its references."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="UUID assigned by the registry on first contact. Stable for the lifetime of the consumer connection. Consumer must remember and present this id in each Heartbeat / Shutdown frame."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="capability" eType="#//ConsumerCapability"
+        containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Consumer's declared capabilities (greedy, requirements, supportedVersions). Submitted at first contact; can be updated via re-registration."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="activeRefs" upperBound="-1"
+        eType="#//ServiceReference">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="References the consumer claims to currently be using. Refreshed on each ConsumerHeartbeat. The broker uses this set to compute whether a deprecated implementation can be retired (drain)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lastHeartbeatEpochMillis" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Wall-clock timestamp of the most recent ConsumerHeartbeat (broker-side receive time). After 2× the configured heartbeat interval (default 20 min) without a heartbeat, the consumer is considered dead and all its references are freed."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ConsumerCapability">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Capability declaration on the consumer side. greedy=true tells the broker the consumer wants to be auto-rebound on UPGRADE_AVAILABLE events (DEPRECATE_AND_DRAIN). requirements drive Provide-/Require-Capability resolution (see docs/WIRE_CHANNELS.md §6). supportedVersions is a convenience map from interface name to OSGi version range; the broker applies it to all lookups from this consumer automatically (analogous to v1's supportedFlavors filter)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="greedy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="When true, the consumer is auto-rebound by its facade on UPGRADE_AVAILABLE events (DEPRECATE_AND_DRAIN). Default false — consumer's application code decides per event. UNREGISTERING (HARD_CUTOVER) is mandatory regardless."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="requirements" upperBound="-1"
+        eType="#//Requirement" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Capability-Requirement matching constraints applied to every lookup. Only implementations whose capabilities satisfy ALL of these requirements are returned."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="supportedVersions" upperBound="-1"
+        eType="#//StringEntry" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Per-interface OSGi version range filter (key=interface name, value=range like '[1.0,2.0)'). Applied to all lookups from this consumer automatically — equivalent to passing versionRange on every find() call."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <!-- ============================================================ -->
+  <!--  Wire frames: ServiceEvent, StreamCloseFrame, Heartbeats      -->
+  <!-- ============================================================ -->
+
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceEvent">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Event emitted by the broker on its event stream (SSE / MQTT / WS depending on flavor). type is the event kind; reference identifies the affected ServiceReference; reasonCode is a free-form short code for UPGRADE_AVAILABLE / UNREGISTERING context (e.g. 'BROKER_CUTOVER'); occurredAtEpochMillis is the wall-clock time the event was produced."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//ServiceEventType">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Kind of the event. Bitwise-combinable in subscription filters (subscribe to REGISTERED|UNREGISTERING with a single mask)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="reference" eType="#//ServiceReference">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The ServiceReference the event is about. Cross-reference (event is transient; reference may be retired by the time the event is consumed)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reasonCode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Free-form short code for additional context. Examples: BROKER_CUTOVER, PROVIDER_RETIRED, CONSUMER_DEAD. Mirrors CloseReason where applicable."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="occurredAtEpochMillis" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Wall-clock timestamp of event emission, broker-side. Useful for ordering and replay scenarios; not authoritative across federated brokers."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="StreamCloseFrame">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Wire frame sent by either end of an open stream to terminate the stream gracefully. reason is the categorical close cause; message is free-text for logs / UI. Mapping to the underlying transport's native close mechanism (WebSocket Close code, gRPC Status, MQTT topic-suffix-with-payload, SSE 'event: close' line) happens in the flavor-specific encoder. See docs/WIRE_CHANNELS.md §8."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" eType="#//CloseReason">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Categorical close cause. Use this for programmatic dispatch (retry logic, alerting); use message for human display."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="message" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Free-text detail for logs and UI. Do not parse programmatically; use reason for dispatch."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ConsumerHeartbeat">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Periodic ping a consumer sends to the broker (default cadence 10 min). consumerId references the consumer; activeRefIds carries the consumer's current set of references in use, allowing the broker to update its drain-tracking map. Missing heartbeats for 2× the cadence mark the consumer dead and free all its refs (also solves OPEN_ISSUES C3 when applied symmetrically to providers)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Identity of the consumer sending the heartbeat. Matches Consumer.id; the broker uses this to find the right Consumer entry to update."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="activeRefIds" upperBound="-1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="List of ServiceReference.id values the consumer claims to still be using. The broker replaces Consumer.activeRefs with this list on each heartbeat (additive AND removing in one step)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sentAtEpochMillis" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Wall-clock timestamp on the consumer side at moment of send. The broker also records its own receive time in Consumer.lastHeartbeatEpochMillis — clock skew detection is the consumer side's responsibility."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ConsumerShutdown">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Sent by a consumer when it terminates regularly. Tells the broker to free all references for the given consumer immediately, without waiting for the heartbeat-timeout. Best-effort — if the consumer crashes, the heartbeat-timeout takes over."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Identity of the consumer that is shutting down. Matches Consumer.id."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+</ecore:EPackage>

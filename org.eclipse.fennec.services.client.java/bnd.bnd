@@ -1,0 +1,33 @@
+Bundle-Name: Gecko DDSR Java Client SDK
+Bundle-Description: \
+	Transport-agnostic Java client facade. Exposes DdsrProvider \
+	(publish/withdraw) and DdsrConsumer (lookup) atop BrokerCatalog / \
+	BrokerImplementations / BrokerLookup OSGi services — wire flavor \
+	(REST, MQTT, embedded) is selected via which provider of those \
+	services is wired in.
+
+-library: enableEMF
+
+Export-Package: \
+	org.eclipse.fennec.services.client
+
+Private-Package: \
+	org.eclipse.fennec.services.client.internal
+
+-buildpath: \
+	org.osgi.service.condition;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.broker.core;version=snapshot
+
+# Plain JUnit, no OSGi runtime — the listener registry takes its event
+# source as a constructor argument, so it needs no framework.
+#
+# junit-platform-launcher is not part of the ${junit} macro from the
+# fennec osgitest library, but Gradle needs one matching the
+# platform-engine version.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

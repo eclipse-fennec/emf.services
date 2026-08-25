@@ -144,12 +144,12 @@ public interface ServiceRegistration extends EObject {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions — the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash.
+	 * Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions — the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource — a serialized link would tear every registry save/copy apart (not contained in a resource).
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Using Sessions</em>' reference list.
 	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceRegistration_UsingSessions()
 	 * @see org.eclipse.fennec.services.ConsumerSession#getAcquisitions
-	 * @model opposite="acquisitions"
+	 * @model opposite="acquisitions" transient="true"
 	 * @generated
 	 */
 	EList<ConsumerSession> getUsingSessions();

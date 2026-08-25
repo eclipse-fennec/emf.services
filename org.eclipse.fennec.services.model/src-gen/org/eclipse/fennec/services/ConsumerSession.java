@@ -117,12 +117,12 @@ public interface ConsumerSession extends EObject {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * The registrations this consumer claims to be using — the OWNING side of the acquisition relation. Points at the stable ServiceRegistration, not at the ServiceReference: references are the wire artefact and their ids regenerate on broker restart. Over-claiming is harmless (delays drain), under-claiming only hurts the consumer itself (loses drain protection).
+	 * The registrations this consumer claims to be using — the OWNING side of the acquisition relation. Points at the stable ServiceRegistration, not at the ServiceReference: references are the wire artefact and their ids regenerate on broker restart. Over-claiming is harmless (delays drain), under-claiming only hurts the consumer itself (loses drain protection). TRANSIENT: the wire form of a session carries sibling ServiceReference id-stubs instead (same convention as publish).
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Acquisitions</em>' reference list.
 	 * @see org.eclipse.fennec.services.ServicesPackage#getConsumerSession_Acquisitions()
 	 * @see org.eclipse.fennec.services.ServiceRegistration#getUsingSessions
-	 * @model opposite="usingSessions"
+	 * @model opposite="usingSessions" transient="true"
 	 * @generated
 	 */
 	EList<ServiceRegistration> getAcquisitions();

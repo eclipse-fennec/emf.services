@@ -23,7 +23,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getStringPatternConstraint()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 lengthBoundsNonNegative='(minLength = null or minLength &gt;= 0) and (maxLength = null or maxLength &gt;= 0)' lengthBoundsOrdered='minLength = null or maxLength = null or minLength &lt;= maxLength'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='lengthBoundsNonNegative lengthBoundsOrdered'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 lengthBoundsNonNegative='(minLength = null or minLength &gt;= 0) and (maxLength = null or maxLength &gt;= 0)' lengthBoundsOrdered='minLength = null or maxLength = null or minLength &lt;= maxLength'"
  * @generated
  */
 @ProviderType

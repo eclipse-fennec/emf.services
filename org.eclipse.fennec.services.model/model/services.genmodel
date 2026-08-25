@@ -298,6 +298,7 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/provider"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/implementation"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/usingSessions"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceRegistration/consumerCount"/>
       <genOperations ecoreOperation="services.ecore#//ServiceRegistration/unregister"/>
       <genOperations ecoreOperation="services.ecore#//ServiceRegistration/setProperties">
         <genParameters ecoreParameter="services.ecore#//ServiceRegistration/setProperties/props"/>

@@ -26,10 +26,12 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getProvider <em>Provider</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getImplementation <em>Implementation</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getUsingSessions <em>Using Sessions</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getConsumerCount <em>Consumer Count</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceRegistration()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 unregisteredNotInRegistry='not unregistered or LocalServiceRegistry.allInstances()-&gt;forAll(r | not r.registrations-&gt;includes(self))'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='unregisteredNotInRegistry'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 unregisteredNotInRegistry='not unregistered or LocalServiceRegistry.allInstances()-&gt;forAll(r | not r.registrations-&gt;includes(self))'"
  * @generated
  */
 @ProviderType
@@ -46,7 +48,7 @@ public interface ServiceRegistration extends EObject {
 	 * @see #setReference(ServiceReference)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceRegistration_Reference()
 	 * @see org.eclipse.fennec.services.ServiceReference#getRegistration
-	 * @model opposite="registration" required="true"
+	 * @model opposite="registration" required="true" transient="true"
 	 * @generated
 	 */
 	ServiceReference getReference();
@@ -153,6 +155,21 @@ public interface ServiceRegistration extends EObject {
 	 * @generated
 	 */
 	EList<ConsumerSession> getUsingSessions();
+
+	/**
+	 * Returns the value of the '<em><b>Consumer Count</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Derived usage count (ACQUISITION.md par.9): the number of sessions currently holding a lease. Computed via the OCL setting delegate — never stored (stored counters drift on consumer crash). Runtime-only like the relation it derives from: volatile/transient, requires the Fennec OCL engine to be present; without a registered delegate factory the getter fails rather than lying.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Consumer Count</em>' attribute.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceRegistration_ConsumerCount()
+	 * @model transient="true" changeable="false" volatile="true" derived="true"
+	 *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 derivation='self.usingSessions-&gt;size()'"
+	 * @generated
+	 */
+	int getConsumerCount();
 
 	/**
 	 * <!-- begin-user-doc -->

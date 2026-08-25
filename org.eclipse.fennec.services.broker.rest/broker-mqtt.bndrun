@@ -26,6 +26,7 @@ jersey.deps:
 	bnd.identity;id='org.eclipse.fennec.services.broker.rest',\
 	bnd.identity;id='org.eclipse.fennec.mcp.gogo.runtime.config',\
 	bnd.identity;id='org.eclipse.fennec.services.broker.core',\
+	bnd.identity;id='org.eclipse.fennec.m2x.ocl.engine',\
 	bnd.identity;id='org.eclipse.fennec.services.broker.mqtt',\
 	bnd.identity;id='org.eclipse.osgitech.rest.sse'
 # we need to run our project
@@ -120,4 +121,9 @@ jersey.deps:
 	org.objectweb.asm.tree;version='[9.9.1,9.9.2)',\
 	org.objectweb.asm.tree.analysis;version='[9.9.1,9.9.2)',\
 	org.objectweb.asm.util;version='[9.9.1,9.9.2)',\
-	org.eclipse.fennec.services.itest.mqtt.config;version=snapshot
+	org.eclipse.fennec.services.itest.mqtt.config;version=snapshot,\
+	org.antlr.antlr4-runtime;version='[4.13.2,4.13.3)',\
+	org.eclipse.fennec.m2x.ocl.api;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.m2x.ocl.engine;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.m2x.ocl.model;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.m2x.ocl.parser;version='[0.1.0,0.1.1)'

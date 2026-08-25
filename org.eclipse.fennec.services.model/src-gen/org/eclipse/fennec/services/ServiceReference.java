@@ -104,13 +104,13 @@ public interface ServiceReference extends EObject {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal.
+	 * Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal. TRANSIENT: broker-side registrations are runtime handles without a containment home in the persisted registry — a serialized link would tear every snapshot apart.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Registration</em>' reference.
 	 * @see #setRegistration(ServiceRegistration)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceReference_Registration()
 	 * @see org.eclipse.fennec.services.ServiceRegistration#getReference
-	 * @model opposite="reference"
+	 * @model opposite="reference" transient="true"
 	 * @generated
 	 */
 	ServiceRegistration getRegistration();

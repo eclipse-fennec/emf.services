@@ -32,4 +32,9 @@ Private-Package: \
 # versions".
 -testpath: \
 	${junit},\
-	junit-platform-launcher;version=latest
+	junit-platform-launcher;version=latest,\
+	org.eclipse.fennec.m2x.ocl.api;version=latest,\
+	org.eclipse.fennec.m2x.ocl.engine;version=latest,\
+	org.eclipse.fennec.m2x.ocl.model;version=latest,\
+	org.eclipse.fennec.m2x.ocl.parser;version=latest,\
+	org.antlr.antlr4-runtime;version=latest

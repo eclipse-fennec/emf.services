@@ -32,10 +32,11 @@ import org.osgi.annotation.versioning.ProviderType;
  * @model kind="package"
  *        annotation="Version value='1.0'"
  *        annotation="http://www.eclipse.org/emf/2002/GenModel complianceLevel='17.0' oSGiCompatible='true' basePackage='org.gecko.ddsr.model' resource='XMI'"
+ *        annotation="http://www.eclipse.org/emf/2002/Ecore settingDelegates='http://www.eclipse.org/fennec/m2x/ocl/1.0' validationDelegates='http://www.eclipse.org/fennec/m2x/ocl/1.0'"
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:4ba90de64c6bdb060973bcdf3e8b8b047b1f2e0f52c99a1b6c82622cd0bb31cd", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:d9a313ca5ad7c9c901ef6a44b2ca0b3174fe9b2bb6ecd06abf0712f01ebd4e38", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -2510,13 +2511,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int SERVICE_REGISTRATION__USING_SESSIONS = 4;
 
 	/**
+	 * The feature id for the '<em><b>Consumer Count</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SERVICE_REGISTRATION__CONSUMER_COUNT = 5;
+
+	/**
 	 * The number of structural features of the '<em>Service Registration</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_REGISTRATION_FEATURE_COUNT = 5;
+	int SERVICE_REGISTRATION_FEATURE_COUNT = 6;
 
 	/**
 	 * The operation id for the '<em>Unregister</em>' operation.
@@ -5585,6 +5595,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getServiceRegistration_UsingSessions();
 
 	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ServiceRegistration#getConsumerCount <em>Consumer Count</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Consumer Count</em>'.
+	 * @see org.eclipse.fennec.services.ServiceRegistration#getConsumerCount()
+	 * @see #getServiceRegistration()
+	 * @generated
+	 */
+	EAttribute getServiceRegistration_ConsumerCount();
+
+	/**
 	 * Returns the meta object for the '{@link org.eclipse.fennec.services.ServiceRegistration#unregister() <em>Unregister</em>}' operation.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -7979,6 +8000,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference SERVICE_REGISTRATION__USING_SESSIONS = eINSTANCE.getServiceRegistration_UsingSessions();
+
+		/**
+		 * The meta object literal for the '<em><b>Consumer Count</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute SERVICE_REGISTRATION__CONSUMER_COUNT = eINSTANCE.getServiceRegistration_ConsumerCount();
 
 		/**
 		 * The meta object literal for the '<em><b>Unregister</b></em>' operation.

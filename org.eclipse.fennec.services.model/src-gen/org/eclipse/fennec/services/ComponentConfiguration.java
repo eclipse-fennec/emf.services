@@ -30,7 +30,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getComponentConfiguration()
- * @model annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 failureOnlyWhenFailed='(state = ddsr::ComponentState::FAILED_ACTIVATION) = (failure &lt;&gt; null)'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='failureOnlyWhenFailed'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 failureOnlyWhenFailed='(state.toString() = \'FAILED_ACTIVATION\') = (failure &lt;&gt; null)'"
  * @generated
  */
 @ProviderType

@@ -355,14 +355,19 @@ ACQUISITION §12 Schritt 2+.
 
 ---
 
-### M2 — OCL-Constraints nicht aktiv · status: won't-fix (in MVP)
+### M2 — OCL-Constraints nicht aktiv · status: closed (2026-08-25, Issue #7)
 
 **Symptom.** Die `.ecore` deklariert OCL-Annotations
 (`-- ServiceInterface ist conceptually immutable …` etc.), die
 zur Laufzeit nicht ausgewertet werden.
 
-**Fix-Skizze.** Fennec-OCL einbinden (`org.eclipse.fennec.m2x.ocl`),
-Validation in den Publish-Pfaden aufrufen. Für nach MVP.
+**Auflösung (2026-08-25).** Fennec-OCL ist eingebunden: EPackage mit
+setting-/validationDelegates, kuratierte Invarianten per
+`constraints`-Annotation scharf, `consumerCount` als OCL-derived
+Feature, Engine in den Broker-Launches (ACQUISITION §9 Stand-Nachtrag).
+Bewusst NICHT aktiv: `immutableAfterPublish` (Prosa). Die Publish-Pfade
+rufen Validation noch nicht auf — das bleibt als Governance-Option
+(Hooks, A3), die Invarianten sind über `Diagnostician` nutzbar.
 
 ---
 

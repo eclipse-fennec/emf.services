@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service:ServiceRegistry xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:service="http://eclipse.org/fennec/service/1.0" xsi:schemaLocation="http://eclipse.org/fennec/service/1.0 service.ecore">
+  <services description="This is a payment service" name="PaymentService">
+    <operations name="canHandle" description="Validates, if this service can be handled by the consumer">
+      <eParameters name="properties"/>
+    </operations>
+    <operations name="pay">
+      <eParameters name="paymentRequest"/>
+    </operations>
+    <properties xsi:type="service:StringProperty" name="payment.provider"/>
+    <properties xsi:type="service:StringProperty" name="payment.description"/>
+  </services>
+  <services name="AddressService">
+    <operations name="getAddress">
+      <eParameters name="addressId"/>
+    </operations>
+    <operations name="getAllAddresses"/>
+    <properties xsi:type="service:StringProperty" name="addressbook.id"/>
+  </services>
+</service:ServiceRegistry>

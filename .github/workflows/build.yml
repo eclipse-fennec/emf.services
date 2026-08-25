@@ -1,0 +1,24 @@
+name: CI Build
+
+on:
+  push:
+    # Build-only on every branch EXCEPT main and snapshot (those release/publish via
+    # their dedicated workflows). All other branches only verify.
+    branches-ignore:
+      - main
+      - snapshot
+  pull_request:
+    branches:
+      - '*'
+
+# Least privilege by default; this workflow only reads the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    uses: eclipse-fennec/.github/.github/workflows/reusable-verify.yml@9292fbff296548018fa9e4b0f6ad49ba7c639501 # v1.1.1

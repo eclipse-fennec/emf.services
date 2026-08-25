@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="BrokerImplementations"
+    version="1.0.0"
+    description="DDSR broker implementation registry: publish and withdraw ServiceImplementations.">
+  <operations name="publishImplementation"
+      description="Register a ServiceImplementation. Validates ownership and catalog membership; returns WARNING if any referenced interface is deprecated."
+      exceptions="//@exceptions.0 //@exceptions.1">
+    <parameters name="provider" index="0" type="ServiceProvider"
+        description="The provider that owns the implementation (must contain it)."/>
+    <parameters name="implementation" index="1" type="ServiceImplementation"
+        description="The implementation to publish; MUST be contained in provider.implementations."/>
+    <returnType>Diagnostic</returnType>
+  </operations>
+  <operations name="withdrawImplementation"
+      description="Withdraw a previously published implementation. Provider ownership is verified."
+      exceptions="//@exceptions.0 //@exceptions.2">
+    <parameters name="provider" index="0" type="ServiceProvider"/>
+    <parameters name="implementation" index="1" type="ServiceImplementation"/>
+    <returnType>Diagnostic</returnType>
+  </operations>
+  <exceptions name="ImplementationOwnershipViolation" type="org.eclipse.fennec.services.broker.exception.ImplementationOwnershipViolation"
+      description="Implementation does not belong to the given provider. HTTP 403, code 211."/>
+  <exceptions name="InterfaceNotInCatalog" type="org.eclipse.fennec.services.broker.exception.InterfaceNotInCatalog"
+      description="Referenced ServiceInterface is not present in the catalog. HTTP 422, code 210."/>
+  <exceptions name="ImplementationNotPublished" type="org.eclipse.fennec.services.broker.exception.ImplementationNotPublished"
+      description="Implementation is not currently published. HTTP 404, code 212."/>
+</services:ServiceInterface>

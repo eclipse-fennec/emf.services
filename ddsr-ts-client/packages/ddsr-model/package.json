@@ -1,0 +1,30 @@
+{
+  "name": "@ddsr/model",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DDSR model types generated from ddsr.ecore",
+  "license": "EPL-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "emfts-codegen generate -m model/ddsr.ecore -c model/ddsr.genconfig.xmi -o src -v",
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@emfts/core": "0.1.1-next.18"
+  },
+  "devDependencies": {
+    "@emfts/codegen": "0.0.1-next.8",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.0",
+    "vitest": "^4.0.0",
+    "sax": "^1.4.3"
+  }
+}

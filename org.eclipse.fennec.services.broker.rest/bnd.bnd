@@ -1,0 +1,22 @@
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.servlet;version=latest,\
+	org.osgi.service.jakartars;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.eclipse.fennec.mcp.api;version=latest,\
+	org.eclipse.fennec.mcp.gogo.runtime;version=latest,\
+	org.eclipse.fennec.mcp.gogo.tools;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+-library: enableJakartaREST,\
+	enableEMF
+
+Private-Package: org.eclipse.fennec.services.broker.rest, org.eclipse.fennec.services.broker.rest.internal
+
+-includeresource: \
+	OSGI-INF/configurator/=configs/,\
+	=resources/
+Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'

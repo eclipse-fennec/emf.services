@@ -1,0 +1,138 @@
+plugins {
+  id "org.sonarqube" version "6.2.0.5505"
+  id 'jacoco'
+  id 'java'
+}
+
+// We need to define a repository for the root project, otherwise Jacoco dependencies cannot be resolved
+repositories {
+  mavenCentral()
+}
+
+subprojects {
+
+    //  Apply plugin: 'jacoco' to all submodules JUnit tests are generated as generated/jacoco/test.exec
+    apply plugin: 'jacoco'
+    apply plugin: 'java'
+    // We need to define a repository, otherwise Jacoco dependencies cannot be resolved
+    repositories {
+        mavenCentral()
+    }
+    // Allow gradle to enable JUnit support in submodules
+    // Exclude @Tag("perf") (slow) and @Tag("remote") (needs internet) tests from normal
+    // builds — run via the perfTest / remoteTest tasks.
+    test {
+        useJUnitPlatform {
+            excludeTags 'perf', 'remote'
+        }
+    }
+
+    // Dedicated task for the slow scaling tests (@Tag("perf"), kept out of the fast build).
+    // Their STRUCTURAL assertions (document counts and block sizes at scale — deterministic) DO
+    // gate; timing is only logged, so this task is safe to fail the build on a real regression.
+    // The measurements print to stdout, which is the whole point of the suite, so they are shown
+    // without needing --info. Raise the corpus with -Dsearch.perf.scale=N.
+    tasks.register('perfTest', Test) {
+        useJUnitPlatform {
+            includeTags 'perf'
+        }
+        systemProperty 'search.perf.scale', System.getProperty('search.perf.scale', '1')
+        testLogging {
+            showStandardStreams = true
+        }
+    }
+
+    // Dedicated task for tests against PUBLIC endpoints (@Tag("remote")): they validate the
+    // service-client design against real services but depend on internet + third-party uptime,
+    // so they never gate the normal build. Run explicitly: ./gradlew remoteTest
+    tasks.register('remoteTest', Test) {
+        useJUnitPlatform {
+            includeTags 'remote'
+        }
+    }
+
+    // Add JUnit dependencies for modules that have Gradle tests
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.14.2'
+        testImplementation 'org.junit.platform:junit-platform-launcher:1.14.2'
+        testImplementation 'org.mockito:mockito-junit-jupiter:5.23.0'
+        testImplementation 'org.assertj:assertj-core:3.27.7'
+    }
+
+    // Coverage floor: a catastrophic-regression tripwire (e.g. a bundle's tests deleted) wired
+    // into `check`. Conservative baseline of 30% instructions on the hand-written code of the
+    // library bundles that carry plain-JUnit tests — generated code and test-only/OSGi-covered
+    // bundles are out of scope. Ratchet upward as coverage is deliberately raised.
+    // Add each utility's core bundle here as it gains plain-JUnit tests.
+    def coverageFloorBundles = [
+           'org.eclipse.fennec.search',
+           'org.eclipse.fennec.search.suggest'
+    ]
+    afterEvaluate {
+        if (project.name in coverageFloorBundles) {
+            tasks.named('jacocoTestCoverageVerification') {
+                // exclude generated code (ANTLR parser, EMF src-gen models/profiles)
+                def generated = ['**/antlr/**', '**/profile/**', 'org/open/oasis/**']
+                classDirectories.setFrom(files(classDirectories.files.collect {
+                    fileTree(dir: it, exclude: generated)
+                }))
+                violationRules {
+                    rule {
+                        limit {
+                            counter = 'INSTRUCTION'
+                            value = 'COVEREDRATIO'
+                            minimum = 0.30
+                        }
+                    }
+                }
+            }
+            tasks.named('check').configure { dependsOn 'jacocoTestCoverageVerification' }
+        }
+    }
+
+}
+
+
+
+// --- testOSGi may not pass by having run nothing (#35) ------------------------------------
+//
+// bnd launches the framework, tracks bundles carrying a `Test-Cases` header and runs what it
+// finds. When *no* such bundle starts — a broken runtime wiring, a stale resolution — the
+// tracker finds nothing, no report is written, and the task exits 0. A green build that
+// tested nothing is worse than a red one: it removes the only signal that would have caught
+// the wiring. So every testOSGi run has to leave a report behind, and that report has to
+// contain at least one test.
+subprojects {
+    tasks.matching { it.name == 'testOSGi' }.configureEach {
+        // The reports of the previous run go first: a guard that would accept yesterday's
+        // report is the same silent green with an extra step.
+        doFirst {
+            delete fileTree(dir: "${projectDir}/generated/test-reports/testOSGi",
+                    include: 'TEST-*.xml')
+        }
+        doLast {
+            def reports = fileTree(dir: "${projectDir}/generated/test-reports/testOSGi",
+                    include: 'TEST-*.xml')
+            if (reports.isEmpty()) {
+                throw new GradleException("testOSGi of ${project.name} wrote no report, which "
+                        + "means no bundle with Test-Cases ever started — the framework could "
+                        + "not resolve the test bundle. Re-resolve "
+                        + "(./gradlew :${project.name}:resolve.test --rerun-tasks) and read the "
+                        + "launcher output for the missing requirement.")
+            }
+            int total = 0
+            reports.each { report ->
+                def match = (report.text =~ /<testsuite[^>]*\stests="(\d+)"/)
+                if (match) {
+                    total += match[0][1] as int
+                }
+            }
+            if (total == 0) {
+                throw new GradleException("testOSGi of ${project.name} ran 0 tests. The report "
+                        + "exists but the bundle contributed no case — check the Test-Cases "
+                        + "header and whether the test bundle actually started.")
+            }
+            logger.lifecycle("testOSGi of ${project.name}: ${total} test(s) ran")
+        }
+    }
+}

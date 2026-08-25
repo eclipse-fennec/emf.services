@@ -1,0 +1,18 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches:
+      - '*'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    uses: eclipse-fennec/.github/.github/workflows/reusable-dependency-review.yml@9292fbff296548018fa9e4b0f6ad49ba7c639501 # v1.1.1

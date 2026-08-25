@@ -1,0 +1,29 @@
+{
+  "name": "@ddsr/client",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DDSR Client Framework",
+  "license": "EPL-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ddsr/model": "workspace:*",
+    "@emfts/core": "0.1.1-next.18"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "sax": "^1.4.3",
+    "typescript": "~5.8.0",
+    "vitest": "^4.0.0"
+  }
+}

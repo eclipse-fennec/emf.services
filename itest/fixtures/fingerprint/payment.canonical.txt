@@ -1,0 +1,6 @@
+I|Payment|version=1.0.0|status=ACTIVE
+  O|charge|returnType=double
+    p|amount|type=double|index=0|optional=false|defaultValue=
+    p|currency|type=string|index=1|optional=true|defaultValue=EUR
+  O|getBalance|returnType=double
+    p|accountId|type=string|index=0|optional=false|defaultValue=

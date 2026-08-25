@@ -1,0 +1,25 @@
+Bundle-Name: Gecko DDSR Client MQTT Event Transport
+Bundle-Description: \
+	Receives broker lifecycle events over MQTT. One implementation of the \
+	transport-agnostic EventSource from client.java — the SDK does not \
+	change because this bundle exists.
+
+-library: enableEMF
+
+Private-Package: \
+	org.eclipse.fennec.services.client.mqtt.internal
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.paho.client.mqttv3;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+# Plain JUnit: the source takes its subscriber as a constructor argument,
+# so it is exercised without a broker or an OSGi runtime.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

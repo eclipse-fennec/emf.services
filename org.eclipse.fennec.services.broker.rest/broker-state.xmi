@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:RemoteServiceRegistry name="ddsr-broker" kind="REMOTE" implementations="/1/@implementations.0 /3/@implementations.0 /2/@implementations.0" providers="/1 /2 /3">
+    <catalog name="BrokerCatalog" version="1.0.0" description="DDSR broker catalog management: list, add, deprecate, remove ServiceInterface entries.">
+      <operations name="listCatalog" description="Return the current registry snapshot including the catalog." returnType="RemoteServiceRegistry"/>
+      <operations name="addCatalogEntry" description="Add a new ServiceInterface to the catalog. Rejects duplicates by name." returnType="Diagnostic" exceptions="/0/@catalog.0/@exceptions.0">
+        <parameters name="serviceInterface" type="ServiceInterface" description="The interface to add, fully populated."/>
+        <parameters name="requestor" index="1" type="string" optional="true" defaultValue="anonymous" description="Symbolic identity that initiated the change (governance audit)."/>
+      </operations>
+      <operations name="deprecateCatalogEntry" description="Soft-deprecate an existing entry. Existing implementations keep working; new publishes emit a WARNING." returnType="Diagnostic" exceptions="/0/@catalog.0/@exceptions.1">
+        <parameters name="name" type="string" description="Name of the ServiceInterface to deprecate."/>
+        <parameters name="deprecationReason" index="1" type="string" optional="true" description="Free-form reason surfaced in the WARNING diagnostic."/>
+        <parameters name="requestor" index="2" type="string" optional="true" defaultValue="anonymous"/>
+      </operations>
+      <operations name="removeCatalogEntry" description="Strict-Reject removal: rejects while any implementation references the interface." returnType="Diagnostic" exceptions="/0/@catalog.0/@exceptions.1 /0/@catalog.0/@exceptions.2">
+        <parameters name="name" type="string"/>
+        <parameters name="requestor" index="1" type="string" optional="true" defaultValue="anonymous"/>
+      </operations>
+      <exceptions name="CatalogEntryAlreadyExists" description="An entry with the same name already exists. HTTP 409, code 202." type="org.eclipse.fennec.services.broker.exception.CatalogEntryAlreadyExists"/>
+      <exceptions name="CatalogEntryNotFound" description="No entry found for the given name. HTTP 404, code 201." type="org.eclipse.fennec.services.broker.exception.CatalogEntryNotFound"/>
+      <exceptions name="CatalogHasLiveImplementations" description="Cannot remove: live implementations still reference the interface. HTTP 409, code 200." type="org.eclipse.fennec.services.broker.exception.CatalogHasLiveImplementations"/>
+    </catalog>
+    <catalog name="BrokerImplementations" version="1.0.0" description="DDSR broker implementation registry: publish and withdraw ServiceImplementations.">
+      <operations name="publishImplementation" description="Register a ServiceImplementation. Validates ownership and catalog membership; returns WARNING if any referenced interface is deprecated." returnType="Diagnostic" exceptions="/0/@catalog.1/@exceptions.0 /0/@catalog.1/@exceptions.1">
+        <parameters name="provider" type="ServiceProvider" description="The provider that owns the implementation (must contain it)."/>
+        <parameters name="implementation" index="1" type="ServiceImplementation" description="The implementation to publish; MUST be contained in provider.implementations."/>
+      </operations>
+      <operations name="withdrawImplementation" description="Withdraw a previously published implementation. Provider ownership is verified." returnType="Diagnostic" exceptions="/0/@catalog.1/@exceptions.0 /0/@catalog.1/@exceptions.2">
+        <parameters name="provider" type="ServiceProvider"/>
+        <parameters name="implementation" index="1" type="ServiceImplementation"/>
+      </operations>
+      <exceptions name="ImplementationOwnershipViolation" description="Implementation does not belong to the given provider. HTTP 403, code 211." type="org.eclipse.fennec.services.broker.exception.ImplementationOwnershipViolation"/>
+      <exceptions name="InterfaceNotInCatalog" description="Referenced ServiceInterface is not present in the catalog. HTTP 422, code 210." type="org.eclipse.fennec.services.broker.exception.InterfaceNotInCatalog"/>
+      <exceptions name="ImplementationNotPublished" description="Implementation is not currently published. HTTP 404, code 212." type="org.eclipse.fennec.services.broker.exception.ImplementationNotPublished"/>
+    </catalog>
+    <catalog name="BrokerLookup" version="1.0.0" description="DDSR broker consumer-side lookup of ServiceReferences with optional filter and flavor matching.">
+      <operations name="getServiceReferences" description="Return matching ServiceReferences, filtered by interface name, optional LDAP filter, and consumer-supported flavors." returnType="LocalServiceRegistry">
+        <parameters name="interfaceName" type="string" description="Name of the ServiceInterface to look up. Required.">
+          <constraints xsi:type="services:RequiredConstraint"/>
+        </parameters>
+        <parameters name="filter" index="1" type="string" optional="true" description="Optional LDAP filter over service properties."/>
+        <parameters name="flavors" index="2" type="string" optional="true" description="Comma-separated list of FlavorKind values supported by the consumer (REST, MQTT, ...)."/>
+        <parameters name="consumerId" index="3" type="string" optional="true" description="Optional consumer identity for audit / policy attribution."/>
+      </operations>
+    </catalog>
+    <catalog name="Payment" version="1.0.0" description="Payment processing service — charges accounts and reports balances.">
+      <operations name="charge" description="Charge an amount. Returns the remaining balance." returnType="double">
+        <parameters name="amount" type="double" description="Amount to charge."/>
+        <parameters name="currency" index="1" type="string" optional="true" defaultValue="EUR" description="ISO 4217 currency code."/>
+      </operations>
+      <operations name="getBalance" description="Get current account balance." returnType="double">
+        <parameters name="accountId" type="string" description="The account identifier."/>
+      </operations>
+    </catalog>
+  </services:RemoteServiceRegistry>
+  <services:ServiceProvider name="ddsr-broker" version="1.0.0" symbolicName="org.eclipse.fennec.services.broker">
+    <implementations name="ddsr-broker-rest" version="1.0.0" description="Self-publishing entry: the DDSR broker exposes its own catalog/implementations/lookup API." implementationId="org.eclipse.fennec.services.broker.rest" serviceInterfaces="/0/@catalog.0 /0/@catalog.1 /0/@catalog.2">
+      <flavors xsi:type="services:RestFlavor" name="ddsr-broker-rest" host="http://192.168.1.6:8887" basePath="/ddsr/rest">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="listCatalog" operation="/0/@catalog.0/@operations.0" path="/catalog">
+          <produces>application/xml</produces>
+          <returnCodes>200</returnCodes>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="addCatalogEntry" operation="/0/@catalog.0/@operations.1" method="POST" path="/catalog">
+          <produces>application/xml</produces>
+          <returnCodes>200</returnCodes>
+          <returnCodes>409</returnCodes>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="deprecateCatalogEntry" operation="/0/@catalog.0/@operations.2" method="PUT" path="/catalog/{name}/deprecate">
+          <produces>application/xml</produces>
+          <returnCodes>200</returnCodes>
+          <returnCodes>404</returnCodes>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="removeCatalogEntry" operation="/0/@catalog.0/@operations.3" method="DELETE" path="/catalog/{name}">
+          <produces>application/xml</produces>
+          <returnCodes>200</returnCodes>
+          <returnCodes>404</returnCodes>
+          <returnCodes>409</returnCodes>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="publishImplementation" operation="/0/@catalog.1/@operations.0" method="POST" path="/implementations">
+          <produces>application/xml</produces>
+          <returnCodes>200</returnCodes>
+          <returnCodes>403</returnCodes>
+          <returnCodes>422</returnCodes>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="withdrawImplementation" operation="/0/@catalog.1/@operations.1" method="DELETE" path="/implementations">
+          <produces>application/xml</produces>
+          <returnCodes>200</returnCodes>
+          <returnCodes>403</returnCodes>
+          <returnCodes>404</returnCodes>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getServiceReferences" operation="/0/@catalog.2/@operations.0" path="/references">
+          <produces>application/xml</produces>
+          <returnCodes>200</returnCodes>
+          <returnCodes>400</returnCodes>
+        </operationFlavors>
+        <contentTypes>application/xml</contentTypes>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceProvider name="payments-java" version="1.0.0" symbolicName="org.eclipse.fennec.services.examples.payment">
+    <implementations name="payments-java-rest" version="1.0.0" description="Java reference Payment implementation" implementationId="org.eclipse.fennec.services.examples.payment.rest" serviceInterfaces="/0/@catalog.3">
+      <flavors xsi:type="services:RestFlavor" name="payments-java-rest" host="http://192.168.1.6:9091" basePath="/payments">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="charge" operation="/0/@catalog.3/@operations.0" method="POST" path="/charge">
+          <produces>application/json</produces>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getBalance" operation="/0/@catalog.3/@operations.1" path="/balance">
+          <produces>application/json</produces>
+        </operationFlavors>
+        <contentTypes>application/json</contentTypes>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceProvider name="payments-ts" version="1.0.0" symbolicName="ddsr.example.payments.ts">
+    <implementations name="payments-ts-rest" version="1.0.0" description="TypeScript Payment service implementation" implementationId="ddsr.example.payments.ts.rest" serviceInterfaces="/0/@catalog.3">
+      <flavors xsi:type="services:RestFlavor" name="payments-ts-rest" host="http://192.168.1.5:9090" basePath="/payments">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="charge" operation="/0/@catalog.3/@operations.0" method="POST" path="/charge"/>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getBalance" operation="/0/@catalog.3/@operations.1" path="/balance"/>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+</xmi:XMI>

@@ -1,0 +1,33 @@
+name: Release Build
+
+on:
+  push:
+    branches:
+      - main
+
+# Workflow-level ceiling for the called reusables. Only the docs deploy needs the
+# pages/id-token scopes; the credential-scoped release step gets its secrets via
+# `secrets: inherit` below (verify + docs never see them).
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: eclipse-fennec/.github/.github/workflows/reusable-verify.yml@9292fbff296548018fa9e4b0f6ad49ba7c639501 # v1.1.1
+
+  release:
+    needs: verify
+    uses: eclipse-fennec/.github/.github/workflows/reusable-release.yml@9292fbff296548018fa9e4b0f6ad49ba7c639501 # v1.1.1
+    with:
+      do-release: true
+    secrets: inherit
+
+  docs:
+    needs: release
+    uses: eclipse-fennec/.github/.github/workflows/reusable-docs.yml@9292fbff296548018fa9e4b0f6ad49ba7c639501 # v1.1.1

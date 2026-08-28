@@ -9,7 +9,6 @@
 // GitHub. The full documentation buildout is tracked in issue #5.
 export const GUIDES = [
   { file: 'GETTING_STARTED.md', slug: 'getting-started', title: 'Getting started' },
-  { file: 'REQUIREMENTS.md', slug: 'requirements', title: 'Vision & Requirements' },
   { file: 'ARCHITECTURE.md', slug: 'architecture', title: 'Architecture' },
   { file: 'WIRE_FORMAT.md', slug: 'wire-format', title: 'Wire format reference' },
   { file: 'FINGERPRINTS.md', slug: 'fingerprints', title: 'Fingerprints (sd1/im1)' },

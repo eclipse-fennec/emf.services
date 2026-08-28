@@ -166,5 +166,5 @@ Die Features bauen aufeinander auf. Vorgeschlagene Reihenfolge:
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — heutiger Stand des Brokers, insb. §2.6 (Dedup, Reindex)
 - [WIRE_CHANNELS.md](WIRE_CHANNELS.md) — Channel-Modell, Stream-Termination, Capability/Requirement-System
-- [OPEN_ISSUES.md](OPEN_ISSUES.md) — A1 (SSE/Event-Stream), C2 (provider-aware lookup), C3 (stale providers)
-- [REQUIREMENTS.md](REQUIREMENTS.md) — Stufe-2-DoD und Cross-Language-Demo-Flow
+- OPEN_ISSUES.md — A1 (SSE/Event-Stream), C2 (provider-aware lookup), C3 (stale providers)
+- REQUIREMENTS.md — Stufe-2-DoD und Cross-Language-Demo-Flow

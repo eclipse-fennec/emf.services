@@ -1,0 +1,30 @@
+{
+  "name": "@ddsr/stubs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Typed stubs generated from the DDSR service catalog",
+  "license": "EPL-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "ddsr-codegen --catalog catalog/services-catalog.xmi --out . --name @ddsr/stubs",
+    "generate:broker": "ddsr-codegen --broker http://localhost:8887/ddsr/rest --out . --name @ddsr/stubs",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@ddsr/client": "workspace:*",
+    "@ddsr/model": "workspace:*"
+  },
+  "devDependencies": {
+    "@ddsr/codegen": "workspace:*",
+    "typescript": "~5.8.0",
+    "vitest": "^4.0.0",
+    "sax": "^1.4.3"
+  }
+}

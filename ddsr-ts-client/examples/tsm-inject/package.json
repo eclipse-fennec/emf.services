@@ -1,0 +1,23 @@
+{
+  "name": "@ddsr/example-tsm-inject",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Injecting a generated remote contract into a TSM component",
+  "scripts": {
+    "start": "tsx main.ts"
+  },
+  "dependencies": {
+    "@ddsr/client": "workspace:*",
+    "@ddsr/flavor-rest": "workspace:*",
+    "@ddsr/model": "workspace:*",
+    "@ddsr/stubs": "workspace:*",
+    "@ddsr/tsm": "workspace:*",
+    "@eclipse-daanse/tsm": "0.1.0-next.1",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.21.0"
+  }
+}

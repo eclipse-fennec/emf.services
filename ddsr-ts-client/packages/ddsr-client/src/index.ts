@@ -25,6 +25,7 @@ export { DdsrClientError, DdsrTransportError } from './api/errors';
 export { DdsrClientImpl } from './internal/ddsr-client-impl';
 export type { DdsrClientOptions } from './internal/ddsr-client-impl';
 export { ServiceLocatorImpl } from './proxy/service-locator-impl';
+export { serviceProxy } from './proxy/service-proxy';
 export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http';
 // One runtime, one identity: a caller that builds both a client and a
 // flavor plugin needs the same origin token in both, and the token is

@@ -23,6 +23,23 @@ import type { ServiceInterface } from '@ddsr/model';
 import { fingerprint, serializeToXmi } from '@ddsr/client';
 import { emitProvider, emitConsumer } from '../src/emit';
 import { interfacesOf } from '../src/catalog';
+import type * as PaymentStub from '@ddsr/stubs';
+
+/**
+ * The exports a generated module carries, taken from the stubs checked
+ * in under packages/ddsr-stubs — same catalog, same emitter. Typing the
+ * dynamic imports against them turns a slip in this file into a compile
+ * error, and holds freshly generated code to the shape the checked-in
+ * one has.
+ */
+type GeneratedProviderModule = Pick<
+  typeof PaymentStub,
+  'buildPaymentInterface' | 'PaymentOperationNames'
+>;
+type GeneratedConsumerModule = Pick<
+  typeof PaymentStub,
+  'PaymentInterfaceName' | 'PaymentVersion' | 'PaymentFingerprint'
+>;
 
 const factory = DDSRFactory.eINSTANCE;
 // Inside the package, not in /tmp: the generated code imports @ddsr/model,
@@ -50,10 +67,10 @@ function fromCatalog(name: string): ServiceInterface {
 const paymentInterface = () => fromCatalog('Payment');
 
 /** Write generated source into the workspace and import it. */
-async function load(source: string, name: string): Promise<Record<string, any>> {
+async function load<T>(source: string, name: string): Promise<T> {
   const file = join(workspace, name);
   writeFileSync(file, source, 'utf8');
-  return import(pathToFileURL(file).href);
+  return await import(pathToFileURL(file).href) as T;
 }
 
 describe('generated provider code reproduces the contract', () => {
@@ -62,8 +79,8 @@ describe('generated provider code reproduces the contract', () => {
     const expected = fingerprint(original);
 
     const generated = emitProvider(original);
-    const module = await load(generated.content, 'PaymentProvider.ts');
-    const rebuilt = module.buildPaymentInterface() as ServiceInterface;
+    const module = await load<GeneratedProviderModule>(generated.content, 'PaymentProvider.ts');
+    const rebuilt = module.buildPaymentInterface();
 
     // The point of generating this rather than writing it: a detail that
     // drifts from the catalog changes the fingerprint, and consumers
@@ -75,12 +92,12 @@ describe('generated provider code reproduces the contract', () => {
     const original = paymentInterface();
     const fromWire = interfacesOf(serializeToXmi(original as never))[0];
 
-    const module = await load(emitProvider(fromWire).content, 'WireProvider.ts');
+    const module = await load<GeneratedProviderModule>(emitProvider(fromWire).content, 'WireProvider.ts');
     expect(fingerprint(module.buildPaymentInterface())).toBe(fingerprint(original));
   });
 
   it('names the operations it declares', async () => {
-    const module = await load(emitProvider(paymentInterface()).content, 'NamesProvider.ts');
+    const module = await load<GeneratedProviderModule>(emitProvider(paymentInterface()).content, 'NamesProvider.ts');
     expect(module.PaymentOperationNames).toEqual(['charge', 'getBalance']);
   });
 });
@@ -88,7 +105,7 @@ describe('generated provider code reproduces the contract', () => {
 describe('generated consumer code', () => {
   it('carries the fingerprint of the contract it was generated from', async () => {
     const original = paymentInterface();
-    const module = await load(emitConsumer(original).content, 'Payment.ts');
+    const module = await load<GeneratedConsumerModule>(emitConsumer(original).content, 'Payment.ts');
 
     expect(module.PaymentFingerprint).toBe(fingerprint(original));
     expect(module.PaymentInterfaceName).toBe('Payment');

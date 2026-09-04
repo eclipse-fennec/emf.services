@@ -21,6 +21,22 @@ import { fingerprint, serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer, ServiceLocator } from '@ddsr/client';
 import { emitConsumer } from '../src/emit';
 import { interfacesOf } from '../src/catalog';
+import type * as PaymentStub from '@ddsr/stubs';
+
+/**
+ * What a generated consumer module exports, taken from the stubs
+ * checked in under packages/ddsr-stubs — generated from this same
+ * catalog by this same emitter.
+ *
+ * Typing the dynamic import against it does two things: a slip in this
+ * file is a compile error rather than a surprise at run time, and the
+ * freshly generated code is held to the shape the checked-in one has.
+ * If a change here made the two diverge, this stops compiling.
+ */
+type GeneratedPaymentModule = Pick<
+  typeof PaymentStub,
+  'getPayment' | 'PaymentInterfaceName' | 'PaymentVersion' | 'PaymentFingerprint'
+>;
 
 const factory = DDSRFactory.eINSTANCE;
 const here = dirname(fileURLToPath(import.meta.url));
@@ -44,10 +60,10 @@ function paymentInterface(): ServiceInterface {
   return payment;
 }
 
-async function loadGenerated(contract: ServiceInterface, name: string): Promise<Record<string, any>> {
+async function loadGenerated(contract: ServiceInterface, name: string): Promise<GeneratedPaymentModule> {
   const file = join(workspace, name);
   writeFileSync(file, emitConsumer(contract).content, 'utf8');
-  return import(pathToFileURL(file).href);
+  return await import(pathToFileURL(file).href) as GeneratedPaymentModule;
 }
 
 /**
@@ -85,7 +101,7 @@ describe('a call through the generated consumer', () => {
     const module = await loadGenerated(contract, 'Payment.ts');
 
     const payment = await module.getPayment(consumer);
-    const answer = await payment.charge(4200, 'EUR');
+    const answer = await payment!.charge(4200, 'EUR');
 
     // The positional-to-named mapping is the whole point. Written by
     // hand, this file once declared charge(amount, accountId) — and an
@@ -100,7 +116,7 @@ describe('a call through the generated consumer', () => {
     const module = await loadGenerated(contract, 'PaymentOptional.ts');
 
     const payment = await module.getPayment(consumer);
-    await payment.charge(99);
+    await payment!.charge(99);
 
     expect(invoke).toHaveBeenCalledWith('charge', { amount: 99 });
   });

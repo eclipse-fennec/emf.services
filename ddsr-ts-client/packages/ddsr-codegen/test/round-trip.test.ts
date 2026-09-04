@@ -12,13 +12,12 @@
  ********************************************************************/
 
 import { afterAll, describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 import { DDSRFactory } from '@ddsr/model';
 import type { ServiceInterface } from '@ddsr/model';
 import { fingerprint, serializeToXmi } from '@ddsr/client';
@@ -28,44 +27,27 @@ import { interfacesOf } from '../src/catalog';
 const factory = DDSRFactory.eINSTANCE;
 // Inside the package, not in /tmp: the generated code imports @ddsr/model,
 // and module resolution only finds it from within the workspace.
-const workspace = mkdtempSync(join(__dirname, '.generated-'));
+const here = dirname(fileURLToPath(import.meta.url));
+const workspace = mkdtempSync(join(here, '.generated-'));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
-/** A contract with the shapes that matter: optional, ordered, documented. */
-function paymentInterface(): ServiceInterface {
-  const serviceInterface = factory.createServiceInterface();
-  serviceInterface.name = 'Payment';
-  serviceInterface.version = '1.0.0';
-  serviceInterface.description = 'Payment processing service.';
-
-  const charge = factory.createServiceOperation();
-  charge.name = 'charge';
-  charge.returnType = 'double';
-  charge.description = 'Charge an amount.';
-  const amount = factory.createParameter();
-  amount.name = 'amount';
-  amount.type = 'double';
-  charge.parameters.push(amount);
-  const currency = factory.createParameter();
-  currency.name = 'currency';
-  currency.type = 'string';
-  currency.index = 1;
-  currency.optional = true;
-  currency.defaultValue = 'EUR';
-  charge.parameters.push(currency);
-  serviceInterface.operations.push(charge);
-
-  const balance = factory.createServiceOperation();
-  balance.name = 'getBalance';
-  balance.returnType = 'double';
-  const accountId = factory.createParameter();
-  accountId.name = 'accountId';
-  accountId.type = 'string';
-  balance.parameters.push(accountId);
-  serviceInterface.operations.push(balance);
-
-  return serviceInterface;
+/**
+ * Contracts as the broker published them, read from the catalog document
+ * checked in beside the generated stubs.
+ *
+ * Not rebuilt here: a contract typed out in a test only ever proves the
+ * generator agrees with the test author. Payment carries what matters —
+ * an optional parameter, an explicit index, documentation.
+ */
+function fromCatalog(name: string): ServiceInterface {
+  const catalog = readFileSync(
+    join(here, '..', '..', 'ddsr-stubs', 'catalog', 'services-catalog.xmi'), 'utf8');
+  const found = interfacesOf(catalog).find(entry => entry.name === name);
+  if (!found) throw new Error(`the catalog document holds no ${name} interface`);
+  return found;
 }
+
+const paymentInterface = () => fromCatalog('Payment');
 
 /** Write generated source into the workspace and import it. */
 async function load(source: string, name: string): Promise<Record<string, any>> {
@@ -126,23 +108,12 @@ describe('generated consumer code', () => {
 
   it('imports a model type once, even when an operation also takes it', () => {
     // BrokerCatalog.addCatalogEntry(serviceInterface: ServiceInterface)
-    // put ServiceInterface into the imports while the provider file
+    // puts ServiceInterface into the imports, while the provider file
     // always needs it for the return type of build<Name>Interface().
-    const serviceInterface = factory.createServiceInterface();
-    serviceInterface.name = 'Catalog';
-    const add = factory.createServiceOperation();
-    add.name = 'addCatalogEntry';
-    add.returnType = 'Diagnostic';
-    const entry = factory.createParameter();
-    entry.name = 'serviceInterface';
-    entry.type = 'ServiceInterface';
-    add.parameters.push(entry);
-    serviceInterface.operations.push(add);
-
-    const source = emitProvider(serviceInterface).content;
+    const source = emitProvider(fromCatalog('BrokerCatalog')).content;
     const importLine = source.split('\n').find(line => line.startsWith('import type'))!;
 
-    expect(importLine).toBe("import type { Diagnostic, ServiceInterface } from '@ddsr/model';");
-    expect(importLine.match(/ServiceInterface/g)).toHaveLength(1);
+    expect(importLine.match(/\bServiceInterface\b/g)).toHaveLength(1);
+    expect(importLine).toContain('Diagnostic');
   });
 });

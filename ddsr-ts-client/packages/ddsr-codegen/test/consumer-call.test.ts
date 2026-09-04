@@ -12,7 +12,7 @@
  ********************************************************************/
 
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DDSRFactory } from '@ddsr/model';
@@ -20,6 +20,7 @@ import type { ServiceInterface } from '@ddsr/model';
 import { fingerprint, serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer, ServiceLocator } from '@ddsr/client';
 import { emitConsumer } from '../src/emit';
+import { interfacesOf } from '../src/catalog';
 
 const factory = DDSRFactory.eINSTANCE;
 const here = dirname(fileURLToPath(import.meta.url));
@@ -27,30 +28,20 @@ const workspace = mkdtempSync(join(here, '.generated-'));
 afterAll(() => rmSync(workspace, { recursive: true, force: true }));
 
 /**
- * The contract as the broker's catalog has it: the second parameter of
- * charge is a currency, and it is optional.
+ * The Payment contract as the broker actually published it.
+ *
+ * Read from the catalog document checked in beside the generated stubs
+ * rather than rebuilt here. A contract typed out in a test is an
+ * assumption about the catalog, and an assumption is what put an account
+ * id where a currency belongs in the first place — a test carrying its
+ * own copy of the mistake would have agreed with it.
  */
 function paymentInterface(): ServiceInterface {
-  const serviceInterface = factory.createServiceInterface();
-  serviceInterface.name = 'Payment';
-  serviceInterface.version = '1.0.0';
-
-  const charge = factory.createServiceOperation();
-  charge.name = 'charge';
-  charge.returnType = 'double';
-  const amount = factory.createParameter();
-  amount.name = 'amount';
-  amount.type = 'double';
-  charge.parameters.push(amount);
-  const currency = factory.createParameter();
-  currency.name = 'currency';
-  currency.type = 'string';
-  currency.index = 1;
-  currency.optional = true;
-  charge.parameters.push(currency);
-  serviceInterface.operations.push(charge);
-
-  return serviceInterface;
+  const catalog = readFileSync(
+    join(here, '..', '..', 'ddsr-stubs', 'catalog', 'services-catalog.xmi'), 'utf8');
+  const payment = interfacesOf(catalog).find(entry => entry.name === 'Payment');
+  if (!payment) throw new Error('the catalog document holds no Payment interface');
+  return payment;
 }
 
 async function loadGenerated(contract: ServiceInterface, name: string): Promise<Record<string, any>> {

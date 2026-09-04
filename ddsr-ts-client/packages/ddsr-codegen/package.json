@@ -24,6 +24,8 @@
   },
   "devDependencies": {
     "@ddsr/stubs": "workspace:*",
+    "@ddsr/tsm": "workspace:*",
+    "@eclipse-daanse/tsm": "0.1.0-next.1",
     "@types/node": "^24.13.3",
     "typescript": "~5.8.0",
     "vitest": "^4.0.0",

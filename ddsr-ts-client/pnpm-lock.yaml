@@ -116,6 +116,12 @@ importers:
       '@ddsr/stubs':
         specifier: workspace:*
         version: link:../ddsr-stubs
+      '@ddsr/tsm':
+        specifier: workspace:*
+        version: link:../ddsr-tsm
+      '@eclipse-daanse/tsm':
+        specifier: 0.1.0-next.1
+        version: 0.1.0-next.1
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3

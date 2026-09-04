@@ -26,6 +26,7 @@ import type { FlavorPlugin } from '../api/flavor-plugin';
 import type { DdsrServiceListener } from '../api/service-listener';
 import { ServiceLocatorImpl } from '../proxy/service-locator-impl';
 import type { LocatorTracking, ResolvedRegistration } from '../proxy/service-locator-impl';
+import { serviceProxy } from '../proxy/service-proxy';
 import { ServiceListenerRegistry } from './service-listener-registry';
 import type { BrokerHttp } from './broker-http';
 import { eClassName, toArray } from './emf-util';
@@ -196,30 +197,7 @@ export class DdsrConsumerImpl implements DdsrConsumer {
   async getService<T>(interfaceName: string, filter?: string): Promise<T | undefined> {
     const locator = await this.findOne(interfaceName, filter);
     if (!locator) return undefined;
-
-    // Proxy that maps method calls to invoke(); 'then' and symbols are
-    // guarded so awaiting the proxy is safe.
-    return new Proxy<object>({}, {
-      get: (_target, prop) => {
-        if (typeof prop !== 'string' || prop === 'then') return undefined;
-        return (...args: unknown[]) => {
-          const operation = toArray<{ name?: string; parameters?: unknown }>(
-            locator.serviceInterface.operations
-          ).find(o => o.name === prop);
-          const params: Record<string, unknown> = {};
-          if (operation) {
-            const parameters = toArray<{ name?: string }>(operation.parameters);
-            for (let i = 0; i < parameters.length && i < args.length; i++) {
-              const name = parameters[i].name;
-              if (name) params[name] = args[i];
-            }
-          } else if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
-            Object.assign(params, args[0]);
-          }
-          return locator.invoke(prop, params);
-        };
-      },
-    }) as unknown as T;
+    return serviceProxy<T>(locator);
   }
 
   /**

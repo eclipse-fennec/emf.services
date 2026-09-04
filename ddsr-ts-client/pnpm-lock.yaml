@@ -79,6 +79,37 @@ importers:
         specifier: ^4.21.0
         version: 4.22.3
 
+  examples/tsm-inject:
+    dependencies:
+      '@ddsr/client':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-client
+      '@ddsr/flavor-rest':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-flavor-rest
+      '@ddsr/model':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-model
+      '@ddsr/stubs':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-stubs
+      '@ddsr/tsm':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-tsm
+      '@eclipse-daanse/tsm':
+        specifier: 0.1.0-next.1
+        version: 0.1.0-next.1
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      tsx:
+        specifier: ^4.21.0
+        version: 4.22.3
+
   packages/ddsr-client:
     dependencies:
       '@ddsr/model':

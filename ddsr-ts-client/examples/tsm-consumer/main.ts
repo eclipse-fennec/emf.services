@@ -25,6 +25,7 @@
 
 import { ModuleLoader } from '@eclipse-daanse/tsm';
 import { pathToFileURL } from 'node:url';
+import { DdsrClientService } from '@ddsr/tsm';
 import { Payment } from './contracts';
 import { stub } from './broker-stub-instance';
 
@@ -50,6 +51,7 @@ async function main(): Promise<void> {
   await loader.loadAll();
 
   const registry = loader.getServiceRegistry();
+  const client = registry.getRequired(DdsrClientService);
   const active = () => loader.getManifests()
     .map(m => `${m.id}=${loader.isLoaded(m.id) ? 'active' : 'waiting'}`).join('  ');
 
@@ -59,7 +61,14 @@ async function main(): Promise<void> {
   console.log('picked  :', JSON.stringify(
     registry.getServiceReferences(String(Payment))[0]?.properties ?? {}, null, 0));
 
-  if (!stub) return;
+  if (!stub) {
+    // Against a real broker the provider is not ours to stop, so the
+    // withdraw/restore part below is left to the stub. The mirror would
+    // handle it just the same — that is the point of it.
+    say('done (start and stop the Java provider to watch the module follow)');
+    await client.close();
+    process.exit(0);
+  }
 
   // The provider shuts down. Nobody tells the consumer module: the
   // registry withdraws the service and the loader stops it.

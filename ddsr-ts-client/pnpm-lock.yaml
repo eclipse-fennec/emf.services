@@ -113,6 +113,9 @@ importers:
         specifier: workspace:*
         version: link:../ddsr-model
     devDependencies:
+      '@ddsr/stubs':
+        specifier: workspace:*
+        version: link:../ddsr-stubs
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3

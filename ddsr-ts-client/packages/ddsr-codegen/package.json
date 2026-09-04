@@ -15,13 +15,15 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json"
   },
   "dependencies": {
     "@ddsr/client": "workspace:*",
     "@ddsr/model": "workspace:*"
   },
   "devDependencies": {
+    "@ddsr/stubs": "workspace:*",
     "@types/node": "^24.13.3",
     "typescript": "~5.8.0",
     "vitest": "^4.0.0",

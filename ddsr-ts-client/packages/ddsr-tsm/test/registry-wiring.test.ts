@@ -15,7 +15,8 @@ import { describe, expect, it } from 'vitest';
 import { DefaultServiceRegistry } from '@eclipse-daanse/tsm';
 import type { DdsrClient, FlavorPlugin } from '@ddsr/client';
 import { DdsrClientService, FlavorPluginService } from '../src/contracts';
-import { flavorPluginsFrom, publishClient, publishFlavorPlugin } from '../src/registry-wiring';
+import { bindFlavorPlugins, flavorPluginsFrom, publishClient, publishFlavorPlugin } from '../src/registry-wiring';
+import type { FlavorSink } from '../src/registry-wiring';
 
 function plugin(kind: string): FlavorPlugin {
   return {
@@ -60,5 +61,61 @@ describe('DDSR services in a TSM registry', () => {
 
     registration.unregister();
     expect(registry.get(DdsrClientService)).toBeUndefined();
+  });
+
+  describe('a client kept in step with the registry', () => {
+    /** Records what a client would be told, in order. */
+    function recordingClient() {
+      const kinds: string[] = [];
+      const sink: FlavorSink = {
+        flavorAvailable: (p) => kinds.push(`+${p.flavorKind}`),
+        flavorUnavailable: (p) => kinds.push(`-${p.flavorKind}`),
+      };
+      return { sink, kinds };
+    }
+
+    it('hands over what is already there', () => {
+      const registry = new DefaultServiceRegistry();
+      publishFlavorPlugin(registry, plugin('REST'));
+      const { sink, kinds } = recordingClient();
+
+      bindFlavorPlugins(registry, sink);
+
+      expect(kinds).toEqual(['+REST']);
+    });
+
+    it('a plugin registered afterwards still reaches the client', () => {
+      const registry = new DefaultServiceRegistry();
+      const { sink, kinds } = recordingClient();
+      bindFlavorPlugins(registry, sink);
+
+      // The race a snapshot loses: the plugin module activated second.
+      publishFlavorPlugin(registry, plugin('MQTT'));
+
+      expect(kinds).toEqual(['+MQTT']);
+    });
+
+    it('a withdrawn plugin is taken back', () => {
+      const registry = new DefaultServiceRegistry();
+      const registration = publishFlavorPlugin(registry, plugin('MQTT'));
+      const { sink, kinds } = recordingClient();
+      bindFlavorPlugins(registry, sink);
+
+      registration.unregister();
+
+      expect(kinds).toEqual(['+MQTT', '-MQTT']);
+    });
+
+    it('detaching stops the updates and keeps what the client has', () => {
+      const registry = new DefaultServiceRegistry();
+      publishFlavorPlugin(registry, plugin('REST'));
+      const { sink, kinds } = recordingClient();
+      const detach = bindFlavorPlugins(registry, sink);
+
+      detach();
+      publishFlavorPlugin(registry, plugin('MQTT'));
+
+      expect(kinds).toEqual(['+REST']);
+    });
   });
 });

@@ -162,6 +162,46 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     return locators[0];
   }
 
+  /**
+   * A flavor plugin arrived after the client was built — from a module
+   * that loaded later, or a registry that discovered it.
+   *
+   * The plugin list is read on every find() rather than frozen at
+   * construction, so a late arrival takes effect at once; what has to
+   * come with it is `supportedFlavors`, which goes to the broker as the
+   * filter deciding which implementations are worth returning. Left
+   * behind, the broker would keep answering against the old set and the
+   * new transport would never see a service to talk to.
+   *
+   * The mirror of ProviderImpl's late transport binding, and named after
+   * it: the arrival of a capability has to be acted on, because a
+   * consumer may already be waiting on it.
+   */
+  flavorAvailable(plugin: FlavorPlugin): void {
+    if (this.flavorPlugins.includes(plugin)) return;
+    this.flavorPlugins.push(plugin);
+    if (plugin.flavorKind && !this.supportedFlavors.includes(plugin.flavorKind)) {
+      this.supportedFlavors.push(plugin.flavorKind);
+    }
+  }
+
+  /**
+   * The plugin is gone — its module was unloaded, or its registration
+   * withdrawn. Its kind stops being offered to the broker unless another
+   * plugin still handles it.
+   */
+  flavorUnavailable(plugin: FlavorPlugin): void {
+    const at = this.flavorPlugins.indexOf(plugin);
+    if (at < 0) return;
+    this.flavorPlugins.splice(at, 1);
+
+    const stillHandled = this.flavorPlugins.some(p => p.flavorKind === plugin.flavorKind);
+    if (!stillHandled) {
+      const kindAt = this.supportedFlavors.indexOf(plugin.flavorKind);
+      if (kindAt >= 0) this.supportedFlavors.splice(kindAt, 1);
+    }
+  }
+
   addServiceListener(
     interfaceName: string,
     filter: string | undefined,

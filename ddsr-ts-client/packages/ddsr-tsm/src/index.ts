@@ -12,6 +12,7 @@
  ********************************************************************/
 
 export { DdsrClientService, FlavorPluginService, remoteServiceId } from './contracts';
-export { publishClient, publishFlavorPlugin, flavorPluginsFrom } from './registry-wiring';
+export { publishClient, publishFlavorPlugin, flavorPluginsFrom, bindFlavorPlugins } from './registry-wiring';
+export type { FlavorSink } from './registry-wiring';
 export { mirrorRemoteServices } from './remote-mirror';
 export type { RemoteMirror, RemoteMirrorOptions } from './remote-mirror';

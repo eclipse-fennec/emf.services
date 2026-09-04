@@ -11,7 +11,9 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { ServiceRegistration, ServiceRegistry } from '@eclipse-daanse/tsm';
+import type {
+  ObservableServiceRegistry, ServiceRegistration, ServiceRegistry, ServiceRegistryListener,
+} from '@eclipse-daanse/tsm';
 import type { DdsrClient, FlavorPlugin } from '@ddsr/client';
 import { DdsrClientService, FlavorPluginService } from './contracts';
 
@@ -52,18 +54,70 @@ export function publishFlavorPlugin(
 }
 
 /**
- * The flavor plugins a registry currently holds, for the client's
- * `flavorPlugins` option — the discovery the SPI comment on
- * FlavorPlugin describes.
+ * The flavor plugins a registry currently holds — a snapshot, for the
+ * client's `flavorPlugins` option at construction time.
  *
- * A snapshot: a plugin registered later is not in a client already
- * built from it. That is the honest shape for an option read once at
- * construction; a client that picks up flavors as they arrive needs the
- * client itself to hold the registry, which is a change to @ddsr/client
- * rather than to this package.
+ * For a client that should keep up with plugins arriving and leaving,
+ * use {@link bindFlavorPlugins} instead.
  */
 export function flavorPluginsFrom(registry: ServiceRegistry, target?: string): FlavorPlugin[] {
   return target
     ? registry.getServices(FlavorPluginService, target)
     : registry.getServices(FlavorPluginService);
+}
+
+/** What a client has to offer to be fed plugins as they come and go. */
+export interface FlavorSink {
+  flavorAvailable(plugin: FlavorPlugin): void;
+  flavorUnavailable(plugin: FlavorPlugin): void;
+}
+
+/**
+ * Keep a client's flavor plugins in step with the registry: hand over
+ * what is there now, then everything that arrives, and take back what
+ * goes away.
+ *
+ * This is what the Java client does through Declarative Services, where
+ * `bindEventSource()` is a bind method rather than an injected field
+ * precisely because "the arrival of a transport has to be acted on: a
+ * listener may already be registered and waiting". The registry plays
+ * the part DS plays there; the client learns nothing about either.
+ *
+ * Ordering is why this matters. A plugin module and the module holding
+ * the client are separate units, so either can win the race — and with
+ * a snapshot the loser's plugins are lost without a sound.
+ *
+ * @returns a detach function; it stops listening and leaves the client
+ *          with the plugins it currently has.
+ */
+export function bindFlavorPlugins(
+  registry: ServiceRegistry,
+  client: FlavorSink,
+  options: { target?: string } = {}
+): () => void {
+  for (const plugin of flavorPluginsFrom(registry, options.target)) {
+    client.flavorAvailable(plugin);
+  }
+
+  const observable = registry as ServiceRegistry & Partial<ObservableServiceRegistry>;
+  if (typeof observable.addListener !== 'function') {
+    // A registry that reports nothing leaves us with the snapshot — the
+    // plugins present now still work, later ones cannot be noticed.
+    return () => {};
+  }
+
+  const listener: ServiceRegistryListener = {
+    onServiceEvent: (event) => {
+      if (event.serviceId !== FlavorPluginService) return;
+      const plugin = event.service as FlavorPlugin | undefined;
+      if (!plugin) return;
+      if (event.type === 'registered' || event.type === 'updated') {
+        client.flavorAvailable(plugin);
+      } else if (event.type === 'unregistered' || event.type === 'modified-endmatch') {
+        client.flavorUnavailable(plugin);
+      }
+    },
+  };
+  observable.addListener(listener, options.target ? { filter: options.target } : {});
+  return () => observable.removeListener?.(listener);
 }

@@ -28,6 +28,13 @@ export interface RemoteMirrorOptions {
   id?: string;
   /** LDAP filter, passed to the broker and kept for the listener. */
   filter?: string;
+  /**
+   * An sd1 fingerprint. With it the broker returns only implementations
+   * whose contract hashes to exactly this, so what lands in the registry
+   * answers to the contract the consumer was built against - a provider
+   * that has since changed its operations is not mirrored at all.
+   */
+  fingerprint?: string;
   log?: (message: string) => void;
 }
 
@@ -69,7 +76,7 @@ export interface RemoteMirror {
  * `addServiceListener`.
  */
 export async function mirrorRemoteServices(options: RemoteMirrorOptions): Promise<RemoteMirror> {
-  const { registry, consumer, interfaceName, filter } = options;
+  const { registry, consumer, interfaceName, filter, fingerprint } = options;
   const id = options.id ?? remoteServiceId(interfaceName);
   const log = options.log ?? ((m: string) => console.error(`[ddsr-tsm] ${m}`));
 
@@ -99,7 +106,7 @@ export async function mirrorRemoteServices(options: RemoteMirrorOptions): Promis
   }
 
   async function refresh(): Promise<void> {
-    const locators = await consumer.find(interfaceName, filter);
+    const locators = await consumer.find(interfaceName, filter, fingerprint);
     const live = new Set<string>();
     for (const locator of locators) {
       const referenceId = locator.reference?.id;

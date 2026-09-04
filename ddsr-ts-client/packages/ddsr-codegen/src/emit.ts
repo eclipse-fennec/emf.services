@@ -62,6 +62,7 @@ export function emitConsumer(serviceInterface: ServiceInterface): GeneratedFile 
   const body: Array<string | null> = [
     HEADER,
     imports.size > 0 ? `import type { ${[...imports].sort().join(', ')} } from '@ddsr/model';` : null,
+    `import { serviceProxy } from '@ddsr/client';`,
     `import type { DdsrConsumer } from '@ddsr/client';`,
     ``,
     docOrNull(serviceInterface.description, ''),
@@ -86,19 +87,93 @@ export function emitConsumer(serviceInterface: ServiceInterface): GeneratedFile 
     `/**`,
     ` * Resolve one, contract-addressed. Returns undefined when the broker`,
     ` * knows no implementation of exactly this contract.`,
+    ` *`,
+    ` * The proxy is built on the locator the fingerprinted lookup`,
+    ` * returned. Going back through getService() would look the service`,
+    ` * up a second time and without the fingerprint, so the call could`,
+    ` * land on an implementation that does not answer to this contract -`,
+    ` * which is the one thing addressing by fingerprint is for.`,
     ` */`,
     `export async function get${name}(`,
     `  consumer: DdsrConsumer,`,
     `  filter?: string`,
     `): Promise<${name} | undefined> {`,
     `  const locator = await consumer.findOne(${name}InterfaceName, filter, ${name}Fingerprint);`,
-    `  if (!locator) return undefined;`,
-    `  return consumer.getService<${name}>(${name}InterfaceName, filter);`,
+    `  return locator ? serviceProxy<${name}>(locator) : undefined;`,
     `}`,
     ``,
   ];
   return { path: `src/${name}.ts`, content: render(body) };
 }
+
+/**
+ * A TSM module that puts the contract into the registry, so a component
+ * takes it by injection rather than resolving it.
+ *
+ * This is the difference between
+ *
+ *     const payment = await getPayment(client.consumer);
+ *     if (!payment) return;              // and now what?
+ *
+ * and
+ *
+ *     @component()
+ *     class Checkout {
+ *       constructor(@inject(Payment) private payments: Payment) {}
+ *     }
+ *
+ * The second never sees an undefined, because a component with an
+ * unsatisfied reference does not run. It also stops when the provider
+ * goes away and starts again when one returns - the lifecycle the
+ * registry already does, applied to a service that happens to be
+ * remote.
+ *
+ * The mirror is fingerprint-addressed: only implementations answering
+ * to exactly this contract are registered, so what gets injected has
+ * the operations this package declares.
+ */
+export function emitModule(serviceInterface: ServiceInterface): GeneratedFile {
+  const name = identifier(serviceInterface.name, 'Service');
+  const body: Array<string | null> = [
+    HEADER,
+    `import { serviceId } from '@eclipse-daanse/tsm';`,
+    `import type { ModuleContext } from '@eclipse-daanse/tsm';`,
+    `import { DdsrClientService, mirrorRemoteServices, remoteServiceId } from '@ddsr/tsm';`,
+    `import type { RemoteMirror } from '@ddsr/tsm';`,
+    `import { ${name}Fingerprint, ${name}InterfaceName } from './${name}.js';`,
+    `import type { ${name} as ${name}Contract } from './${name}.js';`,
+    ``,
+    `/** The id ${serviceInterface.name ?? name} is injected under. */`,
+    `export const ${name} = serviceId<${name}Contract>(remoteServiceId(${name}InterfaceName));`,
+    ``,
+    `let mirror: RemoteMirror | undefined;`,
+    ``,
+    `/**`,
+    ` * Mirrors the implementations the broker holds for this contract.`,
+    ` * Needs a published DdsrClient, so declare 'ddsr.client' in this`,
+    ` * module's manifest requirements and it waits for one.`,
+    ` */`,
+    `export async function activate(context: ModuleContext): Promise<void> {`,
+    `  const client = context.services.getRequired(DdsrClientService);`,
+    `  mirror = await mirrorRemoteServices({`,
+    `    registry: context.services,`,
+    `    consumer: client.consumer,`,
+    `    interfaceName: ${name}InterfaceName,`,
+    `    fingerprint: ${name}Fingerprint,`,
+    `    id: String(${name}),`,
+    `    log: (message) => context.log.info(message),`,
+    `  });`,
+    `}`,
+    ``,
+    `export async function deactivate(): Promise<void> {`,
+    `  await mirror?.close();`,
+    `  mirror = undefined;`,
+    `}`,
+    ``,
+  ];
+  return { path: `src/${name}Module.ts`, content: render(body) };
+}
+
 
 /**
  * The provider's side: what an implementation has to offer, and the

@@ -4,6 +4,7 @@
  */
 
 import type { Diagnostic, RemoteServiceRegistry, ServiceInterface } from '@ddsr/model';
+import { serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer } from '@ddsr/client';
 
 /**
@@ -56,13 +57,18 @@ export const BrokerCatalogFingerprint = 'sd1:d350ef4184061319d603adfcbe9aa1555d3
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker
  * knows no implementation of exactly this contract.
+ *
+ * The proxy is built on the locator the fingerprinted lookup
+ * returned. Going back through getService() would look the service
+ * up a second time and without the fingerprint, so the call could
+ * land on an implementation that does not answer to this contract -
+ * which is the one thing addressing by fingerprint is for.
  */
 export async function getBrokerCatalog(
   consumer: DdsrConsumer,
   filter?: string
 ): Promise<BrokerCatalog | undefined> {
   const locator = await consumer.findOne(BrokerCatalogInterfaceName, filter, BrokerCatalogFingerprint);
-  if (!locator) return undefined;
-  return consumer.getService<BrokerCatalog>(BrokerCatalogInterfaceName, filter);
+  return locator ? serviceProxy<BrokerCatalog>(locator) : undefined;
 }
 

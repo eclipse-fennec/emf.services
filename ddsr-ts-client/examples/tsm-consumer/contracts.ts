@@ -11,8 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import { serviceId } from '@eclipse-daanse/tsm';
-import { remoteServiceId } from '@ddsr/tsm';
+
 
 /**
  * The contract the consumer module writes against — generated from the
@@ -27,9 +26,7 @@ import { remoteServiceId } from '@ddsr/tsm';
  * The service id says nothing about being remote. The module could be
  * handed a local implementation under the same id and would not notice.
  */
-import type { Payment as PaymentContract } from '@ddsr/stubs';
-
-export type Payment = PaymentContract;
-export const Payment = serviceId<PaymentContract>(remoteServiceId('Payment'));
+export type { Payment } from '@ddsr/stubs';
+export { Payment as PaymentService } from '@ddsr/stubs/PaymentModule';
 
 export const BROKER_URL = process.env.BROKER_URL ?? 'http://broker.example/ddsr/rest';

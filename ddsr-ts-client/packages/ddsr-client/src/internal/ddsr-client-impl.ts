@@ -116,6 +116,20 @@ export class DdsrClientImpl implements DdsrClient {
   }
 
   /**
+   * Hand a late-arriving flavor plugin to the consumer. The counterpart
+   * of the Java client's bindEventSource(): a capability that shows up
+   * after construction has to be acted on, not merely stored.
+   */
+  flavorAvailable(plugin: FlavorPlugin): void {
+    this.consumer.flavorAvailable(plugin);
+  }
+
+  /** The plugin is gone; the consumer stops offering its kind. */
+  flavorUnavailable(plugin: FlavorPlugin): void {
+    this.consumer.flavorUnavailable(plugin);
+  }
+
+  /**
    * Create a DdsrClient. Construction is synchronous — no network I/O
    * happens until the first call; the event stream opens lazily with
    * the first listener.

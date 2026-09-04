@@ -20,19 +20,28 @@ import { deserializeFromXmi } from '../src/xmi/xmi-support';
 import { implementationFingerprint } from '../src/fingerprint/service-implementation-fingerprint';
 import { asRoots, firstOfClass, toArray } from '../src/internal/emf-util';
 import type { ServiceEvent } from '@ddsr/model';
+import type { FlavorPlugin } from '../src/api/flavor-plugin';
 
 const BROKER = 'http://broker.test/ddsr/rest';
 
-function consumerWith(fetchFn: typeof fetch, supportedFlavors: string[] = ['REST']) {
+function consumerWith(
+  fetchFn: typeof fetch,
+  supportedFlavors: string[] = ['REST'],
+  flavorPlugins: FlavorPlugin[] = []
+) {
   const listeners = new ServiceListenerRegistry(undefined, () => undefined);
   const consumer = new DdsrConsumerImpl(
     new BrokerHttp({ brokerUrl: BROKER, fetchFn }),
-    [],
+    flavorPlugins,
     supportedFlavors,
     listeners,
     'consumer-tests'
   );
   return { consumer, listeners };
+}
+
+function flavorPlugin(kind: string): FlavorPlugin {
+  return { flavorKind: kind, canHandle: () => true, invoke: async () => kind };
 }
 
 describe('DdsrConsumerImpl', () => {
@@ -157,5 +166,70 @@ describe('DdsrConsumerImpl', () => {
     const { consumer } = consumerWith(fetchFn);
     const locators = await consumer.find('Payment');
     expect(toArray(locators[0].implementation.serviceInterfaces).length).toBe(1);
+  });
+
+  describe('a flavor plugin that arrives after construction', () => {
+    it('is offered to the broker from the next lookup on', async () => {
+      const { fetchFn, requests } = fakeFetch([
+        { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-1') },
+        { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-1') },
+      ]);
+      const { consumer } = consumerWith(fetchFn, ['REST'], [flavorPlugin('REST')]);
+
+      await consumer.find('Payment');
+      expect(new URL(requests[0].url).searchParams.get('flavors')).toBe('REST');
+
+      // The MQTT transport module activated after the client was built.
+      consumer.flavorAvailable(flavorPlugin('MQTT'));
+      await consumer.find('Payment');
+
+      // Without this the broker keeps filtering against the old set and
+      // the new transport never sees a service to talk to.
+      expect(new URL(requests[1].url).searchParams.get('flavors')).toBe('REST,MQTT');
+    });
+
+    it('is not counted twice when the same plugin is handed over again', async () => {
+      const { fetchFn, requests } = fakeFetch([
+        { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-1') },
+      ]);
+      const { consumer } = consumerWith(fetchFn, [], []);
+      const mqtt = flavorPlugin('MQTT');
+
+      consumer.flavorAvailable(mqtt);
+      consumer.flavorAvailable(mqtt);
+      await consumer.find('Payment');
+
+      expect(new URL(requests[0].url).searchParams.get('flavors')).toBe('MQTT');
+    });
+
+    it('stops being offered once the plugin goes away', async () => {
+      const { fetchFn, requests } = fakeFetch([
+        { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-1') },
+      ]);
+      const { consumer } = consumerWith(fetchFn, ['REST'], [flavorPlugin('REST')]);
+      const mqtt = flavorPlugin('MQTT');
+
+      consumer.flavorAvailable(mqtt);
+      consumer.flavorUnavailable(mqtt);
+      await consumer.find('Payment');
+
+      expect(new URL(requests[0].url).searchParams.get('flavors')).toBe('REST');
+    });
+
+    it('a kind stays on offer while another plugin still handles it', async () => {
+      const { fetchFn, requests } = fakeFetch([
+        { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-1') },
+      ]);
+      const { consumer } = consumerWith(fetchFn, [], []);
+      const first = flavorPlugin('MQTT');
+      const second = flavorPlugin('MQTT');
+
+      consumer.flavorAvailable(first);
+      consumer.flavorAvailable(second);
+      consumer.flavorUnavailable(first);
+      await consumer.find('Payment');
+
+      expect(new URL(requests[0].url).searchParams.get('flavors')).toBe('MQTT');
+    });
   });
 });

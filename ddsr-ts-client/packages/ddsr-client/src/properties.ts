@@ -55,13 +55,13 @@ export function propertyValue(property: Property): PropertyValue | undefined {
     case 'StringListProperty':
       // An empty list is a value ("no entries"), distinct from a
       // missing property — same semantics as OSGi String[] properties.
-      // Entries are whitespace-free tokens by convention: EMF's
-      // attribute wire form for many-valued attributes is space-
-      // separated, so splitting here matches how the Java side reads
-      // that form. The builder below enforces the convention.
-      return toArray<unknown>((property as StringListProperty).value)
-        .flatMap(v => String(v).split(/\s+/))
-        .filter(v => v !== '');
+      // The reader hands the entries over already separated: emf.ts
+      // splits the space-separated attribute form itself and falls
+      // back to <value> elements for entries the attribute form
+      // cannot represent — the same distinction Java EMF makes in
+      // XMLSaveImpl.saveDataTypeMany(). Splitting again here would
+      // tear a legitimate 'a b' entry apart.
+      return toArray<unknown>((property as StringListProperty).value).map(v => String(v));
     default:
       return raw === undefined || raw === null ? undefined : String(raw);
   }
@@ -134,13 +134,10 @@ export const props = {
   stringList(name: string, values: string[]): StringListProperty {
     const p = factory.createStringListProperty();
     p.name = name;
+    // Entries may carry whitespace and may be empty: the writer picks
+    // the <value>-element form whenever the compact attribute form
+    // would not read back identically.
     for (const value of values) {
-      if (/\s/.test(value) || value === '') {
-        throw new Error(
-          `StringListProperty entries must be non-empty whitespace-free tokens, got '${value}' — ` +
-          `EMF's attribute wire form is space-separated and would not survive the round-trip`
-        );
-      }
       p.value.push(value);
     }
     return p;

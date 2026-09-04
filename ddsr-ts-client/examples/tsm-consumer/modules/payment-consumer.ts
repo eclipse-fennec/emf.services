@@ -21,8 +21,8 @@ import { Payment } from '../contracts';
  */
 export async function activate(context: ModuleContext): Promise<void> {
   const payment = context.services.getRequired(Payment);
-  context.log.info('got a Payment service — calling charge(4200, "acct-1")');
-  const answer = await payment.charge(4200, 'acct-1');
+  context.log.info('got a Payment service — calling charge(4200, "EUR")');
+  const answer = await payment.charge(4200, 'EUR');
   context.log.info(`charge answered: ${JSON.stringify(answer)}`);
 }
 

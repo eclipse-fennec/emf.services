@@ -95,7 +95,7 @@ const LOOKUP_RESULT = `<?xml version="1.0" encoding="UTF-8"?>
   <services:ServiceInterface name="Payment" version="1.0.0">
     <operations name="charge" returnType="double">
       <parameters name="amount" type="double"/>
-      <parameters name="accountId" type="string" index="1"/>
+      <parameters name="currency" type="string" index="1" optional="true" defaultValue="EUR"/>
     </operations>
     <operations name="getBalance" returnType="double">
       <parameters name="accountId" type="string"/>

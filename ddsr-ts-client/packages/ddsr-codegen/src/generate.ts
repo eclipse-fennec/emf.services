@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { ServiceInterface } from '@ddsr/model';
 import { loadCatalog } from './catalog.js';
@@ -39,7 +39,10 @@ export interface GenerateOptions {
 export interface GenerateResult {
   packageName: string;
   interfaces: string[];
+  /** What this run wrote. */
   files: string[];
+  /** Scaffolding left alone because it was already there. */
+  kept: string[];
 }
 
 /**
@@ -69,18 +72,34 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     if (side === 'consumer' || side === 'both') files.push(emitConsumer(serviceInterface));
     if (side === 'provider' || side === 'both') files.push(emitProvider(serviceInterface));
   }
-  files.push(indexFile(files), packageJson(packageName, options.packageVersion ?? '1.0.0'), tsconfig());
+  files.push(indexFile(files));
 
-  for (const file of files) {
+  // The scaffolding is written once. A generated stub is replaced on
+  // every run, but the package.json of a checked-in project carries
+  // things this generator cannot know — a generate script, a place in
+  // the workspace, dependencies someone added — and overwriting it
+  // would take them away on the next regeneration.
+  const scaffolding = [packageJson(packageName, options.packageVersion ?? '1.0.0'), tsconfig()];
+  const written: string[] = [];
+  const kept: string[] = [];
+
+  for (const file of [...files, ...scaffolding]) {
     const path = join(options.outDir, file.path);
+    const isScaffolding = scaffolding.includes(file);
+    if (isScaffolding && existsSync(path)) {
+      kept.push(file.path);
+      continue;
+    }
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, file.content, 'utf8');
+    written.push(file.path);
   }
 
   return {
     packageName,
     interfaces: wanted.map(entry => identifier(entry.name, 'Service')),
-    files: files.map(file => file.path),
+    files: written,
+    kept,
   };
 }
 

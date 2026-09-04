@@ -10,6 +10,7 @@
     "@ddsr/client": "workspace:*",
     "@ddsr/flavor-rest": "workspace:*",
     "@ddsr/model": "workspace:*",
+    "@ddsr/stubs": "workspace:*",
     "@ddsr/tsm": "workspace:*",
     "@eclipse-daanse/tsm": "0.1.0-next.1"
   },

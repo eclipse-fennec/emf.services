@@ -61,7 +61,10 @@ function main(argv: string[]): Promise<void> {
   }).then(result => {
     process.stdout.write(
       `${result.packageName}: ${result.interfaces.length} interface(s) — ${result.interfaces.join(', ')}\n`
-      + result.files.map(file => `  ${file}`).join('\n') + '\n');
+      + result.files.map(file => `  ${file}`).join('\n') + '\n'
+      + (result.kept.length > 0
+        ? result.kept.map(file => `  ${file} (kept)`).join('\n') + '\n'
+        : ''));
   });
 }
 

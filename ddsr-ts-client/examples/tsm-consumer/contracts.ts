@@ -15,16 +15,21 @@ import { serviceId } from '@eclipse-daanse/tsm';
 import { remoteServiceId } from '@ddsr/tsm';
 
 /**
- * The contract the consumer module writes against. It says nothing
- * about the broker, and nothing about being remote — which is the
- * point: the module could be given a local implementation of the same
- * id and would not notice.
+ * The contract the consumer module writes against — generated from the
+ * catalog by @ddsr/codegen, not written here.
+ *
+ * Worth the detour: this file used to declare it by hand as
+ * `charge(amount, accountId)`, and the catalog says
+ * `charge(amount, currency?)`. The example passed an account id as a
+ * currency for as long as that stood, and nothing complained — the
+ * broker returned a number either way.
+ *
+ * The service id says nothing about being remote. The module could be
+ * handed a local implementation under the same id and would not notice.
  */
-export interface Payment {
-  charge(amount: number, accountId: string): Promise<unknown>;
-  getBalance(accountId: string): Promise<unknown>;
-}
+import type { Payment as PaymentContract } from '@ddsr/stubs';
 
-export const Payment = serviceId<Payment>(remoteServiceId('Payment'));
+export type Payment = PaymentContract;
+export const Payment = serviceId<PaymentContract>(remoteServiceId('Payment'));
 
 export const BROKER_URL = process.env.BROKER_URL ?? 'http://broker.example/ddsr/rest';

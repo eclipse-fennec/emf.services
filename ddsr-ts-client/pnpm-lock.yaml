@@ -101,6 +101,28 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.0)(tsx@4.22.3)(yaml@2.9.1))
 
+  packages/ddsr-codegen:
+    dependencies:
+      '@ddsr/client':
+        specifier: workspace:*
+        version: link:../ddsr-client
+      '@ddsr/model':
+        specifier: workspace:*
+        version: link:../ddsr-model
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      sax:
+        specifier: ^1.4.3
+        version: 1.6.0
+      typescript:
+        specifier: ~5.8.0
+        version: 5.8.3
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.7(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.0)(tsx@4.22.3))
+
   packages/ddsr-flavor-rest:
     dependencies:
       '@ddsr/client':

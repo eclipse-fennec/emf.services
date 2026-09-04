@@ -1,6 +1,13 @@
 packages:
   - packages/*
   - examples/*
+
+# @ddsr/codegen generates @ddsr/stubs, and its tests type themselves
+# against those stubs to hold generated output to the checked-in shape.
+# Both directions are devDependencies and neither build waits on the
+# other — stubs ships its generated sources, codegen needs them only to
+# typecheck — so the cycle is real but harmless.
+ignoreWorkspaceCycles: true
 allowBuilds:
   esbuild: true
   # Pulled in transitively by the OpenTelemetry OTLP exporter (#146).

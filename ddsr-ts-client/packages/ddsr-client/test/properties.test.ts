@@ -80,3 +80,71 @@ describe('property round-trip fidelity (FR-P5)', () => {
     expect(propertyOf(back, 'half')).toBe(0.5);
   });
 });
+
+describe('StringListProperty entries the attribute form cannot carry', () => {
+  function withTags(values: string[]): ServiceImplementation {
+    const implementation = DDSRFactory.eINSTANCE.createServiceImplementation();
+    implementation.name = 'impl';
+    implementation.properties.push(props.stringList('tags', values));
+    return implementation;
+  }
+
+  function roundTrip(values: string[]): unknown {
+    const xmi = serializeToXmi(withTags(values) as any);
+    const back = firstOfClass<ServiceImplementation>(
+      asRoots(deserializeFromXmi(xmi)),
+      'ServiceImplementation'
+    )!;
+    return propertyOf(back, 'tags');
+  }
+
+  it('an entry carrying whitespace survives the round-trip as one entry', () => {
+    // Joining with a space is only reversible while no entry contains
+    // whitespace: ['a b', 'c'] would read back as three entries. The
+    // writer switches to <value> elements for exactly this case.
+    expect(roundTrip(['a b', 'c'])).toEqual(['a b', 'c']);
+  });
+
+  it('an empty entry stays an entry', () => {
+    expect(roundTrip(['', 'c'])).toEqual(['', 'c']);
+  });
+
+  it('plain tokens keep the compact attribute form', () => {
+    // The two sides do not pick the same form: Java writes an element
+    // per entry throughout, we keep the compact one where it survives.
+    // Harmless as long as each side reads both — pinned from the other
+    // direction in StringListPropertyWireFormTest.
+    const xmi = serializeToXmi(withTags(['payments', 'demo']) as any);
+    expect(xmi).toContain('value="payments demo"');
+    expect(roundTrip(['payments', 'demo'])).toEqual(['payments', 'demo']);
+  });
+
+  it('reads the Java-written element form without splitting an entry again', () => {
+    // The form the Java broker writes for the same case — see
+    // itest/fixtures/fingerprint/payment-impl.xmi.
+    const xmi = `<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceImplementation xmlns:services="http://eclipse.org/fennec/services/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="impl">
+  <properties xsi:type="services:StringListProperty" name="tags">
+    <value>a b</value>
+    <value>c</value>
+  </properties>
+</services:ServiceImplementation>`;
+    const back = firstOfClass<ServiceImplementation>(
+      asRoots(deserializeFromXmi(xmi)),
+      'ServiceImplementation'
+    )!;
+    expect(propertyOf(back, 'tags')).toEqual(['a b', 'c']);
+  });
+
+  it('reads the Java-written attribute form as separate entries', () => {
+    const xmi = `<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceImplementation xmlns:services="http://eclipse.org/fennec/services/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="impl">
+  <properties xsi:type="services:StringListProperty" name="tags" value="payments demo"/>
+</services:ServiceImplementation>`;
+    const back = firstOfClass<ServiceImplementation>(
+      asRoots(deserializeFromXmi(xmi)),
+      'ServiceImplementation'
+    )!;
+    expect(propertyOf(back, 'tags')).toEqual(['payments', 'demo']);
+  });
+});

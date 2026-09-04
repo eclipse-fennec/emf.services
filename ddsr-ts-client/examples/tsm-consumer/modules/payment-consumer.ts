@@ -12,7 +12,7 @@
  ********************************************************************/
 
 import type { ModuleContext } from '@eclipse-daanse/tsm';
-import { Payment } from '../contracts';
+import { PaymentService } from '../contracts';
 
 /**
  * A module that uses a payment service. It waits for one, calls it, and
@@ -20,7 +20,7 @@ import { Payment } from '../contracts';
  * registry is all it sees.
  */
 export async function activate(context: ModuleContext): Promise<void> {
-  const payment = context.services.getRequired(Payment);
+  const payment = context.services.getRequired(PaymentService);
   context.log.info('got a Payment service — calling charge(4200, "EUR")');
   const answer = await payment.charge(4200, 'EUR');
   context.log.info(`charge answered: ${JSON.stringify(answer)}`);

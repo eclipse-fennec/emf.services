@@ -3,6 +3,7 @@
  * DO NOT EDIT - regenerate instead.
  */
 
+import { serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer } from '@ddsr/client';
 
 /**
@@ -40,13 +41,18 @@ export const PaymentFingerprint = 'sd1:baafb26e152b76e0e6e713bb86a5e418c2d014d85
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker
  * knows no implementation of exactly this contract.
+ *
+ * The proxy is built on the locator the fingerprinted lookup
+ * returned. Going back through getService() would look the service
+ * up a second time and without the fingerprint, so the call could
+ * land on an implementation that does not answer to this contract -
+ * which is the one thing addressing by fingerprint is for.
  */
 export async function getPayment(
   consumer: DdsrConsumer,
   filter?: string
 ): Promise<Payment | undefined> {
   const locator = await consumer.findOne(PaymentInterfaceName, filter, PaymentFingerprint);
-  if (!locator) return undefined;
-  return consumer.getService<Payment>(PaymentInterfaceName, filter);
+  return locator ? serviceProxy<Payment>(locator) : undefined;
 }
 

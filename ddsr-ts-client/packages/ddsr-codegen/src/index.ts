@@ -15,7 +15,7 @@ export { generate } from './generate.js';
 export type { GenerateOptions, GenerateResult, Side } from './generate.js';
 export { loadCatalog, interfacesOf } from './catalog.js';
 export type { CatalogSource } from './catalog.js';
-export { emitConsumer, emitProvider } from './emit.js';
+export { emitConsumer, emitModule, emitProvider } from './emit.js';
 export type { GeneratedFile } from './emit.js';
 export { mapType, identifier } from './type-mapping.js';
 export type { MappedType } from './type-mapping.js';

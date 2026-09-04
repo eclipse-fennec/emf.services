@@ -10,16 +10,22 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
     }
   },
   "scripts": {
-    "generate": "ddsr-codegen --catalog catalog/services-catalog.xmi --out . --name @ddsr/stubs",
-    "generate:broker": "ddsr-codegen --broker http://localhost:8887/ddsr/rest --out . --name @ddsr/stubs",
+    "generate": "ddsr-codegen --catalog catalog/services-catalog.xmi --out . --name @ddsr/stubs --tsm",
+    "generate:broker": "ddsr-codegen --broker http://localhost:8887/ddsr/rest --out . --name @ddsr/stubs --tsm",
     "build": "tsc"
   },
   "dependencies": {
     "@ddsr/client": "workspace:*",
-    "@ddsr/model": "workspace:*"
+    "@ddsr/model": "workspace:*",
+    "@ddsr/tsm": "workspace:*",
+    "@eclipse-daanse/tsm": "0.1.0-next.1"
   },
   "devDependencies": {
     "@ddsr/codegen": "workspace:*",

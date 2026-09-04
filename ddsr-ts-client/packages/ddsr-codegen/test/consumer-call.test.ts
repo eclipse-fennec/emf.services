@@ -86,7 +86,13 @@ function fakeConsumer(contract: ServiceInterface, answer: unknown = 3800) {
   const consumer = {
     find: async () => [locator],
     findOne,
-    getService: async <T>() => serviceProxy<T>(locator),
+    // Deliberately unusable. getService() looks the service up a second
+    // time and without a fingerprint, so generated code must build its
+    // proxy on the locator the fingerprinted findOne() returned — which
+    // it did not, until it did. Throwing here keeps it that way.
+    getService: async () => {
+      throw new Error('getService() drops the fingerprint; use the locator from findOne()');
+    },
     addServiceListener: () => () => undefined,
     removeServiceListener: () => undefined,
   } as unknown as DdsrConsumer;
@@ -102,7 +108,6 @@ describe('a call through the generated consumer', () => {
 
     const payment = await module.getPayment(consumer);
     const answer = await payment!.charge(4200, 'EUR');
-
     // The positional-to-named mapping is the whole point. Written by
     // hand, this file once declared charge(amount, accountId) — and an
     // account id went out as a currency with nothing to catch it.

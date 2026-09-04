@@ -25,15 +25,24 @@ const USAGE = `ddsr-codegen — typed stubs from a DDSR service catalog
   --out <dir>        where the generated package is written
   --side <which>     consumer | provider | both        (default: both)
   --only <names>     comma-separated interface names   (default: all)
+  --tsm              also write a TSM module per contract, for @inject
   --name <pkg>       npm name of the package    (default: @ddsr/generated-stubs)
   --version <v>      version of the package             (default: 1.0.0)
 `;
 
 function main(argv: string[]): Promise<void> {
   const args = new Map<string, string>();
-  for (let at = 0; at < argv.length; at += 2) {
+  const FLAGS = new Set(['tsm', 'help']);
+  for (let at = 0; at < argv.length; ) {
     if (!argv[at].startsWith('--')) throw new Error(`unexpected argument: ${argv[at]}`);
-    args.set(argv[at].slice(2), argv[at + 1] ?? '');
+    const key = argv[at].slice(2);
+    if (FLAGS.has(key)) {
+      args.set(key, 'true');
+      at += 1;
+    } else {
+      args.set(key, argv[at + 1] ?? '');
+      at += 2;
+    }
   }
 
   if (args.has('help') || argv.length === 0) {
@@ -56,6 +65,7 @@ function main(argv: string[]): Promise<void> {
     outDir,
     side: (args.get('side') as Side | undefined) ?? 'both',
     only,
+    tsm: args.has('tsm'),
     packageName: args.get('name'),
     packageVersion: args.get('version'),
   }).then(result => {

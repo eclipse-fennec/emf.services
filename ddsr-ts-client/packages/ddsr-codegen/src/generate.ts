@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import type { ServiceInterface } from '@ddsr/model';
 import { loadCatalog } from './catalog.js';
 import type { CatalogSource } from './catalog.js';
-import { emitConsumer, emitProvider } from './emit.js';
+import { emitConsumer, emitModule, emitProvider } from './emit.js';
 import type { GeneratedFile } from './emit.js';
 import { identifier } from './type-mapping.js';
 
@@ -28,6 +28,12 @@ export interface GenerateOptions {
   outDir: string;
   /** Which stubs to write; both by default. */
   side?: Side;
+  /**
+   * Also write a TSM module per contract, so components inject the
+   * service instead of resolving it. Off by default: it makes the
+   * generated package depend on @eclipse-daanse/tsm and @ddsr/tsm.
+   */
+  tsm?: boolean;
   /** Only these interfaces, by name; all of them by default. */
   only?: string[];
   /** npm name of the generated package. */
@@ -71,6 +77,9 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   for (const serviceInterface of wanted) {
     if (side === 'consumer' || side === 'both') files.push(emitConsumer(serviceInterface));
     if (side === 'provider' || side === 'both') files.push(emitProvider(serviceInterface));
+    if (options.tsm === true && (side === 'consumer' || side === 'both')) {
+      files.push(emitModule(serviceInterface));
+    }
   }
   files.push(indexFile(files));
 
@@ -79,7 +88,10 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   // things this generator cannot know — a generate script, a place in
   // the workspace, dependencies someone added — and overwriting it
   // would take them away on the next regeneration.
-  const scaffolding = [packageJson(packageName, options.packageVersion ?? '1.0.0'), tsconfig()];
+  const scaffolding = [
+    packageJson(packageName, options.packageVersion ?? '1.0.0', options.tsm === true),
+    tsconfig(),
+  ];
   const written: string[] = [];
   const kept: string[] = [];
 
@@ -103,14 +115,24 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   };
 }
 
+/**
+ * The barrel, over the contracts only.
+ *
+ * Modules are deliberately left out. A TSM module is an entry point the
+ * loader fetches by URL, not something a consumer imports — and every
+ * one of them exports `activate`, so a barrel over four of them would
+ * have four collisions. Its service id would collide too: `Payment` the
+ * id and `Payment` the interface are the same name on purpose, and a
+ * star export cannot carry both.
+ */
 function indexFile(files: GeneratedFile[]): GeneratedFile {
   const exports = files
-    .filter(file => file.path.startsWith('src/'))
+    .filter(file => file.path.startsWith('src/') && !file.path.endsWith('Module.ts'))
     .map(file => `export * from './${file.path.replace(/^src\//, '').replace(/\.ts$/, '.js')}';`);
   return { path: 'src/index.ts', content: exports.join('\n') + '\n' };
 }
 
-function packageJson(name: string, version: string): GeneratedFile {
+function packageJson(name: string, version: string, tsm: boolean): GeneratedFile {
   return {
     path: 'package.json',
     content: JSON.stringify({
@@ -119,9 +141,19 @@ function packageJson(name: string, version: string): GeneratedFile {
       type: 'module',
       main: 'dist/index.js',
       types: 'dist/index.d.ts',
-      exports: { '.': { types: './dist/index.d.ts', import: './dist/index.js' } },
+      exports: {
+        '.': { types: './dist/index.d.ts', import: './dist/index.js' },
+        // A TSM module is loaded by URL, so it has to be addressable on
+        // its own: import.meta.resolve('<pkg>/PaymentModule') is what
+        // goes into a manifest entry.
+        './*': { types: './dist/*.d.ts', import: './dist/*.js' },
+      },
       scripts: { build: 'tsc' },
-      dependencies: { '@ddsr/client': 'workspace:*', '@ddsr/model': 'workspace:*' },
+      dependencies: {
+        '@ddsr/client': 'workspace:*',
+        '@ddsr/model': 'workspace:*',
+        ...(tsm ? { '@ddsr/tsm': 'workspace:*', '@eclipse-daanse/tsm': '0.1.0-next.1' } : {}),
+      },
       devDependencies: { typescript: '~5.8.0' },
     }, null, 2) + '\n',
   };

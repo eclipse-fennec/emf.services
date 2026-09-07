@@ -22,8 +22,14 @@ over a real wire.
 The podman variant builds four images from the exported BND launches
 (`ddsr/broker`, `ddsr/broker-mqtt`, `ddsr/payment-java`,
 `ddsr/client-java`, `ddsr/client-mqtt`) plus one TS image, all on
-`--network=host` so every localhost default applies unchanged. Logs of
-failing scenarios land under `itest/work-podman/`.
+`--network=host` so every localhost default applies unchanged. The TS
+image is also *built* with `--network=host`: its build installs
+dependencies from the npm registry, and rootless podman 5.x (pasta)
+hands the build container the host's `/etc/resolv.conf` unchanged — on a
+host that resolves through the systemd-resolved stub (`127.0.0.53`, the
+GitHub runners among them) that nameserver is unreachable from inside
+and every lookup fails as `EAI_AGAIN`. Logs of failing scenarios land
+under `itest/work-podman/`.
 
 ## Scenarios
 

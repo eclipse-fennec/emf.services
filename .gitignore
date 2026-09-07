@@ -12,4 +12,7 @@ bin_test/
 /.claude/*.tmp.*
 itest/work/
 itest/work-podman/
+
+# staging area of :docker:<variant>:prepareDocker
+docker/*/content/
 *.log

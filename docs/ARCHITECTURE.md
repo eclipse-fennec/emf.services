@@ -391,6 +391,15 @@ Aktuell auf LAN-IPs verdrahtet:
 | example.payment | `org.eclipse.fennec.services.examples.payment` | `public.url`, `broker.url`, `provider.name` | `http://192.168.1.6:9091/payments`, `http://192.168.1.6:8887/ddsr/rest`, `payments-java` |
 | example.payment | `org.apache.felix.http~paymentsHttp` | port / context | `9091` / `payments` |
 
+Die drei Broker-Werte (`public.url`, Port, Host) sind in
+`broker.rest/configs/config.json` nicht mehr fest verdrahtet, sondern
+`$[env:...]`-Platzhalter mit genau diesen Defaults, aufgelöst vom
+`org.apache.felix.configadmin.plugin.interpolation` (im Launch über
+`felix.cm.config.plugins` erzwungen, damit keine Konfiguration vor dem
+Plugin ausgeliefert wird). Damit konfiguriert `DDSR_PUBLIC_URL` /
+`DDSR_HTTP_PORT` / `DDSR_HTTP_HOST` denselben Launch auf dem Host wie im
+Container — siehe [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ---
 
 ## 5. Offene Punkte

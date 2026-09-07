@@ -42,7 +42,29 @@ curl http://localhost:8887/ddsr/rest/catalog
 There is a second launch variant, `export.broker-mqtt`, that
 additionally publishes lifecycle events to an MQTT broker at
 `tcp://localhost:1883` — same bundles, plus a configuration that wakes
-the dormant MQTT transport.
+the dormant MQTT transport. That variant is harness-only.
+
+Port, bind address and the URL the broker advertises for itself are
+environment variables, so nothing has to be rebuilt to move the broker
+off its defaults:
+
+```bash
+DDSR_HTTP_PORT=9887 DDSR_PUBLIC_URL=http://192.168.1.6:9887/ddsr/rest \
+  java -Dgosh.args=--nointeractive \
+  -jar org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar
+```
+
+The same jar is published as a container image
+(`eclipsefennec/emf.services:broker-snapshot`), which is the shortcut
+past steps 1 and 2 if all you want is a broker to develop against:
+
+```bash
+docker run -d -p 8887:8887 -v ddsr-broker-data:/opt/services/data \
+  docker.io/eclipsefennec/emf.services:broker-snapshot
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the image's full configuration
+surface, its state volume and the CI that builds it.
 
 ## 3. Publish a service — Java provider
 
@@ -120,3 +142,5 @@ millisecond timestamps — see [HARNESS.md](HARNESS.md).
   own Java provider/consumer
 - [ACQUISITION.md](ACQUISITION.md) — discovery, acquisition, sessions,
   cold cache
+- [DEPLOYMENT.md](DEPLOYMENT.md) — the broker container image, its
+  configuration and the publishing pipeline

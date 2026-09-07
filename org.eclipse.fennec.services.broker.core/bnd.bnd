@@ -37,4 +37,5 @@ Private-Package: \
 	org.eclipse.fennec.m2x.ocl.engine;version=latest,\
 	org.eclipse.fennec.m2x.ocl.model;version=latest,\
 	org.eclipse.fennec.m2x.ocl.parser;version=latest,\
+	org.eclipse.fennec.m2x.unit;version=latest,\
 	org.antlr.antlr4-runtime;version=latest

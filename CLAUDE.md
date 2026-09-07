@@ -28,6 +28,7 @@ Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → OPE
 - [docs/WIRE_CHANNELS.md](docs/WIRE_CHANNELS.md) — Channel-Modell (v2-Design)
 - [docs/SECURITY.md](docs/SECURITY.md) — STRIDE-Analyse, ASVS/Grundschutz-Mapping (speist die S*-Findings)
 - [docs/TS_CLIENT_PLAN.md](docs/TS_CLIENT_PLAN.md) — TS-Client-Plan
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Broker-Container-Image, Konfigurationsfläche, Publish-Pipeline
 - [itest/README.md](itest/README.md) — Cross-Language-Harness (Host + Podman + Mosquitto)
 
 ## Module
@@ -39,6 +40,7 @@ Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → OPE
 - `org.eclipse.fennec.services.examples.payment` / `examples.model` — Demo-Provider + Beispielmodell
 - `ddsr-ts-client/` — TypeScript-Track (pnpm-Workspace; in `gradle.properties` via `bnd_exclude` vom bnd-Build ausgenommen, ebenso `itest`)
 - `itest/` — Harness: `run-harness.sh` (Host) und `run-harness-podman.sh` (Container inkl. Mosquitto für den MQTT-Drahtnachweis)
+- `docker/broker/` — Build-Kontext des deploybaren Broker-Images (`Dockerfile` + `prepareDocker`-Staging); in `gradle.properties` via `bnd_exclude` vom bnd-Build ausgenommen. Gebaut und gepusht von `.github/workflows/reusable-container.yml` (siehe [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
 
 ## Build & Test
 
@@ -51,6 +53,10 @@ BND-Workspace (bnd 7.4.0-Snapshot, siehe gradle.properties), Gradle als Treiber,
 cd ddsr-ts-client && corepack pnpm install && corepack pnpm -r build && corepack pnpm exec vitest run
 ./itest/run-harness.sh          # Cross-Language End-to-End (Host)
 ./itest/run-harness-podman.sh   # dito als Container + MQTT-Drahtnachweis
+
+# Deploybares Broker-Image lokal bauen (CI macht dasselbe mit dem publizierten Jar)
+./gradlew :org.eclipse.fennec.services.broker.rest:export.broker :docker:broker:prepareDocker
+podman build -t emf.services/broker:local docker/broker/
 ```
 
 License-Header-Check wie die `license.yml`-Action: `docker run -it --rm -v $(pwd):/github/workspace ghcr.io/apache/skywalking-eyes/license-eye header check` — Header im Eclipse-Foundation-Stil (siehe `.licenserc.yaml`); `itest/fixtures/**` ist ausgenommen (Golden-Dateien sind byte-genau hash-gepinnt — nie editieren ohne die sd1-Spezifikation zu bedenken).

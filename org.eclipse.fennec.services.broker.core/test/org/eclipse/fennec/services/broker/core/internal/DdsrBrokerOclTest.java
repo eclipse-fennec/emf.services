@@ -21,7 +21,7 @@ import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.util.Diagnostician;
-import org.eclipse.fennec.m2x.ocl.engine.OclEngineImpl;
+import org.eclipse.fennec.m2x.ocl.engine.internal.OclEngineImpl;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclSettingDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclValidationDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;

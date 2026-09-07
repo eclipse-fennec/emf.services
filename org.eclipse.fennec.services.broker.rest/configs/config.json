@@ -3,8 +3,8 @@
 
 	"org.apache.felix.http~ddsrHttp":
 	{
-		"org.osgi.service.http.port": "8887",
-		"org.osgi.service.http.host": "0.0.0.0",
+		"org.osgi.service.http.port": "$[env:DDSR_HTTP_PORT;default=8887]",
+		"org.osgi.service.http.host": "$[env:DDSR_HTTP_HOST;default=0.0.0.0]",
 		"org.apache.felix.http.context_path": "ddsr",
 		"org.apache.felix.http.name": "DDSR HTTP",
 		"org.apache.felix.http.runtime.init.id": "ddsrHttp"
@@ -17,6 +17,6 @@
 	},
 	"org.eclipse.fennec.services.broker.rest":
 	{
-		"public.url": "http://localhost:8887/ddsr/rest"
+		"public.url": "$[env:DDSR_PUBLIC_URL;default=http://localhost:8887/ddsr/rest]"
 	}
 }

@@ -21,3 +21,6 @@ plugins {
 
 // Project name comes from gradle.properties (single source of truth)
 rootProject.name = github_repository
+
+// docker build contexts (staged by :docker:<name>:prepareDocker)
+include ":docker:broker"

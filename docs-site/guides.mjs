@@ -16,6 +16,7 @@ export const GUIDES = [
   { file: 'ACQUISITION.md', slug: 'acquisition', title: 'Discovery, Acquisition, Invocation' },
   { file: 'UPDATE_POLICY.md', slug: 'update-policy', title: 'Update policies' },
   { file: 'HARNESS.md', slug: 'harness', title: 'Cross-language harness' },
+  { file: 'DEPLOYMENT.md', slug: 'deployment', title: 'Deployment (container image)' },
 ];
 
 export const EXAMPLES = [

@@ -45,6 +45,12 @@ export interface DdsrClientOptions {
   fetchFn?: typeof fetch;
   /** Injectable event source (tests / alternative transports). */
   eventSource?: DdsrEventSource;
+  /**
+   * UPDATE_POLICY.md §3: rebind locators to the successor as soon as the
+   * broker announces UPGRADE_AVAILABLE (true), or keep the current
+   * registration until the broker retires it (false, default).
+   */
+  greedyRebind?: boolean;
 }
 
 /**
@@ -107,7 +113,8 @@ export class DdsrClientImpl implements DdsrClient {
       () => consumerRef?.refreshFromSnapshot()
     );
     const supportedFlavors = plugins.map(p => p.flavorKind);
-    const consumer = new DdsrConsumerImpl(broker, plugins, supportedFlavors, listeners, options.consumerId);
+    const consumer = new DdsrConsumerImpl(
+      broker, plugins, supportedFlavors, listeners, options.consumerId, options.greedyRebind ?? false);
     consumerRef = consumer;
 
     const provider = new DdsrProviderImpl(broker);

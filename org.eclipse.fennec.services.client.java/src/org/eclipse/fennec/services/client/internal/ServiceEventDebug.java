@@ -54,6 +54,7 @@ public final class ServiceEventDebug {
 		LOG.info("[DDSR-Client] EVENT " + event.getType()
 				+ " ref=" + (event.getReference() != null ? event.getReference().getId() : "?")
 				+ " provider=" + provider
+				+ (event.getReasonCode() != null ? " reason=" + event.getReasonCode() : "")
 				+ " at=" + event.getTimestamp());
 	}
 

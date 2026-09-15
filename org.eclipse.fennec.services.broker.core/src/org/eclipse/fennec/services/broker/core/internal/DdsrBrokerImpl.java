@@ -62,6 +62,7 @@ import org.eclipse.fennec.services.broker.core.DdsrBroker;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
+import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 
@@ -371,7 +372,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			// Order matters for a consumer holding the old reference: the
 			// replaced service goes away, then the new one appears.
-			emit(ServiceEventType.UNREGISTERING, retired);
+			emit(ServiceEventType.UNREGISTERING, retired, ServiceEventReasons.REPLACED);
 			emit(ServiceEventType.REGISTERED, ref);
 
 			return anyDeprecated
@@ -484,7 +485,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			// After the save, never before: a withdrawal that could not
 			// be persisted must not be announced.
-			emit(ServiceEventType.UNREGISTERING, eventReference);
+			emit(ServiceEventType.UNREGISTERING, eventReference, ServiceEventReasons.WITHDRAWN);
 			return d;
 		} finally {
 			lock.writeLock().unlock();
@@ -1049,7 +1050,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// its stub, and rehydration republishes it.
 			LOG.warning("[DDSR] persist after coldify failed for " + key + ": " + d.getMessage());
 		}
-		emit(ServiceEventType.UNREGISTERING, retiredRef);
+		emit(ServiceEventType.UNREGISTERING, retiredRef, ServiceEventReasons.COLDIFIED);
 		LOG.fine(() -> "[DDSR] coldified " + key + " -> " + file);
 		return true;
 	}
@@ -1512,6 +1513,16 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 * already committed and persisted.
 	 */
 	private void emit(ServiceEventType type, ServiceReference reference) {
+		emit(type, reference, null);
+	}
+
+	/**
+	 * Emits a lifecycle event. {@code reason} is one of the
+	 * {@link ServiceEventReasons} tokens for an {@code UNREGISTERING},
+	 * {@code null} for {@code REGISTERED} — see the model documentation
+	 * of {@code ServiceEvent.reasonCode}.
+	 */
+	private void emit(ServiceEventType type, ServiceReference reference, String reason) {
 		if (reference == null) {
 			return;
 		}
@@ -1519,6 +1530,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		event.setType(type);
 		event.setReference(reference);
 		event.setTimestamp(new Date());
+		event.setReasonCode(reason);
 		try {
 			events.publish(event);
 		} catch (RuntimeException sinkFailure) {

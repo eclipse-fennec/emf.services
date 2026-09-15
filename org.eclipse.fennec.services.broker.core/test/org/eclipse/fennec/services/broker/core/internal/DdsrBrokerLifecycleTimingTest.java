@@ -33,6 +33,7 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
+import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -143,6 +144,12 @@ class DdsrBrokerLifecycleTimingTest {
 		assertThat(unregistering.getReference().getId())
 				.as("the UNREGISTERING names the OLD reference, the REGISTERED the new one")
 				.isNotEqualTo(registered.getReference().getId());
+		assertThat(unregistering.getReasonCode())
+				.as("a republish retires the old copy as REPLACED, not as a withdrawal")
+				.isEqualTo(ServiceEventReasons.REPLACED);
+		assertThat(registered.getReasonCode())
+				.as("REGISTERED carries no reason")
+				.isNull();
 	}
 
 	@Test
@@ -154,6 +161,7 @@ class DdsrBrokerLifecycleTimingTest {
 
 		ServiceEvent unregistering = sink.received.get(sink.received.size() - 1);
 		assertThat(unregistering.getType()).isEqualTo(ServiceEventType.UNREGISTERING);
+		assertThat(unregistering.getReasonCode()).isEqualTo(ServiceEventReasons.WITHDRAWN);
 		assertThat(EventDocument.interfaceNamesOf(unregistering, broker))
 				.as("the withdraw event carries the interfaces although the lookup no longer resolves")
 				.containsExactly("Payment");

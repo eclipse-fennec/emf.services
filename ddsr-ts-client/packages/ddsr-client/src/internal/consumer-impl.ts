@@ -18,12 +18,14 @@ import type {
   ServiceProvider,
   ServiceFlavor,
   LocalServiceRegistry,
+  ServiceEvent,
 } from '@ddsr/model';
 import type { DdsrConsumer } from '../api/ddsr-consumer';
 import type { ServiceLocator } from '../api/service-locator';
 import type { FlavorPlugin } from '../api/flavor-plugin';
 import type { DdsrServiceListener } from '../api/service-listener';
 import { ServiceLocatorImpl } from '../proxy/service-locator-impl';
+import type { LocatorTracking, ResolvedRegistration } from '../proxy/service-locator-impl';
 import { ServiceListenerRegistry } from './service-listener-registry';
 import type { BrokerHttp } from './broker-http';
 import { eClassName, toArray } from './emf-util';
@@ -42,19 +44,28 @@ export class DdsrConsumerImpl implements DdsrConsumer {
   private readonly supportedFlavors: string[];
   private readonly consumerId: string | undefined;
   readonly listeners: ServiceListenerRegistry;
+  /** UPDATE_POLICY.md §3: rebind to the successor on UPGRADE_AVAILABLE instead of waiting for the retire. */
+  private readonly greedyRebind: boolean;
+  /** Tracked locators by the reference id they are bound to (#57). */
+  private readonly trackedByReference = new Map<string, Set<ServiceLocatorImpl>>();
+  /** Interfaces for which the internal tracking listener is registered. */
+  private readonly trackedInterfaces = new Set<string>();
+  private readonly trackingListener: DdsrServiceListener = (event) => this.onTrackedEvent(event);
 
   constructor(
     broker: BrokerHttp,
     flavorPlugins: FlavorPlugin[],
     supportedFlavors: string[],
     listeners: ServiceListenerRegistry,
-    consumerId?: string
+    consumerId?: string,
+    greedyRebind = false
   ) {
     this.broker = broker;
     this.flavorPlugins = flavorPlugins;
     this.supportedFlavors = supportedFlavors;
     this.listeners = listeners;
     this.consumerId = consumerId;
+    this.greedyRebind = greedyRebind;
   }
 
   /**
@@ -67,7 +78,63 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     const flavors = this.supportedFlavors.length > 0 ? this.supportedFlavors.join(',') : undefined;
     const roots = await this.broker.getReferences(
       interfaceName, filter, flavors, this.consumerId, fingerprint);
-    return this.parseLocators(roots, interfaceName);
+    const locators = this.parseLocators(roots, interfaceName, filter);
+    for (const locator of locators) this.track(locator);
+    return locators;
+  }
+
+  // ------------------------------------------------------------------
+  // Locator tracking (#57): locators follow their service
+  // ------------------------------------------------------------------
+
+  /** Raw resolution for a rebinding locator — the same lookup as find(), no new locators. */
+  private async resolve(interfaceName: string, filter: string | undefined): Promise<ResolvedRegistration[]> {
+    const flavors = this.supportedFlavors.length > 0 ? this.supportedFlavors.join(',') : undefined;
+    const roots = await this.broker.getReferences(interfaceName, filter, flavors, this.consumerId);
+    return this.parseLocators(roots, interfaceName, filter).map(l => ({
+      reference: l.reference,
+      implementation: l.implementation,
+      serviceInterface: l.serviceInterface,
+      flavors: l.flavors(),
+    }));
+  }
+
+  private track(locator: ServiceLocatorImpl): void {
+    this.rekey(locator, undefined);
+    const interfaceName = locator.interfaceName;
+    // Interest in the interface keeps the event stream open and puts the
+    // interface into the reconnect snapshot: one internal listener per interface.
+    if (interfaceName && !this.trackedInterfaces.has(interfaceName)) {
+      this.trackedInterfaces.add(interfaceName);
+      this.listeners.add(interfaceName, undefined, this.trackingListener);
+    }
+  }
+
+  private rekey(locator: ServiceLocatorImpl, previousReferenceId: string | undefined): void {
+    if (previousReferenceId) this.trackedByReference.get(previousReferenceId)?.delete(locator);
+    const id = locator.reference.id;
+    if (!id) return;
+    let set = this.trackedByReference.get(id);
+    if (!set) {
+      set = new Set();
+      this.trackedByReference.set(id, set);
+    }
+    set.add(locator);
+  }
+
+  private onTrackedEvent(event: ServiceEvent): void {
+    const id = event.reference?.id;
+    if (!id) return;
+    for (const locator of this.trackedByReference.get(id) ?? []) {
+      locator.onEvent(event, this.greedyRebind);
+    }
+  }
+
+  /** Test hook: number of locators currently tracked. */
+  trackedLocatorCount(): number {
+    let n = 0;
+    for (const set of this.trackedByReference.values()) n += set.size;
+    return n;
   }
 
   async findOne(interfaceName: string, filter?: string, fingerprint?: string): Promise<ServiceLocator | undefined> {
@@ -138,8 +205,14 @@ export class DdsrConsumerImpl implements DdsrConsumer {
    * containing references + providers→implementations, plus the
    * referenced ServiceInterfaces as sibling roots).
    */
-  private parseLocators(roots: unknown[], queriedInterface: string): ServiceLocator[] {
-    const locators: ServiceLocator[] = [];
+  private parseLocators(roots: unknown[], queriedInterface: string, filter?: string): ServiceLocatorImpl[] {
+    const locators: ServiceLocatorImpl[] = [];
+    const tracking: LocatorTracking = {
+      interfaceName: queriedInterface,
+      filter,
+      resolve: (i, f) => this.resolve(i, f),
+      onRebound: (locator, previous) => this.rekey(locator, previous),
+    };
     const interfacesByName = new Map<string, ServiceInterface>();
 
     for (const root of roots) {
@@ -185,7 +258,8 @@ export class DdsrConsumerImpl implements DdsrConsumer {
             impl,
             serviceInterface,
             toArray<ServiceFlavor>(impl.flavors),
-            this.flavorPlugins
+            this.flavorPlugins,
+            tracking
           ));
         }
       }

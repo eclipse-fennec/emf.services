@@ -149,14 +149,14 @@ export class ServiceListenerRegistry {
       if (referenceId && event.type === 'REGISTERED') {
         this.interfacesByReference.set(referenceId, new Set(fromDocument));
       }
-      if (referenceId && event.type === 'UNREGISTERING') {
+      if (referenceId && (event.type === 'UNREGISTERING' || event.type === 'RETIRED')) {
         this.interfacesByReference.delete(referenceId);
       }
       return fromDocument;
     }
     if (!referenceId) return new Set();
     const remembered = this.interfacesByReference.get(referenceId) ?? new Set<string>();
-    if (event.type === 'UNREGISTERING') {
+    if (event.type === 'UNREGISTERING' || event.type === 'RETIRED') {
       this.interfacesByReference.delete(referenceId);
     }
     return new Set(remembered);

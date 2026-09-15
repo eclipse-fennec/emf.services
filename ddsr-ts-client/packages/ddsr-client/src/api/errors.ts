@@ -26,3 +26,16 @@ export class DdsrClientError extends Error {
     this.diagnostic = diagnostic;
   }
 }
+
+/**
+ * The remote end could not be reached or did not answer in time —
+ * connect refused, timeout, reset. The call may never have arrived; a
+ * tracked locator rebinds away from the registration and retries the
+ * invocation once (#59). Thrown by flavor plugins.
+ */
+export class DdsrTransportError extends DdsrClientError {
+  constructor(message: string, readonly cause?: unknown) {
+    super(message);
+    this.name = 'DdsrTransportError';
+  }
+}

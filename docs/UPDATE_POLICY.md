@@ -190,4 +190,5 @@ Der Broker setzt §2 um, sobald ein Publish `ServiceImplementation.replaces` tr�
 - `deprecated=true`/`replacedBy` am *Interface* werden vom Policy-Pfad nicht angefasst — das bleibt `deprecateCatalogEntry`. Die Sichtbarkeitsregel arbeitet auf der Registration, nicht auf dem Katalog.
 - Ein Vorgänger im Cold-Cache wird nicht gedraint; der Publish ist dann ein gewöhnlicher Publish.
 - Kein `UPGRADE_AVAILABLE` bei `HARD_CUTOVER` (§3 sieht den Hint nur für Drain vor); `RETIRED` wird nur vom Policy-Pfad emittiert, ein expliziter Withdraw bleibt beim reinen `UNREGISTERING`.
-- Noch offen: Greedy-Rebind im Consumer (§3), `versionRange`/`includeDeprecated` im Lookup (§5), `PublishHook`-Enforcement (§6), Provider-Heartbeat (§4).
+- Greedy-Rebind im Consumer (§3) ist in beiden SDKs umgesetzt: `greedy_rebind` (Java, PID `org.eclipse.fennec.services.client`) bzw. `greedyRebind` (TS) lässt einen Locator auf `UPGRADE_AVAILABLE` beim nächsten Aufruf auf den Nachfolger wechseln; ohne die Option bleibt die Bindung bis zum Retire durch den Broker (CLIENT_FRAMEWORK_GUIDE §5.3/§6).
+- Noch offen: `versionRange`/`includeDeprecated` im Lookup (§5), `PublishHook`-Enforcement (§6), Provider-Heartbeat (§4, #52).

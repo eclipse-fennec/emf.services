@@ -241,6 +241,27 @@ public interface ServiceLocator {
 
 `subscribe(...)` is a no-op stub until Increment 3 lands SSE — implementation can return a `Subscription` whose `cancel()` is a no-op, and document the gap.
 
+**Locators follow their service (#57, #59).** Every `ServiceLocator` from
+`find()` is a `TrackedServiceLocator`: it is bound to one registration and
+watches the event stream for it. `MODIFIED` refreshes reference and
+implementation in place (same reference id). `UNREGISTERING/COLDIFIED`
+marks it *stale* — the next use re-looks-up, which rehydrates the entry
+under a fresh id. Any other `UNREGISTERING` and `RETIRED` mark it *rebind*
+— the next use binds to another registration of the same interface and
+filter (after `REPLACED` typically the successor announced right after).
+`UPGRADE_AVAILABLE` rebinds only when the client is configured
+`greedy_rebind=true` (PID `org.eclipse.fennec.services.client`); otherwise
+the binding stays until the broker retires it. Rebinding is lazy:
+`reference()` never contacts the broker, the transport accessors do. A
+proxy from `ServiceProxyFactory` adds the transport half: when the REST
+invocation fails with a *transport* failure (connect refused, connect or
+read timeout — `connect_timeout_millis` / `read_timeout_millis` on the
+REST transport, defaults 3 s / 10 s), it asks the locator to rebind away
+from the failed registration and retries exactly once. A second failure,
+an HTTP error answered by the provider, or a locator with nothing else to
+bind to propagate to the caller as `DdsrException`
+(`isTransportFailure()` tells the two apart).
+
 ### 5.4 `BrokerHttpClient` — the only place that talks HTTP
 
 Keep ALL HTTP and XMI handling here. Implementations of `DdsrProvider` / `DdsrConsumer` go through `BrokerHttpClient`. This makes it possible to:
@@ -294,6 +315,14 @@ export interface DdsrConsumer {
   subscribe(interfaceName: string, listener: ServiceListener): Subscription;
 }
 ```
+
+The TypeScript consumer mirrors the Java tracking (#57, #59): `find()`
+returns `TrackedServiceLocator`s with the same `state` machine
+(`LIVE | MODIFIED | STALE | REBIND`), `DdsrClientOptions.greedyRebind`
+is the `greedy_rebind` twin, `locator.invoke()` (and therefore every
+`getService()` proxy) rebinds and retries once on a `DdsrTransportError`,
+and `new RestFlavorPlugin({ timeoutMillis })` turns a provider that does
+not answer into that error via `AbortSignal.timeout` (default 10 s).
 
 Use `ecore.ts` for the EMF POJOs (they should be generated from the same `ddsr.ecore` we already use in Java). HTTP: `fetch` (Node 18+ / browser). XMI parsing: piggy-back on `ecore.ts` if it exposes a resource loader, otherwise a small DOM parser + factory dispatch.
 

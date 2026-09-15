@@ -50,3 +50,25 @@ export interface ServiceLocator {
    */
   invoke(operationName: string, params?: Record<string, unknown>): Promise<unknown>;
 }
+
+/** Why a tracked locator is not (or no longer) bound to a live registration. */
+export type LocatorState = 'LIVE' | 'MODIFIED' | 'STALE' | 'REBIND';
+
+/**
+ * A {@link ServiceLocator} that follows its service (#57). Locators
+ * returned by `find()` are bound to one registration and watch the
+ * event stream for it: MODIFIED refreshes in place (same reference id);
+ * UNREGISTERING/COLDIFIED marks it STALE (a lookup rehydrates it under a
+ * fresh id); any other UNREGISTERING and RETIRED mark it REBIND (another
+ * registration of the same interface/filter is chosen on next use);
+ * UPGRADE_AVAILABLE rebinds only a greedy consumer. A transport failure
+ * on invoke rebinds away from the failed registration and retries once.
+ * Rebinding is lazy — nothing talks to the broker until the next use.
+ */
+export interface TrackedServiceLocator extends ServiceLocator {
+  readonly state: LocatorState;
+  readonly interfaceName: string;
+  readonly filter: string | undefined;
+  /** Re-resolves now; with excludeCurrent the bound registration is skipped even if still listed. */
+  rebind(excludeCurrent: boolean): Promise<boolean>;
+}

@@ -29,7 +29,7 @@ Base URL: `http://<host>:8887/ddsr/rest` — everything speaks
 | `PUT /implementations` | **modify in place** | same body as publish; the broker keeps the reference id and every lease and emits `MODIFIED` — consumers refresh, they do not rebind. The implemented contracts must be the same catalog entries: a changed contract answers **409** (code 214), that is a publish |
 | `POST /implementations/withdraw` | **canonical withdraw** | a POST, not a body-carrying DELETE — Jersey's client refuses DELETE-with-entity, which silently broke the DELETE variant for the Java client |
 | `DELETE /implementations` | legacy withdraw | kept for wire compatibility; do not use from Jersey clients |
-| `GET /references?interface=…` | lookup | further params: `filter` (LDAP), `flavors` (CSV), `consumerId`, `fingerprint` (exact contract addressing) |
+| `GET /references?interface=…` | lookup | further params: `filter` (LDAP), `flavors` (CSV), `consumerId`, `fingerprint` (exact contract addressing). Envelope: `LocalServiceRegistry` with the hit references and provider copies that carry **only** the hit implementations, plus the contracts as sibling roots. A reference is paired with its implementation via the `ddsr.impl.fingerprint` decoration (im1) — the model has no direct pointer, and a provider may hold several versions |
 | `PUT /consumers/{consumerId}` | session **full replace** | acquire = add a reference id and PUT, release = remove and PUT, heartbeat = unchanged PUT (idempotent) |
 | `GET /consumers/{consumerId}` | what the broker believes | session + acquired reference-id stubs |
 | `DELETE /consumers/{consumerId}` | shutdown-notify | releases all leases |
@@ -51,7 +51,12 @@ failed.
 ## XMI document conventions
 
 - **Multi-root documents** use an `xmi:XMI` wrapper; cross-references
-  between roots are positional fragments (`/1`, `/1/@operations.0`).
+  between roots are positional fragments (`/1`, `/1/@operations.0`) —
+  never the value of an `iD` attribute. EMF would otherwise write
+  `reference="<uuid>"` for a `ServiceReference` (its `id` is an ecore
+  iD); the Java codec suppresses that (`XmiCodec.WireResource`) because
+  the TypeScript loader resolves paths only, and every broker event
+  names its reference this way.
 - **Sibling stubs:** a publish body carries the provider root plus its
   contracts as sibling roots (full content — the broker addresses the
   catalog entry BY that content); a session PUT carries the

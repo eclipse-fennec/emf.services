@@ -136,6 +136,14 @@ final class ProviderImpl implements DdsrProvider {
 					|| !self.getName().equals(candidate.getProvider().getName())) {
 				continue;
 			}
+			// Same provider name, but a different implementation identity
+			// (another version, e.g. a successor published with replaces)
+			// is not OUR registration — never modify it, publish alongside.
+			ServiceImplementation candidateImpl = lookup.getImplementationForReference(candidate);
+			if (candidateImpl != null && (!Objects.equals(candidateImpl.getName(), impl.getName())
+					|| !Objects.equals(candidateImpl.getVersion(), impl.getVersion()))) {
+				continue;
+			}
 			if (localIm1.equals(stringProperty(candidate, "ddsr.impl.fingerprint"))) {
 				return new Held(candidate, true, true);
 			}

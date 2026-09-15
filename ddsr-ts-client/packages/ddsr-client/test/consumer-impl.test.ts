@@ -17,6 +17,7 @@ import { ServiceListenerRegistry } from '../src/internal/service-listener-regist
 import { BrokerHttp } from '../src/internal/broker-http';
 import { fakeFetch, lookupResultXmi, unregisteringEventXmi } from './fixtures';
 import { deserializeFromXmi } from '../src/xmi/xmi-support';
+import { implementationFingerprint } from '../src/fingerprint/service-implementation-fingerprint';
 import { asRoots, firstOfClass, toArray } from '../src/internal/emf-util';
 import type { ServiceEvent } from '@ddsr/model';
 
@@ -51,6 +52,33 @@ describe('DdsrConsumerImpl', () => {
     const url = new URL(requests[0].url);
     expect(url.searchParams.get('flavors')).toBe('REST');
     expect(url.searchParams.get('consumerId')).toBe('consumer-tests');
+  });
+
+  it('pairs a reference with the right one of several implementations under one provider (im1)', async () => {
+    // two versions under one provider; the envelope references only v2
+    const twoVersions = lookupResultXmi('payments-ts', 'ref-v2').replace(
+      '</implementations>',
+      '</implementations>\n      <implementations name="payments-ts-rest" version="2.0.0" implementationId="ts:payments-ts:2.0.0" serviceInterfaces="/1">\n'
+      + '        <flavors xsi:type="services:RestFlavor" name="rest" host="http://localhost:9092" basePath="/payments"/>\n      </implementations>'
+    );
+    // learn v2's im1 from the document itself, then decorate the reference with it
+    const parsed = asRoots(deserializeFromXmi(twoVersions));
+    const registry = firstOfClass<any>(parsed, 'LocalServiceRegistry');
+    const v2 = toArray<any>(toArray<any>(registry.providers)[0].implementations)[1];
+    const im1 = implementationFingerprint(v2)!;
+    const decorated = twoVersions.replace(
+      '<properties xsi:type="services:IntProperty" name="service.ranking" value="7"/>',
+      `<properties xsi:type="services:StringProperty" name="ddsr.impl.fingerprint" value="${im1}"/>`
+    );
+    const { fetchFn } = fakeFetch([{ urlIncludes: '/references', body: decorated }]);
+    const { consumer } = consumerWith(fetchFn);
+
+    const locators = await consumer.find('Payment');
+
+    expect(locators).toHaveLength(1);
+    expect(locators[0].reference.id).toBe('ref-v2');
+    expect(locators[0].implementation.version).toBe('2.0.0');
+    expect(locators[0].restFlavor()?.host).toBe('http://localhost:9092');
   });
 
   it('find remembers reference→interface for event routing', async () => {

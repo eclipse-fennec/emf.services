@@ -29,6 +29,8 @@ import type { LocatorTracking, ResolvedRegistration } from '../proxy/service-loc
 import { ServiceListenerRegistry } from './service-listener-registry';
 import type { BrokerHttp } from './broker-http';
 import { eClassName, toArray } from './emf-util';
+import { implementationFingerprint } from '../fingerprint/service-implementation-fingerprint';
+import { propertyOf } from '../properties';
 
 /**
  * DdsrConsumer implementation. Lookups go directly against the broker
@@ -214,53 +216,59 @@ export class DdsrConsumerImpl implements DdsrConsumer {
       onRebound: (locator, previous) => this.rekey(locator, previous),
     };
     const interfacesByName = new Map<string, ServiceInterface>();
-
     for (const root of roots) {
       if (eClassName(root) === 'ServiceInterface') {
         const si = root as ServiceInterface;
         if (si.name) interfacesByName.set(si.name, si);
       }
     }
-
+    const locatorFor = (reference: ServiceReference, impl: ServiceImplementation): ServiceLocatorImpl | undefined => {
+      const interfaceNames: string[] = [];
+      let serviceInterface: ServiceInterface | undefined;
+      for (const si of toArray<ServiceInterface>(impl.serviceInterfaces)) {
+        const name = si?.name;
+        if (!name) continue;
+        interfaceNames.push(name);
+        serviceInterface ??= interfacesByName.get(name) ?? si;
+      }
+      serviceInterface ??= interfacesByName.get(queriedInterface) ?? interfacesByName.values().next().value;
+      if (!serviceInterface) return undefined;
+      if (interfaceNames.length === 0 && serviceInterface.name) interfaceNames.push(serviceInterface.name);
+      this.listeners.noteReference(reference.id, interfaceNames);
+      return new ServiceLocatorImpl(
+        reference, impl, serviceInterface, toArray<ServiceFlavor>(impl.flavors), this.flavorPlugins, tracking);
+    };
     for (const root of roots) {
       if (eClassName(root) !== 'LocalServiceRegistry') continue;
       const registry = root as LocalServiceRegistry;
       const providers = toArray<ServiceProvider>(registry.providers);
-      const references = toArray<ServiceReference>(registry.references);
-
-      for (const provider of providers) {
-        for (const impl of toArray<ServiceImplementation>(provider.implementations)) {
-          const interfaceNames: string[] = [];
-          let serviceInterface: ServiceInterface | undefined;
-
-          // The impl's cross-refs resolve against the sibling roots.
-          for (const si of toArray<ServiceInterface>(impl.serviceInterfaces)) {
-            const name = si?.name;
-            if (!name) continue;
-            interfaceNames.push(name);
-            serviceInterface ??= interfacesByName.get(name) ?? si;
+      const covered = new Set<ServiceImplementation>();
+      // One locator per reference. The model has no reference→implementation
+      // pointer; a provider with several (hit) implementations — two
+      // versions under one provider name — is disambiguated by the im1
+      // decoration the broker put on the reference.
+      for (const reference of toArray<ServiceReference>(registry.references)) {
+        const provider = reference.provider as ServiceProvider | undefined;
+        const candidates = toArray<ServiceImplementation>(provider?.implementations);
+        if (candidates.length === 0) continue;
+        const im1 = propertyOf(reference, 'ddsr.impl.fingerprint');
+        const impl = candidates.length === 1
+          ? candidates[0]
+          : (candidates.find(c => implementationFingerprint(c) === im1) ?? candidates[0]);
+        covered.add(impl);
+        const locator = locatorFor(reference, impl);
+        if (locator) locators.push(locator);
+      }
+      // Legacy envelopes without any reference: one stub locator per
+      // implementation. With references present, an implementation nobody
+      // references is not a hit (the broker prunes those since #58).
+      if (toArray<ServiceReference>(registry.references).length === 0) {
+        for (const provider of providers) {
+          for (const impl of toArray<ServiceImplementation>(provider.implementations)) {
+            if (covered.has(impl)) continue;
+            const locator = locatorFor(stubReference(impl), impl);
+            if (locator) locators.push(locator);
           }
-          // Fallbacks: the queried name, then any sibling interface.
-          serviceInterface ??= interfacesByName.get(queriedInterface)
-            ?? interfacesByName.values().next().value;
-          if (!serviceInterface) continue;
-          if (interfaceNames.length === 0 && serviceInterface.name) {
-            interfaceNames.push(serviceInterface.name);
-          }
-
-          const reference = references.find(
-            r => r.provider === provider || r.provider?.name === provider.name
-          );
-          this.listeners.noteReference(reference?.id, interfaceNames);
-
-          locators.push(new ServiceLocatorImpl(
-            reference ?? stubReference(impl),
-            impl,
-            serviceInterface,
-            toArray<ServiceFlavor>(impl.flavors),
-            this.flavorPlugins,
-            tracking
-          ));
         }
       }
     }

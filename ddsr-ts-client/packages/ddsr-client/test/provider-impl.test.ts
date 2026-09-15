@@ -90,6 +90,24 @@ describe('DdsrProviderImpl', () => {
     expect(registration.diagnostic().severity).toBe('OK');
   });
 
+  it('another version under the same provider name is not ours — plain publish, never a modify', async () => {
+    const fixture = paymentProvider('payments-ts');
+    fixture.implementation.version = '2.0.0';
+    // the broker holds our predecessor: same provider name, same contract, version 1.0.0
+    const heldXmi = lookupResultXmi('payments-ts', 'ref-v1')
+      .replace('sd1:0000000000000000000000000000000000000000000000000000000000000000', sd1(fixture.serviceInterface)!)
+      .replace('<implementations name="payments-ts-rest"', '<implementations name="payments-ts-rest" version="1.0.0"');
+    const { fetchFn, requests } = fakeFetch([
+      { urlIncludes: '/references', body: heldXmi },
+      { method: 'POST', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+
+    await provider.publish(fixture.provider, fixture.implementation);
+
+    expect(requests.map(r => r.method)).toEqual(['GET', 'POST', 'GET']);
+  });
+
   it('a refused modify falls back to publish', async () => {
     const fixture = paymentProvider('payments-ts');
     const heldXmi = lookupResultXmi('payments-ts', 'ref-held')

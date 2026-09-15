@@ -97,6 +97,26 @@ class XmiCodecHardeningTest {
 	// ------------------------------------------------------------------
 
 	@Test
+	void intraDocumentReferencesArePositionalNeverIdBased() throws Exception {
+		// A ServiceReference carries an iD attribute; EMF's default would emit
+		// reference="<the id>" — which only EMF resolves. The wire promises
+		// paths (WIRE_FORMAT.md), the TypeScript loader resolves paths only.
+		// (model type spelled out: this test class imports the OSGi ServiceReference for the ResourceSet fake)
+		org.eclipse.fennec.services.ServiceReference reference = ServicesFactory.eINSTANCE.createServiceReference();
+		reference.setId("ref-with-id");
+		ServiceEvent event = ServicesFactory.eINSTANCE.createServiceEvent();
+		event.setType(ServiceEventType.MODIFIED);
+		event.setReference(reference);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+		XmiCodec.write(out, rsObjects, event, reference);
+
+		String xml = out.toString(StandardCharsets.UTF_8);
+		assertThat(xml).contains("reference=\"/1\"").doesNotContain("reference=\"ref-with-id\"");
+		assertThat(xml).as("the id itself still travels as an attribute").contains("id=\"ref-with-id\"");
+	}
+
+	@Test
 	void readsAWellFormedDocument() throws IOException {
 		String xml = """
 				<?xml version="1.0" encoding="UTF-8"?>

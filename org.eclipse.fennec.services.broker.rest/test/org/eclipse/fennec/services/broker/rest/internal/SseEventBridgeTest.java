@@ -25,6 +25,8 @@ import java.util.Set;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.ServiceImplementation;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
@@ -112,7 +114,12 @@ class SseEventBridgeTest {
 		assertThat(payload).contains("<?xml").contains("ServiceEvent").contains("type=\"UNREGISTERING\"")
 				.contains("reasonCode=\"WITHDRAWN\"")
 				.as("self-contained: the interface travels in the document").contains("name=\"Payment\"")
-				.contains("ref-1");
+				.contains("id=\"ref-1\"")
+				.as("intra-document references are positional (TS resolves paths, not ids)").contains("reference=\"/1\"")
+				.doesNotContain("reference=\"ref-1\"");
+		assertThat(payload.split("<services:ServiceImplementation").length - 1)
+				.as("the implementation travels inside its provider, not as a second detached root")
+				.isZero();
 	}
 
 	@Test
@@ -130,6 +137,28 @@ class SseEventBridgeTest {
 
 		assertThat(restOnly.sent).hasSize(1);
 		assertThat(mqttOnly.sent).isEmpty();
+	}
+
+	@Test
+	void aSuccessorsReplacesLinkNeverLeavesTheBrokerInAnEventDocument() {
+		// The successor's `replaces` points at the live predecessor, which is
+		// not part of the event document. Left alone, EMF writes a file: href
+		// into the payload (W1) — or fails with a dangling href.
+		FakeSse.Sink sink = subscribe();
+		ServiceProvider provider = provider("payments", payment(), FlavorKind.REST);
+		ServiceImplementation predecessor = ServicesFactory.eINSTANCE.createServiceImplementation();
+		predecessor.setName("predecessor");
+		predecessor.setVersion("1.0.0");
+		predecessor.setImplementationId("org.example.Impl");
+		provider.getImplementations().get(0).setReplaces(predecessor);
+		ServiceReference ref = reference("ref-v2", provider);
+		lookup.resolves(ref, provider.getImplementations().get(0));
+
+		bridge.publish(event(ServiceEventType.REGISTERED, ref, null));
+
+		assertThat(sink.sent).hasSize(1);
+		String payload = String.valueOf(((FakeSse.Frame) sink.sent.get(0)).getData());
+		assertThat(payload).doesNotContain("replaces=").doesNotContain("href=").doesNotContain("file:");
 	}
 
 	@Test

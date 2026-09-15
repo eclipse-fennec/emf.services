@@ -27,6 +27,7 @@ import org.eclipse.fennec.services.LocalServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -80,13 +81,38 @@ public final class LookupHttpProxy implements BrokerLookup {
 		if (reference == null || reference.getProvider() == null) {
 			return null;
 		}
-		// The envelope returned by /references contains the provider tree
-		// with its implementations as containment children. The reference
-		// model doesn't carry a direct impl pointer, but the lookup
-		// contract guarantees one impl per matching provider in the
-		// envelope — so the first impl is the one this ref maps to.
-		ServiceProvider provider = reference.getProvider();
-		return provider.getImplementations().isEmpty() ? null : provider.getImplementations().get(0);
+		// The envelope returned by /references carries the provider tree
+		// with its (hit) implementations as containment children. The model
+		// has no reference→implementation pointer, so a provider with more
+		// than one implementation — two versions under one provider name —
+		// is disambiguated by the im1 decoration the broker put on the
+		// reference (ddsr.impl.fingerprint); a single implementation needs
+		// no key.
+		List<ServiceImplementation> implementations = reference.getProvider().getImplementations();
+		if (implementations.isEmpty()) {
+			return null;
+		}
+		if (implementations.size() == 1) {
+			return implementations.get(0);
+		}
+		String im1 = implementationFingerprintOf(reference);
+		if (im1 != null) {
+			for (ServiceImplementation candidate : implementations) {
+				if (im1.equals(ServiceImplementationFingerprint.fingerprint(candidate))) {
+					return candidate;
+				}
+			}
+		}
+		return implementations.get(0);
+	}
+
+	private static String implementationFingerprintOf(ServiceReference reference) {
+		for (Property property : reference.getProperties()) {
+			if ("ddsr.impl.fingerprint".equals(property.getName()) && property instanceof StringProperty sp) {
+				return sp.getValue();
+			}
+		}
+		return null;
 	}
 
 	// ------------------------------------------------------------

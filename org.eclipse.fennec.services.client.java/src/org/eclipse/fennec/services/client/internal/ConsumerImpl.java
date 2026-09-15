@@ -16,6 +16,10 @@ package org.eclipse.fennec.services.client.internal;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import org.eclipse.fennec.services.ServiceEvent;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -39,6 +43,13 @@ final class ConsumerImpl implements DdsrConsumer {
 	private final List<FlavorKind> supportedFlavors;
 	private final String consumerId;
 	private final ServiceListenerRegistry listeners;
+	/** UPDATE_POLICY.md §3: rebind to the successor on UPGRADE_AVAILABLE instead of waiting for the retire. */
+	private final boolean greedyRebind;
+	/** Tracked locators by the reference id they are bound to (#57). */
+	private final Map<String, List<ServiceLocatorImpl>> trackedByReference = new ConcurrentHashMap<>();
+	/** Interfaces for which the internal tracking listener is registered. */
+	private final Set<String> trackedInterfaces = ConcurrentHashMap.newKeySet();
+	private final DdsrServiceListener trackingListener = this::onTrackedEvent;
 
 	ConsumerImpl(BrokerLookup lookup, List<FlavorKind> supportedFlavors, String consumerId) {
 		this(lookup, supportedFlavors, consumerId, null);
@@ -46,9 +57,15 @@ final class ConsumerImpl implements DdsrConsumer {
 
 	ConsumerImpl(BrokerLookup lookup, List<FlavorKind> supportedFlavors, String consumerId,
 			EventSource eventSource) {
+		this(lookup, supportedFlavors, consumerId, eventSource, false);
+	}
+
+	ConsumerImpl(BrokerLookup lookup, List<FlavorKind> supportedFlavors, String consumerId,
+			EventSource eventSource, boolean greedyRebind) {
 		this.lookup = lookup;
 		this.supportedFlavors = supportedFlavors;
 		this.consumerId = consumerId;
+		this.greedyRebind = greedyRebind;
 		// On (re)connect the local view may be stale, so we re-snapshot
 		// rather than expect a replay (FR-Sync-Reconnect). Nothing is
 		// cached here yet, so the hook only logs — the point is that the
@@ -147,9 +164,73 @@ final class ConsumerImpl implements DdsrConsumer {
 			// the implementation is detached — so what we learn here is what
 			// lets us route the withdrawal of a service we looked up.
 			listeners.noteReference(ref.getId(), interfaceNamesOf(impl));
-			result.add(new ServiceLocatorImpl(ref, impl));
+			ServiceLocatorImpl locator = new ServiceLocatorImpl(ref, impl, this::resolve, interfaceName, filter);
+			track(locator);
+			result.add(locator);
 		}
 		return result;
+	}
+
+	// ------------------------------------------------------------------
+	// Locator tracking (#57): locators follow their service
+	// ------------------------------------------------------------------
+
+	/** Raw resolution for a rebinding locator — the same lookup as find(), no new locators. */
+	private List<ServiceLocatorImpl.Resolved> resolve(String interfaceName, String filter) {
+		List<ServiceReference> refs = lookup.getServiceReferences(interfaceName, filter, buildCapability());
+		List<ServiceLocatorImpl.Resolved> resolved = new ArrayList<>(refs.size());
+		for (ServiceReference ref : refs) {
+			ServiceImplementation impl = lookup.getImplementationForReference(ref);
+			listeners.noteReference(ref.getId(), interfaceNamesOf(impl));
+			resolved.add(new ServiceLocatorImpl.Resolved(ref, impl));
+		}
+		return resolved;
+	}
+
+	private void track(ServiceLocatorImpl locator) {
+		locator.onRebound(this::rekey);
+		rekey(locator, null);
+		// Interest in the interface keeps the event stream open and puts the
+		// interface into the reconnect snapshot: one internal listener per interface.
+		if (locator.interfaceName() != null && trackedInterfaces.add(locator.interfaceName())) {
+			listeners.add(locator.interfaceName(), null, trackingListener);
+		}
+	}
+
+	private void rekey(ServiceLocatorImpl locator, String previousReferenceId) {
+		if (previousReferenceId != null) {
+			List<ServiceLocatorImpl> old = trackedByReference.get(previousReferenceId);
+			if (old != null) {
+				old.remove(locator);
+			}
+		}
+		String id = locator.boundReferenceId();
+		if (id != null) {
+			trackedByReference.computeIfAbsent(id, k -> new CopyOnWriteArrayList<>()).add(locator);
+		}
+	}
+
+	private void onTrackedEvent(ServiceEvent event) {
+		ServiceReference reference = event.getReference();
+		if (reference == null || reference.getId() == null) {
+			return;
+		}
+		List<ServiceLocatorImpl> bound = trackedByReference.get(reference.getId());
+		if (bound == null) {
+			return;
+		}
+		for (ServiceLocatorImpl locator : bound) {
+			locator.onEvent(event, greedyRebind);
+		}
+	}
+
+	/** Test hook: number of locators currently tracked. */
+	int trackedLocatorCount() {
+		int n = 0;
+		for (List<ServiceLocatorImpl> list : trackedByReference.values()) {
+			n += list.size();
+		}
+		return n;
 	}
 
 	private ConsumerCapability buildCapability() {

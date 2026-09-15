@@ -25,15 +25,38 @@ public class DdsrException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 
 	private final transient Diagnostic diagnostic;
+	private final boolean transportFailure;
 
 	public DdsrException(String message) {
 		super(message);
 		this.diagnostic = null;
+		this.transportFailure = false;
 	}
 
 	public DdsrException(String message, Throwable cause) {
 		super(message, cause);
 		this.diagnostic = null;
+		this.transportFailure = false;
+	}
+
+	private DdsrException(String message, Throwable cause, boolean transportFailure) {
+		super(message, cause);
+		this.diagnostic = null;
+		this.transportFailure = transportFailure;
+	}
+
+	/**
+	 * The remote end could not be reached or did not answer in time
+	 * (connect refused, connect/read timeout, connection reset) — the call
+	 * may never have arrived. A tracked locator rebinds to another
+	 * registration and the proxy retries once on this kind of failure (#59).
+	 */
+	public static DdsrException transport(String message, Throwable cause) {
+		return new DdsrException(message, cause, true);
+	}
+
+	public boolean isTransportFailure() {
+		return transportFailure;
 	}
 
 	public DdsrException(Diagnostic diagnostic) {
@@ -41,6 +64,7 @@ public class DdsrException extends RuntimeException {
 				? diagnostic.getMessage() + " (code=" + diagnostic.getCode() + ")"
 				: "broker error (code=" + diagnostic.getCode() + ")");
 		this.diagnostic = diagnostic;
+		this.transportFailure = false;
 	}
 
 	/** May be null if no diagnostic was available (e.g. transport failure). */

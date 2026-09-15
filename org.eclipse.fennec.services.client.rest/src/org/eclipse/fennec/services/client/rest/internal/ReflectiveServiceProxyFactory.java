@@ -23,6 +23,7 @@ import java.util.Map;
 import org.eclipse.fennec.services.client.DdsrException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
+import org.eclipse.fennec.services.client.TrackedServiceLocator;
 import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestFlavor;
@@ -54,7 +55,7 @@ import org.osgi.service.component.propertytypes.ServiceDescription;
 public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory {
 
 	@Reference
-	private ServiceInvoker invoker;
+	ServiceInvoker invoker;
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -91,7 +92,18 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				return handleObjectMethod(method, args);
 			}
 			Map<String, Object> argMap = buildArgMap(method, args);
-			Object result = invoker.invoke(locator, method.getName(), argMap);
+			Object result;
+			try {
+				result = invoker.invoke(locator, method.getName(), argMap);
+			} catch (DdsrException failure) {
+				// #59: the registered provider did not answer. Rebind away from
+				// it and retry exactly once; a second failure is the caller's.
+				if (!failure.isTransportFailure() || !(locator instanceof TrackedServiceLocator tracked)
+						|| !tracked.rebind(true)) {
+					throw failure;
+				}
+				result = invoker.invoke(locator, method.getName(), argMap);
+			}
 			return coerceReturn(method, result);
 		}
 

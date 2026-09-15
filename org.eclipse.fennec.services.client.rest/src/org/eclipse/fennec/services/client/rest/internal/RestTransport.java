@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.client.rest.internal;
 
 import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyReader;
@@ -61,6 +62,20 @@ public final class RestTransport {
 				name = "Broker URL",
 				description = "Base URL of the broker REST endpoint, e.g. http://localhost:8887/ddsr/rest")
 		String broker_url() default "http://localhost:8887/ddsr/rest";
+
+		@AttributeDefinition(
+				name = "Connect timeout (ms)",
+				description = "TCP connect timeout for broker and service calls (#59). 0 = transport default.",
+				required = false)
+		long connect_timeout_millis() default 3000;
+
+		@AttributeDefinition(
+				name = "Read timeout (ms)",
+				description = "Time to wait for a response after the request was sent (#59). A registered "
+						+ "provider that no longer answers surfaces as a transport failure instead of a hang. "
+						+ "0 = transport default.",
+				required = false)
+		long read_timeout_millis() default 10000;
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -75,6 +90,12 @@ public final class RestTransport {
 	@Activate
 	void activate(Config config) {
 		this.baseUrl = URI.create(config.broker_url());
+		if (config.connect_timeout_millis() > 0) {
+			clientBuilder.connectTimeout(config.connect_timeout_millis(), TimeUnit.MILLISECONDS);
+		}
+		if (config.read_timeout_millis() > 0) {
+			clientBuilder.readTimeout(config.read_timeout_millis(), TimeUnit.MILLISECONDS);
+		}
 		this.client = clientBuilder
 				.register(new XmiMessageBodyReader(rsObjects))
 				.register(new XmiMessageBodyWriter(rsObjects))

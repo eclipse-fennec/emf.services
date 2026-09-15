@@ -1,7 +1,7 @@
 # DDSR — Service-API Update Policy
 
-**Status:** Design-Entwurf nach Diskussion. Implementierung steht aus (Stufe-3-Material).
-**Letzte Aktualisierung:** 2026-05-29.
+**Status:** Broker-Seite implementiert (§9); Consumer-Reaktion auf `UPGRADE_AVAILABLE` und Version-Negotiation (§5) stehen aus.
+**Letzte Aktualisierung:** 2026-09-15.
 
 Regelt, wie der Broker mit neuen Versionen einer Service-API umgeht, ob und wann alte Versionen verschwinden, und wie Consumer davon erfahren. Komplement zur Architektur-Beschreibung in [ARCHITECTURE.md](ARCHITECTURE.md) und löst implizit OPEN_ISSUES A1 (SSE/Event-Stream), C2 (provider-aware lookup) und C3 (stale providers) mit ab.
 
@@ -168,3 +168,26 @@ Die Features bauen aufeinander auf. Vorgeschlagene Reihenfolge:
 - [WIRE_CHANNELS.md](WIRE_CHANNELS.md) — Channel-Modell, Stream-Termination, Capability/Requirement-System
 - OPEN_ISSUES.md — A1 (SSE/Event-Stream), C2 (provider-aware lookup), C3 (stale providers)
 - REQUIREMENTS.md — Stufe-2-DoD und Cross-Language-Demo-Flow
+
+## 9. Implementierungsstand (2026-09-15, Issue #45)
+
+Der Broker setzt §2 um, sobald ein Publish `ServiceImplementation.replaces` trägt. Ohne `replaces` bleibt alles wie zuvor: gleiche `(name, version)` wird synchron ersetzt (`UNREGISTERING` reason `REPLACED`, dann `REGISTERED`), eine andere Identität koexistiert.
+
+**Auflösung.** `replaces` kommt als Stub vom Draht und wird auf die live registrierte Implementation mit gleicher `(name, version)` umverdrahtet. Kein Treffer, oder die eigene Identität: WARNING `CODE_IMPL_REPLACES_NOT_FOUND` (213), `replaces` wird gelöscht, der Publish geht als gewöhnlicher Publish durch — ein neu startender Nachfolger, dessen Vorgänger längst weg ist, darf nicht ausgesperrt werden.
+
+**Effektive Policy.** `ServiceImplementation.updatePolicy`, sonst die strengste `updatePolicy` der bedienten Interfaces (`HARD_CUTOVER` > `DEPRECATE_AND_DRAIN` > `EVERGREEN`), sonst `DEPRECATE_AND_DRAIN`. `UNSPECIFIED` heißt auf beiden Ebenen „erben".
+
+| Policy | beim Publish des Nachfolgers | Retire des Vorgängers | Events für den Vorgänger |
+|---|---|---|---|
+| `EVERGREEN` | nichts | nur per `withdrawImplementation` | keine |
+| `DEPRECATE_AND_DRAIN` | Vorgänger fällt aus `getServiceReferences` (nicht aus `getAllServiceReferences`), Leases bleiben gültig | Sweep, sobald keine `ConsumerSession` mehr eine Lease hält | `UPGRADE_AVAILABLE` nach dem `REGISTERED` des Nachfolgers; beim Retire `UNREGISTERING` + `RETIRED` (reason `REPLACED`) |
+| `HARD_CUTOVER` | beide sichtbar (Failover-Fenster) | Sweep nach `cutoverGraceMillis` (0 = Broker-Default `cutover.grace.seconds`, 30 s), Leases werden ignoriert | `UNREGISTERING` + `RETIRED` (reason `CUTOVER`) |
+
+**Sweep.** `BrokerImplementations.advanceUpdatePolicies(now)`, im Broker alle `policy.sweep.seconds` (Default 5 s). Withdraw des Vorgängers hebt die Supersession auf; Withdraw des Nachfolgers bricht Drain bzw. Cutover ab, der Vorgänger wird wieder gewöhnlich sichtbar. Beide Parteien einer Supersession werden vom Cold-Cache-Sweep übersprungen.
+
+**Bewusste Abweichungen und Grenzen.**
+- Die Supersession ist Laufzeitzustand wie die Leases: ein Broker-Neustart vergisst laufende Drains und Cutovers (fail-safe, nichts wird versehentlich retired). `replaces` selbst steht im Snapshot; beim Retire wird es am Nachfolger gelöscht, damit nichts ins Leere zeigt.
+- `deprecated=true`/`replacedBy` am *Interface* werden vom Policy-Pfad nicht angefasst — das bleibt `deprecateCatalogEntry`. Die Sichtbarkeitsregel arbeitet auf der Registration, nicht auf dem Katalog.
+- Ein Vorgänger im Cold-Cache wird nicht gedraint; der Publish ist dann ein gewöhnlicher Publish.
+- Kein `UPGRADE_AVAILABLE` bei `HARD_CUTOVER` (§3 sieht den Hint nur für Drain vor); `RETIRED` wird nur vom Policy-Pfad emittiert, ein expliziter Withdraw bleibt beim reinen `UNREGISTERING`.
+- Noch offen: Greedy-Rebind im Consumer (§3), `versionRange`/`includeDeprecated` im Lookup (§5), `PublishHook`-Enforcement (§6), Provider-Heartbeat (§4).

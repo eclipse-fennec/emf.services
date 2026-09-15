@@ -59,6 +59,11 @@ public final class DdsrClientImpl implements DdsrClient {
 		return consumer.knownReferenceIds();
 	}
 
+	/** Provider liveness (#52): one heartbeat per live registration; see {@code ProviderImpl.heartbeatAll}. */
+	public int heartbeatRegistrations(long intervalSeconds) {
+		return provider.heartbeatAll(intervalSeconds);
+	}
+
 	@Override
 	public void close() {
 		// no SDK-owned resources — the transport (BrokerCatalog /

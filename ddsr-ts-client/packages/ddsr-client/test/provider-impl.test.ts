@@ -238,4 +238,79 @@ describe('DdsrProviderImpl', () => {
     await provider.withdrawAll();
     expect(requests.filter(r => r.url.endsWith('/withdraw'))).toHaveLength(1);
   });
+  it('heartbeatAll PUTs /references/{id}/heartbeat for every live registration (#52)', async () => {
+    const { fetchFn, requests } = fakeFetch([
+      { method: 'POST', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+      { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-77') },
+      { method: 'PUT', urlIncludes: '/heartbeat', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+    const fixture = paymentProvider('payments-ts');
+    await provider.publish(fixture.provider, fixture.implementation);
+
+    expect(await provider.heartbeatAll(30)).toBe(1);
+
+    const heartbeat = requests.find(r => r.method === 'PUT');
+    expect(heartbeat?.url).toBe(`${BROKER}/references/ref-77/heartbeat?intervalSeconds=30`);
+    expect(heartbeat?.body).toBeUndefined();
+  });
+
+  it('a registration the broker lost is published again and the handle follows (#52)', async () => {
+    // A stateful broker: `held` is what it lists, a publish assigns `assignNext`.
+    const state = { held: 'ref-before-restart' as string | undefined, assignNext: 'ref-before-restart' };
+    const methods: string[] = [];
+    const fetchFn = (async (input: any, init?: any) => {
+      const url = String(input);
+      const method = init?.method ?? 'GET';
+      methods.push(method);
+      const xml = (body: string, status = 200) =>
+        new Response(body, { status, headers: { 'Content-Type': 'application/xml' } });
+      if (method === 'POST' && url.endsWith('/implementations')) {
+        state.held = state.assignNext;
+        return xml(OK_DIAGNOSTIC_XMI);
+      }
+      if (method === 'PUT' && url.includes('/heartbeat')) {
+        return state.held && url.includes(`/references/${state.held}/heartbeat`)
+          ? xml(OK_DIAGNOSTIC_XMI)
+          : xml(errorDiagnosticXmi(212, 'no live registration'), 404);
+      }
+      if (method === 'GET' && url.includes('/references')) {
+        return xml(state.held ? lookupResultXmi('payments-ts', state.held) : '');
+      }
+      return new Response('no route', { status: 500 });
+    }) as typeof fetch;
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+    const fixture = paymentProvider('payments-ts');
+    const registration = await provider.publish(fixture.provider, fixture.implementation);
+    expect(registration.reference.id).toBe('ref-before-restart');
+    methods.length = 0;
+
+    // Broker restart: it holds nothing of ours any more and will assign a new id.
+    state.held = undefined;
+    state.assignNext = 'ref-after-restart';
+
+    expect(await provider.heartbeatAll(30)).toBe(1);
+
+    expect(methods).toEqual(['PUT', 'GET', 'POST', 'GET', 'PUT']);
+    expect(registration.reference.id).toBe('ref-after-restart');
+    expect(provider.registrationOf('ref-after-restart')).toBe(registration);
+    expect(provider.registrationOf('ref-before-restart')).toBeUndefined();
+  });
+
+  it('a withdrawn registration stops heartbeating (#52)', async () => {
+    const { fetchFn, requests } = fakeFetch([
+      { method: 'POST', urlIncludes: '/implementations/withdraw', body: OK_DIAGNOSTIC_XMI },
+      { method: 'POST', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+      { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-77') },
+      { method: 'PUT', urlIncludes: '/heartbeat', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+    const fixture = paymentProvider('payments-ts');
+    const registration = await provider.publish(fixture.provider, fixture.implementation);
+    await registration.withdraw();
+
+    expect(await provider.heartbeatAll(30)).toBe(0);
+    expect(requests.filter(r => r.method === 'PUT')).toHaveLength(0);
+    expect(provider.registrationOf('ref-77')).toBeUndefined();
+  });
 });

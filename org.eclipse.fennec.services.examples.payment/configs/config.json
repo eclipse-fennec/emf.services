@@ -18,6 +18,11 @@
   {
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
   },
+  "org.eclipse.fennec.services.client":
+  {
+    "provider.heartbeat.seconds": "$[env:DDSR_PROVIDER_HEARTBEAT_SECONDS;default=30]",
+    "session.interval.seconds": "$[env:DDSR_SESSION_INTERVAL_SECONDS;default=0]"
+  },
   "org.eclipse.fennec.services.examples.payment":
   {
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",

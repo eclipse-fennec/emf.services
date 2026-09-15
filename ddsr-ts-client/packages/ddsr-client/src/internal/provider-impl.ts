@@ -68,7 +68,20 @@ export class DdsrProviderImpl implements DdsrProvider {
     if (stubs.length === 0) {
       throw new DdsrClientError('implementation references no ServiceInterface');
     }
+    const published = await this.publishInternal(provider, implementation, stubs);
+    const registration = new RegistrationImpl(
+      this.broker, provider, implementation, stubs, published.reference, published.diagnostic,
+      r => this.registrations.delete(r.reference.id ?? ''));
+    this.registrations.set(published.reference.id ?? '', registration);
+    return registration;
+  }
 
+  /** The publish protocol without the handle: what the broker assigned and what it said. */
+  private async publishInternal(
+    provider: ServiceProvider,
+    implementation: ServiceImplementation,
+    stubs: ServiceInterface[]
+  ): Promise<{ reference: ServiceReference; diagnostic: Diagnostic }> {
     // Idempotent reconnect (ACQUISITION.md §11.1): if the broker still
     // holds an identical registration — im1 match — reuse it instead of
     // re-publishing. Consumers then see no UNREGISTERING/REGISTERED
@@ -79,10 +92,7 @@ export class DdsrProviderImpl implements DdsrProvider {
         `[ddsr] publish skipped for '${implementation.implementationId}': ` +
         `broker already holds an identical registration (im1 match), reusing ${held.reference.id}`
       );
-      const reused = new RegistrationImpl(
-        this.broker, provider, implementation, stubs, held.reference, synthAlreadyPublished());
-      this.registrations.set(held.reference.id ?? '', reused);
-      return reused;
+      return { reference: held.reference, diagnostic: synthAlreadyPublished() };
     }
     if (held?.sameContract) {
       // Row 2 of the reconnect check (FINGERPRINTS.md): same contract,
@@ -92,10 +102,7 @@ export class DdsrProviderImpl implements DdsrProvider {
       if (!isError(modified)) {
         const refreshed =
           (await this.discoverReference(provider, implementation, stubs[0].name)) ?? held.reference;
-        const registration = new RegistrationImpl(
-          this.broker, provider, implementation, stubs, refreshed, modified);
-        this.registrations.set(refreshed.id ?? '', registration);
-        return registration;
+        return { reference: refreshed, diagnostic: modified };
       }
       console.info(
         `[ddsr] modify of '${implementation.implementationId}' refused ` +
@@ -117,14 +124,72 @@ export class DdsrProviderImpl implements DdsrProvider {
     const reference =
       (await this.discoverReference(provider, implementation, stubs[0].name))
       ?? pendingReference(implementation);
-
-    const registration = new RegistrationImpl(this.broker, provider, implementation, stubs, reference, diagnostic);
-    this.registrations.set(reference.id ?? '', registration);
-    return registration;
+    return { reference, diagnostic };
   }
 
   registrationOf(referenceId: string): Registration | undefined {
     return this.registrations.get(referenceId);
+  }
+
+  /**
+   * Provider liveness (#52, UPDATE_POLICY.md §4): one heartbeat per live
+   * registration, promising the next in `intervalSeconds`. A registration
+   * the broker no longer knows (404 / code 212 — broker restart, cold
+   * cache, retired for an earlier silence) is published again through the
+   * regular publish protocol and the handle rebound to the fresh
+   * reference, so the application's Registration stays valid. Best-effort:
+   * failures are logged, never thrown.
+   *
+   * @returns the number of registrations the broker acknowledged
+   */
+  async heartbeatAll(intervalSeconds: number): Promise<number> {
+    let acknowledged = 0;
+    for (const registration of [...this.registrations.values()]) {
+      if (registration.isWithdrawn()) continue;
+      try {
+        if (await this.heartbeat(registration, intervalSeconds)) acknowledged++;
+      } catch (error) {
+        console.warn(
+          `[ddsr] heartbeat for '${registration.implementation.implementationId}' failed, ` +
+          `retrying next interval: ${String(error)}`);
+      }
+    }
+    return acknowledged;
+  }
+
+  private async heartbeat(registration: RegistrationImpl, intervalSeconds: number): Promise<boolean> {
+    const stubs = interfaceStubs(registration.implementation);
+    let referenceId = registration.reference.id;
+    if (!referenceId || referenceId.startsWith('pending:')) {
+      // Discovery after the publish failed back then — try again first.
+      const found = await this.discoverReference(registration.provider, registration.implementation, stubs[0]?.name);
+      if (!found?.id) return false;
+      this.rekey(registration, found, registration.diagnostic());
+      referenceId = found.id;
+    }
+    const diagnostic = await this.broker.heartbeat(referenceId, intervalSeconds);
+    if (!isError(diagnostic)) return true;
+    if (diagnostic.code !== CODE_IMPL_NOT_PUBLISHED) {
+      console.warn(`[ddsr] heartbeat for ${referenceId} refused: [${diagnostic.code}] ${diagnostic.message ?? ''}`);
+      return false;
+    }
+    // The broker does not hold us any more — publish again and carry the
+    // handle over to the new reference.
+    console.warn(
+      `[ddsr] broker no longer holds registration ${referenceId} of ` +
+      `'${registration.implementation.implementationId}' — publishing again`);
+    const republished = await this.publishInternal(registration.provider, registration.implementation, stubs);
+    this.rekey(registration, republished.reference, republished.diagnostic);
+    const fresh = republished.reference.id;
+    if (!fresh || fresh.startsWith('pending:')) return false;
+    console.info(`[ddsr] republished '${registration.implementation.implementationId}' as ${fresh} (was ${referenceId})`);
+    return !isError(await this.broker.heartbeat(fresh, intervalSeconds));
+  }
+
+  private rekey(registration: RegistrationImpl, reference: ServiceReference, diagnostic: Diagnostic): void {
+    this.registrations.delete(registration.reference.id ?? '');
+    registration.rebind(reference, diagnostic);
+    this.registrations.set(reference.id ?? '', registration);
   }
 
   /**
@@ -271,6 +336,9 @@ function sd1Match(reference: ServiceReference, implementation: ServiceImplementa
   });
 }
 
+/** DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED — 404 on the wire. */
+const CODE_IMPL_NOT_PUBLISHED = 212;
+
 function pendingReference(implementation: ServiceImplementation): ServiceReference {
   const reference = DDSRFactory.eINSTANCE.createServiceReference();
   reference.id = `pending:${implementation.name}`;
@@ -279,13 +347,15 @@ function pendingReference(implementation: ServiceImplementation): ServiceReferen
 
 class RegistrationImpl implements Registration {
   private readonly broker: BrokerHttp;
-  private readonly provider: ServiceProvider;
+  readonly provider: ServiceProvider;
   readonly implementation: ServiceImplementation;
   private readonly stubs: ServiceInterface[];
-  readonly reference: ServiceReference;
+  /** Mutable on purpose: the heartbeat rebinds the handle after a republish (#52). */
+  reference: ServiceReference;
   private publishDiagnostic: Diagnostic;
   private withdrawn = false;
   private inFlight: Promise<Diagnostic> | undefined;
+  private readonly onWithdrawn: ((registration: RegistrationImpl) => void) | undefined;
 
   constructor(
     broker: BrokerHttp,
@@ -293,7 +363,8 @@ class RegistrationImpl implements Registration {
     implementation: ServiceImplementation,
     stubs: ServiceInterface[],
     reference: ServiceReference,
-    publishDiagnostic: Diagnostic
+    publishDiagnostic: Diagnostic,
+    onWithdrawn?: (registration: RegistrationImpl) => void
   ) {
     this.broker = broker;
     this.provider = provider;
@@ -301,6 +372,13 @@ class RegistrationImpl implements Registration {
     this.stubs = stubs;
     this.reference = reference;
     this.publishDiagnostic = publishDiagnostic;
+    this.onWithdrawn = onWithdrawn;
+  }
+
+  /** Carries the handle over to a fresh broker reference (#52); the application keeps its Registration. */
+  rebind(reference: ServiceReference, diagnostic: Diagnostic): void {
+    this.reference = reference;
+    this.publishDiagnostic = diagnostic;
   }
 
   /** The diagnostic of the last broker interaction (publish/withdraw). */
@@ -334,6 +412,7 @@ class RegistrationImpl implements Registration {
         if (!isError(diagnostic)) {
           this.withdrawn = true;
           this.publishDiagnostic = diagnostic;
+          this.onWithdrawn?.(this);
         }
         return diagnostic;
       } finally {

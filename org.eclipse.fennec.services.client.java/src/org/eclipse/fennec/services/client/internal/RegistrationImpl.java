@@ -25,8 +25,8 @@ final class RegistrationImpl implements Registration {
 	private final ProviderImpl owner;
 	private final ServiceProvider provider;
 	private final ServiceImplementation implementation;
-	private final ServiceReference reference;
-	private final Diagnostic publishDiagnostic;
+	private ServiceReference reference;
+	private Diagnostic publishDiagnostic;
 
 	private boolean withdrawn;
 
@@ -40,8 +40,29 @@ final class RegistrationImpl implements Registration {
 	}
 
 	@Override
-	public ServiceReference reference() {
+	public synchronized ServiceReference reference() {
 		return reference;
+	}
+
+	ServiceProvider provider() {
+		return provider;
+	}
+
+	synchronized boolean isWithdrawn() {
+		return withdrawn;
+	}
+
+	/**
+	 * Carries the handle over to a fresh broker reference after the
+	 * heartbeat found the old one gone and published again (#52). The
+	 * application keeps its {@link Registration}; only what it points at
+	 * moves.
+	 */
+	synchronized void rebind(ServiceReference fresh, Diagnostic diagnostic) {
+		this.reference = fresh;
+		if (diagnostic != null) {
+			this.publishDiagnostic = diagnostic;
+		}
 	}
 
 	@Override
@@ -50,7 +71,7 @@ final class RegistrationImpl implements Registration {
 	}
 
 	@Override
-	public Diagnostic diagnostic() {
+	public synchronized Diagnostic diagnostic() {
 		return publishDiagnostic;
 	}
 
@@ -68,6 +89,7 @@ final class RegistrationImpl implements Registration {
 		Diagnostic d = owner.withdrawInternal(provider, implementation);
 		if (d.getSeverity() != DiagnosticSeverity.ERROR && d.getSeverity() != DiagnosticSeverity.CANCEL) {
 			withdrawn = true;
+			owner.forget(this);
 		}
 		return d;
 	}

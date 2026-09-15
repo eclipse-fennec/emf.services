@@ -114,6 +114,15 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 						+ "checked (UPDATE_POLICY.md \u00a72). 0 disables the sweep; policies are then never advanced.",
 				required = false)
 		long policy_sweep_seconds() default 5;
+
+		@AttributeDefinition(
+				name = "Provider-liveness sweep (seconds)",
+				description = "How often registrations whose provider promised heartbeats are checked "
+						+ "for silence (#52, UPDATE_POLICY.md \u00a74). A registration is retired with "
+						+ "PROVIDER_LOST after two missed heartbeats. 0 disables the sweep; heartbeats are "
+						+ "then accepted but never enforced.",
+				required = false)
+		long liveness_sweep_seconds() default 5;
 	}
 
 	@Reference(
@@ -187,8 +196,9 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 			long expirySeconds = config.session_expiry_seconds();
 			long coldSeconds = config.cold_after_seconds();
 			long policySweepSeconds = config.policy_sweep_seconds();
+			long livenessSweepSeconds = config.liveness_sweep_seconds();
 			this.delegate.setDefaultCutoverGraceMillis(config.cutover_grace_seconds() * 1000L);
-			if (expirySeconds > 0 || coldSeconds > 0 || policySweepSeconds > 0) {
+			if (expirySeconds > 0 || coldSeconds > 0 || policySweepSeconds > 0 || livenessSweepSeconds > 0) {
 				sessionExpiry = Executors.newSingleThreadScheduledExecutor(task -> {
 					Thread thread = new Thread(task, "ddsr-broker-maintenance");
 					thread.setDaemon(true);
@@ -210,6 +220,22 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 						LOG.warning("[DDSR] update-policy sweep failed, continuing: " + sweepFailure);
 					}
 				}, policySweepSeconds, policySweepSeconds, TimeUnit.SECONDS);
+			}
+			if (livenessSweepSeconds > 0) {
+				sessionExpiry.scheduleAtFixedRate(() -> {
+					try {
+						DdsrBrokerImpl current = delegate;
+						if (current == null) {
+							return;
+						}
+						int retired = current.retireLostProviders(Instant.now());
+						if (retired > 0) {
+							LOG.warning("[DDSR] retired " + retired + " registration(s) of silent provider(s)");
+						}
+					} catch (RuntimeException sweepFailure) {
+						LOG.warning("[DDSR] provider-liveness sweep failed, continuing: " + sweepFailure);
+					}
+				}, livenessSweepSeconds, livenessSweepSeconds, TimeUnit.SECONDS);
 			}
 			if (expirySeconds > 0) {
 				long sweepSeconds = Math.max(1, expirySeconds / 4);
@@ -287,6 +313,11 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	@Override
 	public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 		return required().registerService(provider, implementation);
+	}
+
+	@Override
+	public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+		return required().heartbeat(referenceId, intervalSeconds);
 	}
 
 	@Override

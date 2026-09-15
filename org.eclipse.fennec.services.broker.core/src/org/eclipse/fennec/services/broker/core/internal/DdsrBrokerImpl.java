@@ -143,6 +143,24 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	private record Supersession(ServiceRegistration successor, UpdatePolicy policy, Instant cutoverAt) {
 	}
 
+	/**
+	 * Provider liveness (#52): the last heartbeat per registration and
+	 * the interval the provider promised. Opt-in — only registrations
+	 * that heartbeat are in here. Runtime state like the sessions: a
+	 * broker restart forgets the leases, and the providers' next
+	 * heartbeat (404 → republish) rebuilds them.
+	 */
+	private final Map<ServiceRegistration, ProviderLease> providerLeases = new IdentityHashMap<>();
+
+	private record ProviderLease(Instant lastHeartbeat, long intervalSeconds) {
+		Instant lostAt() {
+			return lastHeartbeat.plusSeconds(intervalSeconds * MISSED_HEARTBEATS_TO_LOSE);
+		}
+	}
+
+	/** UPDATE_POLICY.md §4: silence of this many intervals means the provider is gone. */
+	public static final int MISSED_HEARTBEATS_TO_LOSE = 2;
+
 	/** UPDATE_POLICY.md §2.3: default failover window of a HARD_CUTOVER. */
 	public static final long DEFAULT_CUTOVER_GRACE_MILLIS = 30_000L;
 	private volatile long defaultCutoverGraceMillis = DEFAULT_CUTOVER_GRACE_MILLIS;
@@ -555,6 +573,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			List<ConsumerSession> leaseHolders = toRemove != null
 					? List.copyOf(toRemove.getUsingSessions())
 					: List.of();
+			ProviderLease providerLease = toRemove != null ? providerLeases.remove(toRemove) : null;
 			if (toRemove != null) {
 				lookup.serviceRemoved(liveImpl, toRemove.getReference());
 				registrations.remove(toRemove);
@@ -594,6 +613,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 					registrations.add(toRemove);
 					toRemove.setUnregistered(false);
 					toRemove.getUsingSessions().addAll(leaseHolders);
+					if (providerLease != null) {
+						providerLeases.put(toRemove, providerLease);
+					}
 					lookup.serviceAdded(liveImpl, toRemove.getReference());
 				}
 				return d;
@@ -1601,6 +1623,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (deadReg != null) {
 			registrations.remove(deadReg);
 			registrationSince.remove(deadReg);
+			providerLeases.remove(deadReg);
 			forgetSupersession(deadReg);
 			// A replaced registration releases its leases; holders
 			// re-acquire the successor on their next session PUT.
@@ -1790,6 +1813,114 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return retired;
 		} finally {
 			lock.writeLock().unlock();
+		}
+	}
+
+	// ============================================================
+	// Provider liveness (#52, UPDATE_POLICY.md §4)
+	// ============================================================
+
+	@Override
+	public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+		if (referenceId == null || referenceId.isBlank()) {
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
+					"referenceId must not be null or blank");
+		}
+		if (intervalSeconds <= 0) {
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_HEARTBEAT_INVALID,
+					"intervalSeconds must be positive, got " + intervalSeconds);
+		}
+		lock.writeLock().lock();
+		try {
+			ServiceRegistration registration = findRegistrationByReferenceId(referenceId);
+			if (registration == null) {
+				// Unknown here means: restart, coldified, retired for silence
+				// or replaced — in every case the provider has to publish
+				// again to be listed. 404 on the wire, and that is the cue.
+				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
+						"no live registration for reference '" + referenceId + "' — publish again");
+			}
+			boolean armed = providerLeases.containsKey(registration);
+			providerLeases.put(registration, new ProviderLease(Instant.now(), intervalSeconds));
+			if (!armed) {
+				LOG.info("[DDSR] provider liveness armed for " + identityOf(registration)
+						+ " — lost after " + (intervalSeconds * MISSED_HEARTBEATS_TO_LOSE) + " s of silence");
+			}
+			// Runtime state, like the sessions: no persist, no event.
+			return DdsrDiagnostics.ok("heartbeat accepted, lost after "
+					+ (intervalSeconds * MISSED_HEARTBEATS_TO_LOSE) + " s of silence");
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	/**
+	 * Retires every registration whose provider promised heartbeats and
+	 * has been silent for {@link #MISSED_HEARTBEATS_TO_LOSE} intervals at
+	 * {@code now}, announcing {@code UNREGISTERING} followed by
+	 * {@code RETIRED} with reason {@code PROVIDER_LOST}. A lost predecessor
+	 * of a supersession counts as retired (the drain is over), a lost
+	 * successor cancels the drain and the predecessor becomes visible to
+	 * lookups again. Maintenance entry point like {@link #coldifyIdle}
+	 * and {@link #advanceUpdatePolicies}, not part of the client-facing
+	 * contract.
+	 *
+	 * @return the number of registrations retired in this pass
+	 */
+	public int retireLostProviders(Instant now) {
+		if (now == null) {
+			return 0;
+		}
+		lock.writeLock().lock();
+		try {
+			providerLeases.keySet().retainAll(new HashSet<>(registrations));
+			int retired = 0;
+			for (Map.Entry<ServiceRegistration, ProviderLease> entry : new ArrayList<>(providerLeases.entrySet())) {
+				ServiceRegistration registration = entry.getKey();
+				if (registration.isUnregistered() || now.isBefore(entry.getValue().lostAt())) {
+					continue;
+				}
+				ServiceProvider provider = registration.getProvider();
+				ServiceImplementation impl = registration.getImplementation();
+				if (provider == null || impl == null) {
+					providerLeases.remove(registration);
+					continue;
+				}
+				// Event material before the detach, as in the withdraw path.
+				ServiceReference eventReference = selfContainedEventReference(provider, impl, registration.getReference());
+				ServiceReference retiredRef = retireImplementation(provider, impl);
+				// A successor's `replaces` would dangle in the snapshot.
+				for (ServiceRegistration other : registrations) {
+					ServiceImplementation otherImpl = other.getImplementation();
+					if (otherImpl != null && otherImpl.getReplaces() == impl) {
+						otherImpl.setReplaces(null);
+					}
+				}
+				Diagnostic d = persist();
+				if (isError(d)) {
+					LOG.warning("[DDSR] persist after retiring lost provider " + identityOf(registration)
+							+ " failed: " + d.getMessage());
+				}
+				ServiceReference announced = eventReference != null ? eventReference : retiredRef;
+				emit(ServiceEventType.UNREGISTERING, announced, ServiceEventReasons.PROVIDER_LOST);
+				emit(ServiceEventType.RETIRED, announced, ServiceEventReasons.PROVIDER_LOST);
+				LOG.warning("[DDSR] retired " + identityOf(registration) + " — provider silent since "
+						+ entry.getValue().lastHeartbeat() + " (PROVIDER_LOST)");
+				retired++;
+			}
+			return retired;
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	/** Number of registrations currently under liveness supervision. */
+	public int providerLeaseCount() {
+		lock.readLock().lock();
+		try {
+			return providerLeases.size();
+		} finally {
+			lock.readLock().unlock();
 		}
 	}
 

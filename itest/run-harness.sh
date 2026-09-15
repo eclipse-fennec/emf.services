@@ -250,4 +250,45 @@ grep -E '  [✓✗]' "$WORK/probe-g.log" || true
 kill "$G2_PID"; wait "$G2_PID" 2>/dev/null || true
 kill "$G1_PID"; wait "$G1_PID" 2>/dev/null || true
 
-log "HARNESS PASSED (A + B + F + G)"
+# ============================================================ Scenario H
+# Provider liveness (#52): the Java provider heartbeats every 2 s; SIGKILL
+# leaves no withdraw and no shutdown hook behind. The broker has to notice the
+# silence (two missed heartbeats, then its liveness sweep) and retire the
+# registration with PROVIDER_LOST — the consumer learns the true cause and the
+# lookup stops listing the dead endpoint.
+log "Scenario H: provider dies without withdraw (SIGKILL) -> PROVIDER_LOST via heartbeat"
+require_port_free 9091
+ARMED_BEFORE=$(grep -c "provider liveness armed" "$WORK/broker.log" || true)
+DDSR_PROVIDER_HEARTBEAT_SECONDS=2 start_jar payment-h "$PROVIDER_JAR" "$WORK/payment-h"
+H_PID=$LAST_PID
+wait_for_line "$WORK/payment-h.log" "published payments-java" 60
+(cd "$TS/examples/payment" \
+  && BROKER_URL="$BROKER_URL" SCENARIO=H corepack pnpm exec tsx harness-probe-lifecycle.ts) \
+  >"$WORK/probe-h.log" 2>&1 &
+PROBE_H_PID=$!
+PIDS+=("$PROBE_H_PID")
+wait_for_line "$WORK/probe-h.log" "PROBE_READY" 90
+# The kill must hit a supervised registration: wait for the broker to log
+# that THIS instance's heartbeat armed the liveness (earlier scenarios armed
+# the same identity before, hence the count instead of a plain match).
+for _ in $(seq 1 60); do
+  [ "$(grep -c "provider liveness armed" "$WORK/broker.log" || true)" -gt "$ARMED_BEFORE" ] && break
+  sleep 0.5
+done
+kill -9 "$H_PID"; wait "$H_PID" 2>/dev/null || true
+KILL_MS=$(now_ms)
+if ! wait "$PROBE_H_PID"; then
+  echo "SCENARIO H FAILED"; cat "$WORK/probe-h.log"; exit 1
+fi
+LOST_MS=$(grep -o 'LOST_AT [0-9]*' "$WORK/probe-h.log" | awk '{print $2}')
+if [ -z "$LOST_MS" ]; then
+  echo "SCENARIO H FAILED: no PROVIDER_LOST reached the consumer"; cat "$WORK/probe-h.log"; exit 1
+fi
+H_LATENCY_MS=$((LOST_MS - KILL_MS))
+if [ "$H_LATENCY_MS" -gt 30000 ]; then
+  echo "SCENARIO H FAILED: PROVIDER_LOST took $H_LATENCY_MS ms (heartbeat 2 s, expected < 30 s)"; exit 1
+fi
+echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
+grep -E '  [✓✗]' "$WORK/probe-h.log" || true
+
+log "HARNESS PASSED (A + B + F + G + H)"

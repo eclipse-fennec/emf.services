@@ -63,6 +63,11 @@ class ProviderImplWithdrawTest {
 		public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 			throw new UnsupportedOperationException("not exercised");
 		}
+
+		@Override
+		public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+			throw new UnsupportedOperationException("not exercised");
+		}
 	}
 
 	private static ServiceProvider liveProvider() {

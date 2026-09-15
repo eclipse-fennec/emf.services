@@ -37,6 +37,15 @@ export interface DdsrClientOptions {
    * be half the broker's expiry. Default 600; 0 disables sessions.
    */
   sessionIntervalSeconds?: number;
+  /**
+   * Provider liveness (#52, UPDATE_POLICY.md §4): interval of the
+   * heartbeat sent for every live registration. The broker retires a
+   * registration after two missed heartbeats (PROVIDER_LOST); a
+   * registration the broker lost is published again. Default 30;
+   * 0 disables heartbeats — the broker then never retires this provider
+   * for silence.
+   */
+  providerHeartbeatSeconds?: number;
   /** CSV FlavorKind filter for the event stream; default "REST". */
   eventFlavors?: string;
   /** Flat SSE reconnect delay in seconds; default 3 (Java parity). */
@@ -132,12 +141,30 @@ export class DdsrClientImpl implements DdsrClient {
       // Node: the timer must not keep the process alive on its own.
       (client.sessionTimer as { unref?: () => void }).unref?.();
     }
+    const heartbeat = options.providerHeartbeatSeconds ?? 30;
+    if (heartbeat > 0) {
+      client.heartbeatTimer = setInterval(() => {
+        void client.heartbeatRegistrations(heartbeat);
+      }, heartbeat * 1000);
+      (client.heartbeatTimer as { unref?: () => void }).unref?.();
+    }
     return client;
   }
 
   private broker: BrokerHttp | undefined;
   private consumerId: string | undefined;
   private sessionTimer: ReturnType<typeof setInterval> | undefined;
+  private heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+
+  /** Provider liveness (#52): one heartbeat per live registration; see DdsrProviderImpl.heartbeatAll. */
+  async heartbeatRegistrations(intervalSeconds: number): Promise<number> {
+    try {
+      return await this.provider.heartbeatAll(intervalSeconds);
+    } catch (error) {
+      console.error(`[ddsr] provider heartbeat failed, retrying next interval: ${String(error)}`);
+      return 0;
+    }
+  }
 
   /** Exposed for tests and for an eager first lease after lookups. */
   async renewSession(): Promise<void> {
@@ -163,6 +190,10 @@ export class DdsrClientImpl implements DdsrClient {
     if (this.sessionTimer) {
       clearInterval(this.sessionTimer);
       this.sessionTimer = undefined;
+    }
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = undefined;
     }
     try {
       await this.provider.withdrawAll();

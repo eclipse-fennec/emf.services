@@ -92,6 +92,18 @@ public final class ImplementationsHttpProxy implements BrokerImplementations {
 	}
 
 	@Override
+	public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+		// PUT /references/{id}/heartbeat?intervalSeconds=N — no body on the
+		// wire; the empty text entity only satisfies Jersey's client-side
+		// "PUT needs an entity" check.
+		Response r = tx.target().path("references").path(referenceId).path("heartbeat")
+				.queryParam("intervalSeconds", intervalSeconds)
+				.request(MediaType.APPLICATION_XML)
+				.put(Entity.text(""));
+		return CatalogHttpProxy.readDiagnostic(r);
+	}
+
+	@Override
 	public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 		throw new UnsupportedOperationException(
 				"registerService is a local-style operation — use publishImplementation against this REST proxy");

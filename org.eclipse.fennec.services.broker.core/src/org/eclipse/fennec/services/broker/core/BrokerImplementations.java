@@ -55,6 +55,21 @@ public interface BrokerImplementations {
 	Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation);
 
 	/**
+	 * Provider liveness (#52, UPDATE_POLICY.md §4): tells the broker that
+	 * the provider behind the registration with this reference id is
+	 * still alive and will repeat this call every {@code intervalSeconds}.
+	 * Opt-in per registration — a registration that never heartbeats is
+	 * never retired for silence. Once armed, the broker retires the
+	 * registration after two missed heartbeats ({@code 2 × interval}
+	 * without a call), announcing {@code UNREGISTERING} + {@code RETIRED}
+	 * with reason {@code PROVIDER_LOST}. Unknown or already retired
+	 * reference id → {@code CODE_IMPL_NOT_PUBLISHED}: the provider's cue
+	 * to publish again (broker restart, cold cache, lost by an earlier
+	 * silence). {@code intervalSeconds <= 0} → {@code CODE_HEARTBEAT_INVALID}.
+	 */
+	Diagnostic heartbeat(String referenceId, long intervalSeconds);
+
+	/**
 	 * Registers a Service for the provider, returning the resulting
 	 * {@link ServiceRegistration}. Local-style entry point used by
 	 * in-process callers; remote providers go via

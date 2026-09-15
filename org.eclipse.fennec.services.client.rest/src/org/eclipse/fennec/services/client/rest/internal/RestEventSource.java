@@ -181,29 +181,8 @@ public final class RestEventSource implements EventSource {
 		 * the payload carries the type, so nothing depends on them.
 		 */
 		private void pump(InputStream in) throws IOException {
-			BufferedReader lines = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-			StringBuilder data = new StringBuilder();
-			String line;
-			while (running.get() && (line = lines.readLine()) != null) {
-				if (line.isEmpty()) {
-					if (data.length() > 0) {
-						deliver(handler, data.toString());
-						data.setLength(0);
-					}
-					continue;
-				}
-				if (line.startsWith("data:")) {
-					String value = line.substring("data:".length());
-					// One optional leading space belongs to the framing.
-					if (value.startsWith(" ")) {
-						value = value.substring(1);
-					}
-					if (data.length() > 0) {
-						data.append('\n');
-					}
-					data.append(value);
-				}
-			}
+			SseFrames.pump(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)),
+					running::get, data -> deliver(handler, data));
 		}
 
 		/**

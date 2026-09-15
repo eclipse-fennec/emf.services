@@ -73,10 +73,10 @@ import jakarta.ws.rs.core.Response;
 public class ConsumersResource {
 
 	@Reference
-	private BrokerSessions sessions;
+	BrokerSessions sessions;
 
 	@Reference(target = "(emf.name=services)")
-	private ComponentServiceObjects<ResourceSet> rsObjects;
+	ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@PUT
 	@Path("{consumerId}")

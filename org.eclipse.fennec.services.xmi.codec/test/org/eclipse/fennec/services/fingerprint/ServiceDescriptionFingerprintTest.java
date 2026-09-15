@@ -32,6 +32,7 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.StringListProperty;
 import org.eclipse.fennec.services.StringProperty;
+import org.eclipse.fennec.services.UpdatePolicy;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -149,6 +150,26 @@ class ServiceDescriptionFingerprintTest {
 		assertThat(ServiceDescriptionFingerprint.fingerprint(deprecated))
 				.as("status is part of the canonical form")
 				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(plain));
+	}
+
+	@Test
+	void updatePolicyAndReplacedByAreOutsideTheSd1Grammar() {
+		// #47: sd1 is frozen with its tag; lifecycle knobs added later
+		// (#44) must not move it — otherwise a policy change would move
+		// the catalog address of every implementation of the interface.
+		ServiceInterface plain = minimal("Payment");
+
+		ServiceInterface withPolicy = minimal("Payment");
+		withPolicy.setUpdatePolicy(UpdatePolicy.HARD_CUTOVER);
+		assertThat(ServiceDescriptionFingerprint.fingerprint(withPolicy))
+				.as("updatePolicy is lifecycle metadata, not contract")
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(plain));
+
+		ServiceInterface withSuccessor = minimal("Payment");
+		withSuccessor.setReplacedBy(minimal("Payment2"));
+		assertThat(ServiceDescriptionFingerprint.fingerprint(withSuccessor))
+				.as("replacedBy is a migration hint, not contract")
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(plain));
 	}
 
 	@Test

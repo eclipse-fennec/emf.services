@@ -78,6 +78,23 @@ operation flavors add their REST (`|method=|path=|returnCodes=`) or
 MQTT (`|requestTopic=|responseTopic=|qos=|retained=|correlation=|returnPath=`)
 fields. Unknown subclasses render only their eClass name.
 
+## Outside both schemes — by design
+
+Both canonical forms enumerate their features explicitly, so a model
+extension does not move a hash unless the renderer is changed. The
+following features (added with the update-policy / capability uptake)
+are deliberately **not** rendered and are pinned as such by
+`ServiceDescriptionFingerprintTest`, `ServiceImplementationFingerprintTest`
+and `ContractAddressingTest`:
+
+| Feature | Why it stays out |
+|---|---|
+| `ServiceInterface.updatePolicy`, `replacedBy`, `deprecationReason` | lifecycle metadata of a catalog entry, not the contract; a policy change must not move the address of every implementation |
+| `ServiceImplementation.updatePolicy`, `replaces`, `cutoverGraceMillis` | input to the broker's update state machine, not "what is registered" |
+| `ServiceImplementation.capabilities`, `ServiceFlavor.capabilities` | feed the lookup resolver; the registration itself is unchanged |
+| `RestOperationFlavor.parameterBindings` | **is** wire configuration and arguably belongs next to `method=`/`path=` — but im1 is frozen with its tag, so it waits for an `im2` scheme. Until then two implementations that differ only in bindings share an im1. |
+| `ServiceEvent.reasonCode` | events are not fingerprinted |
+
 ## Where fingerprints appear
 
 - The broker decorates every `ServiceReference` with the catalog

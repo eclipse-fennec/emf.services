@@ -22,12 +22,21 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttQos;
+import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.ParameterBinding;
+import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.RestParameterBinding;
+import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
+import org.eclipse.fennec.services.StringProperty;
+import org.eclipse.fennec.services.UpdatePolicy;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -115,6 +124,82 @@ class ServiceImplementationFingerprintTest {
 		assertThat(ServiceImplementationFingerprint.fingerprint(implementation))
 				.as("the endpoint moved — im1 must move (row 2 of the reconnect check)")
 				.isNotEqualTo(im1Before);
+	}
+
+	@Test
+	void updatePolicyReplacesAndGraceAreOutsideIm1() throws Exception {
+		// #47: the lifecycle knobs from #44 are broker state machine
+		// input, not "what is registered" — im1 must stay put.
+		ServiceImplementation implementation = loadFixtureImplementation();
+		String before = ServiceImplementationFingerprint.fingerprint(implementation);
+
+		implementation.setUpdatePolicy(UpdatePolicy.DEPRECATE_AND_DRAIN);
+		implementation.setCutoverGraceMillis(30_000L);
+		ServiceImplementation predecessor = ServicesFactory.eINSTANCE.createServiceImplementation();
+		predecessor.setName(implementation.getName());
+		predecessor.setVersion("0.9.0");
+		predecessor.setImplementationId(implementation.getImplementationId());
+		implementation.setReplaces(predecessor);
+
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isEqualTo(before);
+	}
+
+	@Test
+	void capabilitiesAreOutsideIm1() throws Exception {
+		// #47: capabilities feed the lookup resolver, they do not change
+		// the registration itself. Deliberate for im1; an im2 may revisit.
+		ServiceImplementation implementation = loadFixtureImplementation();
+		String before = ServiceImplementationFingerprint.fingerprint(implementation);
+
+		implementation.getCapabilities().add(capability("services.contentType", "type", "application/xmi"));
+		ServiceFlavor flavor = implementation.getFlavors().get(0);
+		flavor.getCapabilities().add(capability("services.transport", "version", "http/1.1"));
+
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isEqualTo(before);
+	}
+
+	@Test
+	void restParameterBindingsAreOutsideIm1UntilIm2() throws Exception {
+		// #47: parameterBindings IS wire configuration and arguably belongs
+		// next to method/path — but im1 is frozen with its tag
+		// (FINGERPRINTS.md), so it stays out until an im2 scheme. This test
+		// pins the current behaviour so the omission is a decision, not
+		// an accident.
+		ServiceImplementation implementation = loadFixtureImplementation();
+		RestFlavor rest = (RestFlavor) implementation.getFlavors().get(0);
+		RestOperationFlavor operationFlavor = rest.getOperationFlavors().stream()
+				.filter(RestOperationFlavor.class::isInstance)
+				.map(RestOperationFlavor.class::cast)
+				.findFirst()
+				.orElseGet(() -> {
+					RestOperationFlavor created = ServicesFactory.eINSTANCE.createRestOperationFlavor();
+					created.setName("charge");
+					created.setOperation(implementation.getServiceInterfaces().get(0).getOperations().get(0));
+					rest.getOperationFlavors().add(created);
+					return created;
+				});
+		String before = ServiceImplementationFingerprint.fingerprint(implementation);
+
+		Parameter parameter = operationFlavor.getOperation().getParameters().isEmpty()
+				? null
+				: operationFlavor.getOperation().getParameters().get(0);
+		RestParameterBinding binding = ServicesFactory.eINSTANCE.createRestParameterBinding();
+		binding.setParameter(parameter);
+		binding.setBinding(ParameterBinding.QUERY);
+		binding.setWireName("cur");
+		operationFlavor.getParameterBindings().add(binding);
+
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isEqualTo(before);
+	}
+
+	private static Capability capability(String namespace, String key, String value) {
+		Capability capability = ServicesFactory.eINSTANCE.createCapability();
+		capability.setNamespace(namespace);
+		StringProperty attribute = ServicesFactory.eINSTANCE.createStringProperty();
+		attribute.setName(key);
+		attribute.setValue(value);
+		capability.getAttributes().add(attribute);
+		return capability;
 	}
 
 	@Test

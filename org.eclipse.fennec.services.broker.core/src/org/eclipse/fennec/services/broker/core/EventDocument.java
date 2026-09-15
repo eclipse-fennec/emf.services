@@ -68,9 +68,11 @@ public final class EventDocument {
 		ServiceReference reference = event.getReference();
 		if (reference != null) {
 			live.add(reference);
-			if (reference.getProvider() != null) {
-				live.add(reference.getProvider());
-			}
+			// Copier order matters: an implementation copied BEFORE its
+			// provider is overwritten by the provider's deep copy (its map
+			// entry then points at the contained copy); copied AFTER, the
+			// separate copy becomes a second, detached root of the same
+			// implementation on the wire. So: implementation first.
 			ServiceImplementation impl = implementationOf(reference, lookup);
 			if (impl != null) {
 				live.add(impl);
@@ -79,11 +81,31 @@ public final class EventDocument {
 				}
 				live.addAll(impl.getServiceInterfaces());
 			}
+			if (reference.getProvider() != null) {
+				live.add(reference.getProvider());
+			}
 		}
 
 		EcoreUtil.Copier copier = new EcoreUtil.Copier();
 		copier.copyAll(live);
 		copier.copyReferences();
+
+		// `replaces` (UPDATE_POLICY.md §2) links a successor to its live
+		// predecessor. The predecessor is not part of this document, and a
+		// copier keeps such references pointing at the ORIGINAL — which sits
+		// in the broker's snapshot resource: EMF would write a file: href
+		// into the payload (the W1 leak). Consumers learn about succession
+		// from UPGRADE_AVAILABLE, not from this link — drop it.
+		for (EObject original : live) {
+			EObject copy = copier.get(original);
+			if (copy instanceof ServiceImplementation implCopy) {
+				dropForeignReplaces(implCopy, copier);
+			} else if (copy instanceof ServiceProvider providerCopy) {
+				for (ServiceImplementation implCopy : providerCopy.getImplementations()) {
+					dropForeignReplaces(implCopy, copier);
+				}
+			}
+		}
 
 		// Only the copies that nothing else contains become roots; the
 		// containment children ride along with their container.
@@ -95,6 +117,12 @@ public final class EventDocument {
 			}
 		}
 		return roots;
+	}
+
+	private static void dropForeignReplaces(ServiceImplementation implCopy, EcoreUtil.Copier copier) {
+		if (implCopy.getReplaces() != null && !copier.containsValue(implCopy.getReplaces())) {
+			implCopy.setReplaces(null);
+		}
 	}
 
 	/**

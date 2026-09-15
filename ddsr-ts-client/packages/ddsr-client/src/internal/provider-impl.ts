@@ -171,6 +171,13 @@ export class DdsrProviderImpl implements DdsrProvider {
         const registry = root as LocalServiceRegistry;
         for (const reference of toArray<ServiceReference>(registry.references)) {
           if (reference.provider?.name !== provider.name) continue;
+          // Same provider name, but a different implementation identity
+          // (another version, e.g. a successor published with replaces) is
+          // not OUR registration — never modify it, publish alongside.
+          const candidateImpl = toArray<ServiceImplementation>(
+            (reference.provider as ServiceProvider | undefined)?.implementations)[0];
+          if (candidateImpl && (candidateImpl.name !== implementation.name
+              || candidateImpl.version !== implementation.version)) continue;
           if (stringProperty(reference, 'ddsr.impl.fingerprint') === localIm1) {
             return { reference, identical: true, sameContract: true };
           }

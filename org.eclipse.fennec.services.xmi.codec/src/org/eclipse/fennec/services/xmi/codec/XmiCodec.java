@@ -27,12 +27,14 @@ import java.util.logging.Logger;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.URIHandler;
 import org.eclipse.emf.ecore.resource.impl.URIHandlerImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.XMIResource;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.osgi.service.component.ComponentServiceObjects;
 
 
@@ -90,6 +92,53 @@ public final class XmiCodec {
 	private XmiCodec() {
 	}
 
+	/**
+	 * The wire document. Intra-document references are always positional
+	 * ({@code /1}, {@code /0/@providers.0}) — never the value of an
+	 * {@code iD} attribute. EMF's default picks the ID when the target has
+	 * one ({@code ServiceReference.id}), which turned every event's
+	 * {@code reference="<uuid>"} into something only EMF resolves; the
+	 * TypeScript loader, like the wire format spec, knows paths only
+	 * (WIRE_FORMAT.md, XMI conventions).
+	 */
+	static final class WireResource extends XMIResourceImpl {
+		WireResource(URI uri) {
+			super(uri);
+		}
+
+		/**
+		 * EMF's ResourceImpl answers with {@code EcoreUtil.getID(eObject)}
+		 * first — the iD attribute — and only then with the positional
+		 * path. The wire wants the path, always.
+		 */
+		@Override
+		public String getURIFragment(EObject eObject) {
+			InternalEObject internalEObject = (InternalEObject) eObject;
+			if (internalEObject.eDirectResource() == this) {
+				return "/" + getURIFragmentRootSegment(eObject);
+			}
+			List<String> path = new ArrayList<>();
+			boolean contained = false;
+			for (InternalEObject container = internalEObject.eInternalContainer(); container != null;
+					container = internalEObject.eInternalContainer()) {
+				path.add(container.eURIFragmentSegment(internalEObject.eContainingFeature(), internalEObject));
+				internalEObject = container;
+				if (container.eDirectResource() == this) {
+					contained = true;
+					break;
+				}
+			}
+			if (!contained) {
+				return "/-1";
+			}
+			StringBuilder result = new StringBuilder("/").append(getURIFragmentRootSegment(internalEObject));
+			for (int i = path.size() - 1; i >= 0; --i) {
+				result.append('/').append(path.get(i));
+			}
+			return result.toString();
+		}
+	}
+
 	public static void write(OutputStream out, ComponentServiceObjects<ResourceSet> rsObjects, EObject... roots)
 			throws IOException {
 		write(out, rsObjects, Arrays.asList(roots));
@@ -99,7 +148,8 @@ public final class XmiCodec {
 			Collection<? extends EObject> roots) throws IOException {
 		ResourceSet rs = rsObjects.getService();
 		try {
-			Resource res = rs.createResource(URI.createURI("ddsr-wire.xmi"));
+			Resource res = new WireResource(URI.createURI("ddsr-wire.xmi"));
+			rs.getResources().add(res);
 			for (EObject eo : roots) {
 				// Containment is exclusive — if the caller hands us a live
 				// object we copy it so we don't steal it out of its

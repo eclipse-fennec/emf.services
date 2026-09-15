@@ -97,14 +97,17 @@ public class LookupResource {
 		// keeps insertion order while deduplicating shared interfaces.
 		Set<EObject> liveRoots = new LinkedHashSet<>();
 		Set<EObject> liveContained = new LinkedHashSet<>();
+		Set<ServiceImplementation> hitImplementations = new LinkedHashSet<>();
 		Set<ServiceInterface> liveInterfaces = new LinkedHashSet<>();
 		for (ServiceReference ref : hits) {
 			liveRoots.add(ref);
 			ServiceImplementation impl = broker.getImplementationForReference(ref);
 			if (impl != null) {
-				liveContained.add(impl);
+				hitImplementations.add(impl);
 				if (impl.eContainer() instanceof ServiceProvider) {
 					liveContained.add(impl.eContainer());
+				} else {
+					liveContained.add(impl);
 				}
 				liveInterfaces.addAll(impl.getServiceInterfaces());
 			}
@@ -118,6 +121,31 @@ public class LookupResource {
 		copier.copyAll(liveContained);
 		copier.copyAll(liveInterfaces);
 		copier.copyReferences();
+
+		// A provider copy carries ONLY the implementations that are hits:
+		// a sibling version that a DEPRECATE_AND_DRAIN hides, or that
+		// simply did not match, must not leak into the answer — and the
+		// consumer pairs each reference with its implementation via the
+		// im1 decoration, so every implementation here must belong to a
+		// reference in the envelope.
+		Set<EObject> hitCopies = new LinkedHashSet<>();
+		for (ServiceImplementation hit : hitImplementations) {
+			hitCopies.add(copier.get(hit));
+		}
+		for (EObject live : liveContained) {
+			if (copier.get(live) instanceof ServiceProvider providerCopy) {
+				providerCopy.getImplementations().removeIf(copy -> !hitCopies.contains(copy));
+				// `replaces` is a non-containment link to a predecessor that
+				// may just have been pruned (or was never a hit): a link that
+				// does not travel is a dangling href — drop it, the consumer
+				// learns about succession from the events, not from here.
+				for (ServiceImplementation copy : providerCopy.getImplementations()) {
+					if (copy.getReplaces() != null && !hitCopies.contains(copy.getReplaces())) {
+						copy.setReplaces(null);
+					}
+				}
+			}
+		}
 
 		// Build the envelope: contained references + contained providers.
 		LocalServiceRegistry envelope = ServicesFactory.eINSTANCE.createLocalServiceRegistry();

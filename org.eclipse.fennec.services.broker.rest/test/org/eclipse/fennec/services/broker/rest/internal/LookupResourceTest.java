@@ -26,9 +26,11 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.LocalServiceRegistry;
+import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +40,7 @@ import org.junit.jupiter.api.Test;
 class LookupResourceTest {
 
 	private final RestTestSupport.FakeLookup lookup = new RestTestSupport.FakeLookup();
+	private final RestTestSupport.ResourceSets resourceSets = new RestTestSupport.ResourceSets();
 	private LookupResource resource;
 
 	@BeforeEach
@@ -108,6 +111,42 @@ class LookupResourceTest {
 		assertThat(roots.stream().filter(ServiceInterface.class::isInstance).map(ServiceInterface.class::cast))
 				.as("the contract rides along as a sibling root so the consumer can fingerprint it")
 				.extracting(ServiceInterface::getName).containsExactly("Payment");
+	}
+
+	@Test
+	void aProviderCopyCarriesOnlyTheImplementationsThatAreHits() throws java.io.IOException {
+		// Two versions under one provider (name, version): a drain hides the
+		// predecessor from lookups — it must not ride along inside the
+		// provider copy, and the consumer must be able to pair the one
+		// reference with the one implementation.
+		ServiceInterface payment = payment();
+		ServiceProvider provider = provider("payments", payment, FlavorKind.REST);
+		ServiceImplementation v2 = ServicesFactory.eINSTANCE.createServiceImplementation();
+		v2.setName(provider.getImplementations().get(0).getName());
+		v2.setVersion("2.0.0");
+		v2.setImplementationId("org.example.Impl");
+		v2.getServiceInterfaces().add(payment);
+		provider.getImplementations().add(v2);
+		ServiceReference refV2 = reference("ref-v2", provider);
+		refV2.getRegistration().setImplementation(v2);
+		lookup.results.add(refV2);
+		lookup.resolves(refV2, v2);
+
+		v2.setReplaces(provider.getImplementations().get(0)); // the successor names the hidden predecessor
+
+		Response r = resource.lookup("Payment", null, null, null, null);
+
+		XmiBundle bundle = (XmiBundle) r.getEntity();
+		LocalServiceRegistry envelope = (LocalServiceRegistry) bundle.roots().get(0);
+		assertThat(envelope.getReferences()).hasSize(1);
+		assertThat(envelope.getProviders()).hasSize(1);
+		assertThat(envelope.getProviders().get(0).getImplementations())
+				.extracting(ServiceImplementation::getVersion)
+				.containsExactly("2.0.0");
+		assertThat(envelope.getProviders().get(0).getImplementations().get(0).getReplaces())
+				.as("a link to the pruned predecessor would be a dangling href")
+				.isNull();
+		assertThat(RestTestSupport.xml(resourceSets, bundle)).as("serializes").contains("version=\"2.0.0\"");
 	}
 
 	@Test

@@ -12,10 +12,12 @@
  ********************************************************************/
 
 import type { EObject } from '@emfts/core';
-import type { ConsumerSession, Diagnostic, ServiceInterface, ServiceProvider, ServiceReference } from '@ddsr/model';
+import type { ConsumerSession, Diagnostic, ServiceInterface, ServiceProvider, ServiceReference,
+  ServiceImplementation,
+} from '@ddsr/model';
 import { DDSRFactory } from '@ddsr/model';
 import { serializeToXmi, deserializeFromXmi } from '../xmi/xmi-support';
-import { asRoots, eClassName, firstOfClass } from './emf-util';
+import { asRoots, eClassName, firstOfClass, toArray } from './emf-util';
 
 export interface BrokerHttpOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -231,9 +233,15 @@ export class BrokerHttp {
     interfaceStubs: ServiceInterface[],
     method: 'POST' | 'PUT' = 'POST'
   ): Promise<Diagnostic> {
+    // A detached `replaces` stub (UPDATE_POLICY.md §2) travels as a sibling
+    // root so the cross-reference is resolvable on the broker side.
+    const replaces = toArray<ServiceImplementation>(provider.implementations)
+      .map(impl => impl.replaces)
+      .filter((r): r is ServiceImplementation => r !== undefined && r !== null);
     const body = serializeToXmi(
       provider as unknown as EObject,
-      ...(interfaceStubs as unknown as EObject[])
+      ...(interfaceStubs as unknown as EObject[]),
+      ...(replaces as unknown as EObject[])
     );
     const response = await this.fetchFn(`${this.base}${path}`, {
       method,

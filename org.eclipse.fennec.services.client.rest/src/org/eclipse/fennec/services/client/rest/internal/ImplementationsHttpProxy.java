@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.client.rest.internal;
 
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
@@ -52,15 +53,29 @@ public final class ImplementationsHttpProxy implements BrokerImplementations {
 	public Diagnostic publishImplementation(ServiceProvider provider, ServiceImplementation implementation) {
 		Response r = tx.target().path("implementations")
 				.request(MediaType.APPLICATION_XML)
-				.post(Entity.entity(provider, MediaType.APPLICATION_XML));
+				.post(bodyFor(provider, implementation));
 		return CatalogHttpProxy.readDiagnostic(r);
+	}
+
+	/**
+	 * The provider is the body; a detached {@code replaces} stub (a
+	 * (name, version) ServiceImplementation, UPDATE_POLICY.md §2) travels
+	 * as a sibling root so the cross-reference is resolvable — it lives
+	 * in no resource and would otherwise be a dangling href.
+	 */
+	private static Entity<?> bodyFor(ServiceProvider provider, ServiceImplementation implementation) {
+		ServiceImplementation replaces = implementation != null ? implementation.getReplaces() : null;
+		if (replaces != null && replaces.eResource() == null && replaces.eContainer() == null) {
+			return Entity.entity(new XmiBundle(provider, replaces), MediaType.APPLICATION_XML);
+		}
+		return Entity.entity(provider, MediaType.APPLICATION_XML);
 	}
 
 	@Override
 	public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
 		Response r = tx.target().path("implementations")
 				.request(MediaType.APPLICATION_XML)
-				.put(Entity.entity(provider, MediaType.APPLICATION_XML));
+				.put(bodyFor(provider, implementation));
 		return CatalogHttpProxy.readDiagnostic(r);
 	}
 

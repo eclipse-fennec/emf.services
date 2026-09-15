@@ -5,102 +5,103 @@
  * @generated
  */
 
+import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceFlavor } from './ServiceFlavor';
-import { ServiceFlavorImpl } from './ServiceFlavorImpl';
-import type { RestFlavor } from './RestFlavor';
+import type { Parameter } from './Parameter';
+import type { ParameterBinding } from './ParameterBinding';
+import type { RestParameterBinding } from './RestParameterBinding';
 import { DDSRPackage } from './DDSRPackage';
 
 /**
- * Implementation of RestFlavor
+ * Implementation of RestParameterBinding
  * @generated
  */
-export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
+export class RestParameterBindingImpl extends BasicEObject implements RestParameterBinding {
   // Feature ID Constants (eLiterals)
-  static readonly HOST: number = 4;
-  static readonly BASE_PATH: number = 5;
-  static readonly CONTENT_TYPES: number = 6;
+  static readonly PARAMETER: number = 0;
+  static readonly BINDING: number = 1;
+  static readonly WIRE_NAME: number = 2;
 
   // Private fields
-  private _host?: string;
-  private _basePath: string = "";
-  private _contentTypes: string[] = [];
+  private _parameter?: Parameter;
+  private _binding?: ParameterBinding;
+  private _wireName?: string;
 
   /**
    * Returns the EClass of this object
    */
   override eClass(): EClass {
-    return DDSRPackage.Literals.REST_FLAVOR;
+    return DDSRPackage.Literals.REST_PARAMETER_BINDING;
   }
 
   // Getters and Setters
-  get host(): string {
-    return this._host!;
+  get parameter(): Parameter {
+    return this._parameter!;
   }
 
-  set host(value: string) {
-    const oldValue = this._host;
-    this._host = value;
+  set parameter(value: Parameter) {
+    const oldValue = this._parameter;
+    this._parameter = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RestFlavorImpl.HOST),
+        getFeature: () => this.eClass().getEStructuralFeature(RestParameterBindingImpl.PARAMETER),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => RestFlavorImpl.HOST,
+        getFeatureID: () => RestParameterBindingImpl.PARAMETER,
         merge: () => false
       });
     }
   }
 
-  get basePath(): string {
-    return this._basePath!;
+  get binding(): ParameterBinding {
+    return this._binding!;
   }
 
-  set basePath(value: string) {
-    const oldValue = this._basePath;
-    this._basePath = value;
+  set binding(value: ParameterBinding) {
+    const oldValue = this._binding;
+    this._binding = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RestFlavorImpl.BASE_PATH),
+        getFeature: () => this.eClass().getEStructuralFeature(RestParameterBindingImpl.BINDING),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => RestFlavorImpl.BASE_PATH,
+        getFeatureID: () => RestParameterBindingImpl.BINDING,
         merge: () => false
       });
     }
   }
 
-  get contentTypes(): string[] {
-    return this._contentTypes;
+  get wireName(): string {
+    return this._wireName!;
   }
 
-  set contentTypes(value: string[]) {
-    const oldValue = this._contentTypes;
-    this._contentTypes = value;
+  set wireName(value: string) {
+    const oldValue = this._wireName;
+    this._wireName = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RestFlavorImpl.CONTENT_TYPES),
+        getFeature: () => this.eClass().getEStructuralFeature(RestParameterBindingImpl.WIRE_NAME),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => RestFlavorImpl.CONTENT_TYPES,
+        getFeatureID: () => RestParameterBindingImpl.WIRE_NAME,
         merge: () => false
       });
     }
@@ -114,12 +115,12 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eGet(feature: EStructuralFeature): unknown {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        return this.host;
-      case RestFlavorImpl.BASE_PATH:
-        return this.basePath;
-      case RestFlavorImpl.CONTENT_TYPES:
-        return this.contentTypes;
+      case RestParameterBindingImpl.PARAMETER:
+        return this.parameter;
+      case RestParameterBindingImpl.BINDING:
+        return this.binding;
+      case RestParameterBindingImpl.WIRE_NAME:
+        return this.wireName;
       default:
         return super.eGet(feature);
     }
@@ -131,16 +132,16 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eSet(feature: EStructuralFeature, newValue: unknown): void {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        this.host = newValue as string;
+      case RestParameterBindingImpl.PARAMETER:
+        this.parameter = newValue as Parameter;
         super.eSet(feature, newValue);
         break;
-      case RestFlavorImpl.BASE_PATH:
-        this.basePath = newValue as string;
+      case RestParameterBindingImpl.BINDING:
+        this.binding = newValue as ParameterBinding;
         super.eSet(feature, newValue);
         break;
-      case RestFlavorImpl.CONTENT_TYPES:
-        this.contentTypes = newValue as string[];
+      case RestParameterBindingImpl.WIRE_NAME:
+        this.wireName = newValue as string;
         super.eSet(feature, newValue);
         break;
       default:
@@ -154,12 +155,12 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eIsSet(feature: EStructuralFeature): boolean {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        return this._host !== undefined;
-      case RestFlavorImpl.BASE_PATH:
-        return this._basePath !== "";
-      case RestFlavorImpl.CONTENT_TYPES:
-        return this._contentTypes !== undefined && this._contentTypes.length > 0;
+      case RestParameterBindingImpl.PARAMETER:
+        return this._parameter !== undefined;
+      case RestParameterBindingImpl.BINDING:
+        return this._binding !== undefined;
+      case RestParameterBindingImpl.WIRE_NAME:
+        return this._wireName !== undefined;
       default:
         return super.eIsSet(feature);
     }
@@ -171,14 +172,14 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eUnset(feature: EStructuralFeature): void {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        this._host = undefined;
+      case RestParameterBindingImpl.PARAMETER:
+        this._parameter = undefined;
         return;
-      case RestFlavorImpl.BASE_PATH:
-        this._basePath = "";
+      case RestParameterBindingImpl.BINDING:
+        this._binding = undefined;
         return;
-      case RestFlavorImpl.CONTENT_TYPES:
-        this._contentTypes = [];
+      case RestParameterBindingImpl.WIRE_NAME:
+        this._wireName = undefined;
         return;
       default:
         super.eUnset(feature);

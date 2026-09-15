@@ -153,6 +153,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateServiceOperationFlavor((ServiceOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.REST_OPERATION_FLAVOR:
 				return validateRestOperationFlavor((RestOperationFlavor)value, diagnostics, context);
+			case ServicesPackage.REST_PARAMETER_BINDING:
+				return validateRestParameterBinding((RestParameterBinding)value, diagnostics, context);
 			case ServicesPackage.MQTT_OPERATION_FLAVOR:
 				return validateMqttOperationFlavor((MqttOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.SERVICE_REFERENCE:
@@ -179,6 +181,10 @@ public class ServicesValidator extends EObjectValidator {
 				return validateLocalServiceRegistry((LocalServiceRegistry)value, diagnostics, context);
 			case ServicesPackage.REMOTE_SERVICE_REGISTRY:
 				return validateRemoteServiceRegistry((RemoteServiceRegistry)value, diagnostics, context);
+			case ServicesPackage.CAPABILITY:
+				return validateCapability((Capability)value, diagnostics, context);
+			case ServicesPackage.REQUIREMENT:
+				return validateRequirement((Requirement)value, diagnostics, context);
 			case ServicesPackage.CONSUMER_CAPABILITY:
 				return validateConsumerCapability((ConsumerCapability)value, diagnostics, context);
 			case ServicesPackage.PUBLISH_HOOK:
@@ -215,6 +221,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateFlavorKind((FlavorKind)value, diagnostics, context);
 			case ServicesPackage.HTTP_METHOD:
 				return validateHttpMethod((HttpMethod)value, diagnostics, context);
+			case ServicesPackage.PARAMETER_BINDING:
+				return validateParameterBinding((ParameterBinding)value, diagnostics, context);
 			case ServicesPackage.MQTT_QOS:
 				return validateMqttQos((MqttQos)value, diagnostics, context);
 			case ServicesPackage.REGISTRY_KIND:
@@ -223,6 +231,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateExpressionLanguage((ExpressionLanguage)value, diagnostics, context);
 			case ServicesPackage.CATALOG_STATUS:
 				return validateCatalogStatus((CatalogStatus)value, diagnostics, context);
+			case ServicesPackage.UPDATE_POLICY:
+				return validateUpdatePolicy((UpdatePolicy)value, diagnostics, context);
 			case ServicesPackage.CONNECTION_STATE:
 				return validateConnectionState((ConnectionState)value, diagnostics, context);
 			default:
@@ -806,6 +816,8 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateVersionedElement_validSemver(serviceImplementation, diagnostics, context);
 		if (result || diagnostics != null) result &= validateServiceImplementation_atLeastOneInterface(serviceImplementation, diagnostics, context);
 		if (result || diagnostics != null) result &= validateServiceImplementation_operationFlavorsCoverInterfaces(serviceImplementation, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceImplementation_replacesIsNotSelf(serviceImplementation, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceImplementation_cutoverGraceNonNegative(serviceImplementation, diagnostics, context);
 		return result;
 	}
 
@@ -868,6 +880,64 @@ public class ServicesValidator extends EObjectValidator {
 	}
 
 	/**
+	 * The cached validation expression for the replacesIsNotSelf constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_IMPLEMENTATION__REPLACES_IS_NOT_SELF__EEXPRESSION = "replaces = null or replaces <> self";
+
+	/**
+	 * Validates the replacesIsNotSelf constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceImplementation_replacesIsNotSelf(ServiceImplementation serviceImplementation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_IMPLEMENTATION,
+				 serviceImplementation,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "replacesIsNotSelf",
+				 SERVICE_IMPLEMENTATION__REPLACES_IS_NOT_SELF__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the cutoverGraceNonNegative constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_IMPLEMENTATION__CUTOVER_GRACE_NON_NEGATIVE__EEXPRESSION = "cutoverGraceMillis >= 0";
+
+	/**
+	 * Validates the cutoverGraceNonNegative constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceImplementation_cutoverGraceNonNegative(ServiceImplementation serviceImplementation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_IMPLEMENTATION,
+				 serviceImplementation,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "cutoverGraceNonNegative",
+				 SERVICE_IMPLEMENTATION__CUTOVER_GRACE_NON_NEGATIVE__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
@@ -909,7 +979,115 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateRestOperationFlavor(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return validate_EveryDefaultConstraint(restOperationFlavor, diagnostics, context);
+		if (!validate_NoCircularContainment(restOperationFlavor, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validateRestOperationFlavor_bindingsReferenceOperationParameters(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validateRestOperationFlavor_oneBindingPerParameter(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validateRestOperationFlavor_pathBindingsNeedPath(restOperationFlavor, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * The cached validation expression for the bindingsReferenceOperationParameters constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String REST_OPERATION_FLAVOR__BINDINGS_REFERENCE_OPERATION_PARAMETERS__EEXPRESSION = "parameterBindings->forAll(b | operation.parameters->includes(b.parameter))";
+
+	/**
+	 * Validates the bindingsReferenceOperationParameters constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestOperationFlavor_bindingsReferenceOperationParameters(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.REST_OPERATION_FLAVOR,
+				 restOperationFlavor,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "bindingsReferenceOperationParameters",
+				 REST_OPERATION_FLAVOR__BINDINGS_REFERENCE_OPERATION_PARAMETERS__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the oneBindingPerParameter constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String REST_OPERATION_FLAVOR__ONE_BINDING_PER_PARAMETER__EEXPRESSION = "parameterBindings->isUnique(b | b.parameter)";
+
+	/**
+	 * Validates the oneBindingPerParameter constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestOperationFlavor_oneBindingPerParameter(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.REST_OPERATION_FLAVOR,
+				 restOperationFlavor,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "oneBindingPerParameter",
+				 REST_OPERATION_FLAVOR__ONE_BINDING_PER_PARAMETER__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the pathBindingsNeedPath constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String REST_OPERATION_FLAVOR__PATH_BINDINGS_NEED_PATH__EEXPRESSION = "parameterBindings->forAll(b | b.binding.toString() <> 'PATH' or path <> null)";
+
+	/**
+	 * Validates the pathBindingsNeedPath constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestOperationFlavor_pathBindingsNeedPath(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.REST_OPERATION_FLAVOR,
+				 restOperationFlavor,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "pathBindingsNeedPath",
+				 REST_OPERATION_FLAVOR__PATH_BINDINGS_NEED_PATH__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestParameterBinding(RestParameterBinding restParameterBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(restParameterBinding, diagnostics, context);
 	}
 
 	/**
@@ -1211,6 +1389,63 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	public boolean validateCapability(Capability capability, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		if (!validate_NoCircularContainment(capability, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(capability, diagnostics, context);
+		if (result || diagnostics != null) result &= validateCapability_attributeNamesUnique(capability, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * The cached validation expression for the attributeNamesUnique constraint of '<em>Capability</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String CAPABILITY__ATTRIBUTE_NAMES_UNIQUE__EEXPRESSION = "attributes->isUnique(a | a.name)";
+
+	/**
+	 * Validates the attributeNamesUnique constraint of '<em>Capability</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateCapability_attributeNamesUnique(Capability capability, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.CAPABILITY,
+				 capability,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "attributeNamesUnique",
+				 CAPABILITY__ATTRIBUTE_NAMES_UNIQUE__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRequirement(Requirement requirement, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(requirement, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public boolean validateConsumerCapability(ConsumerCapability consumerCapability, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(consumerCapability, diagnostics, context);
 	}
@@ -1373,6 +1608,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	public boolean validateParameterBinding(ParameterBinding parameterBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public boolean validateMqttQos(MqttQos mqttQos, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
@@ -1401,6 +1645,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateCatalogStatus(CatalogStatus catalogStatus, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateUpdatePolicy(UpdatePolicy updatePolicy, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

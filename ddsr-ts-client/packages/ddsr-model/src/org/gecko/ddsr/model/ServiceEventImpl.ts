@@ -21,11 +21,13 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
   static readonly TYPE: number = 0;
   static readonly REFERENCE: number = 1;
   static readonly TIMESTAMP: number = 2;
+  static readonly REASON_CODE: number = 3;
 
   // Private fields
   private _type?: ServiceEventType;
   private _reference?: ServiceReference;
   private _timestamp?: Date;
+  private _reasonCode?: string;
 
   /**
    * Returns the EClass of this object
@@ -107,6 +109,30 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
     }
   }
 
+  get reasonCode(): string {
+    return this._reasonCode!;
+  }
+
+  set reasonCode(value: string) {
+    const oldValue = this._reasonCode;
+    this._reasonCode = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceEventImpl.REASON_CODE),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceEventImpl.REASON_CODE,
+        merge: () => false
+      });
+    }
+  }
+
   // Reflective API
 
   /**
@@ -121,6 +147,8 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
         return this.reference;
       case ServiceEventImpl.TIMESTAMP:
         return this.timestamp;
+      case ServiceEventImpl.REASON_CODE:
+        return this.reasonCode;
       default:
         return super.eGet(feature);
     }
@@ -144,6 +172,10 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
         this.timestamp = newValue as Date;
         super.eSet(feature, newValue);
         break;
+      case ServiceEventImpl.REASON_CODE:
+        this.reasonCode = newValue as string;
+        super.eSet(feature, newValue);
+        break;
       default:
         super.eSet(feature, newValue);
     }
@@ -161,6 +193,8 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
         return this._reference !== undefined;
       case ServiceEventImpl.TIMESTAMP:
         return this._timestamp !== undefined;
+      case ServiceEventImpl.REASON_CODE:
+        return this._reasonCode !== undefined;
       default:
         return super.eIsSet(feature);
     }
@@ -180,6 +214,9 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
         return;
       case ServiceEventImpl.TIMESTAMP:
         this._timestamp = undefined;
+        return;
+      case ServiceEventImpl.REASON_CODE:
+        this._reasonCode = undefined;
         return;
       default:
         super.eUnset(feature);

@@ -12,6 +12,7 @@ import type { ServiceOperation } from './ServiceOperation';
 import type { ServiceException } from './ServiceException';
 import type { Invariant } from './Invariant';
 import type { CatalogStatus } from './CatalogStatus';
+import type { UpdatePolicy } from './UpdatePolicy';
 
 /**
  * ServiceInterface
@@ -25,5 +26,6 @@ export interface ServiceInterface extends NamedElement, VersionedElement {
   status: CatalogStatus;
   deprecationReason?: string;
   replacedBy?: ServiceInterface;
+  updatePolicy: UpdatePolicy;
 
 }

@@ -13,6 +13,8 @@ import type { ServiceInterface } from './ServiceInterface';
 import type { ServiceFlavor } from './ServiceFlavor';
 import type { Property } from './Property';
 import type { ComponentDescription } from './ComponentDescription';
+import type { UpdatePolicy } from './UpdatePolicy';
+import type { Capability } from './Capability';
 import type { ServiceImplementation } from './ServiceImplementation';
 import { DDSRPackage } from './DDSRPackage';
 
@@ -28,6 +30,10 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
   static readonly FLAVORS: number = 5;
   static readonly PROPERTIES: number = 6;
   static readonly COMPONENT_DESCRIPTION: number = 7;
+  static readonly UPDATE_POLICY: number = 8;
+  static readonly REPLACES: number = 9;
+  static readonly CUTOVER_GRACE_MILLIS: number = 10;
+  static readonly CAPABILITIES: number = 11;
   static readonly NAME: number = 0;
   static readonly VERSION: number = 1;
 
@@ -38,6 +44,10 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
   private _flavors: ServiceFlavor[] = [];
   private _properties: Property[] = [];
   private _componentDescription?: ComponentDescription;
+  private _updatePolicy?: UpdatePolicy;
+  private _replaces?: ServiceImplementation;
+  private _cutoverGraceMillis?: number;
+  private _capabilities: Capability[] = [];
   private _name: string = "";
   private _version?: string;
 
@@ -193,6 +203,102 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
     }
   }
 
+  get updatePolicy(): UpdatePolicy {
+    return this._updatePolicy!;
+  }
+
+  set updatePolicy(value: UpdatePolicy) {
+    const oldValue = this._updatePolicy;
+    this._updatePolicy = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.UPDATE_POLICY),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceImplementationImpl.UPDATE_POLICY,
+        merge: () => false
+      });
+    }
+  }
+
+  get replaces(): ServiceImplementation {
+    return this._replaces!;
+  }
+
+  set replaces(value: ServiceImplementation) {
+    const oldValue = this._replaces;
+    this._replaces = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.REPLACES),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceImplementationImpl.REPLACES,
+        merge: () => false
+      });
+    }
+  }
+
+  get cutoverGraceMillis(): number {
+    return this._cutoverGraceMillis!;
+  }
+
+  set cutoverGraceMillis(value: number) {
+    const oldValue = this._cutoverGraceMillis;
+    this._cutoverGraceMillis = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.CUTOVER_GRACE_MILLIS),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceImplementationImpl.CUTOVER_GRACE_MILLIS,
+        merge: () => false
+      });
+    }
+  }
+
+  get capabilities(): Capability[] {
+    return this._capabilities;
+  }
+
+  set capabilities(value: Capability[]) {
+    const oldValue = this._capabilities;
+    this._capabilities = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.CAPABILITIES),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceImplementationImpl.CAPABILITIES,
+        merge: () => false
+      });
+    }
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -229,6 +335,14 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         return this.properties;
       case ServiceImplementationImpl.COMPONENT_DESCRIPTION:
         return this.componentDescription;
+      case ServiceImplementationImpl.UPDATE_POLICY:
+        return this.updatePolicy;
+      case ServiceImplementationImpl.REPLACES:
+        return this.replaces;
+      case ServiceImplementationImpl.CUTOVER_GRACE_MILLIS:
+        return this.cutoverGraceMillis;
+      case ServiceImplementationImpl.CAPABILITIES:
+        return this.capabilities;
       case ServiceImplementationImpl.NAME:
         return this.name;
       case ServiceImplementationImpl.VERSION:
@@ -268,6 +382,22 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         this.componentDescription = newValue as ComponentDescription;
         super.eSet(feature, newValue);
         break;
+      case ServiceImplementationImpl.UPDATE_POLICY:
+        this.updatePolicy = newValue as UpdatePolicy;
+        super.eSet(feature, newValue);
+        break;
+      case ServiceImplementationImpl.REPLACES:
+        this.replaces = newValue as ServiceImplementation;
+        super.eSet(feature, newValue);
+        break;
+      case ServiceImplementationImpl.CUTOVER_GRACE_MILLIS:
+        this.cutoverGraceMillis = newValue as number;
+        super.eSet(feature, newValue);
+        break;
+      case ServiceImplementationImpl.CAPABILITIES:
+        this.capabilities = newValue as Capability[];
+        super.eSet(feature, newValue);
+        break;
       case ServiceImplementationImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -299,6 +429,14 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         return this._properties !== undefined && this._properties.length > 0;
       case ServiceImplementationImpl.COMPONENT_DESCRIPTION:
         return this._componentDescription !== undefined;
+      case ServiceImplementationImpl.UPDATE_POLICY:
+        return this._updatePolicy !== undefined;
+      case ServiceImplementationImpl.REPLACES:
+        return this._replaces !== undefined;
+      case ServiceImplementationImpl.CUTOVER_GRACE_MILLIS:
+        return this._cutoverGraceMillis !== undefined;
+      case ServiceImplementationImpl.CAPABILITIES:
+        return this._capabilities !== undefined && this._capabilities.length > 0;
       case ServiceImplementationImpl.NAME:
         return this._name !== "";
       case ServiceImplementationImpl.VERSION:
@@ -331,6 +469,18 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         return;
       case ServiceImplementationImpl.COMPONENT_DESCRIPTION:
         this._componentDescription = undefined;
+        return;
+      case ServiceImplementationImpl.UPDATE_POLICY:
+        this._updatePolicy = undefined;
+        return;
+      case ServiceImplementationImpl.REPLACES:
+        this._replaces = undefined;
+        return;
+      case ServiceImplementationImpl.CUTOVER_GRACE_MILLIS:
+        this._cutoverGraceMillis = undefined;
+        return;
+      case ServiceImplementationImpl.CAPABILITIES:
+        this._capabilities = [];
         return;
       case ServiceImplementationImpl.NAME:
         this._name = "";

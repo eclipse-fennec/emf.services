@@ -28,6 +28,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceEventImpl#getType <em>Type</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceEventImpl#getReference <em>Reference</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceEventImpl#getTimestamp <em>Timestamp</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceEventImpl#getReasonCode <em>Reason Code</em>}</li>
  * </ul>
  *
  * @generated
@@ -82,6 +83,26 @@ public class ServiceEventImpl extends MinimalEObjectImpl.Container implements Se
 	 * @ordered
 	 */
 	protected Date timestamp = TIMESTAMP_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getReasonCode() <em>Reason Code</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getReasonCode()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final String REASON_CODE_EDEFAULT = null;
+
+	/**
+	 * The cached value of the '{@link #getReasonCode() <em>Reason Code</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getReasonCode()
+	 * @generated
+	 * @ordered
+	 */
+	protected String reasonCode = REASON_CODE_EDEFAULT;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -194,6 +215,29 @@ public class ServiceEventImpl extends MinimalEObjectImpl.Container implements Se
 	 * @generated
 	 */
 	@Override
+	public String getReasonCode() {
+		return reasonCode;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setReasonCode(String newReasonCode) {
+		String oldReasonCode = reasonCode;
+		reasonCode = newReasonCode;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_EVENT__REASON_CODE, oldReasonCode, reasonCode));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_EVENT__TYPE:
@@ -203,6 +247,8 @@ public class ServiceEventImpl extends MinimalEObjectImpl.Container implements Se
 				return basicGetReference();
 			case ServicesPackage.SERVICE_EVENT__TIMESTAMP:
 				return getTimestamp();
+			case ServicesPackage.SERVICE_EVENT__REASON_CODE:
+				return getReasonCode();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -223,6 +269,9 @@ public class ServiceEventImpl extends MinimalEObjectImpl.Container implements Se
 				return;
 			case ServicesPackage.SERVICE_EVENT__TIMESTAMP:
 				setTimestamp((Date)newValue);
+				return;
+			case ServicesPackage.SERVICE_EVENT__REASON_CODE:
+				setReasonCode((String)newValue);
 				return;
 		}
 		super.eSet(featureID, newValue);
@@ -245,6 +294,9 @@ public class ServiceEventImpl extends MinimalEObjectImpl.Container implements Se
 			case ServicesPackage.SERVICE_EVENT__TIMESTAMP:
 				setTimestamp(TIMESTAMP_EDEFAULT);
 				return;
+			case ServicesPackage.SERVICE_EVENT__REASON_CODE:
+				setReasonCode(REASON_CODE_EDEFAULT);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -263,6 +315,8 @@ public class ServiceEventImpl extends MinimalEObjectImpl.Container implements Se
 				return reference != null;
 			case ServicesPackage.SERVICE_EVENT__TIMESTAMP:
 				return TIMESTAMP_EDEFAULT == null ? timestamp != null : !TIMESTAMP_EDEFAULT.equals(timestamp);
+			case ServicesPackage.SERVICE_EVENT__REASON_CODE:
+				return REASON_CODE_EDEFAULT == null ? reasonCode != null : !REASON_CODE_EDEFAULT.equals(reasonCode);
 		}
 		return super.eIsSet(featureID);
 	}
@@ -281,6 +335,8 @@ public class ServiceEventImpl extends MinimalEObjectImpl.Container implements Se
 		result.append(type);
 		result.append(", timestamp: ");
 		result.append(timestamp);
+		result.append(", reasonCode: ");
+		result.append(reasonCode);
 		result.append(')');
 		return result.toString();
 	}

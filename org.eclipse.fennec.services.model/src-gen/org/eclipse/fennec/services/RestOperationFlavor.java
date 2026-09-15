@@ -12,7 +12,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes.
+ * REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings).
  * <!-- end-model-doc -->
  *
  * <p>
@@ -22,10 +22,12 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.RestOperationFlavor#getMethod <em>Method</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.RestOperationFlavor#getPath <em>Path</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.RestOperationFlavor#getReturnCodes <em>Return Codes</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.RestOperationFlavor#getParameterBindings <em>Parameter Bindings</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getRestOperationFlavor()
- * @model
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 bindingsReferenceOperationParameters='parameterBindings-&gt;forAll(b | operation.parameters-&gt;includes(b.parameter))' oneBindingPerParameter='parameterBindings-&gt;isUnique(b | b.parameter)' pathBindingsNeedPath='parameterBindings-&gt;forAll(b | b.binding.toString() &lt;&gt; \'PATH\' or path &lt;&gt; null)'"
  * @generated
  */
 @ProviderType
@@ -97,5 +99,20 @@ public interface RestOperationFlavor extends ServiceOperationFlavor {
 	 * @generated
 	 */
 	EList<Integer> getReturnCodes();
+
+	/**
+	 * Returns the value of the '<em><b>Parameter Bindings</b></em>' containment reference list.
+	 * The list contents are of type {@link org.eclipse.fennec.services.RestParameterBinding}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Where each Parameter of the operation travels on the wire. Parameters without an entry are BODY (today's behaviour: all arguments in the XMI payload, several of them as the multi-arg bundle). Lets a REST binding express GET /payments/{id}?currency=EUR with a tenant header instead of forcing everything into the body (OPEN_ISSUES W3).
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Parameter Bindings</em>' containment reference list.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getRestOperationFlavor_ParameterBindings()
+	 * @model containment="true"
+	 * @generated
+	 */
+	EList<RestParameterBinding> getParameterBindings();
 
 } // RestOperationFlavor

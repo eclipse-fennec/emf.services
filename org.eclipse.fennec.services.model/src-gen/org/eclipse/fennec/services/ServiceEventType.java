@@ -16,7 +16,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * and utility methods for working with them.
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * Lifecycle event types. Values follow org.osgi.framework.ServiceEvent and are bitwise-combinable so listener filters can subscribe to multiple types at once. UNSPECIFIED = no type set; exists only so that none of the meaningful literals is the EMF default, because EMF omits an attribute whose value equals the default and a required type would then be missing on the wire (see OPEN_ISSUES W4). REGISTERED = service appeared; MODIFIED = properties changed, still matches subscriber filter; UNREGISTERING = service is being removed; MODIFIED_ENDMATCH = properties changed, no longer matches subscriber filter.
+ * Lifecycle event types. Values follow org.osgi.framework.ServiceEvent and are bitwise-combinable so listener filters can subscribe to multiple types at once. UNSPECIFIED = no type set; exists only so that none of the meaningful literals is the EMF default, because EMF omits an attribute whose value equals the default and a required type would then be missing on the wire (see OPEN_ISSUES W4). REGISTERED = service appeared; MODIFIED = properties changed, still matches subscriber filter; UNREGISTERING = service is being removed; MODIFIED_ENDMATCH = properties changed, no longer matches subscriber filter. UPGRADE_AVAILABLE = a newer ServiceImplementation that declares replaces = the referenced one has been published under DEPRECATE_AND_DRAIN; the old service stays live, consumers should re-lookup and migrate at their own pace. RETIRED = the service has been fully removed from the registry after an UNREGISTERING; sessions still holding a lease on it are released. Both extend the OSGi set; see docs/UPDATE_POLICY.md. ServiceEvent.reasonCode tells why an UNREGISTERING / RETIRED happened.
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceEventType()
  * @model
@@ -72,7 +72,27 @@ public enum ServiceEventType implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	MODIFIED_ENDMATCH(8, "MODIFIED_ENDMATCH", "MODIFIED_ENDMATCH");
+	MODIFIED_ENDMATCH(8, "MODIFIED_ENDMATCH", "MODIFIED_ENDMATCH"),
+
+	/**
+	 * The '<em><b>UPGRADE AVAILABLE</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #UPGRADE_AVAILABLE_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	UPGRADE_AVAILABLE(16, "UPGRADE_AVAILABLE", "UPGRADE_AVAILABLE"),
+
+	/**
+	 * The '<em><b>RETIRED</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #RETIRED_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	RETIRED(32, "RETIRED", "RETIRED");
 
 	/**
 	 * The '<em><b>UNSPECIFIED</b></em>' literal value.
@@ -130,6 +150,28 @@ public enum ServiceEventType implements Enumerator {
 	public static final int MODIFIED_ENDMATCH_VALUE = 8;
 
 	/**
+	 * The '<em><b>UPGRADE AVAILABLE</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #UPGRADE_AVAILABLE
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int UPGRADE_AVAILABLE_VALUE = 16;
+
+	/**
+	 * The '<em><b>RETIRED</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #RETIRED
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int RETIRED_VALUE = 32;
+
+	/**
 	 * An array of all the '<em><b>Service Event Type</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -142,6 +184,8 @@ public enum ServiceEventType implements Enumerator {
 			MODIFIED,
 			UNREGISTERING,
 			MODIFIED_ENDMATCH,
+			UPGRADE_AVAILABLE,
+			RETIRED,
 		};
 
 	/**
@@ -203,6 +247,8 @@ public enum ServiceEventType implements Enumerator {
 			case MODIFIED_VALUE: return MODIFIED;
 			case UNREGISTERING_VALUE: return UNREGISTERING;
 			case MODIFIED_ENDMATCH_VALUE: return MODIFIED_ENDMATCH;
+			case UPGRADE_AVAILABLE_VALUE: return UPGRADE_AVAILABLE;
+			case RETIRED_VALUE: return RETIRED;
 		}
 		return null;
 	}

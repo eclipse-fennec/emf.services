@@ -17,5 +17,6 @@ export interface ServiceEvent extends EObject {
   type: ServiceEventType;
   reference: ServiceReference;
   timestamp?: Date;
+  reasonCode?: string;
 
 }

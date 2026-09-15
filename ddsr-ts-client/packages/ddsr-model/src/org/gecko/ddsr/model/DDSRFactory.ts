@@ -64,6 +64,8 @@ import type { MqttFlavor } from './MqttFlavor';
 import { MqttFlavorImpl } from './MqttFlavorImpl';
 import type { RestOperationFlavor } from './RestOperationFlavor';
 import { RestOperationFlavorImpl } from './RestOperationFlavorImpl';
+import type { RestParameterBinding } from './RestParameterBinding';
+import { RestParameterBindingImpl } from './RestParameterBindingImpl';
 import type { MqttOperationFlavor } from './MqttOperationFlavor';
 import { MqttOperationFlavorImpl } from './MqttOperationFlavorImpl';
 import type { ServiceReference } from './ServiceReference';
@@ -86,6 +88,10 @@ import type { LocalServiceRegistry } from './LocalServiceRegistry';
 import { LocalServiceRegistryImpl } from './LocalServiceRegistryImpl';
 import type { RemoteServiceRegistry } from './RemoteServiceRegistry';
 import { RemoteServiceRegistryImpl } from './RemoteServiceRegistryImpl';
+import type { Capability } from './Capability';
+import { CapabilityImpl } from './CapabilityImpl';
+import type { Requirement } from './Requirement';
+import { RequirementImpl } from './RequirementImpl';
 import type { ConsumerCapability } from './ConsumerCapability';
 import { ConsumerCapabilityImpl } from './ConsumerCapabilityImpl';
 
@@ -306,6 +312,13 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new RestParameterBinding instance
+   */
+  createRestParameterBinding(): RestParameterBinding {
+    return new RestParameterBindingImpl();
+  }
+
+  /**
    * Create a new MqttOperationFlavor instance
    */
   createMqttOperationFlavor(): MqttOperationFlavor {
@@ -383,6 +396,20 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new Capability instance
+   */
+  createCapability(): Capability {
+    return new CapabilityImpl();
+  }
+
+  /**
+   * Create a new Requirement instance
+   */
+  createRequirement(): Requirement {
+    return new RequirementImpl();
+  }
+
+  /**
    * Create a new ConsumerCapability instance
    */
   createConsumerCapability(): ConsumerCapability {
@@ -450,6 +477,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createMqttFlavor();
       case 'RestOperationFlavor':
         return this.createRestOperationFlavor();
+      case 'RestParameterBinding':
+        return this.createRestParameterBinding();
       case 'MqttOperationFlavor':
         return this.createMqttOperationFlavor();
       case 'ServiceReference':
@@ -472,6 +501,10 @@ export class DDSRFactory extends BasicEFactory {
         return this.createLocalServiceRegistry();
       case 'RemoteServiceRegistry':
         return this.createRemoteServiceRegistry();
+      case 'Capability':
+        return this.createCapability();
+      case 'Requirement':
+        return this.createRequirement();
       case 'ConsumerCapability':
         return this.createConsumerCapability();
       default:

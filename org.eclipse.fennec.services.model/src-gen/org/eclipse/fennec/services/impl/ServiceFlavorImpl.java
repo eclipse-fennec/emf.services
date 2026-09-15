@@ -18,6 +18,7 @@ import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
+import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
@@ -34,6 +35,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getName <em>Name</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getKind <em>Kind</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getOperationFlavors <em>Operation Flavors</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getCapabilities <em>Capabilities</em>}</li>
  * </ul>
  *
  * @generated
@@ -88,6 +90,16 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 	 * @ordered
 	 */
 	protected EList<ServiceOperationFlavor> operationFlavors;
+
+	/**
+	 * The cached value of the '{@link #getCapabilities() <em>Capabilities</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getCapabilities()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<Capability> capabilities;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -173,10 +185,25 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 	 * @generated
 	 */
 	@Override
+	public EList<Capability> getCapabilities() {
+		if (capabilities == null) {
+			capabilities = new EObjectContainmentEList<Capability>(Capability.class, this, ServicesPackage.SERVICE_FLAVOR__CAPABILITIES);
+		}
+		return capabilities;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_FLAVOR__OPERATION_FLAVORS:
 				return ((InternalEList<?>)getOperationFlavors()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
+				return ((InternalEList<?>)getCapabilities()).basicRemove(otherEnd, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -195,6 +222,8 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 				return getKind();
 			case ServicesPackage.SERVICE_FLAVOR__OPERATION_FLAVORS:
 				return getOperationFlavors();
+			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
+				return getCapabilities();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -218,6 +247,10 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 				getOperationFlavors().clear();
 				getOperationFlavors().addAll((Collection<? extends ServiceOperationFlavor>)newValue);
 				return;
+			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
+				getCapabilities().clear();
+				getCapabilities().addAll((Collection<? extends Capability>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -239,6 +272,9 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 			case ServicesPackage.SERVICE_FLAVOR__OPERATION_FLAVORS:
 				getOperationFlavors().clear();
 				return;
+			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
+				getCapabilities().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -257,6 +293,8 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 				return kind != KIND_EDEFAULT;
 			case ServicesPackage.SERVICE_FLAVOR__OPERATION_FLAVORS:
 				return operationFlavors != null && !operationFlavors.isEmpty();
+			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
+				return capabilities != null && !capabilities.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}

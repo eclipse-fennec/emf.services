@@ -85,6 +85,7 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.REST_FLAVOR: return createRestFlavor();
 			case ServicesPackage.MQTT_FLAVOR: return createMqttFlavor();
 			case ServicesPackage.REST_OPERATION_FLAVOR: return createRestOperationFlavor();
+			case ServicesPackage.REST_PARAMETER_BINDING: return createRestParameterBinding();
 			case ServicesPackage.MQTT_OPERATION_FLAVOR: return createMqttOperationFlavor();
 			case ServicesPackage.SERVICE_REFERENCE: return createServiceReference();
 			case ServicesPackage.SERVICE_REGISTRATION: return createServiceRegistration();
@@ -96,6 +97,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.SERVICE_EVENT: return createServiceEvent();
 			case ServicesPackage.LOCAL_SERVICE_REGISTRY: return createLocalServiceRegistry();
 			case ServicesPackage.REMOTE_SERVICE_REGISTRY: return createRemoteServiceRegistry();
+			case ServicesPackage.CAPABILITY: return createCapability();
+			case ServicesPackage.REQUIREMENT: return createRequirement();
 			case ServicesPackage.CONSUMER_CAPABILITY: return createConsumerCapability();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
@@ -138,6 +141,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createFlavorKindFromString(eDataType, initialValue);
 			case ServicesPackage.HTTP_METHOD:
 				return createHttpMethodFromString(eDataType, initialValue);
+			case ServicesPackage.PARAMETER_BINDING:
+				return createParameterBindingFromString(eDataType, initialValue);
 			case ServicesPackage.MQTT_QOS:
 				return createMqttQosFromString(eDataType, initialValue);
 			case ServicesPackage.REGISTRY_KIND:
@@ -146,6 +151,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createExpressionLanguageFromString(eDataType, initialValue);
 			case ServicesPackage.CATALOG_STATUS:
 				return createCatalogStatusFromString(eDataType, initialValue);
+			case ServicesPackage.UPDATE_POLICY:
+				return createUpdatePolicyFromString(eDataType, initialValue);
 			case ServicesPackage.CONNECTION_STATE:
 				return createConnectionStateFromString(eDataType, initialValue);
 			default:
@@ -189,6 +196,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertFlavorKindToString(eDataType, instanceValue);
 			case ServicesPackage.HTTP_METHOD:
 				return convertHttpMethodToString(eDataType, instanceValue);
+			case ServicesPackage.PARAMETER_BINDING:
+				return convertParameterBindingToString(eDataType, instanceValue);
 			case ServicesPackage.MQTT_QOS:
 				return convertMqttQosToString(eDataType, instanceValue);
 			case ServicesPackage.REGISTRY_KIND:
@@ -197,6 +206,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertExpressionLanguageToString(eDataType, instanceValue);
 			case ServicesPackage.CATALOG_STATUS:
 				return convertCatalogStatusToString(eDataType, instanceValue);
+			case ServicesPackage.UPDATE_POLICY:
+				return convertUpdatePolicyToString(eDataType, instanceValue);
 			case ServicesPackage.CONNECTION_STATE:
 				return convertConnectionStateToString(eDataType, instanceValue);
 			default:
@@ -518,6 +529,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	@Override
+	public RestParameterBinding createRestParameterBinding() {
+		RestParameterBindingImpl restParameterBinding = new RestParameterBindingImpl();
+		return restParameterBinding;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public MqttOperationFlavor createMqttOperationFlavor() {
 		MqttOperationFlavorImpl mqttOperationFlavor = new MqttOperationFlavorImpl();
 		return mqttOperationFlavor;
@@ -631,6 +653,28 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public RemoteServiceRegistry createRemoteServiceRegistry() {
 		RemoteServiceRegistryImpl remoteServiceRegistry = new RemoteServiceRegistryImpl();
 		return remoteServiceRegistry;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Capability createCapability() {
+		CapabilityImpl capability = new CapabilityImpl();
+		return capability;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Requirement createRequirement() {
+		RequirementImpl requirement = new RequirementImpl();
+		return requirement;
 	}
 
 	/**
@@ -929,6 +973,26 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	public ParameterBinding createParameterBindingFromString(EDataType eDataType, String initialValue) {
+		ParameterBinding result = ParameterBinding.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertParameterBindingToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public MqttQos createMqttQosFromString(EDataType eDataType, String initialValue) {
 		MqttQos result = MqttQos.get(initialValue);
 		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
@@ -1001,6 +1065,26 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	public String convertCatalogStatusToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public UpdatePolicy createUpdatePolicyFromString(EDataType eDataType, String initialValue) {
+		UpdatePolicy result = UpdatePolicy.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertUpdatePolicyToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

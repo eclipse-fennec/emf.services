@@ -5,17 +5,22 @@ package org.eclipse.fennec.services.impl;
 import java.util.Collection;
 
 import org.eclipse.emf.common.notify.Notification;
+import org.eclipse.emf.common.notify.NotificationChain;
 
 import org.eclipse.emf.common.util.EList;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.InternalEObject;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 
 import org.eclipse.emf.ecore.util.EDataTypeUniqueEList;
+import org.eclipse.emf.ecore.util.EObjectContainmentEList;
+import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServicesPackage;
 
 /**
@@ -29,6 +34,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getMethod <em>Method</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getPath <em>Path</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getReturnCodes <em>Return Codes</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getParameterBindings <em>Parameter Bindings</em>}</li>
  * </ul>
  *
  * @generated
@@ -83,6 +89,16 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	 * @ordered
 	 */
 	protected EList<Integer> returnCodes;
+
+	/**
+	 * The cached value of the '{@link #getParameterBindings() <em>Parameter Bindings</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getParameterBindings()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<RestParameterBinding> parameterBindings;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -168,6 +184,33 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	 * @generated
 	 */
 	@Override
+	public EList<RestParameterBinding> getParameterBindings() {
+		if (parameterBindings == null) {
+			parameterBindings = new EObjectContainmentEList<RestParameterBinding>(RestParameterBinding.class, this, ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS);
+		}
+		return parameterBindings;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
+		switch (featureID) {
+			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
+				return ((InternalEList<?>)getParameterBindings()).basicRemove(otherEnd, msgs);
+		}
+		return super.eInverseRemove(otherEnd, featureID, msgs);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Object eGet(int featureID, boolean resolve, boolean coreType) {
 		switch (featureID) {
 			case ServicesPackage.REST_OPERATION_FLAVOR__METHOD:
@@ -176,6 +219,8 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 				return getPath();
 			case ServicesPackage.REST_OPERATION_FLAVOR__RETURN_CODES:
 				return getReturnCodes();
+			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
+				return getParameterBindings();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -199,6 +244,10 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 				getReturnCodes().clear();
 				getReturnCodes().addAll((Collection<? extends Integer>)newValue);
 				return;
+			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
+				getParameterBindings().clear();
+				getParameterBindings().addAll((Collection<? extends RestParameterBinding>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -220,6 +269,9 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 			case ServicesPackage.REST_OPERATION_FLAVOR__RETURN_CODES:
 				getReturnCodes().clear();
 				return;
+			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
+				getParameterBindings().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -238,6 +290,8 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 				return PATH_EDEFAULT == null ? path != null : !PATH_EDEFAULT.equals(path);
 			case ServicesPackage.REST_OPERATION_FLAVOR__RETURN_CODES:
 				return returnCodes != null && !returnCodes.isEmpty();
+			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
+				return parameterBindings != null && !parameterBindings.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}

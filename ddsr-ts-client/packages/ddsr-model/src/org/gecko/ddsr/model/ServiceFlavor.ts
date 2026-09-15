@@ -9,6 +9,7 @@ import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/c
 import type { NamedElement } from './NamedElement';
 import type { FlavorKind } from './FlavorKind';
 import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
+import type { Capability } from './Capability';
 
 /**
  * ServiceFlavor
@@ -17,5 +18,6 @@ import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
 export interface ServiceFlavor extends NamedElement {
   kind: FlavorKind;
   operationFlavors: ServiceOperationFlavor[];
+  capabilities: Capability[];
 
 }

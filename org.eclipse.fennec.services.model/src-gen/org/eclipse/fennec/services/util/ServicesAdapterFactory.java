@@ -204,6 +204,10 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createRestOperationFlavorAdapter();
 			}
 			@Override
+			public Adapter caseRestParameterBinding(RestParameterBinding object) {
+				return createRestParameterBindingAdapter();
+			}
+			@Override
 			public Adapter caseMqttOperationFlavor(MqttOperationFlavor object) {
 				return createMqttOperationFlavorAdapter();
 			}
@@ -254,6 +258,14 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 			@Override
 			public Adapter caseRemoteServiceRegistry(RemoteServiceRegistry object) {
 				return createRemoteServiceRegistryAdapter();
+			}
+			@Override
+			public Adapter caseCapability(Capability object) {
+				return createCapabilityAdapter();
+			}
+			@Override
+			public Adapter caseRequirement(Requirement object) {
+				return createRequirementAdapter();
 			}
 			@Override
 			public Adapter caseConsumerCapability(ConsumerCapability object) {
@@ -768,6 +780,20 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	}
 
 	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.RestParameterBinding <em>Rest Parameter Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.RestParameterBinding
+	 * @generated
+	 */
+	public Adapter createRestParameterBindingAdapter() {
+		return null;
+	}
+
+	/**
 	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.MqttOperationFlavor <em>Mqtt Operation Flavor</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
@@ -946,6 +972,34 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createRemoteServiceRegistryAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.Capability <em>Capability</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.Capability
+	 * @generated
+	 */
+	public Adapter createCapabilityAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.Requirement <em>Requirement</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.Requirement
+	 * @generated
+	 */
+	public Adapter createRequirementAdapter() {
 		return null;
 	}
 

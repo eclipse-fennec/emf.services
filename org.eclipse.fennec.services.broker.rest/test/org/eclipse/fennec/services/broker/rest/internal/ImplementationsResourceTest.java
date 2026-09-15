@@ -70,6 +70,11 @@ class ImplementationsResourceTest {
 		public ServiceRegistration registerService(ServiceProvider p, ServiceImplementation i) {
 			throw new UnsupportedOperationException("local-style, not reachable over REST");
 		}
+
+		@Override
+		public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+			throw new UnsupportedOperationException("not exercised");
+		}
 	}
 
 	private final FakeImplementations broker = new FakeImplementations();

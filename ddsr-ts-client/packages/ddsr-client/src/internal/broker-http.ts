@@ -195,6 +195,22 @@ export class BrokerHttp {
   }
 
   /** DELETE /consumers/{id} — shutdown-notify, releases all leases at once. */
+  /**
+   * Provider liveness (#52): `PUT /references/{id}/heartbeat?intervalSeconds=N`,
+   * no body. The broker retires the registration with PROVIDER_LOST after
+   * two missed heartbeats; 404 (code 212) means it no longer holds the
+   * registration and the provider has to publish again.
+   */
+  async heartbeat(referenceId: string, intervalSeconds: number): Promise<Diagnostic> {
+    const params = new URLSearchParams({ intervalSeconds: String(intervalSeconds) });
+    const response = await this.fetchFn(
+      `${this.base}/references/${encodeURIComponent(referenceId)}/heartbeat?${params}`, {
+        method: 'PUT',
+        headers: { Accept: 'application/xml', [REQUESTOR_HEADER]: this.requestor },
+      });
+    return this.readDiagnostic(response);
+  }
+
   async deleteConsumerSession(consumerId: string): Promise<Diagnostic> {
     const response = await this.fetchFn(`${this.base}/consumers/${encodeURIComponent(consumerId)}`, {
       method: 'DELETE',

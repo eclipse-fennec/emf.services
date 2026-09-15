@@ -32,17 +32,29 @@ echten Broker. Anforderungen und Entscheidungen:
   `UPGRADE_AVAILABLE`, Lookups liefern nur den Nachfolger, der Vorgänger
   antwortet weiter, nach `DELETE /consumers/{id}` retired der Policy-Sweep
   ihn (`UNREGISTERING/REPLACED` + `RETIRED`), der Locator wechselt (#45, #58).
+- **H — Provider-Liveness:** der Java-Provider heartbeatet alle 2 s
+  (`DDSR_PROVIDER_HEARTBEAT_SECONDS=2`) und wird mit SIGKILL beendet —
+  kein Withdraw, kein Shutdown-Hook. Erwartet: der Broker retired die
+  Registrierung nach zwei verpassten Heartbeats mit `PROVIDER_LOST`
+  (`UNREGISTERING` + `RETIRED`), der Lookup listet den toten Endpoint nicht
+  mehr, der Locator steht auf `REBIND` und ein Aufruf scheitert (kein
+  Nachfolger), die Lease ist weg; die Harness misst die Latenz bis zum
+  Consumer und verlangt < 30 s (#52).
 
 Der Payment-Provider ist dafür per Umgebung konfigurierbar
 (`PAYMENTS_HTTP_PORT`, `PAYMENTS_PUBLIC_URL`, `PAYMENTS_IMPL_VERSION`,
-`PAYMENTS_UPDATE_POLICY`, `PAYMENTS_REPLACES_VERSION`, `DDSR_BROKER_URL`;
-`configs/config.json` mit ConfigAdmin-Interpolation).
+`PAYMENTS_UPDATE_POLICY`, `PAYMENTS_REPLACES_VERSION`, `DDSR_BROKER_URL`,
+`DDSR_PROVIDER_HEARTBEAT_SECONDS`, `DDSR_SESSION_INTERVAL_SECONDS`;
+`configs/config.json` mit ConfigAdmin-Interpolation). Der Beispiel-Provider
+hält sein Consumer-Session-Intervall auf 0 und erwirbt so keine Lease auf
+den eigenen Service — sonst würde diese Self-Lease den Drain in Szenario G
+blockieren.
 
 ## Läufe
 
 ```bash
-./itest/run-harness.sh          # Host-Prozesse (kein Podman nötig): A + B + F + G
-./itest/run-harness-podman.sh   # Container (podman, --network=host): A + B + C + D + E + F + G
+./itest/run-harness.sh          # Host-Prozesse (kein Podman nötig): A + B + F + G + H
+./itest/run-harness-podman.sh   # Container (podman, --network=host): A + B + C + D + E + F + G + H
 ```
 
 Beide bauen zuerst (`./gradlew build` + bnd-Exporte, `pnpm install` +

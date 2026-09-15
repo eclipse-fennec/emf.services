@@ -65,6 +65,12 @@ public final class DdsrDiagnostics {
 	 * optionally with {@code replaces} — never an in-place modification (#55).
 	 */
 	public static final int CODE_IMPL_CONTRACT_CHANGED       = 214;
+	/**
+	 * A provider heartbeat named a non-positive interval (#52). The
+	 * interval is what the broker derives the liveness timeout from
+	 * ({@code 2 × interval}), so it has to be a real duration.
+	 */
+	public static final int CODE_HEARTBEAT_INVALID           = 215;
 	public static final int CODE_SESSION_INVALID             = 230;
 	public static final int CODE_INTERFACE_DEPRECATED        = 300;
 	public static final int CODE_PERSISTENCE_FAILED          = 500;

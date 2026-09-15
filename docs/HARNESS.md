@@ -11,10 +11,10 @@ over a real wire.
 ## Running it
 
 ```bash
-# host processes (no containers; scenarios A + B)
+# host processes (no containers; scenarios A + B + F + G + H)
 ./itest/run-harness.sh
 
-# containerized incl. Mosquitto (scenarios A–E) — podman is the
+# containerized incl. Mosquitto (scenarios A–H) — podman is the
 # vehicle, not a requirement
 ./itest/run-harness-podman.sh
 ```
@@ -60,10 +60,23 @@ that keeps answering, and — after `DELETE /consumers/{id}` — the policy
 sweep retiring it (`UNREGISTERING/REPLACED` + `RETIRED`) and the locator
 rebinding to the successor.
 
+**H — provider liveness (#52).** The Java provider heartbeats every 2 s
+(`DDSR_PROVIDER_HEARTBEAT_SECONDS=2`) and is then killed with SIGKILL: no
+withdraw, no shutdown hook. The broker has to notice the silence (two
+missed heartbeats, then its liveness sweep) and retire the registration
+with `PROVIDER_LOST`. The probe expects `UNREGISTERING/PROVIDER_LOST` +
+`RETIRED/PROVIDER_LOST` for the held reference, a lookup that no longer
+lists the dead endpoint, a locator in `REBIND` whose invoke fails (no
+successor) and a released lease; the harness asserts the event reached
+the consumer within 30 s of the kill and prints the latency.
+
 The provider instances are configured through the environment
 (`PAYMENTS_HTTP_PORT`, `PAYMENTS_PUBLIC_URL`, `PAYMENTS_IMPL_VERSION`,
-`PAYMENTS_UPDATE_POLICY`, `PAYMENTS_REPLACES_VERSION`, `DDSR_BROKER_URL`)
-via ConfigAdmin interpolation in `configs/config.json`.
+`PAYMENTS_UPDATE_POLICY`, `PAYMENTS_REPLACES_VERSION`, `DDSR_BROKER_URL`,
+`DDSR_PROVIDER_HEARTBEAT_SECONDS`, `DDSR_SESSION_INTERVAL_SECONDS`) via
+ConfigAdmin interpolation in `configs/config.json`. The example provider
+keeps its consumer session interval at 0, so it never acquires a lease on
+its own service — otherwise the self-lease would stall scenario G's drain.
 
 ## CI
 

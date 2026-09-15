@@ -90,6 +90,11 @@ class ProviderImplReconnectTest {
 		public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 			throw new UnsupportedOperationException("not exercised by this test");
 		}
+
+		@Override
+		public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+			throw new UnsupportedOperationException("not exercised");
+		}
 	}
 
 	private static final class FakeLookup implements BrokerLookup {

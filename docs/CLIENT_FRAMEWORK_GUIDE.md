@@ -115,6 +115,7 @@ For the manual build the table below is the source of truth. **If the broker's s
 |---|---|---|---|---|
 | POST | `/implementations` | `<services:ServiceProvider>` containing **exactly one** `<implementations>` child | `Diagnostic` | 200 / 200+WARNING (deprecated iface) / 403 (ownership) / 422 (iface not in catalog) |
 | DELETE | `/implementations` | same shape: provider with the impl to withdraw | `Diagnostic` | 200 / 403 / 404 |
+| PUT | `/references/{referenceId}/heartbeat?intervalSeconds=N` | none | `Diagnostic` | 200 / 404 (broker lost the registration → publish again) / 400 (bad interval) — provider liveness (#52), sent by the SDKs on a timer |
 
 The single-impl-per-request shape is deliberate: it matches the model's containment ownership ("the provider owns the impl") and avoids ambiguity. To publish N impls, send N requests.
 
@@ -208,6 +209,18 @@ Internally `publish(...)` does:
 1. Wrap provider+impl into an XMI POST to `/implementations`.
 2. Parse `Diagnostic` response. On WARNING surface the message but proceed.
 3. On OK: do a follow-up `GET /references?interface=...&flavors=...` to retrieve the assigned reference id (or, better, the broker returns the reference id in the diagnostic message — TODO for Increment 3).
+
+**Provider liveness (#52).** Every live `Registration` is heartbeated on a
+timer (`provider_heartbeat_seconds`, PID `org.eclipse.fennec.services.client`,
+default 30; TS: `providerHeartbeatSeconds`). The broker retires a
+registration after two missed heartbeats with `PROVIDER_LOST`, so a
+provider that dies without its shutdown hook disappears from lookups
+within roughly `2 × interval` plus the broker's sweep. A registration the
+broker no longer knows (404 on the heartbeat: broker restart, cold cache,
+earlier silence) is published again through the normal publish protocol
+and the application's `Registration` handle follows the fresh reference —
+keep the handle, do not re-publish yourself. `0` disables heartbeats; the
+broker then never retires that provider for silence.
 
 ### 5.3 `DdsrConsumer`
 

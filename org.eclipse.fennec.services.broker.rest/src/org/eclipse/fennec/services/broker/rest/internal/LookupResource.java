@@ -20,6 +20,7 @@ import java.util.Set;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.StringProperty;
@@ -40,8 +41,11 @@ import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsName;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsResource;
 import org.osgi.service.servlet.whiteboard.annotations.RequireHttpWhiteboard;
 
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
@@ -78,6 +82,9 @@ public class LookupResource {
 
 	@Reference
 	BrokerLookup broker;
+
+	@Reference
+	BrokerImplementations implementations;
 
 	@GET
 	@Produces(MediaType.APPLICATION_XML)
@@ -216,5 +223,20 @@ public class LookupResource {
 
 	private static String emptyToNull(String s) {
 		return (s == null || s.isBlank()) ? null : s;
+	}
+	/**
+	 * Provider liveness (#52): {@code PUT /references/{id}/heartbeat
+	 * ?intervalSeconds=N}, no body. The provider SDKs call this on a
+	 * timer for every live registration; the broker retires a
+	 * registration with {@code PROVIDER_LOST} after two missed
+	 * heartbeats. 404 (IMPL_NOT_PUBLISHED) tells the provider that the
+	 * broker no longer holds its registration and it has to publish again.
+	 */
+	@PUT
+	@Path("{referenceId}/heartbeat")
+	@Produces(MediaType.APPLICATION_XML)
+	public Response heartbeat(@PathParam("referenceId") String referenceId,
+			@QueryParam("intervalSeconds") @DefaultValue("30") long intervalSeconds) {
+		return HttpDiagnostics.toResponse(implementations.heartbeat(referenceId, intervalSeconds));
 	}
 }

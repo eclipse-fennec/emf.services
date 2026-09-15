@@ -78,6 +78,7 @@ rm -rf "$WORK"; mkdir -p "$WORK"
 # mid-scenario (e.g. a broker torn down while a provider activates)
 podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java \
   ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
+  ddsr-payment-h ddsr-probe-h \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
@@ -320,4 +321,36 @@ grep -E '  [✓✗]' "$WORK/probe-g.log" || true
 podman stop -t 20 ddsr-payment-g2 >/dev/null
 podman stop -t 20 ddsr-payment-g1 >/dev/null
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + F + G)"
+# ============================================================ Scenario H
+# Provider liveness (#52): SIGKILL, no withdraw — see run-harness.sh.
+log "Scenario H: provider dies without withdraw (SIGKILL) -> PROVIDER_LOST via heartbeat"
+ARMED_BEFORE=$(podman logs ddsr-broker 2>&1 | grep -c "provider liveness armed" || true)
+run_container ddsr-payment-h ddsr/payment-java -e DDSR_PROVIDER_HEARTBEAT_SECONDS=2
+wait_for_log ddsr-payment-h "published payments-java" 150
+podman run -d --replace --name ddsr-probe-h --network=host \
+  -e BROKER_URL="$BROKER_URL" -e SCENARIO=H ddsr/ts harness-probe-lifecycle.ts >/dev/null
+CONTAINERS+=(ddsr-probe-h)
+wait_for_log ddsr-probe-h "PROBE_READY" 150
+for _ in $(seq 1 60); do
+  [ "$(podman logs ddsr-broker 2>&1 | grep -c "provider liveness armed" || true)" -gt "$ARMED_BEFORE" ] && break
+  sleep 0.5
+done
+podman kill --signal KILL ddsr-payment-h >/dev/null
+KILL_MS=$(now_ms)
+probe_h_rc=$(podman wait ddsr-probe-h)
+podman logs ddsr-probe-h >"$WORK/probe-h.log" 2>&1
+if [ "$probe_h_rc" != "0" ]; then
+  echo "SCENARIO H FAILED"; cat "$WORK/probe-h.log"; exit 1
+fi
+LOST_MS=$(grep -o 'LOST_AT [0-9]*' "$WORK/probe-h.log" | awk '{print $2}')
+if [ -z "$LOST_MS" ]; then
+  echo "SCENARIO H FAILED: no PROVIDER_LOST reached the consumer"; cat "$WORK/probe-h.log"; exit 1
+fi
+H_LATENCY_MS=$((LOST_MS - KILL_MS))
+if [ "$H_LATENCY_MS" -gt 30000 ]; then
+  echo "SCENARIO H FAILED: PROVIDER_LOST took $H_LATENCY_MS ms (heartbeat 2 s, expected < 30 s)"; exit 1
+fi
+echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
+grep -E '  [✓✗]' "$WORK/probe-h.log" || true
+
+log "HARNESS (podman) PASSED (A + B + C + D + E + F + G + H)"

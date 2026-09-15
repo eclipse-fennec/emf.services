@@ -88,6 +88,15 @@ public final class DdsrClientComponent implements DdsrClient {
 		long session_interval_seconds() default 600;
 
 		@AttributeDefinition(
+				name = "Provider heartbeat (seconds)",
+				description = "Provider liveness (#52, UPDATE_POLICY.md \u00a74): interval of the heartbeat "
+						+ "sent for every live registration. The broker retires a registration after two "
+						+ "missed heartbeats (PROVIDER_LOST); a registration the broker lost is published "
+						+ "again. 0 disables heartbeats — the broker then never retires this provider for silence.",
+				required = false)
+		long provider_heartbeat_seconds() default 30;
+
+		@AttributeDefinition(
 				name = "Greedy rebind",
 				description = "UPDATE_POLICY.md \u00a73: rebind locators to the successor as soon as the broker "
 						+ "announces UPGRADE_AVAILABLE (true), or keep the current registration until the "
@@ -171,16 +180,26 @@ public final class DdsrClientComponent implements DdsrClient {
 			this.delegate = new DdsrClientImpl(implementations, lookup, flavors, consumerId,
 					this::openEventStream, config.greedy_rebind());
 			long renewalSeconds = config.session_interval_seconds();
-			if (renewalSeconds > 0) {
+			long heartbeatSeconds = config.provider_heartbeat_seconds();
+			if (renewalSeconds > 0 || heartbeatSeconds > 0) {
 				sessionRenewal = Executors.newSingleThreadScheduledExecutor(task -> {
-					Thread thread = new Thread(task, "ddsr-session-renewal");
+					Thread thread = new Thread(task, "ddsr-client-maintenance");
 					thread.setDaemon(true);
 					return thread;
 				});
+			}
+			if (renewalSeconds > 0) {
 				// First PUT shortly after activation (once lookups may have
 				// happened), then the flat renewal interval.
 				sessionRenewal.scheduleAtFixedRate(this::renewSession,
 						Math.min(renewalSeconds, 5), renewalSeconds, TimeUnit.SECONDS);
+			}
+			if (heartbeatSeconds > 0) {
+				// First heartbeat shortly after activation so the broker's
+				// liveness supervision is armed early, then the flat interval
+				// the broker is told about.
+				sessionRenewal.scheduleAtFixedRate(() -> heartbeatRegistrations(heartbeatSeconds),
+						Math.min(heartbeatSeconds, 5), heartbeatSeconds, TimeUnit.SECONDS);
 			}
 			LOG.info("[DDSR-Client] activated, flavors=" + flavors + ", consumerId=" + consumerId);
 		} catch (Throwable t) {
@@ -229,6 +248,17 @@ public final class DdsrClientComponent implements DdsrClient {
 			// Lease renewal is best-effort: the broker treats a missed
 			// renewal as any other silence (TTL), so log and carry on.
 			LOG.warning("[DDSR-Client] session renewal failed, retrying next interval: " + renewalFailure);
+		}
+	}
+
+	private void heartbeatRegistrations(long intervalSeconds) {
+		try {
+			DdsrClientImpl client = delegate;
+			if (client != null) {
+				client.heartbeatRegistrations(intervalSeconds);
+			}
+		} catch (RuntimeException heartbeatFailure) {
+			LOG.warning("[DDSR-Client] provider heartbeat failed, retrying next interval: " + heartbeatFailure);
 		}
 	}
 

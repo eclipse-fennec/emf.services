@@ -33,6 +33,11 @@ import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
+import org.eclipse.fennec.services.broker.core.BrokerImplementations;
+import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
+import org.eclipse.fennec.services.ServiceRegistration;
+import org.eclipse.fennec.services.Diagnostic;
+import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -155,5 +160,65 @@ class LookupResourceTest {
 		LocalServiceRegistry envelope = (LocalServiceRegistry) ((XmiBundle) r.getEntity()).roots().get(0);
 		assertThat(envelope.getReferences()).isEmpty();
 		assertThat(envelope.getProviders()).isEmpty();
+	}
+	// ------------------------------------------------------------------
+	// PUT /references/{id}/heartbeat (#52)
+	// ------------------------------------------------------------------
+
+	private static final class RecordingImplementations implements BrokerImplementations {
+		String referenceId;
+		long intervalSeconds;
+		Diagnostic answer = RestTestSupport.diagnostic(DiagnosticSeverity.OK, DdsrDiagnostics.CODE_OK, "heartbeat accepted");
+
+		@Override
+		public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+			this.referenceId = referenceId;
+			this.intervalSeconds = intervalSeconds;
+			return answer;
+		}
+
+		@Override
+		public Diagnostic publishImplementation(ServiceProvider p, ServiceImplementation i) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public Diagnostic withdrawImplementation(ServiceProvider p, ServiceImplementation i) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public Diagnostic modifyImplementation(ServiceProvider p, ServiceImplementation i) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public ServiceRegistration registerService(ServiceProvider p, ServiceImplementation i) {
+			throw new UnsupportedOperationException();
+		}
+	}
+
+	@Test
+	void heartbeatPassesReferenceIdAndIntervalToTheBroker() {
+		RecordingImplementations implementations = new RecordingImplementations();
+		resource.implementations = implementations;
+
+		assertThat(resource.heartbeat("ref-42", 7).getStatus()).isEqualTo(200);
+		assertThat(implementations.referenceId).isEqualTo("ref-42");
+		assertThat(implementations.intervalSeconds).isEqualTo(7);
+	}
+
+	@Test
+	void anUnknownReferenceAnswers404AndABadIntervalAnswers400() {
+		RecordingImplementations implementations = new RecordingImplementations();
+		resource.implementations = implementations;
+
+		implementations.answer = RestTestSupport.diagnostic(DiagnosticSeverity.ERROR,
+				DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED, "no live registration");
+		assertThat(resource.heartbeat("gone", 30).getStatus()).as("the provider's cue to publish again").isEqualTo(404);
+
+		implementations.answer = RestTestSupport.diagnostic(DiagnosticSeverity.ERROR,
+				DdsrDiagnostics.CODE_HEARTBEAT_INVALID, "intervalSeconds must be positive");
+		assertThat(resource.heartbeat("ref-42", 0).getStatus()).isEqualTo(400);
 	}
 }

@@ -17,10 +17,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
+import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.client.DdsrException;
 import org.eclipse.fennec.services.client.DdsrProvider;
 import org.eclipse.fennec.services.client.Registration;
@@ -44,6 +46,8 @@ final class ProviderImpl implements DdsrProvider {
 
 	private final BrokerImplementations implementations;
 	private final BrokerLookup lookup;
+	/** Every handle this provider issued and has not seen withdrawn — the heartbeat's work list (#52). */
+	private final List<RegistrationImpl> registrations = new CopyOnWriteArrayList<>();
 
 	ProviderImpl(BrokerImplementations implementations, BrokerLookup lookup) {
 		this.implementations = implementations;
@@ -58,6 +62,18 @@ final class ProviderImpl implements DdsrProvider {
 		if (implementation.eContainer() != self) {
 			throw new DdsrException("implementation must be contained in provider.implementations");
 		}
+		Published published = publishInternal(self, implementation);
+		RegistrationImpl registration = new RegistrationImpl(this, self, implementation,
+				published.reference(), published.diagnostic());
+		registrations.add(registration);
+		return registration;
+	}
+
+	/** Outcome of the publish protocol: the broker's reference (may be null when discovery failed) and its diagnostic. */
+	private record Published(ServiceReference reference, Diagnostic diagnostic) {
+	}
+
+	private Published publishInternal(ServiceProvider self, ServiceImplementation implementation) {
 
 		// Idempotent reconnect (ACQUISITION.md §11.1): if the broker still
 		// holds an identical registration — im1 match — reuse it instead
@@ -68,7 +84,7 @@ final class ProviderImpl implements DdsrProvider {
 			LOG.info(() -> "publish skipped for '" + implementation.getImplementationId()
 					+ "': broker already holds an identical registration (im1 match), reusing "
 					+ held.reference().getId());
-			return new RegistrationImpl(this, self, implementation, held.reference(), synthAlreadyPublished());
+			return new Published(held.reference(), synthAlreadyPublished());
 		}
 		if (held != null && held.sameContract()) {
 			// Row 2 of the reconnect check (FINGERPRINTS.md): same contract,
@@ -79,8 +95,7 @@ final class ProviderImpl implements DdsrProvider {
 			if (modified.getSeverity() != DiagnosticSeverity.ERROR
 					&& modified.getSeverity() != DiagnosticSeverity.CANCEL) {
 				ServiceReference refreshed = discoverReferenceAfterPublish(self, implementation);
-				return new RegistrationImpl(this, self, implementation,
-						refreshed != null ? refreshed : held.reference(), modified);
+				return new Published(refreshed != null ? refreshed : held.reference(), modified);
 			}
 			LOG.info(() -> "modify of '" + implementation.getImplementationId() + "' refused ("
 					+ modified.getMessage() + ") — publishing instead");
@@ -97,7 +112,93 @@ final class ProviderImpl implements DdsrProvider {
 		// on the first service interface name and matching the provider
 		// name back to us.
 		ServiceReference ref = discoverReferenceAfterPublish(self, implementation);
-		return new RegistrationImpl(this, self, implementation, ref, publishDiagnostic);
+		return new Published(ref, publishDiagnostic);
+	}
+
+	/**
+	 * Provider liveness (#52, UPDATE_POLICY.md §4): one heartbeat per live
+	 * registration, promising the next one in {@code intervalSeconds}. A
+	 * registration the broker no longer knows (404 / IMPL_NOT_PUBLISHED —
+	 * broker restart, cold cache, retired for an earlier silence) is
+	 * published again through the regular publish protocol and the handle
+	 * rebound to the fresh reference, so the application's
+	 * {@link Registration} stays valid. Best-effort: failures are logged,
+	 * never thrown — the broker treats a missed heartbeat as silence.
+	 *
+	 * @return the number of registrations the broker acknowledged
+	 */
+	int heartbeatAll(long intervalSeconds) {
+		int acknowledged = 0;
+		for (RegistrationImpl registration : registrations) {
+			if (registration.isWithdrawn()) {
+				registrations.remove(registration);
+				continue;
+			}
+			try {
+				if (heartbeat(registration, intervalSeconds)) {
+					acknowledged++;
+				}
+			} catch (RuntimeException heartbeatFailure) {
+				LOG.warning("[DDSR-Client] heartbeat for '" + registration.implementation().getImplementationId()
+						+ "' failed, retrying next interval: " + heartbeatFailure);
+			}
+		}
+		return acknowledged;
+	}
+
+	private boolean heartbeat(RegistrationImpl registration, long intervalSeconds) {
+		ServiceReference reference = registration.reference();
+		String referenceId = reference != null ? reference.getId() : null;
+		if (referenceId == null) {
+			// Discovery after the publish failed back then — try again
+			// before giving up on this round.
+			ServiceReference found = discoverReferenceAfterPublish(registration.provider(),
+					registration.implementation());
+			if (found == null || found.getId() == null) {
+				LOG.fine(() -> "heartbeat skipped for '" + registration.implementation().getImplementationId()
+						+ "': reference id still unknown");
+				return false;
+			}
+			registration.rebind(found, registration.diagnostic());
+			referenceId = found.getId();
+		}
+		Diagnostic d = implementations.heartbeat(referenceId, intervalSeconds);
+		if (!isError(d)) {
+			return true;
+		}
+		if (d.getCode() != DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED) {
+			LOG.warning("[DDSR-Client] heartbeat for " + referenceId + " refused: [" + d.getCode() + "] "
+					+ d.getMessage());
+			return false;
+		}
+		// The broker does not hold us any more — publish again and carry
+		// the handle over to the new reference.
+		String lost = referenceId;
+		LOG.warning("[DDSR-Client] broker no longer holds registration " + lost + " of '"
+				+ registration.implementation().getImplementationId() + "' — publishing again");
+		Published republished = publishInternal(registration.provider(), registration.implementation());
+		registration.rebind(republished.reference(), republished.diagnostic());
+		String fresh = republished.reference() != null ? republished.reference().getId() : null;
+		if (fresh == null) {
+			return false;
+		}
+		LOG.info(() -> "[DDSR-Client] republished '" + registration.implementation().getImplementationId()
+				+ "' as " + fresh + " (was " + lost + ")");
+		return !isError(implementations.heartbeat(fresh, intervalSeconds));
+	}
+
+	/** Called by RegistrationImpl once its withdraw went through: no more heartbeats for it. */
+	void forget(RegistrationImpl registration) {
+		registrations.remove(registration);
+	}
+
+	/** Test hook: handles currently under heartbeat. */
+	int liveRegistrationCount() {
+		return registrations.size();
+	}
+
+	private static boolean isError(Diagnostic d) {
+		return d.getSeverity() == DiagnosticSeverity.ERROR || d.getSeverity() == DiagnosticSeverity.CANCEL;
 	}
 
 	/**

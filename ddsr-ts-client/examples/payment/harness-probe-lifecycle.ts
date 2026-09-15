@@ -29,6 +29,14 @@
  *     releasing the session retires it (UNREGISTERING/REPLACED + RETIRED)
  *     and the locator rebinds to the successor.
  *
+ *   SCENARIO=H — provider liveness (#52). The harness SIGKILLs the Java
+ *     provider after PROBE_READY: no withdraw, no shutdown hook. Only the
+ *     heartbeat the provider promised tells the broker it is gone.
+ *     Expected: UNREGISTERING/PROVIDER_LOST + RETIRED/PROVIDER_LOST for
+ *     the held reference (LOST_AT <ms> is printed for the latency check),
+ *     lookups no longer list the dead endpoint, the locator is REBIND and
+ *     an invoke fails because there is no successor, the lease is gone.
+ *
  * Output: `  ✓/✗ name: detail` lines, `EVENT <type>[/<reason>] <refId>`
  * per event, PROBE_READY, PROBE_OK / PROBE_FAIL <reason>.
  */
@@ -83,6 +91,7 @@ async function main(): Promise<void> {
     const seen: Seen = { type: String(event.type), reason: event.reasonCode ?? undefined, id: event.reference?.id };
     events.push(seen);
     console.log(`EVENT ${seen.type}${seen.reason ? '/' + seen.reason : ''} ${seen.id}`);
+    if (seen.type === 'UNREGISTERING' && seen.reason === 'PROVIDER_LOST') console.log(`LOST_AT ${Date.now()}`);
   });
 
   let locator: TrackedServiceLocator | undefined;
@@ -146,6 +155,27 @@ async function main(): Promise<void> {
     check('rebound-to-successor',
       Number.isFinite(viaSuccessor) && locator.implementation.version === '2.0.0' && locator.reference.id !== firstId,
       `${locator.reference.id}@${locator.implementation.version} at ${locator.restFlavor()?.host}`);
+  } else if (SCENARIO === 'H') {
+    await waitFor('provider-lost', () => has('UNREGISTERING', firstId, 'PROVIDER_LOST'), 90_000);
+    await waitFor('retired-as-lost', () => has('RETIRED', firstId, 'PROVIDER_LOST'), 15_000);
+    check('no-withdraw-seen',
+      !events.some(e => e.type === 'UNREGISTERING' && e.reason !== 'PROVIDER_LOST'),
+      `${events.map(e => `${e.type}/${e.reason}`).join(',')}`);
+    const remaining = await client.consumer.find('Payment');
+    check('lookup-drops-the-dead-provider', remaining.length === 0,
+      `${remaining.map(l => `${l.reference.id}@${l.restFlavor()?.host}`).join(',') || 'none'}`);
+    check('locator-marked-rebind', locator.state === 'REBIND', `${locator.state}`);
+    let failure = '';
+    try {
+      await locator.invoke('getBalance', { accountId: 'lifecycle' });
+    } catch (error) {
+      failure = String(error);
+    }
+    check('invoke-fails-without-successor', failure.length > 0, failure.slice(0, 120) || 'call succeeded');
+    await client.renewSession();
+    const session = await brokerHttp.getConsumerSession(CONSUMER_ID);
+    const ids = session?.acquiredReferenceIds ?? [];
+    check('lease-released-by-broker', !ids.includes(firstId ?? ''), `broker lists ${JSON.stringify(ids)}`);
   } else {
     fail(`unknown SCENARIO ${SCENARIO}`);
   }

@@ -124,6 +124,14 @@ public final class PaymentPublisher {
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	private Registration registration;
+	/**
+	 * Held for the life of the registration, not just the publish call:
+	 * emf.osgi clears every Resource of a prototype ResourceSet on
+	 * ungetService, which would detach paymentApi from its catalog-URL
+	 * Resource and leave impl.serviceInterfaces dangling for the next
+	 * serialization, e.g. the re-publish on reconnect (#50).
+	 */
+	private ResourceSet catalogEntryResourceSet;
 
 	@Activate
 	void activate(Config config) {
@@ -143,24 +151,21 @@ public final class PaymentPublisher {
 			// whole SI in the publish body. The broker recognises the
 			// URI and rewires to its live catalog entry.
 			ResourceSet rs = rsObjects.getService();
-			try {
-				String entryUrl = config.broker_url().replaceFirst("/+$", "")
-						+ "/catalog/" + paymentApi.getName();
-				Resource catalogEntryRes = rs.createResource(
-						org.eclipse.emf.common.util.URI.createURI(entryUrl));
-				catalogEntryRes.getContents().add(paymentApi);
+			catalogEntryResourceSet = rs;
+			String entryUrl = config.broker_url().replaceFirst("/+$", "")
+					+ "/catalog/" + paymentApi.getName();
+			Resource catalogEntryRes = rs.createResource(
+					org.eclipse.emf.common.util.URI.createURI(entryUrl));
+			catalogEntryRes.getContents().add(paymentApi);
 
-				URI url = URI.create(config.public_url());
-				ServiceProvider provider = buildProvider(config, url, paymentApi);
-				ServiceImplementation impl = provider.getImplementations().get(0);
+			URI url = URI.create(config.public_url());
+			ServiceProvider provider = buildProvider(config, url, paymentApi);
+			ServiceImplementation impl = provider.getImplementations().get(0);
 
-				this.registration = client.provider().publish(provider, impl);
-				LOG.info("[DDSR-Payment-Java] published " + config.provider_name()
-						+ " at " + url + " (SI ref → " + entryUrl
-						+ ") — registration=" + (registration != null ? "ok" : "null"));
-			} finally {
-				rsObjects.ungetService(rs);
-			}
+			this.registration = client.provider().publish(provider, impl);
+			LOG.info("[DDSR-Payment-Java] published " + config.provider_name()
+					+ " at " + url + " (SI ref → " + entryUrl
+					+ ") — registration=" + (registration != null ? "ok" : "null"));
 		} catch (Throwable t) {
 			LOG.log(Level.WARNING, "[DDSR-Payment-Java] publish FAILED", t);
 		}
@@ -197,6 +202,10 @@ public final class PaymentPublisher {
 						withdrawFailure);
 			}
 			registration = null;
+		}
+		if (catalogEntryResourceSet != null) {
+			rsObjects.ungetService(catalogEntryResourceSet);
+			catalogEntryResourceSet = null;
 		}
 	}
 

@@ -195,9 +195,32 @@ final class ProviderImpl implements DdsrProvider {
 		return cap;
 	}
 
-	/** Called by RegistrationImpl.withdraw(). */
+	/**
+	 * Called by RegistrationImpl.withdraw(). Sends a detached identity
+	 * stub instead of the live objects: the broker resolves a withdraw by
+	 * (name, version) anyway and never needs the interface tree, while
+	 * the live tree may no longer be serializable by the time a component
+	 * deactivates — the ServiceInterfaces it references typically lived
+	 * in a prototype ResourceSet that emf.osgi clears on ungetService,
+	 * which turns every cross-reference into a DanglingHREF (#50).
+	 */
 	Diagnostic withdrawInternal(ServiceProvider provider, ServiceImplementation implementation) {
-		return implementations.withdrawImplementation(provider, implementation);
+		ServiceProvider stub = withdrawStub(provider, implementation);
+		return implementations.withdrawImplementation(stub, stub.getImplementations().get(0));
+	}
+
+	/** Provider (name, version, symbolicName) containing one implementation (name, version, implementationId). */
+	static ServiceProvider withdrawStub(ServiceProvider provider, ServiceImplementation implementation) {
+		ServiceProvider stub = ServicesFactory.eINSTANCE.createServiceProvider();
+		stub.setName(provider.getName());
+		stub.setVersion(provider.getVersion());
+		stub.setSymbolicName(provider.getSymbolicName());
+		ServiceImplementation implStub = ServicesFactory.eINSTANCE.createServiceImplementation();
+		implStub.setName(implementation.getName());
+		implStub.setVersion(implementation.getVersion());
+		implStub.setImplementationId(implementation.getImplementationId());
+		stub.getImplementations().add(implStub);
+		return stub;
 	}
 
 	/** Synthetic OK Diagnostic for the skipped re-publish on reconnect. */

@@ -145,6 +145,10 @@ if [ "$UNREG_REASON" != "WITHDRAWN" ]; then
   echo "SCENARIO A FAILED: UNREGISTERING reason is '$UNREG_REASON', expected WITHDRAWN (provider shutdown = withdraw)"
   cat "$WORK/probe-a.log"; exit 1
 fi
+if grep -q "withdraw failed" "$WORK/payment-java.log"; then
+  echo "SCENARIO A FAILED: the Java provider's withdraw at deactivate failed (#50) — the consumer was only informed by the late shutdown path"
+  grep -A2 "withdraw failed" "$WORK/payment-java.log" | head -6; exit 1
+fi
 echo "Scenario A OK: consumer informed $((PROVIDER_EXIT_MS - UNREG_MS)) ms before the provider was gone (reason $UNREG_REASON)"
 grep -E '  [✓✗]' "$WORK/probe-a.log" || true
 

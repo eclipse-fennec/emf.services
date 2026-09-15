@@ -26,6 +26,11 @@ import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
  * contract still addresses the same entry afterwards. The raw sd1
  * (whose frozen grammar includes {@code status=}) remains what
  * references are decorated with and what consumers compare.
+ * <p>
+ * Only features inside the frozen sd1 grammar need neutralizing. The
+ * lifecycle knobs added later ({@code updatePolicy}) are outside that
+ * grammar by construction and therefore never move the address —
+ * {@code ContractAddressingTest} pins this.
  */
 public final class ContractAddressing {
 

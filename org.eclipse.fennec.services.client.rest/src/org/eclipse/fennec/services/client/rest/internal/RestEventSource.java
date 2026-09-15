@@ -76,7 +76,7 @@ public final class RestEventSource implements EventSource {
 	@Reference
 	private RestTransport transport;
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	private String flavors;

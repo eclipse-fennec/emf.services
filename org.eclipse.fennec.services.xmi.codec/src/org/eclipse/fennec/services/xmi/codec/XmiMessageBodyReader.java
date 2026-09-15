@@ -53,7 +53,7 @@ public class XmiMessageBodyReader implements MessageBodyReader<EObject> {
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Activate
-	public XmiMessageBodyReader(@Reference ComponentServiceObjects<ResourceSet> rsObjects) {
+	public XmiMessageBodyReader(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
 		this.rsObjects = rsObjects;
 	}
 

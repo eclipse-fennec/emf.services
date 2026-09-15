@@ -75,7 +75,7 @@ public class ConsumersResource {
 	@Reference
 	private BrokerSessions sessions;
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@PUT

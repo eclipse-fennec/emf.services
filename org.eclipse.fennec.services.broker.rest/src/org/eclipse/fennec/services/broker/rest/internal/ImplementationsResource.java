@@ -72,7 +72,7 @@ public class ImplementationsResource {
 	@Reference
 	private BrokerImplementations broker;
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@POST

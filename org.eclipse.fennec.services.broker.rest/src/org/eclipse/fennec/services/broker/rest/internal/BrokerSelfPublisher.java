@@ -98,7 +98,7 @@ public final class BrokerSelfPublisher {
 	@Reference
 	private BrokerImplementations implementations;
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Activate

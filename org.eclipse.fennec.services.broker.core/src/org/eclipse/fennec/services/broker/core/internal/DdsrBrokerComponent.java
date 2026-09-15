@@ -280,6 +280,11 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	}
 
 	@Override
+	public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
+		return required().modifyImplementation(provider, implementation);
+	}
+
+	@Override
 	public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 		return required().registerService(provider, implementation);
 	}

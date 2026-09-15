@@ -55,6 +55,11 @@ class ProviderImplWithdrawTest {
 		}
 
 		@Override
+		public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
+			throw new UnsupportedOperationException("not exercised");
+		}
+
+		@Override
 		public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 			throw new UnsupportedOperationException("not exercised");
 		}

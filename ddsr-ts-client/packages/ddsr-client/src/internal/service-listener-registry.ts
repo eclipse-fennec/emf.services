@@ -146,7 +146,7 @@ export class ServiceListenerRegistry {
     const referenceId = event.reference?.id;
     const fromDocument = this.interfacesFromDocument(event);
     if (fromDocument.size > 0) {
-      if (referenceId && event.type === 'REGISTERED') {
+      if (referenceId && (event.type === 'REGISTERED' || event.type === 'MODIFIED')) {
         this.interfacesByReference.set(referenceId, new Set(fromDocument));
       }
       if (referenceId && event.type === 'UNREGISTERING') {

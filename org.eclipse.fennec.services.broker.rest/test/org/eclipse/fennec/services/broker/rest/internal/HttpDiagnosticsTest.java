@@ -37,6 +37,7 @@ class HttpDiagnosticsTest {
 			Arguments.of(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED, 404),
 			Arguments.of(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_CATALOG_ENTRY_ALREADY_EXISTS, 409),
 			Arguments.of(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_CATALOG_HAS_LIVE_IMPLS, 409),
+			Arguments.of(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_IMPL_CONTRACT_CHANGED, 409),
 			Arguments.of(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION, 403),
 			Arguments.of(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG, 422),
 			Arguments.of(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_PERSISTENCE_FAILED, 503),

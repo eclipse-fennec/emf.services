@@ -72,6 +72,20 @@ class ProviderImplReconnectTest {
 			return d;
 		}
 
+		int modifyCalls;
+		ServiceImplementation lastModified;
+		DiagnosticSeverity modifyAnswer = DiagnosticSeverity.OK;
+
+		@Override
+		public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
+			modifyCalls++;
+			lastModified = implementation;
+			Diagnostic d = ServicesFactory.eINSTANCE.createDiagnostic();
+			d.setSeverity(modifyAnswer);
+			d.setMessage(modifyAnswer == DiagnosticSeverity.OK ? "modified" : "refused");
+			return d;
+		}
+
 		@Override
 		public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 			throw new UnsupportedOperationException("not exercised by this test");
@@ -203,22 +217,45 @@ class ProviderImplReconnectTest {
 	}
 
 	@Test
-	void endpointDriftRepublishes() {
+	void endpointDriftModifiesInPlaceInsteadOfRepublishing() {
 		ServiceProvider before = provider("pay-provider");
 		ServiceImplementation heldImpl = implementation(before, "http://old-host:9090");
 		FakeLookup lookup = new FakeLookup();
 		lookup.references.add(brokerReference(before, heldImpl));
-
 		FakeImplementations implementations = new FakeImplementations();
+		ProviderImpl subject = new ProviderImpl(implementations, lookup);
+		ServiceProvider self = provider("pay-provider");
+		ServiceImplementation impl = implementation(self, "http://new-host:9090");
+
+		Registration registration = subject.publish(self, impl);
+
+		assertThat(implementations.modifyCalls)
+				.as("im1 differs but sd1 is equal (endpoint moved) — row 2 of the reconnect check is a modify (#55)")
+				.isEqualTo(1);
+		assertThat(implementations.publishCalls).isZero();
+		assertThat(implementations.lastModified).isSameAs(impl);
+		assertThat(registration.reference().getId())
+				.as("the broker kept the registration — same reference id")
+				.isEqualTo("held-pay-provider");
+		assertThat(registration.diagnostic().getMessage()).isEqualTo("modified");
+	}
+
+	@Test
+	void aRefusedModifyFallsBackToPublish() {
+		ServiceProvider before = provider("pay-provider");
+		ServiceImplementation heldImpl = implementation(before, "http://old-host:9090");
+		FakeLookup lookup = new FakeLookup();
+		lookup.references.add(brokerReference(before, heldImpl));
+		FakeImplementations implementations = new FakeImplementations();
+		implementations.modifyAnswer = DiagnosticSeverity.ERROR;
 		ProviderImpl subject = new ProviderImpl(implementations, lookup);
 		ServiceProvider self = provider("pay-provider");
 		ServiceImplementation impl = implementation(self, "http://new-host:9090");
 
 		subject.publish(self, impl);
 
-		assertThat(implementations.publishCalls)
-				.as("im1 differs (endpoint moved) — must re-publish")
-				.isEqualTo(1);
+		assertThat(implementations.modifyCalls).isEqualTo(1);
+		assertThat(implementations.publishCalls).as("publish stays the safe default").isEqualTo(1);
 	}
 
 	@Test

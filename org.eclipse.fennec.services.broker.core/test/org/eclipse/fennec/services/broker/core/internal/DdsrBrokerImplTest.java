@@ -51,6 +51,7 @@ import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.junit.jupiter.api.BeforeEach;
+import org.eclipse.fennec.services.ConsumerSession;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -339,6 +340,97 @@ class DdsrBrokerImplTest {
 		assertThat(isError(d)).isFalse();
 		assertThat(broker.getRegistry().getImplementations()).isEmpty();
 		assertThat(lookup.getAllServiceReferences("Payment", null, null)).isEmpty();
+	}
+
+	// ------------------------------------------------------------------
+	// Modify (#55)
+	// ------------------------------------------------------------------
+
+	/** A wire-shaped modification of publishFresh's registration: same identities, moved endpoint, one more property. */
+	private static ServiceProvider modificationOf(String providerName, String implName, String interfaceName, String host) {
+		ServiceProvider p = provider(providerName, implName, serviceInterface(interfaceName, "charge", "getBalance"));
+		((RestFlavor) soleImpl(p).getFlavors().get(0)).setHost(host);
+		StringProperty region = ServicesFactory.eINSTANCE.createStringProperty();
+		region.setName("region");
+		region.setValue("eu");
+		soleImpl(p).getProperties().add(region);
+		return p;
+	}
+
+	@Test
+	void modifyKeepsTheReferenceIdAndTheLeasesRefreshesTheDecorationAndEmitsModified() {
+		RecordingEventSink sink = new RecordingEventSink();
+		DdsrBrokerImpl b = brokerWith(sink);
+		b.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
+		ServiceProvider live = provider("payments-java", "impl", serviceInterface("Payment", "charge", "getBalance"));
+		b.publishImplementation(live, soleImpl(live));
+		ServiceReference before = b.getServiceReferences("Payment", null, null).get(0);
+		String im1Before = stringProperty(before, "ddsr.impl.fingerprint");
+		ConsumerSession session = ServicesFactory.eINSTANCE.createConsumerSession();
+		session.setConsumerId("c1");
+		b.putSession(session, List.of(before.getId()));
+
+		ServiceProvider modification = modificationOf("payments-java", "impl", "Payment", "http://elsewhere:9999");
+		Diagnostic d = b.modifyImplementation(modification, soleImpl(modification));
+
+		assertThat(isError(d)).as(d.getMessage()).isFalse();
+		List<ServiceReference> refs = b.getServiceReferences("Payment", null, null);
+		assertThat(refs).hasSize(1);
+		ServiceReference after = refs.get(0);
+		assertThat(after.getId()).as("same registration, same reference id").isEqualTo(before.getId());
+		assertThat(after.getRegistration().getUsingSessions()).as("leases survive a modification").hasSize(1);
+		assertThat(stringProperty(after, "ddsr.impl.fingerprint")).as("im1 follows the endpoint").isNotEqualTo(im1Before);
+		assertThat(stringProperty(after, "ddsr.fingerprint")).as("sd1 unchanged").isEqualTo(stringProperty(before, "ddsr.fingerprint"));
+		assertThat(stringProperty(after, "region")).as("new property decorates the reference").isEqualTo("eu");
+		RestFlavor liveFlavor = (RestFlavor) after.getRegistration().getImplementation().getFlavors().get(0);
+		assertThat(liveFlavor.getHost()).isEqualTo("http://elsewhere:9999");
+		assertThat(sink.signatures()).containsExactly("REGISTERED", "MODIFIED");
+		assertThat(EventDocument.interfaceNamesOf(sink.received.get(1), b)).containsExactly("Payment");
+		assertThat(b.getRegistry().getImplementations()).as("no second registration").hasSize(1);
+	}
+
+	@Test
+	void modifyOfSomethingNotPublishedIsNotPublished() {
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
+		ServiceProvider modification = modificationOf("payments-java", "impl", "Payment", "http://elsewhere:9999");
+
+		Diagnostic d = broker.modifyImplementation(modification, soleImpl(modification));
+
+		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED);
+		assertThat(lookup.getAllServiceReferences("Payment", null, null)).isEmpty();
+	}
+
+	@Test
+	void modifyMayNotChangeTheContract() {
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
+		ServiceProvider live = publishFresh("payments-java", "impl", "Payment");
+		String hostBefore = ((RestFlavor) soleImpl(live).getFlavors().get(0)).getHost();
+
+		// an unknown contract is refused like on publish …
+		ServiceProvider unknown = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
+		assertThat(broker.modifyImplementation(unknown, soleImpl(unknown)).getCode())
+				.isEqualTo(DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG);
+
+		// … and a coexisting OTHER contract under the same name is a contract change
+		ServiceInterface other = serviceInterface("Payment", "charge");
+		broker.addCatalogEntry(other, "test");
+		ServiceProvider switched = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
+		Diagnostic d = broker.modifyImplementation(switched, soleImpl(switched));
+
+		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_IMPL_CONTRACT_CHANGED);
+		assertThat(isError(d)).isTrue();
+		ServiceReference ref = lookup.getAllServiceReferences("Payment", null, null).get(0);
+		assertThat(((RestFlavor) ref.getRegistration().getImplementation().getFlavors().get(0)).getHost())
+				.as("refused means untouched").isEqualTo(hostBefore);
+	}
+
+	private static String stringProperty(ServiceReference reference, String name) {
+		for (Property property : reference.getProperties()) {
+			if (property instanceof StringProperty sp && name.equals(sp.getName())) {
+				return sp.getValue();
+			}
+		}
+		return null;
 	}
 
 	@Test

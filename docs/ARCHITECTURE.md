@@ -256,6 +256,18 @@ Auf der Broker-Seite (`DdsrBrokerImpl.publishImplementation`):
    Catalog-Operations gemappt (entweder via aufgelöster Ref oder
    Proxy-URI-Fragment `//@operations.N`).
 
+5. **Modify statt Republish** (`modifyImplementation`, `PUT
+   /implementations`, #55): ändert sich nur *was registriert ist*
+   (Endpoint, Properties, Capabilities, Beschreibung, Policy-Knöpfe),
+   nicht der Vertrag, wird die live Registration in place
+   aktualisiert — gleiche Referenz-ID, alle Leases bleiben, die
+   Referenz-Dekoration (im1, Properties) wird erneuert, Consumer
+   bekommen `MODIFIED`. Eine Vertragsänderung (andere `(name, sd1)`-
+   Einträge) wird mit Code 214 abgelehnt; das ist ein Publish,
+   optional mit `replaces`. Die SDKs nutzen Modify für Zeile 2 des
+   Reconnect-Checks (sd1 gleich, im1 verschieden) und bieten es als
+   `Registration.update()` an.
+
 Damit überleben Publishes Restarts ohne Akkumulation, und Lookups
 returnen genau eine Reference pro `(provider, impl)`-Kombination.
 

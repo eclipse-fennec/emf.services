@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -269,38 +270,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// against the live catalog and rewire the impl ref to the
 			// real catalog entry, so subsequent lookups by interface
 			// name can match.
-			boolean anyDeprecated = false;
-			StringBuilder deprecationNote = new StringBuilder();
-			java.util.List<ServiceInterface> sis = implementation.getServiceInterfaces();
-			for (int i = 0; i < sis.size(); i++) {
-				ServiceInterface si = sis.get(i);
-				String name = catalogNameOf(si);
-				if (name == null || name.isBlank()) {
-					return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG,
-							"impl.serviceInterfaces[" + i + "] has no identifiable name — "
-							+ "send it as <serviceInterfaces href=\"<broker>/catalog/{name}\"/> "
-							+ "or as a sibling root with name+version set");
-				}
-				CatalogResolution resolution = resolveCatalogEntry(si, name,
-						DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG);
-				if (resolution.refusal() != null) {
-					return resolution.refusal();
-				}
-				ServiceInterface inCatalog = resolution.entry();
-				if (inCatalog.getStatus() == CatalogStatus.DEPRECATED) {
-					anyDeprecated = true;
-					if (deprecationNote.length() > 0) {
-						deprecationNote.append("; ");
-					}
-					deprecationNote.append(name);
-					if (inCatalog.getDeprecationReason() != null) {
-						deprecationNote.append(" (").append(inCatalog.getDeprecationReason()).append(")");
-					}
-				}
-				if (inCatalog != si) {
-					sis.set(i, inCatalog);
-				}
+			ContractResolution contracts = resolveContracts(implementation);
+			if (contracts.refusal() != null) {
+				return contracts.refusal();
 			}
+			boolean anyDeprecated = contracts.deprecationNote() != null;
+			String deprecationNote = contracts.deprecationNote();
 
 			// Rewire operation cross-refs on the impl's flavors to point
 			// at the LIVE catalog operations. The publisher set them on
@@ -432,6 +407,93 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		} finally {
 			lock.writeLock().unlock();
 		}
+	}
+
+	@Override
+	public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
+		if (provider == null || implementation == null) {
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION,
+					"provider and implementation must not be null");
+		}
+		if (implementation.eContainer() != provider) {
+			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION,
+					"implementation must be contained in provider.implementations");
+		}
+		lock.writeLock().lock();
+		try {
+			// Over REST the pair is freshly parsed from the wire; resolve the
+			// live registration by (name, version) like withdraw does.
+			ServiceProvider liveProvider = findProviderByNameVersion(provider.getName(), provider.getVersion());
+			ServiceImplementation liveImpl = liveProvider == null ? null
+					: findImplementationByNameVersion(liveProvider.getImplementations(),
+							implementation.getName(), implementation.getVersion());
+			ServiceRegistration registration = liveImpl == null ? null : findRegistrationByImplementation(liveImpl);
+			if (liveImpl == null || registration == null || registration.isUnregistered()
+					|| !registry.getImplementations().contains(liveImpl)) {
+				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
+						"modify needs a live registration of " + implementation.getName() + "/"
+						+ implementation.getVersion() + " — publish instead");
+			}
+			ContractResolution contracts = resolveContracts(implementation);
+			if (contracts.refusal() != null) {
+				return contracts.refusal();
+			}
+			// A modification keeps the contract. resolveContracts rewired the
+			// incoming refs onto the live catalog entries, so identity
+			// comparison is exactly "same (name, sd1) entries".
+			if (!new HashSet<>(implementation.getServiceInterfaces()).equals(new HashSet<>(liveImpl.getServiceInterfaces()))) {
+				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_CONTRACT_CHANGED,
+						"the modification changes the implemented contracts (sd1) — a contract change is a new"
+						+ " registration: publish it (with replaces for a policy-driven handover)");
+			}
+			rewireOperationRefs(implementation);
+
+			ServiceImplementation before = EcoreUtil.copy(liveImpl);
+			ServiceReference reference = registration.getReference();
+			List<Property> decorationBefore = new ArrayList<>(reference.getProperties());
+			applyModification(liveImpl, implementation);
+			reference.getProperties().clear();
+			decorateReference(reference, liveImpl);
+			lookup.serviceModified(liveImpl, reference);
+
+			Diagnostic d = persist();
+			if (isError(d)) {
+				applyModification(liveImpl, before);
+				reference.getProperties().clear();
+				reference.getProperties().addAll(decorationBefore);
+				lookup.serviceModified(liveImpl, reference);
+				return d;
+			}
+			// Same reference id, same leases: consumers refresh, they do
+			// not rebind (UPDATE_POLICY/#55 — MODIFIED is OSGi's MODIFIED).
+			emit(ServiceEventType.MODIFIED, reference);
+			return contracts.deprecationNote() != null
+					? DdsrDiagnostics.warning(DdsrDiagnostics.CODE_INTERFACE_DEPRECATED,
+							"interface(s) marked deprecated: " + contracts.deprecationNote())
+					: DdsrDiagnostics.ok();
+		} finally {
+			lock.writeLock().unlock();
+		}
+	}
+
+	/**
+	 * Moves "what is registered" from the wire object onto the live
+	 * implementation: flavors, properties, capabilities, description,
+	 * implementationId, update-policy knobs. The contract (serviceInterfaces)
+	 * is checked equal by the caller and {@code replaces} stays — arming a
+	 * policy is a publish-time act.
+	 */
+	private static void applyModification(ServiceImplementation target, ServiceImplementation source) {
+		target.setDescription(source.getDescription());
+		target.setImplementationId(source.getImplementationId());
+		target.setUpdatePolicy(source.getUpdatePolicy());
+		target.setCutoverGraceMillis(source.getCutoverGraceMillis());
+		target.getFlavors().clear();
+		target.getFlavors().addAll(new ArrayList<>(source.getFlavors()));
+		target.getProperties().clear();
+		target.getProperties().addAll(new ArrayList<>(source.getProperties()));
+		target.getCapabilities().clear();
+		target.getCapabilities().addAll(new ArrayList<>(source.getCapabilities()));
 	}
 
 	@Override
@@ -1552,6 +1614,51 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return deadReg.getReference();
 		}
 		return null;
+	}
+
+	private record ContractResolution(Diagnostic refusal, String deprecationNote) {
+	}
+
+	/**
+	 * Shared by publish and modify: the incoming impl.serviceInterfaces
+	 * may be stub SIs (just name+version, or an href to the catalog URL)
+	 * to keep the wire body self-contained. Match them against the live
+	 * catalog and rewire the impl ref to the real catalog entry, so
+	 * subsequent lookups by interface name can match. Refuses unknown or
+	 * unidentifiable interfaces; reports deprecated ones as a note.
+	 */
+	private ContractResolution resolveContracts(ServiceImplementation implementation) {
+		StringBuilder deprecationNote = new StringBuilder();
+		java.util.List<ServiceInterface> sis = implementation.getServiceInterfaces();
+		for (int i = 0; i < sis.size(); i++) {
+			ServiceInterface si = sis.get(i);
+			String name = catalogNameOf(si);
+			if (name == null || name.isBlank()) {
+				return new ContractResolution(DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG,
+						"impl.serviceInterfaces[" + i + "] has no identifiable name — "
+						+ "send it as <serviceInterfaces href=\"<broker>/catalog/{name}\"/> "
+						+ "or as a sibling root with name+version set"), null);
+			}
+			CatalogResolution resolution = resolveCatalogEntry(si, name,
+					DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG);
+			if (resolution.refusal() != null) {
+				return new ContractResolution(resolution.refusal(), null);
+			}
+			ServiceInterface inCatalog = resolution.entry();
+			if (inCatalog.getStatus() == CatalogStatus.DEPRECATED) {
+				if (deprecationNote.length() > 0) {
+					deprecationNote.append("; ");
+				}
+				deprecationNote.append(name);
+				if (inCatalog.getDeprecationReason() != null) {
+					deprecationNote.append(" (").append(inCatalog.getDeprecationReason()).append(")");
+				}
+			}
+			if (inCatalog != si) {
+				sis.set(i, inCatalog);
+			}
+		}
+		return new ContractResolution(null, deprecationNote.length() == 0 ? null : deprecationNote.toString());
 	}
 
 	// ============================================================

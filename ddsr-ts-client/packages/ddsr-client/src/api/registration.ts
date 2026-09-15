@@ -24,8 +24,19 @@ export interface Registration {
   /** The implementation that was published. */
   readonly implementation: ServiceImplementation;
 
-  /** The diagnostic of the last broker interaction (publish/withdraw). */
+  /** The diagnostic of the last broker interaction (publish/update/withdraw). */
   diagnostic(): Diagnostic;
+
+  /**
+   * Re-sends the implementation as an in-place modification (#55):
+   * change flavors, properties, capabilities or description on the
+   * model object, then call this. The broker keeps the reference id
+   * and every consumer lease and emits MODIFIED; consumers refresh,
+   * they do not rebind. The implemented contracts must not change —
+   * that is a new publish (the broker answers CODE_IMPL_CONTRACT_CHANGED
+   * = 214, HTTP 409).
+   */
+  update(): Promise<Diagnostic>;
 
   /**
    * Removes the implementation from the broker. Idempotent. Resolves

@@ -120,7 +120,7 @@ against the reference decoration:
 | Comparison | Meaning | Action |
 |---|---|---|
 | im1 equal | everything unchanged | reuse the registration — publish is skipped, consumers see no churn |
-| im1 differs, all sd1 equal | endpoint/property drift | re-publish (the broker retires the old entry) |
+| im1 differs, all sd1 equal | endpoint/property drift | **modify in place** (`PUT /implementations`, #55) — the broker keeps the reference id and the leases, refreshes the decoration and emits `MODIFIED`; falls back to publish if the broker refuses |
 | an sd1 differs | **contract** drift | re-publish with a warning — a policy question, not just an update |
 
 An exact im1 match under the same provider name IS the provider's own

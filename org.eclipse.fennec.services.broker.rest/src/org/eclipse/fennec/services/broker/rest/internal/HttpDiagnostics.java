@@ -49,6 +49,7 @@ final class HttpDiagnostics {
 			return 404;
 		case DdsrDiagnostics.CODE_CATALOG_ENTRY_ALREADY_EXISTS:
 		case DdsrDiagnostics.CODE_CATALOG_HAS_LIVE_IMPLS:
+		case DdsrDiagnostics.CODE_IMPL_CONTRACT_CHANGED:
 			return 409;
 		case DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION:
 			return 403;

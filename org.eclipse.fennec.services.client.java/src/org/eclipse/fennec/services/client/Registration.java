@@ -43,4 +43,16 @@ public interface Registration {
 	 * on the second call.
 	 */
 	Diagnostic withdraw();
+
+	/**
+	 * Re-sends the implementation this registration was created with as
+	 * an in-place modification (#55): change its flavors, properties,
+	 * capabilities or description on the model object, then call this.
+	 * The broker keeps the reference id and every consumer lease and
+	 * emits {@code MODIFIED}; consumers refresh, they do not rebind. The
+	 * implemented contracts must not change — that is a new publish (the
+	 * broker answers {@code CODE_IMPL_CONTRACT_CHANGED}). Returns the
+	 * broker's diagnostic; after a withdraw it is {@code IMPL_NOT_PUBLISHED}.
+	 */
+	Diagnostic update();
 }

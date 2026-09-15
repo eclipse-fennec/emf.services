@@ -74,15 +74,33 @@ export class DdsrProviderImpl implements DdsrProvider {
     // re-publishing. Consumers then see no UNREGISTERING/REGISTERED
     // churn for a provider that merely restarted.
     const held = await this.brokerHeldReference(provider, implementation, stubs[0].name);
-    if (held) {
+    if (held?.identical) {
       console.info(
         `[ddsr] publish skipped for '${implementation.implementationId}': ` +
-        `broker already holds an identical registration (im1 match), reusing ${held.id}`
+        `broker already holds an identical registration (im1 match), reusing ${held.reference.id}`
       );
       const reused = new RegistrationImpl(
-        this.broker, provider, implementation, stubs, held, synthAlreadyPublished());
-      this.registrations.set(held.id ?? '', reused);
+        this.broker, provider, implementation, stubs, held.reference, synthAlreadyPublished());
+      this.registrations.set(held.reference.id ?? '', reused);
       return reused;
+    }
+    if (held?.sameContract) {
+      // Row 2 of the reconnect check (FINGERPRINTS.md): same contract,
+      // drifted endpoint/properties — modify in place, the broker keeps
+      // the reference id and the leases and emits MODIFIED (#55).
+      const modified = await this.broker.modifyImplementation(provider, stubs);
+      if (!isError(modified)) {
+        const refreshed =
+          (await this.discoverReference(provider, implementation, stubs[0].name)) ?? held.reference;
+        const registration = new RegistrationImpl(
+          this.broker, provider, implementation, stubs, refreshed, modified);
+        this.registrations.set(refreshed.id ?? '', registration);
+        return registration;
+      }
+      console.info(
+        `[ddsr] modify of '${implementation.implementationId}' refused ` +
+        `([${modified.code}] ${modified.message ?? ''}) — publishing instead`
+      );
     }
 
     const diagnostic = await this.broker.publishImplementation(provider, stubs);
@@ -143,7 +161,7 @@ export class DdsrProviderImpl implements DdsrProvider {
     provider: ServiceProvider,
     implementation: ServiceImplementation,
     interfaceName: string | undefined
-  ): Promise<ServiceReference | undefined> {
+  ): Promise<HeldReference | undefined> {
     if (!interfaceName || !provider.name) return undefined;
     const localIm1 = implementationFingerprint(implementation);
     let drifted: ServiceReference | undefined;
@@ -154,7 +172,7 @@ export class DdsrProviderImpl implements DdsrProvider {
         for (const reference of toArray<ServiceReference>(registry.references)) {
           if (reference.provider?.name !== provider.name) continue;
           if (stringProperty(reference, 'ddsr.impl.fingerprint') === localIm1) {
-            return reference;
+            return { reference, identical: true, sameContract: true };
           }
           drifted ??= reference;
         }
@@ -163,20 +181,20 @@ export class DdsrProviderImpl implements DdsrProvider {
       // unreachable broker — publish normally, the transport reports it
       return undefined;
     }
-    if (drifted) {
-      if (sd1Match(drifted, implementation)) {
-        console.info(
-          `[ddsr] re-publishing '${implementation.implementationId}': broker holds ` +
-          `${drifted.id} with same contract (sd1) but drifted endpoint/properties (im1)`
-        );
-      } else {
-        console.warn(
-          `[ddsr] re-publishing '${implementation.implementationId}': broker holds ` +
-          `${drifted.id} with a DIFFERENT contract (sd1 drift) — catalog and local model disagree`
-        );
-      }
+    if (!drifted) return undefined;
+    const sameContract = sd1Match(drifted, implementation);
+    if (sameContract) {
+      console.info(
+        `[ddsr] modifying '${implementation.implementationId}' in place: broker holds ` +
+        `${drifted.id} with same contract (sd1) but drifted endpoint/properties (im1)`
+      );
+    } else {
+      console.warn(
+        `[ddsr] re-publishing '${implementation.implementationId}': broker holds ` +
+        `${drifted.id} with a DIFFERENT contract (sd1 drift) — catalog and local model disagree`
+      );
     }
-    return undefined;
+    return { reference: drifted, identical: false, sameContract };
   }
 
   /**
@@ -214,6 +232,13 @@ export class DdsrProviderImpl implements DdsrProvider {
     }
     return undefined;
   }
+}
+
+/** What the broker holds for us: identical (im1 match), same contract but drifted, or a contract drift. */
+interface HeldReference {
+  reference: ServiceReference;
+  identical: boolean;
+  sameContract: boolean;
 }
 
 function interfaceStubs(implementation: ServiceImplementation): ServiceInterface[] {
@@ -285,6 +310,14 @@ class RegistrationImpl implements Registration {
    * unregistration — at that point the UNREGISTERING event has been
    * fanned out to consumers, so the caller may shut its endpoint down.
    */
+  async update(): Promise<Diagnostic> {
+    const diagnostic = await this.broker.modifyImplementation(this.provider, this.stubs);
+    if (!isError(diagnostic)) {
+      this.publishDiagnostic = diagnostic;
+    }
+    return diagnostic;
+  }
+
   async withdraw(): Promise<Diagnostic> {
     if (this.withdrawn) return synthOk();
     if (this.inFlight) return this.inFlight;

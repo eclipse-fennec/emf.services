@@ -100,6 +100,21 @@ describe('ServiceListenerRegistry', () => {
     expect(other).toEqual([]);
   });
 
+  it('memoizes interfaces from MODIFIED as well — a modified service still routes precisely (#55)', () => {
+    const registry = new ServiceListenerRegistry(new FakeSource(), noRefresh);
+    const payment: string[] = [];
+    const other: string[] = [];
+    registry.add('Payment', undefined, e => payment.push(e.type));
+    registry.add('Other', undefined, e => other.push(e.type));
+
+    const modified = registeredEventXmi('Payment', 'ref-8').replace('type="REGISTERED"', 'type="MODIFIED"');
+    registry.onEvent(eventOf(modified));
+    registry.onEvent(eventOf(unregisteringEventXmi('ref-8')));
+
+    expect(payment).toEqual(['MODIFIED', 'UNREGISTERING']);
+    expect(other).toEqual([]);
+  });
+
   it('forgets a reference after UNREGISTERING — the next bare event broadcasts again', () => {
     const registry = new ServiceListenerRegistry(new FakeSource(), noRefresh);
     const other: string[] = [];

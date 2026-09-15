@@ -61,6 +61,12 @@ class ImplementationsResourceTest {
 		}
 
 		@Override
+		public Diagnostic modifyImplementation(ServiceProvider p, ServiceImplementation i) {
+			lastCall = "modify"; provider = p; implementation = i;
+			return answer;
+		}
+
+		@Override
 		public ServiceRegistration registerService(ServiceProvider p, ServiceImplementation i) {
 			throw new UnsupportedOperationException("local-style, not reachable over REST");
 		}
@@ -125,6 +131,21 @@ class ImplementationsResourceTest {
 		broker.lastCall = null;
 		assertThat(resource.withdraw(body(resourceSets, stub)).getStatus()).isEqualTo(200);
 		assertThat(broker.lastCall).isEqualTo("withdraw");
+	}
+
+	@Test
+	void modifyIsAPutWithThePublishBodyShape() throws IOException {
+		ServiceInterface payment = payment();
+		ServiceProvider provider = provider("payments", payment, FlavorKind.REST);
+
+		Response r = resource.modify(body(resourceSets, provider, payment));
+
+		assertThat(r.getStatus()).isEqualTo(200);
+		assertThat(broker.lastCall).isEqualTo("modify");
+		assertThat(broker.implementation.getServiceInterfaces().get(0).getName()).isEqualTo("Payment");
+
+		broker.answer = diagnostic(DiagnosticSeverity.ERROR, DdsrDiagnostics.CODE_IMPL_CONTRACT_CHANGED, "contract");
+		assertThat(resource.modify(body(resourceSets, provider, payment)).getStatus()).as("a contract change is a conflict").isEqualTo(409);
 	}
 
 	@Test

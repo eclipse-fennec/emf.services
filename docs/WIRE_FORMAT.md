@@ -26,6 +26,7 @@ Base URL: `http://<host>:8887/ddsr/rest` — everything speaks
 | `PUT /catalog/{name}/deprecate` | soft-deprecate | optional body with `deprecationReason`/`replacedBy`; optional `?fingerprint=` |
 | `DELETE /catalog/{name}` | remove an entry | strict-reject while live (or cold-cached) implementations reference it; optional `?fingerprint=` |
 | `POST /implementations` | publish an implementation | body: `ServiceProvider` (with exactly one implementation) + contract siblings; response: `Diagnostic` |
+| `PUT /implementations` | **modify in place** | same body as publish; the broker keeps the reference id and every lease and emits `MODIFIED` — consumers refresh, they do not rebind. The implemented contracts must be the same catalog entries: a changed contract answers **409** (code 214), that is a publish |
 | `POST /implementations/withdraw` | **canonical withdraw** | a POST, not a body-carrying DELETE — Jersey's client refuses DELETE-with-entity, which silently broke the DELETE variant for the Java client |
 | `DELETE /implementations` | legacy withdraw | kept for wire compatibility; do not use from Jersey clients |
 | `GET /references?interface=…` | lookup | further params: `filter` (LDAP), `flavors` (CSV), `consumerId`, `fingerprint` (exact contract addressing) |
@@ -42,8 +43,10 @@ Diagnostics use stable numeric codes (see
 202 already-exists (historic, no longer produced), 203 **ambiguous**
 (a name-only reference across coexisting contracts), 210
 interface-not-in-catalog / contract drift, 211 ownership violation,
-212 not published, 230 session invalid, 300 interface deprecated
-(warning), 500 persistence failed.
+212 not published, 213 `replaces` names no live predecessor (warning,
+publish went through), 214 a modify tried to change the contract, 230
+session invalid, 300 interface deprecated (warning), 500 persistence
+failed.
 
 ## XMI document conventions
 
@@ -78,6 +81,13 @@ comment-line heartbeat every 10 s (PID
 keeps intermediaries from idling the connection out and bounds how long
 a dead consumer blocks the sender. On every (re)connect the client
 pulls a snapshot before processing events (FR-Sync-Reconnect).
+
+`MODIFIED` announces an in-place change of a registration — endpoint,
+properties, capabilities — under the **same** reference id (PUT
+`/implementations`); the document carries the refreshed reference, so
+a consumer updates what it holds and keeps its lease. `REGISTERED`
+after an `UNREGISTERING/REPLACED` is the other case: a new reference
+id, re-lookup required.
 
 Every `UNREGISTERING` carries a `reasonCode` telling why the service
 went away: `WITHDRAWN` (the provider withdrew it, explicitly or through

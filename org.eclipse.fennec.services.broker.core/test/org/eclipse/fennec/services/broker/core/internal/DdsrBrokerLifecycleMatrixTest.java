@@ -125,6 +125,14 @@ class DdsrBrokerLifecycleMatrixTest {
 			return provider;
 		}
 
+		/** In-place modification (#55): same identities, the REST endpoint moves to another host. */
+		void modify(String providerName, String implName, String version, String host) {
+			ServiceProvider modification = provider(providerName, implName, version, payment);
+			((RestFlavor) modification.getImplementations().get(0).getFlavors().get(0)).setHost(host);
+			Diagnostic d = broker.modifyImplementation(modification, modification.getImplementations().get(0));
+			assertThat(d.getSeverity().getValue()).as(d.getMessage()).isLessThan(DiagnosticSeverity.ERROR_VALUE);
+		}
+
 		void withdraw(String providerName, String implName, String version) {
 			// Identity stub, like the Java SDK does since #50.
 			ServiceProvider stub = ServicesFactory.eINSTANCE.createServiceProvider();
@@ -232,6 +240,18 @@ class DdsrBrokerLifecycleMatrixTest {
 					assertThat(ctx.referenceOf("impl-a/1.0.0").getId())
 							.as("a republish mints a fresh reference id — the consumer must re-lookup")
 							.isNotEqualTo(ctx.referenceIdBefore.get("impl-a/1.0.0"));
+				}),
+
+			new Row("modify in place: MODIFIED under the same reference id, leases kept, endpoint moved",
+				ctx -> { ctx.publish("payments", "impl-a", "1.0.0"); ctx.lease("c1", "impl-a/1.0.0"); ctx.rememberReferenceIds(); },
+				ctx -> ctx.modify("payments", "impl-a", "1.0.0", "http://elsewhere:9999"),
+				List.of("MODIFIED"),
+				List.of("impl-a/1.0.0"), List.of("impl-a/1.0.0"), Map.of("impl-a/1.0.0", List.of("c1")),
+				ctx -> {
+					ServiceReference ref = ctx.referenceOf("impl-a/1.0.0");
+					assertThat(ref.getId()).as("a modification is not a new service").isEqualTo(ctx.referenceIdBefore.get("impl-a/1.0.0"));
+					assertThat(((RestFlavor) ref.getRegistration().getImplementation().getFlavors().get(0)).getHost())
+							.isEqualTo("http://elsewhere:9999");
 				}),
 
 			new Row("idle sweep parks the entry: UNREGISTERING/COLDIFIED, still discoverable",

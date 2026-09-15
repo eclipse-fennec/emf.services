@@ -55,6 +55,11 @@ final class RegistrationImpl implements Registration {
 	}
 
 	@Override
+	public synchronized Diagnostic update() {
+		return owner.modifyInternal(provider, implementation);
+	}
+
+	@Override
 	public synchronized Diagnostic withdraw() {
 		if (withdrawn) {
 			// idempotent — return a synthetic OK.

@@ -61,6 +61,22 @@ describe('BrokerHttp', () => {
     expect(requests[0].body).toContain('services:ServiceProvider');
   });
 
+  it('modify is a PUT /implementations with the same XMI body shape (#55)', async () => {
+    const { fetchFn, requests } = fakeFetch([
+      { method: 'PUT', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const broker = new BrokerHttp({ brokerUrl: BROKER, fetchFn });
+    const { provider, serviceInterface } = paymentProvider();
+
+    const diagnostic = await broker.modifyImplementation(provider, [serviceInterface]);
+
+    expect(diagnostic.severity).toBe('OK');
+    expect(requests[0].method).toBe('PUT');
+    expect(requests[0].url).toBe(`${BROKER}/implementations`);
+    expect(requests[0].body).toContain('services:ServiceProvider');
+    expect(requests[0].body).toContain('services:ServiceInterface');
+  });
+
   it('reads an ERROR diagnostic from a 4xx body', async () => {
     const { fetchFn } = fakeFetch([
       {

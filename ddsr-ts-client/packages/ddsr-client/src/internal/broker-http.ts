@@ -75,6 +75,11 @@ export class BrokerHttp {
     return this.sendImplementation('/implementations/withdraw', provider, interfaceStubs);
   }
 
+  /** PUT /implementations — in-place modification (#55), same body shape as publish. */
+  async modifyImplementation(provider: ServiceProvider, interfaceStubs: ServiceInterface[]): Promise<Diagnostic> {
+    return this.sendImplementation('/implementations', provider, interfaceStubs, 'PUT');
+  }
+
   /** GET /references — returns all roots of the multi-root response. */
   async getReferences(
     interfaceName: string,
@@ -223,14 +228,15 @@ export class BrokerHttp {
   private async sendImplementation(
     path: '/implementations' | '/implementations/withdraw',
     provider: ServiceProvider,
-    interfaceStubs: ServiceInterface[]
+    interfaceStubs: ServiceInterface[],
+    method: 'POST' | 'PUT' = 'POST'
   ): Promise<Diagnostic> {
     const body = serializeToXmi(
       provider as unknown as EObject,
       ...(interfaceStubs as unknown as EObject[])
     );
     const response = await this.fetchFn(`${this.base}${path}`, {
-      method: 'POST',
+      method,
       headers: this.xmlHeaders(),
       body,
     });

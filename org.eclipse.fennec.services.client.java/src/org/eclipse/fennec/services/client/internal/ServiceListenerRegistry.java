@@ -204,7 +204,7 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 		}
 		Set<String> fromDocument = fromDocument(reference);
 		if (!fromDocument.isEmpty()) {
-			if (event.getType() == ServiceEventType.REGISTERED) {
+			if (event.getType() == ServiceEventType.REGISTERED || event.getType() == ServiceEventType.MODIFIED) {
 				noteReference(reference.getId(), fromDocument);
 			}
 			return fromDocument;

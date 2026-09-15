@@ -43,6 +43,18 @@ public interface BrokerImplementations {
 	Diagnostic withdrawImplementation(ServiceProvider provider, ServiceImplementation implementation);
 
 	/**
+	 * Modifies a live registration in place (#55): flavors, properties,
+	 * capabilities, description and update-policy knobs are taken from
+	 * the given implementation; the reference id and every lease stay,
+	 * consumers receive {@code MODIFIED}. The implemented contracts must
+	 * be the same catalog entries — a contract change is refused with
+	 * {@code CODE_IMPL_CONTRACT_CHANGED} and is a publish, not a modify.
+	 * Not published (or parked cold) → {@code CODE_IMPL_NOT_PUBLISHED}.
+	 * Resolution by (name, version), as for withdraw.
+	 */
+	Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation);
+
+	/**
 	 * Registers a Service for the provider, returning the resulting
 	 * {@link ServiceRegistration}. Local-style entry point used by
 	 * in-process callers; remote providers go via

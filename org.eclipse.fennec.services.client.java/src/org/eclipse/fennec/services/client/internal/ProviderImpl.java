@@ -63,12 +63,27 @@ final class ProviderImpl implements DdsrProvider {
 		// holds an identical registration — im1 match — reuse it instead
 		// of re-publishing. Consumers then see no UNREGISTERING/REGISTERED
 		// churn for a provider that merely restarted.
-		ServiceReference held = brokerHeldReference(self, implementation);
-		if (held != null) {
+		Held held = brokerHeldReference(self, implementation);
+		if (held != null && held.identical()) {
 			LOG.info(() -> "publish skipped for '" + implementation.getImplementationId()
 					+ "': broker already holds an identical registration (im1 match), reusing "
-					+ held.getId());
-			return new RegistrationImpl(this, self, implementation, held, synthAlreadyPublished());
+					+ held.reference().getId());
+			return new RegistrationImpl(this, self, implementation, held.reference(), synthAlreadyPublished());
+		}
+		if (held != null && held.sameContract()) {
+			// Row 2 of the reconnect check (FINGERPRINTS.md): same contract,
+			// drifted endpoint/properties — a modification, not a new
+			// service. The broker keeps the reference id and the leases and
+			// tells consumers MODIFIED instead of UNREGISTERING+REGISTERED.
+			Diagnostic modified = implementations.modifyImplementation(self, implementation);
+			if (modified.getSeverity() != DiagnosticSeverity.ERROR
+					&& modified.getSeverity() != DiagnosticSeverity.CANCEL) {
+				ServiceReference refreshed = discoverReferenceAfterPublish(self, implementation);
+				return new RegistrationImpl(this, self, implementation,
+						refreshed != null ? refreshed : held.reference(), modified);
+			}
+			LOG.info(() -> "modify of '" + implementation.getImplementationId() + "' refused ("
+					+ modified.getMessage() + ") — publishing instead");
 		}
 
 		Diagnostic publishDiagnostic = implementations.publishImplementation(self, implementation);
@@ -99,7 +114,11 @@ final class ProviderImpl implements DdsrProvider {
 	 * policy question, but publish stays the safe default because the
 	 * broker validates against the live catalog anyway).
 	 */
-	private ServiceReference brokerHeldReference(ServiceProvider self, ServiceImplementation impl) {
+	/** What the broker holds for us: identical (im1 match), same contract but drifted, or a contract drift. */
+	private record Held(ServiceReference reference, boolean identical, boolean sameContract) {
+	}
+
+	private Held brokerHeldReference(ServiceProvider self, ServiceImplementation impl) {
 		if (impl.getServiceInterfaces().isEmpty() || self.getName() == null) {
 			return null;
 		}
@@ -118,25 +137,27 @@ final class ProviderImpl implements DdsrProvider {
 				continue;
 			}
 			if (localIm1.equals(stringProperty(candidate, "ddsr.impl.fingerprint"))) {
-				return candidate;
+				return new Held(candidate, true, true);
 			}
 			if (drifted == null) {
 				drifted = candidate;
 			}
 		}
-		if (drifted != null) {
-			ServiceReference d = drifted;
-			if (sd1Match(d, impl)) {
-				LOG.info(() -> "re-publishing '" + impl.getImplementationId()
-						+ "': broker holds " + d.getId()
-						+ " with same contract (sd1) but drifted endpoint/properties (im1)");
-			} else {
-				LOG.warning(() -> "re-publishing '" + impl.getImplementationId()
-						+ "': broker holds " + d.getId()
-						+ " with a DIFFERENT contract (sd1 drift) — catalog and local model disagree");
-			}
+		if (drifted == null) {
+			return null;
 		}
-		return null;
+		ServiceReference d = drifted;
+		boolean sameContract = sd1Match(d, impl);
+		if (sameContract) {
+			LOG.info(() -> "modifying '" + impl.getImplementationId()
+					+ "' in place: broker holds " + d.getId()
+					+ " with same contract (sd1) but drifted endpoint/properties (im1)");
+		} else {
+			LOG.warning(() -> "re-publishing '" + impl.getImplementationId()
+					+ "': broker holds " + d.getId()
+					+ " with a DIFFERENT contract (sd1 drift) — catalog and local model disagree");
+		}
+		return new Held(d, false, sameContract);
 	}
 
 	/** All local sd1 values equal the broker's decoration on the reference. */
@@ -207,6 +228,11 @@ final class ProviderImpl implements DdsrProvider {
 	Diagnostic withdrawInternal(ServiceProvider provider, ServiceImplementation implementation) {
 		ServiceProvider stub = withdrawStub(provider, implementation);
 		return implementations.withdrawImplementation(stub, stub.getImplementations().get(0));
+	}
+
+	/** Called by RegistrationImpl.update(): the live objects travel, the broker resolves by (name, version). */
+	Diagnostic modifyInternal(ServiceProvider provider, ServiceImplementation implementation) {
+		return implementations.modifyImplementation(provider, implementation);
 	}
 
 	/** Provider (name, version, symbolicName) containing one implementation (name, version, implementationId). */

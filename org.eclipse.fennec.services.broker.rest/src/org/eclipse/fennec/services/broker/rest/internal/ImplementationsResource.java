@@ -43,6 +43,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -103,6 +104,30 @@ public class ImplementationsResource {
 	 * route below stays for wire compatibility with clients whose HTTP
 	 * stack can send it (fetch can).
 	 */
+	/**
+	 * Modify in place (#55): same body shape as publish; the broker keeps
+	 * the reference id and the leases and emits {@code MODIFIED}. A
+	 * changed contract is refused with 409 — that is a publish.
+	 */
+	@PUT
+	@Consumes(MediaType.APPLICATION_XML)
+	@Produces(MediaType.APPLICATION_XML)
+	public Response modify(InputStream entityStream) throws IOException {
+		XmiBundle bundle = logAndParse("PUT /implementations", entityStream);
+		ServiceProvider provider = extractProvider(bundle);
+		if (provider == null) {
+			return Response.status(400)
+					.entity("body must contain a <services:ServiceProvider> root").build();
+		}
+		ServiceImplementation impl = soleImplementation(provider);
+		if (impl == null) {
+			return Response.status(400)
+					.entity("body must be a <services:ServiceProvider> with exactly one implementation").build();
+		}
+		Diagnostic d = broker.modifyImplementation(provider, impl);
+		return HttpDiagnostics.toResponse(d);
+	}
+
 	@POST
 	@Path("withdraw")
 	@Consumes(MediaType.APPLICATION_XML)

@@ -16,6 +16,7 @@ import { DdsrProviderImpl } from '../src/internal/provider-impl';
 import { BrokerHttp } from '../src/internal/broker-http';
 import { DdsrClientError } from '../src/api/errors';
 import { implementationFingerprint } from '../src/fingerprint/service-implementation-fingerprint';
+import { fingerprint as sd1 } from '../src/fingerprint/service-description-fingerprint';
 import {
   OK_DIAGNOSTIC_XMI,
   errorDiagnosticXmi,
@@ -66,6 +67,64 @@ describe('DdsrProviderImpl', () => {
     expect(registration.diagnostic().message).toContain('im1 match');
     // reconnect pre-check only — no publish POST, no discovery GET
     expect(requests.map(r => r.method)).toEqual(['GET']);
+  });
+
+  it('reconnect with endpoint drift modifies in place — PUT, no POST (#55)', async () => {
+    const fixture = paymentProvider('payments-ts');
+    // the broker-held reference carries our exact sd1 but no matching im1:
+    // same contract, drifted endpoint/properties → row 2 of the check
+    const heldXmi = lookupResultXmi('payments-ts', 'ref-held')
+      .replace('sd1:0000000000000000000000000000000000000000000000000000000000000000', sd1(fixture.serviceInterface)!);
+    const { fetchFn, requests } = fakeFetch([
+      { urlIncludes: '/references', body: heldXmi },
+      { method: 'PUT', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+
+    const registration = await provider.publish(fixture.provider, fixture.implementation);
+
+    // pre-check GET, modify PUT, discovery GET — never a publish POST
+    expect(requests.map(r => r.method)).toEqual(['GET', 'PUT', 'GET']);
+    expect(requests[1].url).toBe(`${BROKER}/implementations`);
+    expect(registration.reference.id).toBe('ref-held');
+    expect(registration.diagnostic().severity).toBe('OK');
+  });
+
+  it('a refused modify falls back to publish', async () => {
+    const fixture = paymentProvider('payments-ts');
+    const heldXmi = lookupResultXmi('payments-ts', 'ref-held')
+      .replace('sd1:0000000000000000000000000000000000000000000000000000000000000000', sd1(fixture.serviceInterface)!);
+    const { fetchFn, requests } = fakeFetch([
+      { urlIncludes: '/references', body: heldXmi },
+      { method: 'PUT', urlIncludes: '/implementations', status: 409, body: errorDiagnosticXmi(214, 'contract changed') },
+      { method: 'POST', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+
+    await provider.publish(fixture.provider, fixture.implementation);
+
+    expect(requests.map(r => r.method)).toEqual(['GET', 'PUT', 'POST', 'GET']);
+  });
+
+  it('update() re-sends the implementation as a PUT and keeps the registration', async () => {
+    const { fetchFn, requests } = fakeFetch([
+      { method: 'POST', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+      { urlIncludes: '/references', body: lookupResultXmi('payments-ts', 'ref-77') },
+      { method: 'PUT', urlIncludes: '/implementations', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const provider = new DdsrProviderImpl(new BrokerHttp({ brokerUrl: BROKER, fetchFn }));
+    const fixture = paymentProvider('payments-ts');
+    const registration = await provider.publish(fixture.provider, fixture.implementation);
+
+    const diagnostic = await registration.update();
+
+    expect(diagnostic.severity).toBe('OK');
+    const last = requests[requests.length - 1];
+    expect(last.method).toBe('PUT');
+    expect(last.url).toBe(`${BROKER}/implementations`);
+    expect(last.body).toContain('services:ServiceProvider');
+    expect(registration.reference.id).toBe('ref-77');
+    expect(provider.registrationOf('ref-77')).toBe(registration);
   });
 
   it('publish throws a DdsrClientError carrying the diagnostic on ERROR', async () => {

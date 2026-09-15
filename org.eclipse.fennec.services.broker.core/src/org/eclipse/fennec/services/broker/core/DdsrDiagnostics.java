@@ -59,6 +59,12 @@ public final class DdsrDiagnostics {
 	 * predecessor is long gone must not be locked out (UPDATE_POLICY.md §2).
 	 */
 	public static final int CODE_IMPL_REPLACES_NOT_FOUND     = 213;
+	/**
+	 * A modify (PUT /implementations) tried to change the implemented
+	 * contracts. Contract (sd1) changes are a new registration — publish,
+	 * optionally with {@code replaces} — never an in-place modification (#55).
+	 */
+	public static final int CODE_IMPL_CONTRACT_CHANGED       = 214;
 	public static final int CODE_SESSION_INVALID             = 230;
 	public static final int CODE_INTERFACE_DEPRECATED        = 300;
 	public static final int CODE_PERSISTENCE_FAILED          = 500;

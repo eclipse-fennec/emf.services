@@ -57,6 +57,14 @@ public final class ImplementationsHttpProxy implements BrokerImplementations {
 	}
 
 	@Override
+	public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
+		Response r = tx.target().path("implementations")
+				.request(MediaType.APPLICATION_XML)
+				.put(Entity.entity(provider, MediaType.APPLICATION_XML));
+		return CatalogHttpProxy.readDiagnostic(r);
+	}
+
+	@Override
 	public Diagnostic withdrawImplementation(ServiceProvider provider, ServiceImplementation implementation) {
 		// POST /implementations/withdraw — not the body-carrying DELETE:
 		// Jersey refuses a DELETE entity client-side ("Entity must be

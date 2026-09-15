@@ -210,7 +210,8 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 			return fromDocument;
 		}
 		Set<String> remembered = interfacesByReference.get(reference.getId());
-		if (event.getType() == ServiceEventType.UNREGISTERING && reference.getId() != null) {
+		if ((event.getType() == ServiceEventType.UNREGISTERING || event.getType() == ServiceEventType.RETIRED)
+				&& reference.getId() != null) {
 			// The service is gone; stop remembering it.
 			interfacesByReference.remove(reference.getId());
 		}

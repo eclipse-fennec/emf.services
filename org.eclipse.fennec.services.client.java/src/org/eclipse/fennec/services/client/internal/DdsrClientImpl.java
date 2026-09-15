@@ -35,8 +35,13 @@ public final class DdsrClientImpl implements DdsrClient {
 
 	public DdsrClientImpl(BrokerImplementations implementations, BrokerLookup lookup,
 			List<FlavorKind> supportedFlavors, String consumerId, EventSource eventSource) {
+		this(implementations, lookup, supportedFlavors, consumerId, eventSource, false);
+	}
+
+	public DdsrClientImpl(BrokerImplementations implementations, BrokerLookup lookup,
+			List<FlavorKind> supportedFlavors, String consumerId, EventSource eventSource, boolean greedyRebind) {
 		this.provider = new ProviderImpl(implementations, lookup);
-		this.consumer = new ConsumerImpl(lookup, supportedFlavors, consumerId, eventSource);
+		this.consumer = new ConsumerImpl(lookup, supportedFlavors, consumerId, eventSource, greedyRebind);
 	}
 
 	@Override

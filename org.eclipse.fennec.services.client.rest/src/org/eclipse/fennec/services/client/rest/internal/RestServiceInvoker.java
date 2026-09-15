@@ -29,6 +29,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
@@ -88,6 +89,21 @@ public final class RestServiceInvoker implements ServiceInvoker {
 
 		HttpMethod method = op.getMethod() != null ? op.getMethod() : HttpMethod.GET;
 		Response response;
+		try {
+			response = send(target, op, method, safeArgs, accept);
+		} catch (ProcessingException unreachable) {
+			// Connect refused, connect/read timeout, reset: the provider is
+			// registered but not answering. Marked as a transport failure so
+			// the proxy can rebind and retry once (#59).
+			throw DdsrException.transport("invoking " + operationName + " at " + url + " failed: "
+					+ unreachable.getMessage(), unreachable);
+		}
+		return readResponse(response);
+	}
+
+	private static Response send(WebTarget target, RestOperationFlavor op, HttpMethod method,
+			Map<String, Object> safeArgs, String accept) {
+		Response response;
 		switch (method) {
 		case GET:
 			for (Map.Entry<String, Object> e : safeArgs.entrySet()) {
@@ -119,7 +135,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 			throw new UnsupportedOperationException("HTTP method not supported: " + method);
 		}
 
-		return readResponse(response);
+		return response;
 	}
 
 	private static RestOperationFlavor findOperationFlavor(RestFlavor rf, String name) {

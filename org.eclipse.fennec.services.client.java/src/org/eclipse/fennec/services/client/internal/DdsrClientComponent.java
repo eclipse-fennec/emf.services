@@ -86,6 +86,14 @@ public final class DdsrClientComponent implements DdsrClient {
 						+ "ACQUISITION.md §4). Should be half the broker's expiry. 0 disables sessions.",
 				required = false)
 		long session_interval_seconds() default 600;
+
+		@AttributeDefinition(
+				name = "Greedy rebind",
+				description = "UPDATE_POLICY.md \u00a73: rebind locators to the successor as soon as the broker "
+						+ "announces UPGRADE_AVAILABLE (true), or keep the current registration until the "
+						+ "broker retires it (false, default).",
+				required = false)
+		boolean greedy_rebind() default false;
 	}
 
 	// Target the REST-flavor proxies explicitly. broker.core's embedded
@@ -161,7 +169,7 @@ public final class DdsrClientComponent implements DdsrClient {
 			// whatever happened to be bound at that moment — the same
 			// mistake the broker side avoids with its fan-out.
 			this.delegate = new DdsrClientImpl(implementations, lookup, flavors, consumerId,
-					this::openEventStream);
+					this::openEventStream, config.greedy_rebind());
 			long renewalSeconds = config.session_interval_seconds();
 			if (renewalSeconds > 0) {
 				sessionRenewal = Executors.newSingleThreadScheduledExecutor(task -> {

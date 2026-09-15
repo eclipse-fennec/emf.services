@@ -14,9 +14,15 @@
 package org.eclipse.fennec.services.client.internal;
 
 import java.net.URI;
+import org.eclipse.fennec.services.client.TrackedServiceLocator;
+import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
+import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.ServiceEvent;
+import java.util.logging.Logger;
+import java.util.List;
 import java.util.Optional;
 
-import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
@@ -24,14 +30,44 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.ServiceReference;
 
-final class ServiceLocatorImpl implements ServiceLocator {
+final class ServiceLocatorImpl implements TrackedServiceLocator {
 
-	private final ServiceReference reference;
-	private final ServiceImplementation implementation;
+	/** How a locator gets back to the broker: the consumer that created it. */
+	interface Rebinder {
+		/** Live references for the interface/filter, each with its implementation; never null. */
+		List<Resolved> resolve(String interfaceName, String filter);
+	}
 
+	record Resolved(ServiceReference reference, ServiceImplementation implementation) {
+	}
+
+	private static final Logger LOG = Logger.getLogger(ServiceLocatorImpl.class.getName());
+
+	private final Rebinder rebinder;
+	private final String interfaceName;
+	private final String filter;
+	private volatile ServiceReference reference;
+	private volatile ServiceImplementation implementation;
+	private volatile State state = State.LIVE;
+	private volatile java.util.function.BiConsumer<ServiceLocatorImpl, String> rebound;
+
+	/** Tracker callback: (locator, previous reference id) after a rebind changed the id. */
+	void onRebound(java.util.function.BiConsumer<ServiceLocatorImpl, String> callback) {
+		this.rebound = callback;
+	}
+
+	/** Untracked: what the locator was found with is what it stays. */
 	ServiceLocatorImpl(ServiceReference reference, ServiceImplementation implementation) {
+		this(reference, implementation, null, null, null);
+	}
+
+	ServiceLocatorImpl(ServiceReference reference, ServiceImplementation implementation,
+			Rebinder rebinder, String interfaceName, String filter) {
 		this.reference = reference;
 		this.implementation = implementation;
+		this.rebinder = rebinder;
+		this.interfaceName = interfaceName;
+		this.filter = filter;
 	}
 
 	@Override
@@ -41,15 +77,129 @@ final class ServiceLocatorImpl implements ServiceLocator {
 
 	@Override
 	public ServiceImplementation implementation() {
+		ensureBound();
 		return implementation;
 	}
 
 	@Override
+	public State state() {
+		return state;
+	}
+
+	@Override
+	public String interfaceName() {
+		return interfaceName;
+	}
+
+	@Override
+	public String filter() {
+		return filter;
+	}
+
+	String boundReferenceId() {
+		ServiceReference current = reference;
+		return current != null ? current.getId() : null;
+	}
+
+	/** Called by the consumer's tracker when an event names this locator's reference. */
+	void onEvent(ServiceEvent event, boolean greedy) {
+		ServiceEventType type = event.getType();
+		if (type == null) {
+			return;
+		}
+		switch (type) {
+		case MODIFIED -> {
+			ServiceImplementation fresh = selfContainedImplementation(event.getReference());
+			if (fresh != null) {
+				reference = event.getReference();
+				implementation = fresh;
+				state = State.LIVE;
+			} else {
+				state = State.MODIFIED;
+			}
+		}
+		case UNREGISTERING -> state = ServiceEventReasons.COLDIFIED.equals(event.getReasonCode())
+				? State.STALE
+				: State.REBIND;
+		case RETIRED -> state = State.REBIND;
+		case UPGRADE_AVAILABLE -> {
+			if (greedy) {
+				state = State.REBIND;
+			}
+		}
+		default -> {
+			// REGISTERED / MODIFIED_ENDMATCH: nothing to do for a bound locator
+		}
+		}
+	}
+
+	private static ServiceImplementation selfContainedImplementation(ServiceReference reference) {
+		if (reference == null || reference.getProvider() == null
+				|| reference.getProvider().getImplementations().size() != 1) {
+			return null;
+		}
+		return reference.getProvider().getImplementations().get(0);
+	}
+
+	private void ensureBound() {
+		if (state == State.LIVE || rebinder == null) {
+			return;
+		}
+		State was = state;
+		if (!rebind(was == State.REBIND)) {
+			throw new DdsrException("service " + interfaceName + " (" + boundReferenceId() + ") is not available: "
+					+ (was == State.STALE ? "parked and not rehydrated" : "no other registration matches"));
+		}
+	}
+
+	@Override
+	public synchronized boolean rebind(boolean excludeCurrent) {
+		if (rebinder == null) {
+			return state == State.LIVE;
+		}
+		String currentId = boundReferenceId();
+		List<Resolved> candidates = rebinder.resolve(interfaceName, filter);
+		Resolved chosen = null;
+		if (!excludeCurrent && currentId != null) {
+			for (Resolved candidate : candidates) {
+				if (currentId.equals(candidate.reference().getId())) {
+					chosen = candidate;
+					break;
+				}
+			}
+		}
+		if (chosen == null) {
+			for (Resolved candidate : candidates) {
+				if (currentId == null || !currentId.equals(candidate.reference().getId())) {
+					chosen = candidate;
+					break;
+				}
+			}
+		}
+		if (chosen == null) {
+			return false;
+		}
+		String fromId = currentId;
+		reference = chosen.reference();
+		implementation = chosen.implementation();
+		state = State.LIVE;
+		if (fromId != null && !fromId.equals(reference.getId())) {
+			LOG.info(() -> "[DDSR-Client] " + interfaceName + ": rebound " + fromId + " -> " + reference.getId());
+			if (rebound != null) {
+				rebound.accept(this, fromId);
+			}
+		}
+		return true;
+	}
+
+	@Override
 	public Optional<RestFlavor> restFlavor() {
-		if (implementation == null) {
+		ensureBound();
+		ServiceImplementation impl = implementation;
+		if (impl == null) {
 			return Optional.empty();
 		}
-		for (ServiceFlavor f : implementation.getFlavors()) {
+		for (ServiceFlavor f : impl.getFlavors()) {
 			if (f instanceof RestFlavor) {
 				return Optional.of((RestFlavor) f);
 			}

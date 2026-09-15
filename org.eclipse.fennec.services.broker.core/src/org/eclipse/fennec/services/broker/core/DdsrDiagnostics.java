@@ -51,6 +51,14 @@ public final class DdsrDiagnostics {
 	public static final int CODE_IMPL_INTERFACE_NOT_IN_CATALOG = 210;
 	public static final int CODE_IMPL_OWNERSHIP_VIOLATION    = 211;
 	public static final int CODE_IMPL_NOT_PUBLISHED          = 212;
+	/**
+	 * WARNING, not an error: a publish declared {@code replaces} but no
+	 * live implementation with that (name, version) exists (or it named
+	 * the publisher's own identity). The publish went through as a plain
+	 * publish with {@code replaces} cleared — a restarting successor whose
+	 * predecessor is long gone must not be locked out (UPDATE_POLICY.md §2).
+	 */
+	public static final int CODE_IMPL_REPLACES_NOT_FOUND     = 213;
 	public static final int CODE_SESSION_INVALID             = 230;
 	public static final int CODE_INTERFACE_DEPRECATED        = 300;
 	public static final int CODE_PERSISTENCE_FAILED          = 500;

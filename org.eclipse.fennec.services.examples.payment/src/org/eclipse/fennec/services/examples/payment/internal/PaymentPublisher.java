@@ -24,6 +24,7 @@ import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.UpdatePolicy;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.DoubleProperty;
@@ -105,6 +106,27 @@ public final class PaymentPublisher {
 				name = "Provider name",
 				description = "Symbolic name used for the published ServiceProvider")
 		String provider_name() default "payments-java";
+
+		@AttributeDefinition(
+				name = "Implementation version",
+				description = "Version of the published ServiceImplementation. A second instance with another "
+						+ "version coexists (EVERGREEN) or supersedes the first (see update.policy / replaces.version).",
+				required = false)
+		String impl_version() default "1.0.0";
+
+		@AttributeDefinition(
+				name = "Update policy",
+				description = "UNSPECIFIED (inherit / broker default DEPRECATE_AND_DRAIN), EVERGREEN, "
+						+ "DEPRECATE_AND_DRAIN or HARD_CUTOVER — UPDATE_POLICY.md §2. Only meaningful with replaces.version.",
+				required = false)
+		String update_policy() default "UNSPECIFIED";
+
+		@AttributeDefinition(
+				name = "Replaces version",
+				description = "Version of the previously published implementation this one supersedes "
+						+ "(same provider.name). Empty = plain publish.",
+				required = false)
+		String replaces_version() default "";
 	}
 
 	// DYNAMIC references so transient restarts of downstream services
@@ -264,6 +286,10 @@ public final class PaymentPublisher {
 		return p;
 	}
 
+	private static String blankToDefault(String value, String fallback) {
+		return value == null || value.isBlank() ? fallback : value;
+	}
+
 	private static ServiceProvider buildProvider(Config config, URI url, ServiceInterface paymentApi) {
 		ServiceProvider provider = ServicesFactory.eINSTANCE.createServiceProvider();
 		provider.setName(config.provider_name());
@@ -272,9 +298,23 @@ public final class PaymentPublisher {
 
 		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
 		impl.setName(config.provider_name() + "-rest");
-		impl.setVersion("1.0.0");
+		impl.setVersion(blankToDefault(config.impl_version(), "1.0.0"));
 		impl.setImplementationId("org.eclipse.fennec.services.examples.payment.rest");
 		impl.setDescription("Java reference Payment implementation");
+		// Update policy (UPDATE_POLICY.md §2, harness scenario G): an
+		// instance that supersedes an earlier version names it via replaces
+		// — a (name, version) stub the broker resolves against the live
+		// registration; the SDK ships it as a sibling root of the body.
+		UpdatePolicy policy = UpdatePolicy.getByName(blankToDefault(config.update_policy(), "UNSPECIFIED").trim());
+		impl.setUpdatePolicy(policy != null ? policy : UpdatePolicy.UNSPECIFIED);
+		String replacesVersion = config.replaces_version();
+		if (replacesVersion != null && !replacesVersion.isBlank()) {
+			ServiceImplementation predecessor = ServicesFactory.eINSTANCE.createServiceImplementation();
+			predecessor.setName(impl.getName());
+			predecessor.setVersion(replacesVersion.trim());
+			predecessor.setImplementationId(impl.getImplementationId());
+			impl.setReplaces(predecessor);
+		}
 		// Use the full paymentApi (not a name-only stub) — the wire side
 		// includes it as a sibling root in the bundle so the impl's
 		// operation cross-refs below resolve intra-document.

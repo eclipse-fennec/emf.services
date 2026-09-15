@@ -187,4 +187,67 @@ fi
 echo "Scenario B OK: withdraw confirmed before endpoint stop; broker no longer lists payments-ts"
 
 kill "$CLIENT_PID" 2>/dev/null || true
-log "HARNESS PASSED (A + B)"
+# ============================================================ Scenario F
+# A second instance of the SAME (name, version) on another port while a TS
+# consumer holds a tracked locator and a lease (#58, #57, #55): the SDK's
+# reconnect check sees the same contract with a drifted endpoint and MODIFIES
+# the registration in place — the consumer gets MODIFIED under the same
+# reference id, refreshes its endpoint and keeps its lease. No churn.
+log "Scenario F: same identity restarts on a new port -> MODIFIED in place, consumer follows"
+require_port_free 9091
+require_port_free 9092
+start_jar payment-f1 "$PROVIDER_JAR" "$WORK/payment-f1"
+F1_PID=$LAST_PID
+wait_for_line "$WORK/payment-f1.log" "published payments-java" 60
+(cd "$TS/examples/payment" \
+  && BROKER_URL="$BROKER_URL" SCENARIO=F NEW_PORT=9092 exec node --import tsx harness-probe-lifecycle.ts) \
+  >"$WORK/probe-f.log" 2>&1 &
+PROBE_F_PID=$!
+PIDS+=("$PROBE_F_PID")
+wait_for_line "$WORK/probe-f.log" "PROBE_READY" 90
+PAYMENTS_HTTP_PORT=9092 PAYMENTS_PUBLIC_URL="http://localhost:9092/payments" \
+  start_jar payment-f2 "$PROVIDER_JAR" "$WORK/payment-f2"
+F2_PID=$LAST_PID
+wait_for_line "$WORK/payment-f2.log" "published payments-java" 60
+if ! wait "$PROBE_F_PID"; then
+  echo "SCENARIO F FAILED"; cat "$WORK/probe-f.log"; exit 1
+fi
+echo "Scenario F OK: MODIFIED in place, same reference id, consumer followed the endpoint"
+grep -E '  [✓✗]' "$WORK/probe-f.log" || true
+# The second instance owns the (modified) registration now; its withdraw must
+# go first, otherwise the first instance's identity-based withdraw would
+# remove it (same (name, version) — the price of sharing an identity).
+kill "$F2_PID"; wait "$F2_PID" 2>/dev/null || true
+kill "$F1_PID"; wait "$F1_PID" 2>/dev/null || true
+
+# ============================================================ Scenario G
+# DEPRECATE_AND_DRAIN (#58, #45): version 2.0.0 publishes with replaces=1.0.0
+# while the consumer holds a lease on 1.0.0. UPGRADE_AVAILABLE, lookups prefer
+# the successor, the predecessor keeps serving until the lease is released,
+# then the broker's policy sweep retires it and the locator rebinds.
+log "Scenario G: DEPRECATE_AND_DRAIN with two provider versions"
+require_port_free 9091
+require_port_free 9092
+start_jar payment-g1 "$PROVIDER_JAR" "$WORK/payment-g1"
+G1_PID=$LAST_PID
+wait_for_line "$WORK/payment-g1.log" "published payments-java" 60
+(cd "$TS/examples/payment" \
+  && BROKER_URL="$BROKER_URL" SCENARIO=G exec node --import tsx harness-probe-lifecycle.ts) \
+  >"$WORK/probe-g.log" 2>&1 &
+PROBE_G_PID=$!
+PIDS+=("$PROBE_G_PID")
+wait_for_line "$WORK/probe-g.log" "PROBE_READY" 90
+PAYMENTS_HTTP_PORT=9092 PAYMENTS_PUBLIC_URL="http://localhost:9092/payments" \
+  PAYMENTS_IMPL_VERSION=2.0.0 PAYMENTS_REPLACES_VERSION=1.0.0 PAYMENTS_UPDATE_POLICY=DEPRECATE_AND_DRAIN \
+  start_jar payment-g2 "$PROVIDER_JAR" "$WORK/payment-g2"
+G2_PID=$LAST_PID
+wait_for_line "$WORK/payment-g2.log" "published payments-java" 60
+if ! wait "$PROBE_G_PID"; then
+  echo "SCENARIO G FAILED"; cat "$WORK/probe-g.log"; exit 1
+fi
+echo "Scenario G OK: UPGRADE_AVAILABLE, drain on lease release, rebind to the successor"
+grep -E '  [✓✗]' "$WORK/probe-g.log" || true
+kill "$G2_PID"; wait "$G2_PID" 2>/dev/null || true
+kill "$G1_PID"; wait "$G1_PID" 2>/dev/null || true
+
+log "HARNESS PASSED (A + B + F + G)"

@@ -46,6 +46,25 @@ dormant (`configurationPolicy = REQUIRE`) in every launch and are woken
 by the harness-only configuration bundle
 `org.eclipse.fennec.services.itest.mqtt.config`.
 
+**F — same identity restarts on a new port.** A second instance of the
+Java provider with the same `(name, version)` starts on port 9092 while the
+TS probe holds a tracked locator and a lease. Since #55 this is a modify in
+place: the probe expects `MODIFIED` under the same reference id, its locator
+takes the new endpoint from the event, the next call reaches the new port
+and the lease is unchanged — no `UNREGISTERING`, no rebind.
+
+**G — `DEPRECATE_AND_DRAIN`.** Version 2.0.0 publishes with
+`replaces=1.0.0` while the probe holds a lease on 1.0.0. The probe expects
+`UPGRADE_AVAILABLE`, lookups that return only the successor, a predecessor
+that keeps answering, and — after `DELETE /consumers/{id}` — the policy
+sweep retiring it (`UNREGISTERING/REPLACED` + `RETIRED`) and the locator
+rebinding to the successor.
+
+The provider instances are configured through the environment
+(`PAYMENTS_HTTP_PORT`, `PAYMENTS_PUBLIC_URL`, `PAYMENTS_IMPL_VERSION`,
+`PAYMENTS_UPDATE_POLICY`, `PAYMENTS_REPLACES_VERSION`, `DDSR_BROKER_URL`)
+via ConfigAdmin interpolation in `configs/config.json`.
+
 ## CI
 
 `.github/workflows/harness.yml` runs on every push and pull request:

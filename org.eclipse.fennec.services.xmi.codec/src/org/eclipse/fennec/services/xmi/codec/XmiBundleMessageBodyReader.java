@@ -48,7 +48,7 @@ public class XmiBundleMessageBodyReader implements MessageBodyReader<XmiBundle> 
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Activate
-	public XmiBundleMessageBodyReader(@Reference ComponentServiceObjects<ResourceSet> rsObjects) {
+	public XmiBundleMessageBodyReader(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
 		this.rsObjects = rsObjects;
 	}
 

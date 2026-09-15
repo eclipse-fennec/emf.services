@@ -49,7 +49,7 @@ public class XmiMessageBodyWriter implements MessageBodyWriter<EObject> {
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Activate
-	public XmiMessageBodyWriter(@Reference ComponentServiceObjects<ResourceSet> rsObjects) {
+	public XmiMessageBodyWriter(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
 		this.rsObjects = rsObjects;
 	}
 

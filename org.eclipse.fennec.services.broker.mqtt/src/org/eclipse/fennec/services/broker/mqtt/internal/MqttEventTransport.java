@@ -72,7 +72,7 @@ public final class MqttEventTransport implements EventSink {
 	@Reference
 	private BrokerLookup broker;
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	private MqttAsyncClient client;

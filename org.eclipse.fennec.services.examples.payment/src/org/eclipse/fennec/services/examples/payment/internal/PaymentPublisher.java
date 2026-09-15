@@ -120,7 +120,7 @@ public final class PaymentPublisher {
 			policyOption = ReferencePolicyOption.RELUCTANT)
 	private volatile BrokerCatalog catalog;
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	private Registration registration;

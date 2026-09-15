@@ -79,6 +79,17 @@ keeps intermediaries from idling the connection out and bounds how long
 a dead consumer blocks the sender. On every (re)connect the client
 pulls a snapshot before processing events (FR-Sync-Reconnect).
 
+Every `UNREGISTERING` carries a `reasonCode` telling why the service
+went away: `WITHDRAWN` (the provider withdrew it, explicitly or through
+its shutdown hook), `REPLACED` (a republish under the same (name,
+version) retired the old copy; a `REGISTERED` for the successor follows
+immediately), `COLDIFIED` (the idle sweep parked the entry in the cold
+cache; it stays discoverable and rehydrates on the next lookup with a
+fresh `REGISTERED`). `CUTOVER`, `SESSION_EXPIRED` and `PROVIDER_LOST`
+are reserved for the update-policy and liveness work. `REGISTERED` and
+`MODIFIED` carry no reason; the attribute is additive and simply absent
+when unset.
+
 ## MQTT event transport
 
 The broker publishes the same self-contained event documents to

@@ -32,6 +32,7 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
+import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -129,6 +130,9 @@ class DdsrBrokerColdCacheTest {
 				.as("the hot registry no longer carries the impl")
 				.isEmpty();
 		assertThat(eventTypes()).containsExactly(ServiceEventType.UNREGISTERING);
+		assertThat(events.get(0).getReasonCode())
+				.as("the sweep announces a parked entry, not a withdrawal")
+				.isEqualTo(ServiceEventReasons.COLDIFIED);
 	}
 
 	@Test

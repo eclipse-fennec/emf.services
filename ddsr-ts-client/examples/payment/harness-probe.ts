@@ -75,6 +75,7 @@ async function main(): Promise<void> {
     if (event.type === 'UNREGISTERING') {
       unregistering = Date.now();
       console.log(`UNREGISTERING_AT ${unregistering}`);
+      console.log(`UNREGISTERING_REASON ${event.reasonCode ?? '-'}`);
     }
   });
 

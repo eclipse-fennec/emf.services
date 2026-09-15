@@ -1098,6 +1098,11 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return false;
 		}
 
+		// Event material before the detach (like withdraw and the policy
+		// retire): after retireImplementation the lookup no longer resolves
+		// the implementation, and a bare reference would send the event to
+		// MQTT's _unknown topic / SSE's deliver-to-all fallback (#54 matrix).
+		ServiceReference eventReference = selfContainedEventReference(provider, impl, reg.getReference());
 		ServiceReference retiredRef = retireImplementation(provider, impl);
 		registrationSince.remove(reg);
 		coldEntries.put(key, new ColdEntry(key, names, fingerprints,
@@ -1108,7 +1113,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// its stub, and rehydration republishes it.
 			LOG.warning("[DDSR] persist after coldify failed for " + key + ": " + d.getMessage());
 		}
-		emit(ServiceEventType.UNREGISTERING, retiredRef, ServiceEventReasons.COLDIFIED);
+		emit(ServiceEventType.UNREGISTERING, eventReference != null ? eventReference : retiredRef,
+				ServiceEventReasons.COLDIFIED);
 		LOG.fine(() -> "[DDSR] coldified " + key + " -> " + file);
 		return true;
 	}

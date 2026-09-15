@@ -671,27 +671,13 @@ class DdsrBrokerImplTest {
 	// ------------------------------------------------------------------
 
 	/** Records what the broker hands to the sink, in order. */
-	private static final class RecordingSink implements EventSink {
-
-		private final List<ServiceEvent> received = new ArrayList<>();
-
-		@Override
-		public void publish(ServiceEvent event) {
-			received.add(event);
-		}
-
-		List<ServiceEventType> types() {
-			return received.stream().map(ServiceEvent::getType).toList();
-		}
-	}
-
-	private DdsrBrokerImpl brokerWith(RecordingSink sink) {
+	private DdsrBrokerImpl brokerWith(RecordingEventSink sink) {
 		return new DdsrBrokerImpl(tmp.resolve("events.xmi"), new InMemoryLookupBackend(), sink);
 	}
 
 	@Test
 	void publishEmitsRegistered() {
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl b = brokerWith(sink);
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 
@@ -707,7 +693,7 @@ class DdsrBrokerImplTest {
 
 	@Test
 	void addingACatalogEntryEmitsNothing() {
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl b = brokerWith(sink);
 
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
@@ -719,7 +705,7 @@ class DdsrBrokerImplTest {
 
 	@Test
 	void aRejectedPublishEmitsNothing() {
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl b = brokerWith(sink);
 
 		// Interface is not in the catalog — the publish is refused.
@@ -734,7 +720,7 @@ class DdsrBrokerImplTest {
 		// The catalog entry has to exist, otherwise the publish is refused
 		// before it ever reaches the save and the test would prove nothing.
 		broker.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl stuck = brokerOnUnwritableCopy("emit-blocked.xmi", sink);
 
 		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
@@ -750,7 +736,7 @@ class DdsrBrokerImplTest {
 
 	@Test
 	void withdrawEmitsUnregistering() {
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl b = brokerWith(sink);
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
@@ -764,7 +750,7 @@ class DdsrBrokerImplTest {
 
 	@Test
 	void aRepublishRetiresTheOldReferenceBeforeAnnouncingTheNewOne() {
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl b = brokerWith(sink);
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 
@@ -842,7 +828,7 @@ class DdsrBrokerImplTest {
 
 	@Test
 	void theUnregisteringEventIsSelfContained() {
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl b = brokerWith(sink);
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
@@ -871,7 +857,7 @@ class DdsrBrokerImplTest {
 
 	@Test
 	void theUnregisteringEventKeepsTheWithdrawnReferenceId() {
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl b = brokerWith(sink);
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
@@ -907,7 +893,7 @@ class DdsrBrokerImplTest {
 	void withdrawIsRolledBackWhenTheSaveFails() throws IOException {
 		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
 		publishFresh("payments-java", "impl", "Payment");
-		RecordingSink sink = new RecordingSink();
+		RecordingEventSink sink = new RecordingEventSink();
 		DdsrBrokerImpl stuck = brokerOnUnwritableCopy("withdraw-rollback.xmi", sink);
 		ServiceImplementation liveImpl = stuck.liveRegistry().getImplementations().get(0);
 		ServiceProvider liveProvider = (ServiceProvider) liveImpl.eContainer();

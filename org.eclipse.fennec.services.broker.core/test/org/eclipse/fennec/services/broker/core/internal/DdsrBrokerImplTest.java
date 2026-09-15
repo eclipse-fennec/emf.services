@@ -320,6 +320,28 @@ class DdsrBrokerImplTest {
 	}
 
 	@Test
+	void withdrawByIdentityStubResolvesTheLiveRegistration() {
+		// #50: the Java SDK withdraws with a (name, version) stub that
+		// carries no interfaces and no flavors.
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
+		ServiceProvider live = publishFresh("payments-java", "impl", "Payment");
+		ServiceProvider stub = ServicesFactory.eINSTANCE.createServiceProvider();
+		stub.setName(live.getName());
+		stub.setVersion(live.getVersion());
+		ServiceImplementation implStub = ServicesFactory.eINSTANCE.createServiceImplementation();
+		implStub.setName(soleImpl(live).getName());
+		implStub.setVersion(soleImpl(live).getVersion());
+		implStub.setImplementationId(soleImpl(live).getImplementationId());
+		stub.getImplementations().add(implStub);
+
+		Diagnostic d = broker.withdrawImplementation(stub, implStub);
+
+		assertThat(isError(d)).isFalse();
+		assertThat(broker.getRegistry().getImplementations()).isEmpty();
+		assertThat(lookup.getAllServiceReferences("Payment", null, null)).isEmpty();
+	}
+
+	@Test
 	void withdrawAlsoDetachesTheImplementationFromItsProvider() {
 		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
 		ServiceProvider p = publishFresh("payments-java", "impl", "Payment");

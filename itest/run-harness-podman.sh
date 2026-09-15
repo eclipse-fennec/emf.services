@@ -130,6 +130,7 @@ wait_for_log ddsr-probe "PROBE_READY" 150
 log "Scenario A: stopping the Java provider (podman stop = SIGTERM)"
 podman stop -t 20 ddsr-payment-java >/dev/null
 PROVIDER_EXIT_MS=$(now_ms)
+podman logs ddsr-payment-java >"$WORK/payment-java.log" 2>&1
 
 probe_rc=$(podman wait ddsr-probe)
 podman logs ddsr-probe >"$WORK/probe-a.log" 2>&1
@@ -145,6 +146,10 @@ UNREG_REASON=$(grep -o 'UNREGISTERING_REASON [A-Z_-]*' "$WORK/probe-a.log" | awk
 if [ "$UNREG_REASON" != "WITHDRAWN" ]; then
   echo "SCENARIO A FAILED: UNREGISTERING reason is '$UNREG_REASON', expected WITHDRAWN (provider shutdown = withdraw)"
   cat "$WORK/probe-a.log"; exit 1
+fi
+if grep -q "withdraw failed" "$WORK/payment-java.log"; then
+  echo "SCENARIO A FAILED: the Java provider's withdraw at deactivate failed (#50) — the consumer was only informed by the late shutdown path"
+  grep -A2 "withdraw failed" "$WORK/payment-java.log" | head -6; exit 1
 fi
 echo "Scenario A OK: consumer informed $((PROVIDER_EXIT_MS - UNREG_MS)) ms before the provider was gone (reason $UNREG_REASON)"
 grep -E '  [✓✗]' "$WORK/probe-a.log" || true

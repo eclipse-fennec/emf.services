@@ -45,6 +45,30 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: docs-site/package-lock.json
+      - name: Verify the docs theme matches the shared source
+        # Mirrors the check in reusable-docs.yml (v1.3.0+): the theme under
+        # docs-site/docs/.vitepress/theme and the Eclipse Foundation assets are
+        # owned by eclipse-fennec/.github (docs-theme/). Pinned to the very
+        # revision snapshot.yml calls, so a Dependabot bump of that workflow
+        # fails here, before the merge, if the theme has to move with it.
+        run: |
+          set -euo pipefail
+          ref=$(grep -o 'reusable-docs.yml@[0-9a-f]*' .github/workflows/snapshot.yml | head -1 | cut -d@ -f2)
+          echo "shared docs-theme revision: $ref"
+          base="https://raw.githubusercontent.com/eclipse-fennec/.github/$ref/docs-theme"
+          status=0
+          for rel in index.ts custom.css EclipseFooter.vue public/eclipse-foundation-grey-orange.svg public/eclipse-foundation-white-orange.svg; do
+            case "$rel" in
+              public/*) target="docs-site/docs/public/${rel#public/}" ;;
+              *)        target="docs-site/docs/.vitepress/theme/$rel" ;;
+            esac
+            curl -sfL "$base/$rel" -o "/tmp/shared-$(basename "$rel")"
+            if ! cmp -s "/tmp/shared-$(basename "$rel")" "$target"; then
+              echo "::error file=$target::does not match docs-theme/$rel in eclipse-fennec/.github@$ref"
+              status=1
+            fi
+          done
+          exit $status
       - name: Install dependencies
         working-directory: docs-site
         run: npm ci

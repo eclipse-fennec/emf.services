@@ -77,6 +77,7 @@ rm -rf "$WORK"; mkdir -p "$WORK"
 # clean slate: leftovers from earlier runs would otherwise be --replace'd
 # mid-scenario (e.g. a broker torn down while a provider activates)
 podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java \
+  ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
@@ -275,4 +276,48 @@ grep -q "✓ mqtt-invoke-getBalance" "$WORK/probe-e.log" \
 echo "Scenario E OK: Payment invoked over the announced MQTT flavor (request/response via mosquitto)"
 grep -E '  [✓✗] mqtt' "$WORK/probe-e.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E)"
+# ============================================================ Scenario F
+log "Scenario F: same identity restarts on a new port -> MODIFIED in place, consumer follows"
+run_container ddsr-payment-f1 ddsr/payment-java
+wait_for_log ddsr-payment-f1 "published payments-java" 150
+podman run -d --replace --name ddsr-probe-f --network=host \
+  -e BROKER_URL="$BROKER_URL" -e SCENARIO=F -e NEW_PORT=9092 ddsr/ts harness-probe-lifecycle.ts >/dev/null
+CONTAINERS+=(ddsr-probe-f)
+wait_for_log ddsr-probe-f "PROBE_READY" 150
+run_container ddsr-payment-f2 ddsr/payment-java \
+  -e PAYMENTS_HTTP_PORT=9092 -e PAYMENTS_PUBLIC_URL="http://localhost:9092/payments"
+wait_for_log ddsr-payment-f2 "published payments-java" 150
+probe_f_rc=$(podman wait ddsr-probe-f)
+podman logs ddsr-probe-f >"$WORK/probe-f.log" 2>&1
+if [ "$probe_f_rc" != "0" ]; then
+  echo "SCENARIO F FAILED"; cat "$WORK/probe-f.log"; exit 1
+fi
+echo "Scenario F OK: MODIFIED in place, same reference id, consumer followed the endpoint"
+grep -E '  [✓✗]' "$WORK/probe-f.log" || true
+# second instance first — it owns the (modified) registration (see run-harness.sh)
+podman stop -t 20 ddsr-payment-f2 >/dev/null
+podman stop -t 20 ddsr-payment-f1 >/dev/null
+
+# ============================================================ Scenario G
+log "Scenario G: DEPRECATE_AND_DRAIN with two provider versions"
+run_container ddsr-payment-g1 ddsr/payment-java
+wait_for_log ddsr-payment-g1 "published payments-java" 150
+podman run -d --replace --name ddsr-probe-g --network=host \
+  -e BROKER_URL="$BROKER_URL" -e SCENARIO=G ddsr/ts harness-probe-lifecycle.ts >/dev/null
+CONTAINERS+=(ddsr-probe-g)
+wait_for_log ddsr-probe-g "PROBE_READY" 150
+run_container ddsr-payment-g2 ddsr/payment-java \
+  -e PAYMENTS_HTTP_PORT=9092 -e PAYMENTS_PUBLIC_URL="http://localhost:9092/payments" \
+  -e PAYMENTS_IMPL_VERSION=2.0.0 -e PAYMENTS_REPLACES_VERSION=1.0.0 -e PAYMENTS_UPDATE_POLICY=DEPRECATE_AND_DRAIN
+wait_for_log ddsr-payment-g2 "published payments-java" 150
+probe_g_rc=$(podman wait ddsr-probe-g)
+podman logs ddsr-probe-g >"$WORK/probe-g.log" 2>&1
+if [ "$probe_g_rc" != "0" ]; then
+  echo "SCENARIO G FAILED"; cat "$WORK/probe-g.log"; exit 1
+fi
+echo "Scenario G OK: UPGRADE_AVAILABLE, drain on lease release, rebind to the successor"
+grep -E '  [✓✗]' "$WORK/probe-g.log" || true
+podman stop -t 20 ddsr-payment-g2 >/dev/null
+podman stop -t 20 ddsr-payment-g1 >/dev/null
+
+log "HARNESS (podman) PASSED (A + B + C + D + E + F + G)"

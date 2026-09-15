@@ -21,11 +21,28 @@ echten Broker. Anforderungen und Entscheidungen:
   Event-Dokument über echtes MQTT/TCP (Topics `<prefix>/<interface>`
   und `<prefix>/_unknown`).
 
+- **F — gleiche Identität startet auf neuem Port:** zweite Instanz des
+  Java-Providers mit gleicher `(name, version)` auf Port 9092, während
+  die TS-Probe einen Tracked Locator und eine Lease hält. Seit #55 ist
+  das ein Modify in place: erwartet wird `MODIFIED` unter derselben
+  Referenz-ID, der Locator übernimmt den Endpoint aus dem Event, der
+  nächste Aufruf erreicht den neuen Port, die Lease bleibt (#55, #57, #58).
+- **G — `DEPRECATE_AND_DRAIN`:** Version 2.0.0 publiziert mit
+  `replaces=1.0.0`, die Probe hält eine Lease auf 1.0.0. Erwartet:
+  `UPGRADE_AVAILABLE`, Lookups liefern nur den Nachfolger, der Vorgänger
+  antwortet weiter, nach `DELETE /consumers/{id}` retired der Policy-Sweep
+  ihn (`UNREGISTERING/REPLACED` + `RETIRED`), der Locator wechselt (#45, #58).
+
+Der Payment-Provider ist dafür per Umgebung konfigurierbar
+(`PAYMENTS_HTTP_PORT`, `PAYMENTS_PUBLIC_URL`, `PAYMENTS_IMPL_VERSION`,
+`PAYMENTS_UPDATE_POLICY`, `PAYMENTS_REPLACES_VERSION`, `DDSR_BROKER_URL`;
+`configs/config.json` mit ConfigAdmin-Interpolation).
+
 ## Läufe
 
 ```bash
-./itest/run-harness.sh          # Host-Prozesse (kein Podman nötig): A + B
-./itest/run-harness-podman.sh   # Container (podman, --network=host): A + B + C
+./itest/run-harness.sh          # Host-Prozesse (kein Podman nötig): A + B + F + G
+./itest/run-harness-podman.sh   # Container (podman, --network=host): A + B + C + D + E + F + G
 ```
 
 Beide bauen zuerst (`./gradlew build` + bnd-Exporte, `pnpm install` +

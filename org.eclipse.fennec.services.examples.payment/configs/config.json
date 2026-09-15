@@ -3,7 +3,7 @@
 
   "org.apache.felix.http~paymentsHttp":
   {
-    "org.osgi.service.http.port": "9091",
+    "org.osgi.service.http.port": "$[env:PAYMENTS_HTTP_PORT;default=9091]",
     "org.osgi.service.http.host": "0.0.0.0",
     "org.apache.felix.http.context_path": "payments",
     "org.apache.felix.http.name": "Payments HTTP",
@@ -16,12 +16,15 @@
   },
   "org.eclipse.fennec.services.client.rest":
   {
-    "broker.url": "http://localhost:8887/ddsr/rest"
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
   },
   "org.eclipse.fennec.services.examples.payment":
   {
-    "public.url": "http://localhost:9091/payments",
-    "broker.url": "http://localhost:8887/ddsr/rest",
-    "provider.name": "payments-java"
+    "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
+    "provider.name": "$[env:PAYMENTS_PROVIDER_NAME;default=payments-java]",
+    "impl.version": "$[env:PAYMENTS_IMPL_VERSION;default=1.0.0]",
+    "update.policy": "$[env:PAYMENTS_UPDATE_POLICY;default=UNSPECIFIED]",
+    "replaces.version": "$[env:PAYMENTS_REPLACES_VERSION;default=]"
   }
 }

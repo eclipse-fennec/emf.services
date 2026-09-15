@@ -1,0 +1,139 @@
+name: Reusable Container Deploy
+
+# Repo-local reusable: builds and pushes ONE Fennec Services image variant to
+# Docker Hub and GHCR. The broker jar is NOT re-exported here — it is
+# downloaded from the "release-jars" artifact uploaded by reusable-release, so
+# the image embeds exactly the jar that was built and published to Maven in the
+# same run. The staging mirrors the :docker:<variant>:prepareDocker gradle task
+# (docker/broker/build.gradle), which is what a local `podman build
+# docker/broker/` uses. Tagging follows the data.atlas scheme:
+# <variant>-<label> plus <variant>-<bundle version>, e.g. broker-snapshot.
+on:
+  workflow_call:
+    inputs:
+      docker-label:
+        description: 'Moving docker tag label, e.g. snapshot or latest.'
+        type: string
+        required: true
+      variant:
+        description: 'Image variant and tag prefix, e.g. broker.'
+        type: string
+        required: true
+      runtime-jar:
+        description: 'File name of the exported bnd executable jar for this variant.'
+        type: string
+        required: true
+      version-bundle-jar:
+        description: 'File name of the bundle jar whose Bundle-Version tags the image.'
+        type: string
+        required: true
+      docker-context:
+        description: 'Docker build context directory for this variant.'
+        type: string
+        required: true
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_API_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  LC_ALL: en_US.UTF-8
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  container:
+    name: Container Deploy (${{ inputs.variant }}-${{ inputs.docker-label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          egress-policy: audit
+
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Download Release Artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-jars
+          path: release-jars
+
+      # upload-artifact stores files relative to the least common ancestor of
+      # the artifact-paths, so the archive layout depends on which paths were
+      # uploaded — locate the jars by name instead of assuming a prefix.
+      - name: Locate Release Jars
+        id: jars
+        run: |
+          ls -lR release-jars
+          RUNTIME_JAR=$(find release-jars -name '${{ inputs.runtime-jar }}' | head -1)
+          BUNDLE_JAR=$(find release-jars -name '${{ inputs.version-bundle-jar }}' | head -1)
+          test -f "$RUNTIME_JAR" && test -f "$BUNDLE_JAR"
+          echo "runtime-jar=${RUNTIME_JAR}" >> "$GITHUB_OUTPUT"
+          echo "bundle-jar=${BUNDLE_JAR}" >> "$GITHUB_OUTPUT"
+
+      - name: Install bnd
+        run: |
+          curl -Lk -o /tmp/biz.aQute.bnd.jar \
+            https://repo1.maven.org/maven2/biz/aQute/bnd/biz.aQute.bnd/7.2.1/biz.aQute.bnd-7.2.1.jar
+
+      - name: Extract Bundle Version
+        id: bundle_version
+        run: |
+          VERSION=$(java -jar /tmp/biz.aQute.bnd.jar select -h Bundle-Version \
+            "${{ steps.jars.outputs.bundle-jar }}" \
+            2>/dev/null | head -1)
+          echo "VERSION=${VERSION}"
+          test -n "${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare Docker content
+        run: |
+          mkdir -p '${{ inputs.docker-context }}/content'
+          cp "${{ steps.jars.outputs.runtime-jar }}" '${{ inputs.docker-context }}/content/${{ inputs.runtime-jar }}'
+          ls -lR '${{ inputs.docker-context }}/content'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_API_TOKEN }}
+
+      - name: Login to Github Docker Registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: ${{ inputs.docker-context }}
+          platforms: linux/amd64,linux/arm64/v8
+          push: true
+          tags: |-
+            docker.io/eclipsefennec/emf.services:${{ inputs.variant }}-${{ inputs.docker-label }}
+            docker.io/eclipsefennec/emf.services:${{ inputs.variant }}-${{ steps.bundle_version.outputs.version }}
+            ghcr.io/eclipse-fennec/emf.services:${{ inputs.variant }}-${{ inputs.docker-label }}
+            ghcr.io/eclipse-fennec/emf.services:${{ inputs.variant }}-${{ steps.bundle_version.outputs.version }}

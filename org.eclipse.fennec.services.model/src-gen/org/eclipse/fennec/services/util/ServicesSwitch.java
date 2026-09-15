@@ -317,6 +317,12 @@ public class ServicesSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ServicesPackage.REST_PARAMETER_BINDING: {
+				RestParameterBinding restParameterBinding = (RestParameterBinding)theEObject;
+				T result = caseRestParameterBinding(restParameterBinding);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ServicesPackage.MQTT_OPERATION_FLAVOR: {
 				MqttOperationFlavor mqttOperationFlavor = (MqttOperationFlavor)theEObject;
 				T result = caseMqttOperationFlavor(mqttOperationFlavor);
@@ -400,6 +406,18 @@ public class ServicesSwitch<T> extends Switch<T> {
 				T result = caseRemoteServiceRegistry(remoteServiceRegistry);
 				if (result == null) result = caseServiceRegistry(remoteServiceRegistry);
 				if (result == null) result = caseNamedElement(remoteServiceRegistry);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ServicesPackage.CAPABILITY: {
+				Capability capability = (Capability)theEObject;
+				T result = caseCapability(capability);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ServicesPackage.REQUIREMENT: {
+				Requirement requirement = (Requirement)theEObject;
+				T result = caseRequirement(requirement);
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
@@ -942,6 +960,21 @@ public class ServicesSwitch<T> extends Switch<T> {
 	}
 
 	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Rest Parameter Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Rest Parameter Binding</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseRestParameterBinding(RestParameterBinding object) {
+		return null;
+	}
+
+	/**
 	 * Returns the result of interpreting the object as an instance of '<em>Mqtt Operation Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
@@ -1133,6 +1166,36 @@ public class ServicesSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseRemoteServiceRegistry(RemoteServiceRegistry object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Capability</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Capability</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseCapability(Capability object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Requirement</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Requirement</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseRequirement(Requirement object) {
 		return null;
 	}
 

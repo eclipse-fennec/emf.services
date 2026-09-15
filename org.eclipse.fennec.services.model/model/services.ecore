@@ -7,7 +7,7 @@
   <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
     <details key="complianceLevel" value="17.0"/>
     <details key="oSGiCompatible" value="true"/>
-    <details key="basePackage" value="org.gecko.ddsr.model"/>
+    <details key="basePackage" value="org.eclipse.fennec"/>
     <details key="resource" value="XMI"/>
     <details key="documentation" value="Gecko DDSR — Dynamic Distributed Service Registry. Language-neutral model of an OSGi-inspired service registry that spans Java, TypeScript, and Python. Combines OSGi DS (declarative components, references, lifecycle) with OSGi service-registry events and a UDDI-style central Broker (Remote Registry). The model is the contract between Java and TypeScript implementations — see REQUIREMENTS.md NFR-Behavioral-Parity."/>
   </eAnnotations>
@@ -15,11 +15,6 @@
     <details key="settingDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
     <details key="validationDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
   </eAnnotations>
-
-  <!-- ============================================================ -->
-  <!--  EEnums                                                       -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EEnum" name="ServiceScope">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="OSGi service scope. SINGLETON = one instance shared by all consumers; BUNDLE = one instance per consuming bundle/provider; PROTOTYPE = a new instance per consumer request."/>
@@ -28,7 +23,6 @@
     <eLiterals name="BUNDLE" value="1"/>
     <eLiterals name="PROTOTYPE" value="2"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ReferenceCardinality">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Cardinality of a ComponentReference. ZERO_OR_ONE = 0..1; ONE = 1..1; ZERO_OR_MANY = 0..*; ONE_OR_MANY = 1..*. Drives whether a missing reference leaves a component UNSATISFIED."/>
@@ -38,7 +32,6 @@
     <eLiterals name="ZERO_OR_MANY" value="2"/>
     <eLiterals name="ONE_OR_MANY" value="3"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ReferencePolicy">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Reference rebinding policy. STATIC = component is deactivated and reactivated when a target service changes; DYNAMIC = component stays active and is notified via bind/unbind callbacks."/>
@@ -46,7 +39,6 @@
     <eLiterals name="STATIC"/>
     <eLiterals name="DYNAMIC" value="1"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ReferencePolicyOption">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Reference rebinding eagerness. RELUCTANT = keep current binding even if a higher-ranked target appears; GREEDY = switch to a higher-ranked target."/>
@@ -54,7 +46,6 @@
     <eLiterals name="RELUCTANT"/>
     <eLiterals name="GREEDY" value="1"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ConfigurationPolicy">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Whether a component depends on Configuration Admin. OPTIONAL = activate without configuration if none is present; REQUIRE = activate only when configuration is present; IGNORE = never consult configuration."/>
@@ -63,7 +54,6 @@
     <eLiterals name="REQUIRE" value="1"/>
     <eLiterals name="IGNORE" value="2"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ComponentState">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Runtime state of a ComponentConfiguration. Values follow ComponentConfigurationDTO and are bitwise-combinable so the same int can express composite states in transit. UNSATISFIED_CONFIGURATION = required configuration missing; UNSATISFIED_REFERENCE = required service missing; SATISFIED = all dependencies present; ACTIVE = activate() succeeded; FAILED_ACTIVATION = activate() threw — failure detail in ComponentConfiguration.failure."/>
@@ -74,18 +64,18 @@
     <eLiterals name="ACTIVE" value="8"/>
     <eLiterals name="FAILED_ACTIVATION" value="16"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ServiceEventType">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Lifecycle event types. Values follow org.osgi.framework.ServiceEvent and are bitwise-combinable so listener filters can subscribe to multiple types at once. UNSPECIFIED = no type set; exists only so that none of the meaningful literals is the EMF default, because EMF omits an attribute whose value equals the default and a required type would then be missing on the wire (see OPEN_ISSUES W4). REGISTERED = service appeared; MODIFIED = properties changed, still matches subscriber filter; UNREGISTERING = service is being removed; MODIFIED_ENDMATCH = properties changed, no longer matches subscriber filter."/>
+      <details key="documentation" value="Lifecycle event types. Values follow org.osgi.framework.ServiceEvent and are bitwise-combinable so listener filters can subscribe to multiple types at once. UNSPECIFIED = no type set; exists only so that none of the meaningful literals is the EMF default, because EMF omits an attribute whose value equals the default and a required type would then be missing on the wire (see OPEN_ISSUES W4). REGISTERED = service appeared; MODIFIED = properties changed, still matches subscriber filter; UNREGISTERING = service is being removed; MODIFIED_ENDMATCH = properties changed, no longer matches subscriber filter. UPGRADE_AVAILABLE = a newer ServiceImplementation that declares replaces = the referenced one has been published under DEPRECATE_AND_DRAIN; the old service stays live, consumers should re-lookup and migrate at their own pace. RETIRED = the service has been fully removed from the registry after an UNREGISTERING; sessions still holding a lease on it are released. Both extend the OSGi set; see docs/UPDATE_POLICY.md. ServiceEvent.reasonCode tells why an UNREGISTERING / RETIRED happened."/>
     </eAnnotations>
     <eLiterals name="UNSPECIFIED"/>
     <eLiterals name="REGISTERED" value="1"/>
     <eLiterals name="MODIFIED" value="2"/>
     <eLiterals name="UNREGISTERING" value="4"/>
     <eLiterals name="MODIFIED_ENDMATCH" value="8"/>
+    <eLiterals name="UPGRADE_AVAILABLE" value="16"/>
+    <eLiterals name="RETIRED" value="32"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="FieldOption">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Field-injection strategy for a dynamic ComponentReference. REPLACE = the entire collection field is replaced on each update; UPDATE = the collection is mutated in place."/>
@@ -93,7 +83,6 @@
     <eLiterals name="REPLACE"/>
     <eLiterals name="UPDATE" value="1"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="CollectionType">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Element type expected by a reference field/collection. SERVICE = injected service objects; REFERENCE = ServiceReferences; SERVICEOBJECTS = ComponentServiceObjects-like accessors; PROPERTIES = property maps; TUPLE = (props, service) tuples."/>
@@ -104,7 +93,6 @@
     <eLiterals name="PROPERTIES" value="3"/>
     <eLiterals name="TUPLE" value="4"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="LifecycleHookKind">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Kind of lifecycle callback a component declares. Language-neutral renaming of OSGi DS activate/deactivate/modified/activation-fields/init."/>
@@ -114,7 +102,6 @@
     <eLiterals name="MODIFIED" value="2"/>
     <eLiterals name="ACTIVATION_FIELD" value="3"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ReferenceBindingKind">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Kind of binding callback for a ComponentReference. BIND = called when a target is bound; UNBIND = called when a target is unbound; UPDATED = called when target properties change; FIELD = the reference targets a field, not a method."/>
@@ -124,7 +111,6 @@
     <eLiterals name="UPDATED" value="2"/>
     <eLiterals name="FIELD" value="3"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="DiagnosticSeverity">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Severity of a Diagnostic. Values are bitwise-combinable so aggregate diagnostics carry the maximum severity of their children. The numeric values follow the established Diagnostic-severity convention used in the EMF runtime (OK=0, INFO=1, WARNING=2, ERROR=4, CANCEL=8) so existing tooling on the Java side can map without ceremony."/>
@@ -135,7 +121,6 @@
     <eLiterals name="ERROR" value="4"/>
     <eLiterals name="CANCEL" value="8"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="FlavorKind">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Identifier of a transport flavor. Reference values REST and MQTT ship with the prototype. New flavors are added by extending ServiceFlavor and adding a literal here. Consumers attach FlavorKind values to their ConsumerCapability so the registry can filter implementations by transport compatibility."/>
@@ -143,7 +128,6 @@
     <eLiterals name="REST"/>
     <eLiterals name="MQTT" value="1"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="HttpMethod">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="HTTP request method used by a RestOperationFlavor."/>
@@ -156,7 +140,15 @@
     <eLiterals name="HEAD" value="5"/>
     <eLiterals name="OPTIONS" value="6"/>
   </eClassifiers>
-
+  <eClassifiers xsi:type="ecore:EEnum" name="ParameterBinding">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Where a Parameter of a ServiceOperation travels on a REST wire (RestParameterBinding). BODY = part of the request payload; this is the default, so a parameter without an explicit binding is BODY and the literal is omitted from the wire by EMF, which is intended here. QUERY = query parameter, key = wireName or the parameter name. HEADER = HTTP header, name = wireName or the parameter name. PATH = substituted into a '{name}' template segment of RestOperationFlavor.path. Transport-specific by design: it lives in the flavor layer (im1), not on the catalog Parameter (sd1), so a binding change never moves a contract address."/>
+    </eAnnotations>
+    <eLiterals name="BODY"/>
+    <eLiterals name="QUERY" value="1"/>
+    <eLiterals name="HEADER" value="2"/>
+    <eLiterals name="PATH" value="3"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="MqttQos">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="MQTT quality-of-service level. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, ack-with-redelivery — DDSR default); EXACTLY_ONCE (2, four-way handshake)."/>
@@ -165,7 +157,6 @@
     <eLiterals name="AT_LEAST_ONCE" value="1"/>
     <eLiterals name="EXACTLY_ONCE" value="2"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="RegistryKind">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Discriminator on ServiceRegistry. LOCAL = in-process registry (LocalServiceRegistry); REMOTE = central broker (RemoteServiceRegistry). Duplicates the subclass relation but is handy for filtering heterogeneous registry lists."/>
@@ -173,14 +164,12 @@
     <eLiterals name="LOCAL"/>
     <eLiterals name="REMOTE" value="1"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="ExpressionLanguage">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Identifier of the expression language used in an ExpressionConstraint or Invariant. Only OCL ships with the prototype; the discriminator is here so the model can later carry CEL / JSON-Logic / a homegrown sublanguage without a structural migration. Cross-language portability of expressions is a separate concern — see REQUIREMENTS NFR-Behavioral-Parity."/>
     </eAnnotations>
     <eLiterals name="OCL"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EEnum" name="CatalogStatus">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Lifecycle marker on a ServiceInterface in the API catalog. ACTIVE = freely publishable and lookupable. DEPRECATED = still usable (existing implementations stay live, lookups still resolve), but new publishImplementation calls return a WARNING diagnostic and the catalog UI flags the entry for migration. There is no further status — removeCatalogEntry rejects while implementations exist."/>
@@ -188,7 +177,15 @@
     <eLiterals name="ACTIVE"/>
     <eLiterals name="DEPRECATED" value="1"/>
   </eClassifiers>
-
+  <eClassifiers xsi:type="ecore:EEnum" name="UpdatePolicy">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How the broker treats a ServiceImplementation once a successor for it is published (docs/UPDATE_POLICY.md). UNSPECIFIED = not set: on a ServiceInterface the broker default applies (DEPRECATE_AND_DRAIN), on a ServiceImplementation the policy of its ServiceInterface applies — it is the EMF default literal so that any explicit choice always reaches the wire (same reasoning as ServiceEventType.UNSPECIFIED, OPEN_ISSUES W4). EVERGREEN = old and new stay registered side by side indefinitely; retirement is a manual withdraw (broker API itself, infrastructure services). DEPRECATE_AND_DRAIN = the successor is published, the old one is flagged and lookups prefer the successor, consumers get UPGRADE_AVAILABLE, the old one is retired once the last ConsumerSession lease on it has been released or expired. HARD_CUTOVER = the successor is published, after cutoverGraceMillis the broker sends UNREGISTERING for the old one regardless of open leases (security fix, breaking change)."/>
+    </eAnnotations>
+    <eLiterals name="UNSPECIFIED"/>
+    <eLiterals name="EVERGREEN" value="1"/>
+    <eLiterals name="DEPRECATE_AND_DRAIN" value="2"/>
+    <eLiterals name="HARD_CUTOVER" value="3"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="ConnectionState">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="State of a LocalServiceRegistry's link to its Remote Registry. CONNECTED = snapshot received and event stream alive; DEGRADED = link lost, reconnect in progress, cached state still served to read-only consumers; OFFLINE = never connected, or reconnect has permanently failed. While DEGRADED or OFFLINE, write operations (publish / withdraw / catalog mutations) MUST be rejected with a Diagnostic; reads continue against the last known snapshot."/>
@@ -197,23 +194,16 @@
     <eLiterals name="DEGRADED" value="1"/>
     <eLiterals name="OFFLINE" value="2"/>
   </eClassifiers>
-
-<!-- ============================================================ -->
-  <!--  Mixin interfaces                                             -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="NamedElement" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Mixin interface for anything carrying an identifying name. Names identify within their containment scope, not globally — multiple objects with the same name in the same XMI document are legal (e.g. a ServiceOperation 'listCatalog' on the interface and a RestOperationFlavor 'listCatalog' on a binding). Cross-references resolve via positional URI fragments, not by name."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Identifying name within the containment scope. Convention: symbolic, language-neutral (e.g. 'PaymentService', 'com.example.payment.PaymentService'), not a display label. Not an XMI iD — see the class docstring."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="VersionedElement" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="validSemver"/>
@@ -221,75 +211,62 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Mixin for elements that carry a semver version (ServiceInterface, ServiceProvider, ServiceImplementation, ServiceException). Together with NamedElement, (name, version) forms a stable identity across catalog releases."/>
     </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="validSemver" value="version = null or version.matches('^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$')"/>
+    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="version" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Semver string, e.g. '1.4.2' or '2.0.0-rc1'. Validated against the major.minor.micro[-qualifier] grammar via the validSemver invariant. Code Publisher derives artifact semver from this field (see REQUIREMENTS FR-CodeDist-Versioning)."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="validSemver" value="version = null or version.matches('^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?$')"/>
-    </eAnnotations>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  Property layer                                               -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="Property" abstract="true" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Abstract base for typed service properties. Replaces OSGi's Map&lt;String, Object&gt; properties with a containment hierarchy that survives wire serialization across languages. Each concrete subclass adds a typed 'value' attribute."/>
+      <details key="documentation" value="Abstract base for typed service properties. Replaces OSGi's Map&lt;String, Object> properties with a containment hierarchy that survives wire serialization across languages. Each concrete subclass adds a typed 'value' attribute."/>
     </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="StringProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying a single string value."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="IntProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying a 32-bit integer value."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="LongProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying a 64-bit integer value."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="DoubleProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying a 64-bit IEEE-754 floating-point value."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="FloatProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying a 32-bit IEEE-754 floating-point value."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EFloat"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ShortProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying a 16-bit integer value."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EShort"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="BoolProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying a boolean value."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="StringListProperty" eSuperTypes="#//Property">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Property carrying an ordered list of strings. Used where OSGi would use String[] (e.g. configuration PIDs, accepted content types). Empty list = no values; null = no value at all."/>
@@ -297,11 +274,6 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" upperBound="-1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  Operation-Signatur-Layer                                     -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceOperation" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A single language-neutral operation on a ServiceInterface: parameters in order, optional return type with constraints, declared exceptions. The Code Publisher uses ServiceOperations to emit typed method signatures in Java/TS/Python stub artifacts."/>
@@ -347,19 +319,16 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="Parameter" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A typed, named, positional input to a ServiceOperation. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping)."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Zero-based position in the operation signature. Independent of the name so that renaming a parameter does not reorder others."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Language-neutral type name. Code Publisher maps to the idiomatic language type (e.g. 'string' → Java String / TS string / Python str). Custom types reference other ServiceInterfaces by qualified name."/>
       </eAnnotations>
@@ -387,25 +356,26 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ParameterConstraint" abstract="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract base for validity constraints on Parameter values or ServiceOperation return values. Constraints are positional under their parameter (not separately named), so they do NOT mix in NamedElement."/>
     </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="RequiredConstraint" eSuperTypes="#//ParameterConstraint">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Marker constraint: parameter MUST NOT be null/None/undefined. Redundant with Parameter.optional = false but explicit, useful for return-value constraints where Parameter.optional does not apply."/>
     </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="NumericRangeConstraint" eSuperTypes="#//ParameterConstraint">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="atLeastOneBound rangeOrdered"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Numeric range. EDouble is used for all numeric types — the implementation casts back into the parameter's actual numeric type for comparison. Unset min = no lower bound; unset max = no upper bound. At least one of min/max should be set (OCL invariant TODO)."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="atLeastOneBound" value="min &lt;> null or max &lt;> null"/>
+      <details key="rangeOrdered" value="min = null or max = null or min &lt;= max"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="min" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDouble">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -420,7 +390,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="inclusiveMin" lowerBound="1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="true = value &gt;= min allowed (default); false = strict greater-than."/>
+        <details key="documentation" value="true = value >= min allowed (default); false = strict greater-than."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="inclusiveMax" lowerBound="1"
@@ -429,18 +399,17 @@
         <details key="documentation" value="true = value &lt;= max allowed (default); false = strict less-than."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="atLeastOneBound" value="min &lt;&gt; null or max &lt;&gt; null"/>
-      <details key="rangeOrdered" value="min = null or max = null or min &lt;= max"/>
-    </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="StringPatternConstraint" eSuperTypes="#//ParameterConstraint">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="lengthBoundsNonNegative lengthBoundsOrdered"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="String-valued parameter constraint. Pattern uses ECMA-262 regex syntax (natively supported in TS, accepted by Java java.util.regex and Python re with the same minimal subset). Length bounds apply to the unicode code-point length."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="lengthBoundsNonNegative" value="(minLength = null or minLength >= 0) and (maxLength = null or maxLength >= 0)"/>
+      <details key="lengthBoundsOrdered" value="minLength = null or maxLength = null or minLength &lt;= maxLength"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="pattern" lowerBound="1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
@@ -458,12 +427,7 @@
         <details key="documentation" value="Maximum string length, inclusive. Unset = unbounded."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="lengthBoundsNonNegative" value="(minLength = null or minLength &gt;= 0) and (maxLength = null or maxLength &gt;= 0)"/>
-      <details key="lengthBoundsOrdered" value="minLength = null or maxLength = null or minLength &lt;= maxLength"/>
-    </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="EnumerationConstraint" eSuperTypes="#//ParameterConstraint">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Closed list of permitted stringified values. The implementation compares the parameter's stringified form against allowedValues with case-sensitive equality."/>
@@ -475,7 +439,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ExpressionConstraint" eSuperTypes="#//ParameterConstraint #//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Open-ended constraint expressed as an expression in a given language (OCL in the prototype). Use when the typed constraints (Required, NumericRange, StringPattern, Enumeration, CollectionSize) do not fit — e.g. cross-parameter checks ('amount &lt;= account.balance'), conditional rules ('if currency = EUR then amount &lt;= 1000'), or domain logic. Has identity (NamedElement) so engines can report violations by name. Evaluation context: 'self' is the runtime value of the parameter/return value; 'op' is the enclosing ServiceOperation; 'params' is a map from parameter name to runtime value (only available where multiple parameters are in scope — i.e. preconditions/postconditions)."/>
@@ -498,7 +461,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="Invariant" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Operation-level pre/postcondition or interface-level always-true expression. Same expression shape as ExpressionConstraint but NOT a ParameterConstraint — invariants are not attached to a single parameter or return value, they describe a contract on the enclosing operation or interface. Evaluation context depends on host: in Operation.preconditions / postconditions, 'self' is the receiver service object and 'params'/'result' are the call's parameters/return value; in ServiceInterface.invariants, 'self' is any instance of the interface."/>
@@ -521,13 +483,16 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="CollectionSizeConstraint" eSuperTypes="#//ParameterConstraint">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="sizeBoundsNonNegative sizeBoundsOrdered"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize]."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="sizeBoundsNonNegative" value="(minSize = null or minSize >= 0) and (maxSize = null or maxSize >= 0)"/>
+      <details key="sizeBoundsOrdered" value="minSize = null or maxSize = null or minSize &lt;= maxSize"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="minSize" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -539,12 +504,7 @@
         <details key="documentation" value="Maximum element count, inclusive. Unset = unbounded."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="sizeBoundsNonNegative" value="(minSize = null or minSize &gt;= 0) and (maxSize = null or maxSize &gt;= 0)"/>
-      <details key="sizeBoundsOrdered" value="minSize = null or maxSize = null or minSize &lt;= maxSize"/>
-    </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceException" eSuperTypes="#//NamedElement #//VersionedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A declared error a ServiceOperation can raise. Defined once per ServiceInterface and referenced by the operations that may raise it. Carries typed properties for the exception payload, so consumers can extract structured data instead of parsing a message."/>
@@ -554,8 +514,7 @@
         <details key="documentation" value="Doc text; rendered as @throws JavaDoc / TSDoc tag / Python docstring entry."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Symbolic exception type (FQN-style), e.g. 'com.example.payment.InsufficientFundsException'. Distinct from name: 'name' is the catalog identifier, 'type' is what consumers/providers see on the wire."/>
       </eAnnotations>
@@ -567,17 +526,16 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  Description layer                                            -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceInterface" eSuperTypes="#//NamedElement #//VersionedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="replacedByIsDeprecated"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="The core catalog citizen: a versioned, identified service contract carrying operations and exceptions. Lives containment in RemoteServiceRegistry.catalog. Providers reference it (non-containment) from their ServiceImplementations; consumers look up services by its name."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="immutableAfterPublish" value="-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant — placeholder."/>
+      <details key="replacedByIsDeprecated" value="replacedBy = null or status.toString() = 'DEPRECATED'"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -599,7 +557,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="invariants" upperBound="-1"
         eType="#//Invariant" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Conditions that MUST hold for every instance of this interface, before and after every operation. Evaluation context: 'self' = the receiver service object. Used for whole-interface contracts (e.g. 'self.balance &gt;= 0 implies self.status = ACTIVE')."/>
+        <details key="documentation" value="Conditions that MUST hold for every instance of this interface, before and after every operation. Evaluation context: 'self' = the receiver service object. Used for whole-interface contracts (e.g. 'self.balance >= 0 implies self.status = ACTIVE')."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="status" lowerBound="1"
@@ -618,12 +576,13 @@
         <details key="documentation" value="Optional migration hint: another ServiceInterface that supersedes this one. Non-containment. Lets tooling chain deprecated → successor → successor for multi-step migration trails."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="immutableAfterPublish" value="-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant — placeholder."/>
-      <details key="replacedByIsDeprecated" value="replacedBy = null or status.toString() = 'DEPRECATED'"/>
-    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="updatePolicy" lowerBound="1"
+        eType="#//UpdatePolicy">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Default update policy for every ServiceImplementation of this interface; an implementation may override it via ServiceImplementation.updatePolicy. UNSPECIFIED = broker default (DEPRECATE_AND_DRAIN). Lifecycle metadata like status/deprecationReason/replacedBy: not part of the sd1 fingerprint and to be neutralized by contract addressing, so changing the policy does not move the catalog address."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="LifecycleHook" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Language-neutral handle on a lifecycle callback. Replaces OSGi DS activate/deactivate/modified/activationFields/init annotations. The framework invokes the implementation method whose name matches 'name' at the appropriate lifecycle point."/>
@@ -639,7 +598,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ReferenceBinding" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Language-neutral handle on a reference callback or field-injection point. Replaces OSGi DS bind/unbind/updated/field annotations. The framework invokes the implementation method (or sets the field) whose name matches 'name' when the corresponding ComponentReference changes."/>
@@ -655,7 +613,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ComponentReference" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A declared dependency of a component on another service. Models org.osgi.service.component.runtime.dto.ReferenceDTO. Drives whether a ComponentConfiguration becomes SATISFIED."/>
@@ -712,7 +669,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ComponentDescription" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Declarative blueprint of a component, before it has been instantiated as a ComponentConfiguration. Models org.osgi.service.component.runtime.dto.ComponentDescriptionDTO. Owns the references the component needs and the services it can publish."/>
@@ -794,7 +750,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceProvider" eSuperTypes="#//NamedElement #//VersionedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Language-neutral equivalent of an OSGi Bundle: a deployment unit that owns component descriptions and registers services. Identifies who has registered what in the registry; used by PDP for authorization (subject = provider)."/>
@@ -818,13 +773,18 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceImplementation" eSuperTypes="#//NamedElement #//VersionedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="atLeastOneInterface operationFlavorsCoverInterfaces"/>
+      <details key="constraints" value="atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A concrete realization of one or more ServiceInterfaces by a single provider, optionally reachable over one or more transport flavors. Distinct from ComponentDescription because not all implementations are DS-driven (plain Java services, hand-wired TS modules, ad-hoc Python objects). When DS-driven, componentDescription points back to the description."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="atLeastOneInterface" value="serviceInterfaces->notEmpty()"/>
+      <details key="operationFlavorsCoverInterfaces" value="flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))"/>
+      <details key="replacesIsNotSelf" value="replaces = null or replaces &lt;> self"/>
+      <details key="cutoverGraceNonNegative" value="cutoverGraceMillis >= 0"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -860,16 +820,29 @@
         <details key="documentation" value="Back-link to the DS ComponentDescription, if this implementation is DS-driven. Non-containment; can be null for plain (non-DS) implementations."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="atLeastOneInterface" value="serviceInterfaces->notEmpty()"/>
-      <details key="operationFlavorsCoverInterfaces" value="flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))"/>
-    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="updatePolicy" lowerBound="1"
+        eType="#//UpdatePolicy">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Per-implementation override of ServiceInterface.updatePolicy. UNSPECIFIED = inherit from the interface (the common case). Evaluated by the broker when a successor declaring replaces = this implementation is published. Not part of the im1 fingerprint."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="replaces" eType="#//ServiceImplementation">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The registered ServiceImplementation this one supersedes, typically the previous version under the same name. Non-containment, resolved by the broker via (name, version) like serviceInterfaces are resolved against the catalog. Null = plain publish (today's behaviour: same (name, version) is deduplicated synchronously, a different one simply coexists). Set = the effective update policy decides what happens to the predecessor: nothing (EVERGREEN), UPGRADE_AVAILABLE + drain (DEPRECATE_AND_DRAIN), or UNREGISTERING after cutoverGraceMillis (HARD_CUTOVER)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutoverGraceMillis" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//ELong">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="HARD_CUTOVER only: failover window in milliseconds between publishing this implementation and the broker retiring the one named in replaces. 0 / unset = broker default. Ignored for the other policies."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="capabilities" upperBound="-1"
+        eType="#//Capability" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Implementation-level capabilities, valid for every flavor of this implementation (content types, encodings, tenant/region, …). Transport-specific ones belong on the ServiceFlavor. The broker derives a 'services.transport' capability per flavor from ServiceFlavor.kind automatically, so plain publishers need not declare anything here."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  Flavor / Transport-Binding layer                             -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceFlavor" abstract="true" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract base for a transport binding. Concrete subclasses (RestFlavor, MqttFlavor, …) add transport-specific defaults. Operation-level bindings live in operationFlavors. Extended by third-party flavor plugins."/>
@@ -885,8 +858,13 @@
         <details key="documentation" value="Per-operation transport bindings (HTTP method+path for REST, request/response topic for MQTT, …). Empty = the flavor's interface-level defaults apply to every operation."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="capabilities" upperBound="-1"
+        eType="#//Capability" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Transport-level capabilities of this flavor (MQTT protocol version, QoS ceiling, TLS, supported media types, …). Added to the implementation's effective capability set when matching Requirements. The 'services.transport' capability with kind = this flavor's kind is implied and need not be listed."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="RestFlavor" eSuperTypes="#//ServiceFlavor">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="HTTP/REST transport. Operations map to (HTTP method, base path + operation path) tuples; bodies are encoded with the listed content types."/>
@@ -909,13 +887,12 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="MqttFlavor" eSuperTypes="#//ServiceFlavor">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="MQTT pub/sub transport. Operations are addressed via a request topic; responses go either to a response topic, a per-operation override topic, or via correlationId-on-shared-topic depending on configuration."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="brokers" lowerBound="1" upperBound="-1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="brokers" lowerBound="1"
+        upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="One or more broker URLs (mqtt://… or mqtts://…). Multiple brokers indicate a high-availability cluster; the client picks one and fails over."/>
       </eAnnotations>
@@ -931,8 +908,8 @@
         <details key="documentation" value="Default topic for responses. Null = use MQTT v5 response-topic property or correlate via correlationId on the request topic."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultQos" lowerBound="1" eType="#//MqttQos"
-        defaultValueLiteral="AT_LEAST_ONCE">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultQos" lowerBound="1"
+        eType="#//MqttQos" defaultValueLiteral="AT_LEAST_ONCE">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Default QoS for operations. Per-operation override possible via MqttOperationFlavor.qos."/>
       </eAnnotations>
@@ -944,8 +921,8 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
-  <eClassifiers xsi:type="ecore:EClass" name="ServiceOperationFlavor" abstract="true" eSuperTypes="#//NamedElement">
+  <eClassifiers xsi:type="ecore:EClass" name="ServiceOperationFlavor" abstract="true"
+      eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract transport-binding refinement for a single operation. Concrete subclasses (RestOperationFlavor, MqttOperationFlavor) add transport-specific fields."/>
     </eAnnotations>
@@ -968,12 +945,20 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="RestOperationFlavor" eSuperTypes="#//ServiceOperationFlavor">
-    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes."/>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath"/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1" eType="#//HttpMethod">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings)."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="bindingsReferenceOperationParameters" value="parameterBindings->forAll(b | operation.parameters->includes(b.parameter))"/>
+      <details key="oneBindingPerParameter" value="parameterBindings->isUnique(b | b.parameter)"/>
+      <details key="pathBindingsNeedPath" value="parameterBindings->forAll(b | b.binding.toString() &lt;> 'PATH' or path &lt;> null)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1"
+        eType="#//HttpMethod">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="HTTP method (GET, POST, …)."/>
       </eAnnotations>
@@ -989,8 +974,35 @@
         <details key="documentation" value="HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation's ServiceExceptions."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameterBindings" upperBound="-1"
+        eType="#//RestParameterBinding" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where each Parameter of the operation travels on the wire. Parameters without an entry are BODY (today's behaviour: all arguments in the XMI payload, several of them as the multi-arg bundle). Lets a REST binding express GET /payments/{id}?currency=EUR with a tenant header instead of forcing everything into the body (OPEN_ISSUES W3)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
+  <eClassifiers xsi:type="ecore:EClass" name="RestParameterBinding">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Wire placement of one operation Parameter inside a RestOperationFlavor. Owned by the flavor, so it is implementation-specific (im1 layer) and never touches the catalog contract (sd1)."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parameter" lowerBound="1"
+        eType="#//Parameter">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The Parameter of the bound ServiceOperation. Non-containment: parameters are owned by the catalog operation, same resolution rule as ServiceOperationFlavor.operation."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="binding" lowerBound="1"
+        eType="#//ParameterBinding">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="BODY / QUERY / HEADER / PATH. PATH requires a matching '{parameterName}' segment in RestOperationFlavor.path; the broker checks that on publish (the static OCL only checks that a path exists)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="wireName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Name used on the wire when it differs from the Parameter name: query key, header name ('X-Tenant') or path template variable. Null = the Parameter name."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MqttOperationFlavor" eSuperTypes="#//ServiceOperationFlavor">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="MQTT binding for one operation. Topic/QoS/retained values override the MqttFlavor defaults when set."/>
@@ -1027,38 +1039,10 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  Runtime layer                                                -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceReference">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Consumer-side handle to a registered service, equivalent to org.osgi.framework.ServiceReference. The id is the language-neutral counterpart of OSGi service.id (UUID rather than long). Properties are typed (Property containments) instead of an untyped map."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
-        iD="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="UUID assigned by the registry at registration time. Replaces OSGi 'service.id: long' to remain stable across processes."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="properties" upperBound="-1"
-        eType="#//Property" containment="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Service properties at the time of registration / last setProperties call. Includes both framework properties (service.id, service.ranking, …) and provider-supplied properties."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="provider" lowerBound="1" eType="#//ServiceProvider">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Provider that registered the service. Replaces OSGi 'bundle: long'."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="registration" eType="#//ServiceRegistration"
-        eOpposite="#//ServiceRegistration/reference" transient="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal. TRANSIENT: broker-side registrations are runtime handles without a containment home in the persisted registry — a serialized link would tear every snapshot apart."/>
-      </eAnnotations>
-    </eStructuralFeatures>
     <eOperations name="getProperty" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EJavaObject">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Looks up a property value by key. Returns null when no property with that name exists. Return type is EJavaObject because the concrete value type depends on the Property subclass."/>
@@ -1074,8 +1058,31 @@
         <details key="documentation" value="Returns the names of all defined properties, in undefined order. Empty list if no properties are set."/>
       </eAnnotations>
     </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        iD="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="UUID assigned by the registry at registration time. Replaces OSGi 'service.id: long' to remain stable across processes."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="properties" upperBound="-1"
+        eType="#//Property" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Service properties at the time of registration / last setProperties call. Includes both framework properties (service.id, service.ranking, …) and provider-supplied properties."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="provider" lowerBound="1"
+        eType="#//ServiceProvider">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Provider that registered the service. Replaces OSGi 'bundle: long'."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="registration" eType="#//ServiceRegistration"
+        transient="true" eOpposite="#//ServiceRegistration/reference">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Provider-side handle on the same service, paired via eOpposite. Null only during the brief window between unregister() and removal. TRANSIENT: broker-side registrations are runtime handles without a containment home in the persisted registry — a serialized link would tear every snapshot apart."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceRegistration">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="unregisteredNotInRegistry"/>
@@ -1083,8 +1090,26 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Provider-side handle to a registered service, equivalent to org.osgi.framework.ServiceRegistration. The provider holds onto this to unregister later or to modify properties."/>
     </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="unregisteredNotInRegistry" value="not unregistered or LocalServiceRegistry.allInstances()->forAll(r | not r.registrations->includes(self))"/>
+    </eAnnotations>
+    <eOperations name="unregister">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Removes the service from the registry. Fires UNREGISTERING BEFORE removal (OSGi semantics, consumers get one last chance to release the service). Then removes from registry and propagates withdrawal to the Remote Registry asynchronously."/>
+      </eAnnotations>
+    </eOperations>
+    <eOperations name="setProperties">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Replaces the property set on the registration. Fires MODIFIED to listeners whose filter still matches, MODIFIED_ENDMATCH to listeners whose filter no longer matches."/>
+      </eAnnotations>
+      <eParameters name="props" upperBound="-1" eType="#//Property">
+        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+          <details key="documentation" value="The new property set. Empty list = clear all provider-supplied properties (framework properties remain)."/>
+        </eAnnotations>
+      </eParameters>
+    </eOperations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="reference" lowerBound="1"
-        eType="#//ServiceReference" eOpposite="#//ServiceReference/registration" transient="true">
+        eType="#//ServiceReference" transient="true" eOpposite="#//ServiceReference/registration">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Consumer-side view of the same service, paired via eOpposite. Both Registration and Reference are owned (containment) by the LocalServiceRegistry, not by each other."/>
       </eAnnotations>
@@ -1108,13 +1133,13 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="usingSessions" upperBound="-1"
-        eType="#//ConsumerSession" eOpposite="#//ConsumerSession/acquisitions" transient="true">
+        eType="#//ConsumerSession" transient="true" eOpposite="#//ConsumerSession/acquisitions">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions — the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource — a serialized link would tear every registry save/copy apart (not contained in a resource)."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerCount" changeable="false"
-        volatile="true" transient="true" derived="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerCount" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        changeable="false" volatile="true" transient="true" derived="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Derived usage count (ACQUISITION.md par.9): the number of sessions currently holding a lease. Computed via the OCL setting delegate — never stored (stored counters drift on consumer crash). Runtime-only like the relation it derives from: volatile/transient, requires the Fennec OCL engine to be present; without a registered delegate factory the getter fails rather than lying."/>
       </eAnnotations>
@@ -1122,24 +1147,6 @@
         <details key="derivation" value="self.usingSessions->size()"/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eOperations name="unregister">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Removes the service from the registry. Fires UNREGISTERING BEFORE removal (OSGi semantics, consumers get one last chance to release the service). Then removes from registry and propagates withdrawal to the Remote Registry asynchronously."/>
-      </eAnnotations>
-    </eOperations>
-    <eOperations name="setProperties">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Replaces the property set on the registration. Fires MODIFIED to listeners whose filter still matches, MODIFIED_ENDMATCH to listeners whose filter no longer matches."/>
-      </eAnnotations>
-      <eParameters name="props" upperBound="-1" eType="#//Property">
-        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-          <details key="documentation" value="The new property set. Empty list = clear all provider-supplied properties (framework properties remain)."/>
-        </eAnnotations>
-      </eParameters>
-    </eOperations>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="unregisteredNotInRegistry" value="not unregistered or LocalServiceRegistry.allInstances()->forAll(r | not r.registrations->includes(self))"/>
-    </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ConsumerSession">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1163,19 +1170,21 @@
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="acquisitions" upperBound="-1"
-        eType="#//ServiceRegistration" eOpposite="#//ServiceRegistration/usingSessions" transient="true">
+        eType="#//ServiceRegistration" transient="true" eOpposite="#//ServiceRegistration/usingSessions">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="The registrations this consumer claims to be using — the OWNING side of the acquisition relation. Points at the stable ServiceRegistration, not at the ServiceReference: references are the wire artefact and their ids regenerate on broker restart. Over-claiming is harmless (delays drain), under-claiming only hurts the consumer itself (loses drain protection). TRANSIENT: the wire form of a session carries sibling ServiceReference id-stubs instead (same convention as publish)."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ComponentConfiguration" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="failureOnlyWhenFailed"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Runtime instance of a ComponentDescription with resolved configuration and references. Models org.osgi.service.component.runtime.dto.ComponentConfigurationDTO. The id attribute carries OSGi component.id; it is intentionally NOT marked iD=true because NamedElement.name is already the XMI identifier."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="failureOnlyWhenFailed" value="(state.toString() = 'FAILED_ACTIVATION') = (failure &lt;> null)"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1205,8 +1214,8 @@
         <details key="documentation" value="ComponentReferences whose cardinality is currently satisfied."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="unsatisfiedReferences" upperBound="-1"
-        eType="#//UnsatisfiedReference" containment="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="unsatisfiedReferences"
+        upperBound="-1" eType="#//UnsatisfiedReference" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="ComponentReferences whose cardinality is not currently met (the reason the configuration is UNSATISFIED_REFERENCE, if applicable)."/>
       </eAnnotations>
@@ -1222,11 +1231,7 @@
         <details key="documentation" value="The ServiceReference the configuration publishes when ACTIVE. Null if the component is not a service publisher (e.g. immediate=true with no provided service)."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="failureOnlyWhenFailed" value="(state.toString() = 'FAILED_ACTIVATION') = (failure &lt;&gt; null)"/>
-    </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="SatisfiedReference">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Snapshot of a satisfied ComponentReference at runtime: the declared reference name plus the actual ServiceReferences currently bound."/>
@@ -1248,7 +1253,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="UnsatisfiedReference">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Snapshot of a ComponentReference that does not meet its cardinality. Lists candidate target services (may be empty) so operators can see which targets exist but were rejected, e.g. by a target filter."/>
@@ -1270,7 +1274,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="Diagnostic">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Language-neutral diagnostic record. Structure follows the standard Diagnostic pattern (severity / message / source / code / data / children) so EMF-shaped tooling on the Java side feels native, but it is DDSR's own EClass so TypeScript and Python implementations are not bound to any host-language Diagnostic runtime. Diagnostics nest (children) to carry causation chains."/>
@@ -1299,7 +1302,7 @@
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="data" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Stringified contextual data. EMF's Diagnostic uses List&lt;Object&gt; here; DDSR uses strings to stay language-neutral on the wire."/>
+        <details key="documentation" value="Stringified contextual data. EMF's Diagnostic uses List&lt;Object> here; DDSR uses strings to stay language-neutral on the wire."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="children" upperBound="-1"
@@ -1309,11 +1312,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  Event layer                                                  -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceEvent">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Notification about a service lifecycle change. Models org.osgi.framework.ServiceEvent. Delivered synchronously to local ServiceListeners; the Remote Registry sync mechanism may deliver an asynchronous echo across the federation (see REQUIREMENTS §8 Q1)."/>
@@ -1334,17 +1332,16 @@
         <details key="documentation" value="When the event was generated. Optional in OSGi semantics; useful for audit trails and event-stream ordering across the federation."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reasonCode" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Why the transition happened; lets a consumer tell 'gone for good' from 'replaced' from 'parked'. Short stable upper-case token, null for plain REGISTERED / MODIFIED. Broker vocabulary: WITHDRAWN (provider withdrew), REPLACED (same (name, version) republished, or DEPRECATE_AND_DRAIN drain finished), CUTOVER (HARD_CUTOVER grace elapsed), COLDIFIED (idle sweep moved the entry to the cold cache, it is still discoverable and rehydrates on demand), SESSION_EXPIRED, PROVIDER_LOST. Free-form so transports and future policies can add tokens without a model change."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceListener" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Interface a consumer implements to receive ServiceEvents. Equivalent to org.osgi.framework.ServiceListener."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="filter" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Optional LDAP filter limiting which services trigger serviceChanged. Null = receive events for all services."/>
-      </eAnnotations>
-    </eStructuralFeatures>
     <eOperations name="serviceChanged">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Called by the registry for each ServiceEvent that matches this listener's filter. The framework guarantees that this is called synchronously relative to the operation that produced the event (so consumers see REGISTERED before the registering operation returns)."/>
@@ -1355,39 +1352,16 @@
         </eAnnotations>
       </eParameters>
     </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="filter" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Optional LDAP filter limiting which services trigger serviceChanged. Null = receive events for all services."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  API layer                                                    -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="ServiceRegistry" abstract="true" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Abstract registry base. Holds the shared lookup operations that work the same for local and remote registries. Concrete subclasses are LocalServiceRegistry (in-process, OSGi-like) and RemoteServiceRegistry (the central broker holding the API catalog and global implementation index)."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//RegistryKind">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Discriminator. Duplicates the subclass relationship but simplifies filtering of heterogeneous registry lists."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="publishHooks" upperBound="-1"
-        eType="#//PublishHook">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Plugged-in PublishHook implementations. Consulted in order before publishImplementation / withdrawImplementation accepts a request; if any hook returns a Diagnostic of severity ERROR or CANCEL, the action is rejected and the diagnostic is propagated. Non-containment because hook implementations are usually owned by the integrator's adapter component."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="discoveryHooks" upperBound="-1"
-        eType="#//DiscoveryHook">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Plugged-in DiscoveryHook implementations. Consulted in order before lookup / subscribe operations and to filter result lists."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="distributionHooks" upperBound="-1"
-        eType="#//DistributionHook">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Plugged-in DistributionHook implementations. Consulted in order whenever an event crosses the local↔remote boundary (outbound from local, inbound from broker)."/>
-      </eAnnotations>
-    </eStructuralFeatures>
     <eOperations name="getServiceReference" eType="#//ServiceReference">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Returns one ServiceReference for the given interface, picking by service.ranking (descending) and service.id (ascending) on tie. Null if no match."/>
@@ -1458,12 +1432,64 @@
         </eAnnotations>
       </eParameters>
     </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//RegistryKind">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Discriminator. Duplicates the subclass relationship but simplifies filtering of heterogeneous registry lists."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="publishHooks" upperBound="-1"
+        eType="#//PublishHook">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Plugged-in PublishHook implementations. Consulted in order before publishImplementation / withdrawImplementation accepts a request; if any hook returns a Diagnostic of severity ERROR or CANCEL, the action is rejected and the diagnostic is propagated. Non-containment because hook implementations are usually owned by the integrator's adapter component."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="discoveryHooks" upperBound="-1"
+        eType="#//DiscoveryHook">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Plugged-in DiscoveryHook implementations. Consulted in order before lookup / subscribe operations and to filter result lists."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="distributionHooks" upperBound="-1"
+        eType="#//DistributionHook">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Plugged-in DistributionHook implementations. Consulted in order whenever an event crosses the local↔remote boundary (outbound from local, inbound from broker)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="LocalServiceRegistry" eSuperTypes="#//ServiceRegistry">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="In-process registry. Owns local registrations and listeners, runs the synchronous lifecycle/event semantics, and (when 'remote' is set) propagates registrations to the Remote Registry asynchronously."/>
     </eAnnotations>
+    <eOperations name="registerService" eType="#//ServiceRegistration">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Provider-facing registration entry point. Step order (REQUIREMENTS FR-Lifecycle-Register): (1) validate against catalog if remote is non-null; (2) allocate service.id and create ServiceReference; (3) add to local references/registrations synchronously; (4) deliver REGISTERED to matching local listeners synchronously, before returning; (5) hand off to async worker that publishes to remote (with retry)."/>
+      </eAnnotations>
+      <eParameters name="provider" eType="#//ServiceProvider">
+        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+          <details key="documentation" value="The provider that owns the registration. Used for PDP subject and as the back-link from ServiceReference.provider."/>
+        </eAnnotations>
+      </eParameters>
+      <eParameters name="implementation" eType="#//ServiceImplementation">
+        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+          <details key="documentation" value="The implementation being registered. Its serviceInterfaces and flavors are advertised in the resulting ServiceReference."/>
+        </eAnnotations>
+      </eParameters>
+      <eParameters name="props" upperBound="-1" eType="#//Property">
+        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+          <details key="documentation" value="Additional properties at registration time, merged on top of implementation.properties."/>
+        </eAnnotations>
+      </eParameters>
+    </eOperations>
+    <eOperations name="fireServiceEvent">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Delivers an event to local listeners that match its filter. Synchronous; returns when all listeners have been notified."/>
+      </eAnnotations>
+      <eParameters name="event" eType="#//ServiceEvent">
+        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+          <details key="documentation" value="The event to deliver."/>
+        </eAnnotations>
+      </eParameters>
+    </eOperations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="references" upperBound="-1"
         eType="#//ServiceReference" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1511,38 +1537,7 @@
         <details key="documentation" value="Health of the link to the Remote Registry. Consumers can read this to know whether lookup results are live (CONNECTED) or possibly stale (DEGRADED / OFFLINE). While DEGRADED or OFFLINE, reads are served from the last known snapshot+event-replay and writes (publishImplementation, withdrawImplementation, catalog mutations) are rejected with a Diagnostic. On reconnect, the registry pulls a fresh snapshot and synthesises ServiceEvents for the diff so local listeners see a consistent transition."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eOperations name="registerService" eType="#//ServiceRegistration">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Provider-facing registration entry point. Step order (REQUIREMENTS FR-Lifecycle-Register): (1) validate against catalog if remote is non-null; (2) allocate service.id and create ServiceReference; (3) add to local references/registrations synchronously; (4) deliver REGISTERED to matching local listeners synchronously, before returning; (5) hand off to async worker that publishes to remote (with retry)."/>
-      </eAnnotations>
-      <eParameters name="provider" eType="#//ServiceProvider">
-        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-          <details key="documentation" value="The provider that owns the registration. Used for PDP subject and as the back-link from ServiceReference.provider."/>
-        </eAnnotations>
-      </eParameters>
-      <eParameters name="implementation" eType="#//ServiceImplementation">
-        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-          <details key="documentation" value="The implementation being registered. Its serviceInterfaces and flavors are advertised in the resulting ServiceReference."/>
-        </eAnnotations>
-      </eParameters>
-      <eParameters name="props" upperBound="-1" eType="#//Property">
-        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-          <details key="documentation" value="Additional properties at registration time, merged on top of implementation.properties."/>
-        </eAnnotations>
-      </eParameters>
-    </eOperations>
-    <eOperations name="fireServiceEvent">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Delivers an event to local listeners that match its filter. Synchronous; returns when all listeners have been notified."/>
-      </eAnnotations>
-      <eParameters name="event" eType="#//ServiceEvent">
-        <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-          <details key="documentation" value="The event to deliver."/>
-        </eAnnotations>
-      </eParameters>
-    </eOperations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="RemoteServiceRegistry" eSuperTypes="#//ServiceRegistry">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="publishedImplsHaveFlavor publishedImplsReferenceCatalog publishedImplsOwnedByListedProvider"/>
@@ -1550,29 +1545,11 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="The central Broker. Holds the API catalog (ServiceInterface containments) and the global implementation index (non-containment references back to ServiceImplementations that live under their providers). Provider/consumer wire traffic does NOT flow through here — only directory traffic."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="endpoint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Address clients connect to (e.g. cluster VIP). May be null on the server side instance."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="catalog" upperBound="-1"
-        eType="#//ServiceInterface" containment="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="The curated API catalog. Mutations go through addCatalogEntry / deprecateCatalogEntry / removeCatalogEntry, all of which flow through the PDP."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="implementations" upperBound="-1"
-        eType="#//ServiceImplementation">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Index of currently published implementations. Non-containment: each implementation is owned (containment) by its ServiceProvider."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1"
-        eType="#//ServiceProvider">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Providers known to the broker. Non-containment: providers also live under their LocalServiceRegistry."/>
-      </eAnnotations>
-    </eStructuralFeatures>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="publishedImplsHaveFlavor" value="implementations->forAll(i | i.flavors->notEmpty())"/>
+      <details key="publishedImplsReferenceCatalog" value="implementations->forAll(i | i.serviceInterfaces->forAll(si | catalog->includes(si)))"/>
+      <details key="publishedImplsOwnedByListedProvider" value="implementations->forAll(i | providers->exists(p | p.implementations->includes(i)))"/>
+    </eAnnotations>
     <eOperations name="publishImplementation" eType="#//Diagnostic">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Adds an implementation to the global index. Validates that all referenced ServiceInterfaces exist in the catalog. Authorization flows through the PublishHook chain. If any of the referenced ServiceInterfaces has status = DEPRECATED, the call succeeds but the returned Diagnostic carries severity = WARNING with the deprecationReason (so the provider knows it is publishing against a deprecated interface). Returns OK (severity) on plain success."/>
@@ -1648,16 +1625,77 @@
         </eAnnotations>
       </eParameters>
     </eOperations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="endpoint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Address clients connect to (e.g. cluster VIP). May be null on the server side instance."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="catalog" upperBound="-1"
+        eType="#//ServiceInterface" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The curated API catalog. Mutations go through addCatalogEntry / deprecateCatalogEntry / removeCatalogEntry, all of which flow through the PDP."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="implementations" upperBound="-1"
+        eType="#//ServiceImplementation">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Index of currently published implementations. Non-containment: each implementation is owned (containment) by its ServiceProvider."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1"
+        eType="#//ServiceProvider">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Providers known to the broker. Non-containment: providers also live under their LocalServiceRegistry."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Capability">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="attributeNamesUnique"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Something a ServiceImplementation or ServiceFlavor offers, modelled like an OSGi Provide-Capability: a namespace plus typed attributes. Matched against Requirement entries of a ConsumerCapability at lookup time (docs/WIRE_CHANNELS.md §6): a Requirement is satisfied when a Capability with the same namespace exists whose attributes match the Requirement's LDAP filter. The effective capability set of an implementation is its own capabilities plus those of its flavors. Namespace conventions (proposal, extensible): 'services.transport' with attributes kind (REST|MQTT) and version; 'services.contentType' with type; 'services.encoding' with format (XMI|JSON). Providers may add their own namespaces ('acme.region')."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Capability namespace, dotted lower-case ('services.transport'). Matching is exact and case-sensitive."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attributes" upperBound="-1"
+        eType="#//Property" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Typed attributes of the capability (the same Property hierarchy the registry already evaluates LDAP filters against). Property.name is the attribute key; keys are unique within one capability. An empty list means 'present, no further detail' and satisfies any Requirement in the namespace that carries no filter."/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="publishedImplsHaveFlavor" value="implementations->forAll(i | i.flavors->notEmpty())"/>
-      <details key="publishedImplsReferenceCatalog" value="implementations->forAll(i | i.serviceInterfaces->forAll(si | catalog->includes(si)))"/>
-      <details key="publishedImplsOwnedByListedProvider" value="implementations->forAll(i | providers->exists(p | p.implementations->includes(i)))"/>
+      <details key="attributeNamesUnique" value="attributes->isUnique(a | a.name)"/>
     </eAnnotations>
   </eClassifiers>
-
+  <eClassifiers xsi:type="ecore:EClass" name="Requirement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Something a consumer needs from a candidate implementation, modelled like an OSGi Require-Capability. Satisfied when the candidate's effective capability set contains a Capability in the same namespace whose attributes match filter (null filter = namespace presence is enough). All requirements of a ConsumerCapability must be satisfied for a ServiceReference to be returned by getServiceReferences; getAllServiceReferences ignores requirements like it ignores supportedFlavors."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Namespace to look for, matched exactly against Capability.namespace."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="filter" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="OSGi/LDAP filter evaluated against the attributes of a Capability in the namespace, e.g. '(&amp;(kind=MQTT)(version&gt;=5))' or '(type=application/*)'. Null = any capability in the namespace satisfies the requirement."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="optional" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="OSGi resolution:=optional. False (default) = hard requirement, unmatched candidates are dropped. True = preference: candidates that satisfy it rank before candidates that do not, none is dropped."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ConsumerCapability">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Bag of capabilities a consumer attaches to a lookup. NOT persistent — created per request and passed through getServiceReferences / getAllServiceReferences. The registry uses supportedFlavors to filter implementations the consumer cannot actually invoke."/>
+      <details key="documentation" value="Bag of capabilities a consumer attaches to a lookup. NOT persistent — created per request and passed through getServiceReferences / getAllServiceReferences. The registry uses supportedFlavors and requirements to filter implementations the consumer cannot actually invoke; supportedFlavors is the coarse transport switch, requirements the general mechanism (a supportedFlavors entry REST is equivalent to a requirement 'services.transport' with filter '(kind=REST)')."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerId" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1676,25 +1714,13 @@
         <details key="documentation" value="Additional capability hints (accepted content types, encoding preferences, …). Open-ended bag."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="requirements" upperBound="-1"
+        eType="#//Requirement" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Requirements every returned implementation must satisfy (all of them, AND). Empty = no constraint beyond supportedFlavors and the LDAP filter of the lookup. Several requirements in the same namespace are allowed and all apply."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
-
-  <!-- ============================================================ -->
-  <!--  Interception hooks                                           -->
-  <!--                                                               -->
-  <!--  Strategic callback points an integrator can plug into to     -->
-  <!--  intervene in publish, discovery, and distribution decisions. -->
-  <!--  Hooks return a Diagnostic: severity OK / INFO / WARNING      -->
-  <!--  means "proceed"; ERROR or CANCEL means "abort, return this   -->
-  <!--  diagnostic to the caller". Multiple hooks of the same kind   -->
-  <!--  form a pipeline — every hook must return OK for the action   -->
-  <!--  to proceed. DDSR ships with NO concrete hook implementations;-->
-  <!--  the prototype runs hook-free (all actions permitted).        -->
-  <!--                                                               -->
-  <!--  This deliberately replaces a built-in XACML/PDP model:       -->
-  <!--  production deployments plug an OPA / XACML / IAM adapter     -->
-  <!--  into these interfaces.                                       -->
-  <!-- ============================================================ -->
-
   <eClassifiers xsi:type="ecore:EClass" name="PublishHook" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Callback for provider-side intervention. Consulted by the framework before a publishImplementation or withdrawImplementation succeeds. Hook can veto by returning a Diagnostic with severity ERROR or CANCEL."/>
@@ -1714,7 +1740,6 @@
       <eParameters name="implementation" eType="#//ServiceImplementation"/>
     </eOperations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="DiscoveryHook" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Callback for consumer-side intervention. Consulted by the framework when a consumer looks up services or subscribes to events. Hook can veto, log, or shape the result set."/>
@@ -1741,7 +1766,6 @@
       <eParameters name="listener" eType="#//ServiceListener"/>
     </eOperations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="DistributionHook" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Callback for traffic between LocalServiceRegistry and RemoteServiceRegistry. Lets an integrator intervene at the federation boundary — e.g. mask sensitive properties before they cross into the broker, or drop inbound events that target unauthorized tenants."/>
@@ -1759,5 +1783,4 @@
       <eParameters name="event" eType="#//ServiceEvent"/>
     </eOperations>
   </eClassifiers>
-
 </ecore:EPackage>

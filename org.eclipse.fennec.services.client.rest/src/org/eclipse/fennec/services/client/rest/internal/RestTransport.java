@@ -63,7 +63,7 @@ public final class RestTransport {
 		String broker_url() default "http://localhost:8887/ddsr/rest";
 	}
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Reference

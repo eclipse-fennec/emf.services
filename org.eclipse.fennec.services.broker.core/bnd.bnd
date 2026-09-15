@@ -30,11 +30,18 @@ Private-Package: \
 # platform-engine version — otherwise test discovery dies with
 # "OutputDirectoryCreator not available; probably due to unaligned
 # versions".
+#
+# The four m2x OCL bundles are pinned to the 0.1.1 line (same range as the
+# broker bndruns). A bare `latest` is fragile here: the fennecM2X index
+# (central.mvn) and the fennecPersistence index both list m2x bundles, and
+# when the two drift apart `latest` mixes lines — a 0.1.1 ocl.model with a
+# 0.1.0 parser died with NoSuchMethodError (OclFactory.createClassifierType).
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
-	org.eclipse.fennec.m2x.ocl.api;version=latest,\
-	org.eclipse.fennec.m2x.ocl.engine;version=latest,\
-	org.eclipse.fennec.m2x.ocl.model;version=latest,\
-	org.eclipse.fennec.m2x.ocl.parser;version=latest,\
+	org.eclipse.fennec.m2x.ocl.api;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.engine;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.model;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.parser;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.unit;version="[0.1.1,0.1.2)",\
 	org.antlr.antlr4-runtime;version=latest

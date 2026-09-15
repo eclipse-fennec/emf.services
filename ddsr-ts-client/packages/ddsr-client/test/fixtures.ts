@@ -119,7 +119,7 @@ export function lookupResultXmi(providerName = 'payments-ts', referenceId = 'ref
 /** The exact UNREGISTERING document shape the broker-side sink produces. */
 export const UNREGISTERING_XMI = `<?xml version="1.0" encoding="UTF-8"?>
 <xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:services="http://eclipse.org/fennec/services/1.0">
-  <services:ServiceEvent type="UNREGISTERING" reference="/1"/>
+  <services:ServiceEvent type="UNREGISTERING" reasonCode="WITHDRAWN" reference="/1"/>
   <services:ServiceReference id="ref-42"/>
 </xmi:XMI>`;
 

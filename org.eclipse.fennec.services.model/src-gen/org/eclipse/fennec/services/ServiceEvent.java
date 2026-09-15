@@ -24,6 +24,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceEvent#getType <em>Type</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceEvent#getReference <em>Reference</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceEvent#getTimestamp <em>Timestamp</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceEvent#getReasonCode <em>Reason Code</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceEvent()
@@ -109,5 +110,30 @@ public interface ServiceEvent extends EObject {
 	 * @generated
 	 */
 	void setTimestamp(Date value);
+
+	/**
+	 * Returns the value of the '<em><b>Reason Code</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Why the transition happened; lets a consumer tell 'gone for good' from 'replaced' from 'parked'. Short stable upper-case token, null for plain REGISTERED / MODIFIED. Broker vocabulary: WITHDRAWN (provider withdrew), REPLACED (same (name, version) republished, or DEPRECATE_AND_DRAIN drain finished), CUTOVER (HARD_CUTOVER grace elapsed), COLDIFIED (idle sweep moved the entry to the cold cache, it is still discoverable and rehydrates on demand), SESSION_EXPIRED, PROVIDER_LOST. Free-form so transports and future policies can add tokens without a model change.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Reason Code</em>' attribute.
+	 * @see #setReasonCode(String)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceEvent_ReasonCode()
+	 * @model
+	 * @generated
+	 */
+	String getReasonCode();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceEvent#getReasonCode <em>Reason Code</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Reason Code</em>' attribute.
+	 * @see #getReasonCode()
+	 * @generated
+	 */
+	void setReasonCode(String value);
 
 } // ServiceEvent

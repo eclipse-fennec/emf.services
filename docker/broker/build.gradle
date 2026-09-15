@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *
+ * Stages the exported broker jar for the docker build, so a local
+ * `podman build docker/broker/` sees the same content/ layout the
+ * container workflow assembles in CI.
+ */
+def brokerJar = file('../../org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar')
+
+tasks.register('prepareDocker') {
+	description = 'Copies the exported broker.jar into docker/broker/content/.'
+	def stageDir = file('content')
+	doFirst {
+		stageDir.deleteDir()
+	}
+	doLast {
+		if (!brokerJar.exists()) {
+			throw new GradleException("${brokerJar} does not exist — run "
+					+ "./gradlew :org.eclipse.fennec.services.broker.rest:export.broker first.")
+		}
+		stageDir.mkdirs()
+		copy {
+			from brokerJar
+			into stageDir
+		}
+		logger.lifecycle("staged ${brokerJar.name} for the docker build")
+	}
+}

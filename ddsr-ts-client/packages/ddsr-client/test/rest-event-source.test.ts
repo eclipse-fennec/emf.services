@@ -82,6 +82,7 @@ describe('RestEventSource', () => {
     expect(order[0]).toBe('established');
     expect(events[0].type).toBe('UNREGISTERING');
     expect(events[0].reference?.id).toBe('ref-42');
+    expect(events[0].reasonCode).toBe('WITHDRAWN');
     expect(urls[0]).toBe('http://broker.test/ddsr/rest/events?flavors=REST');
   });
 

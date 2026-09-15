@@ -101,7 +101,15 @@ podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=b
   -t ddsr/broker-mqtt "$ROOT/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=client-mqtt.jar \
   -t ddsr/client-mqtt "$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/"
-podman build -q -f "$ROOT/itest/containers/Containerfile.ts" -t ddsr/ts "$ROOT/ddsr-ts-client/"
+# --network=host: the ONLY image whose build needs the network (corepack +
+# pnpm install). Rootless podman 5.x defaults to pasta, which copies the
+# host's /etc/resolv.conf into the build netns verbatim — on hosts resolving
+# via the systemd-resolved stub (nameserver 127.0.0.53, e.g. the GitHub
+# runners) that address is unreachable from inside, and every lookup dies as
+# EAI_AGAIN. In the host netns the stub resolves as it does for the harness
+# itself. podman 4.x with slirp4netns rewrote resolv.conf and did not need
+# this, which is why the podman harness only started failing in CI.
+podman build -q --network=host -f "$ROOT/itest/containers/Containerfile.ts" -t ddsr/ts "$ROOT/ddsr-ts-client/"
 
 # --------------------------------------------------------------- broker
 log "starting broker container"
@@ -133,7 +141,12 @@ if [ -z "$UNREG_MS" ] || [ "$UNREG_MS" -gt "$PROVIDER_EXIT_MS" ]; then
   echo "SCENARIO A FAILED: UNREGISTERING ($UNREG_MS) not before provider exit ($PROVIDER_EXIT_MS)"
   cat "$WORK/probe-a.log"; exit 1
 fi
-echo "Scenario A OK: consumer informed $((PROVIDER_EXIT_MS - UNREG_MS)) ms before the provider was gone"
+UNREG_REASON=$(grep -o 'UNREGISTERING_REASON [A-Z_-]*' "$WORK/probe-a.log" | awk '{print $2}')
+if [ "$UNREG_REASON" != "WITHDRAWN" ]; then
+  echo "SCENARIO A FAILED: UNREGISTERING reason is '$UNREG_REASON', expected WITHDRAWN (provider shutdown = withdraw)"
+  cat "$WORK/probe-a.log"; exit 1
+fi
+echo "Scenario A OK: consumer informed $((PROVIDER_EXIT_MS - UNREG_MS)) ms before the provider was gone (reason $UNREG_REASON)"
 grep -E '  [✓✗]' "$WORK/probe-a.log" || true
 
 # ============================================================ Scenario B

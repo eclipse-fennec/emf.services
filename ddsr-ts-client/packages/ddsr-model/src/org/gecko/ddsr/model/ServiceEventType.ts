@@ -14,7 +14,9 @@ export const ServiceEventType = {
   REGISTERED: 'REGISTERED',
   MODIFIED: 'MODIFIED',
   UNREGISTERING: 'UNREGISTERING',
-  MODIFIED_ENDMATCH: 'MODIFIED_ENDMATCH'
+  MODIFIED_ENDMATCH: 'MODIFIED_ENDMATCH',
+  UPGRADE_AVAILABLE: 'UPGRADE_AVAILABLE',
+  RETIRED: 'RETIRED'
 } as const;
 
 export type ServiceEventType = typeof ServiceEventType[keyof typeof ServiceEventType];
@@ -35,5 +37,7 @@ export function getServiceEventTypeByLiteral(literal: string): ServiceEventType 
   if (literal === 'MODIFIED') return ServiceEventType.MODIFIED;
   if (literal === 'UNREGISTERING') return ServiceEventType.UNREGISTERING;
   if (literal === 'MODIFIED_ENDMATCH') return ServiceEventType.MODIFIED_ENDMATCH;
+  if (literal === 'UPGRADE_AVAILABLE') return ServiceEventType.UPGRADE_AVAILABLE;
+  if (literal === 'RETIRED') return ServiceEventType.RETIRED;
   return undefined;
 }

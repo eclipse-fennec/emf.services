@@ -14,6 +14,7 @@ A **cross-language service registry** (working title *DDSR — Dynamic Distribut
 | `ddsr-ts-client/` | TypeScript track (pnpm workspace): model, client SDK, REST flavor, MQTT transport |
 | `docs/` | The documentation source of truth (published subset: see `docs-site/`) |
 | `itest/` | Cross-language harness — Java↔TS end-to-end against a real broker, as host processes or podman containers (incl. a Mosquitto MQTT wire proof) |
+| `docker/` | Build contexts for the deployable images — today the broker (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
 
 ## Build
 
@@ -21,6 +22,13 @@ A **cross-language service registry** (working title *DDSR — Dynamic Distribut
 ./gradlew build                                   # Java: full build incl. tests
 cd ddsr-ts-client && corepack pnpm install && corepack pnpm -r build && corepack pnpm exec vitest run
 ./itest/run-harness.sh                            # cross-language end-to-end
+```
+
+A broker to develop against, without building anything:
+
+```bash
+docker run -d -p 8887:8887 -v ddsr-broker-data:/opt/services/data \
+  docker.io/eclipsefennec/emf.services:broker-snapshot
 ```
 
 Requires Java 21 and Node ≥ 20. See [CLAUDE.md](CLAUDE.md) for the workspace map and [docs/STATUS.md](docs/STATUS.md) for where the project stands.

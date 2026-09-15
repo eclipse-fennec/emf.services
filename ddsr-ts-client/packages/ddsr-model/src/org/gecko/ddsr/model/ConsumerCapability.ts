@@ -8,6 +8,7 @@
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
 import type { FlavorKind } from './FlavorKind';
 import type { Property } from './Property';
+import type { Requirement } from './Requirement';
 
 /**
  * ConsumerCapability
@@ -17,5 +18,6 @@ export interface ConsumerCapability extends EObject {
   consumerId?: string;
   supportedFlavors: FlavorKind[];
   properties: Property[];
+  requirements: Requirement[];
 
 }

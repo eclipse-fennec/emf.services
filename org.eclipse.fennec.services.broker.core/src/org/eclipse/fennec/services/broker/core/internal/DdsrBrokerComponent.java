@@ -100,6 +100,20 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 						+ "quarter of this value. 0 (default) disables the policy.",
 				required = false)
 		long cold_after_seconds() default 0;
+
+		@AttributeDefinition(
+				name = "Cutover grace (seconds)",
+				description = "UPDATE_POLICY.md \u00a72.3: failover window of a HARD_CUTOVER when the successor "
+						+ "leaves cutoverGraceMillis at 0. Both versions stay visible during the window.",
+				required = false)
+		long cutover_grace_seconds() default 30;
+
+		@AttributeDefinition(
+				name = "Update-policy sweep (seconds)",
+				description = "How often pending DEPRECATE_AND_DRAIN drains and HARD_CUTOVER windows are "
+						+ "checked (UPDATE_POLICY.md \u00a72). 0 disables the sweep; policies are then never advanced.",
+				required = false)
+		long policy_sweep_seconds() default 5;
 	}
 
 	@Reference(
@@ -172,12 +186,30 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 			this.delegate = new DdsrBrokerImpl(snapshotPath, backend, this::fanOut);
 			long expirySeconds = config.session_expiry_seconds();
 			long coldSeconds = config.cold_after_seconds();
-			if (expirySeconds > 0 || coldSeconds > 0) {
+			long policySweepSeconds = config.policy_sweep_seconds();
+			this.delegate.setDefaultCutoverGraceMillis(config.cutover_grace_seconds() * 1000L);
+			if (expirySeconds > 0 || coldSeconds > 0 || policySweepSeconds > 0) {
 				sessionExpiry = Executors.newSingleThreadScheduledExecutor(task -> {
 					Thread thread = new Thread(task, "ddsr-broker-maintenance");
 					thread.setDaemon(true);
 					return thread;
 				});
+			}
+			if (policySweepSeconds > 0) {
+				sessionExpiry.scheduleAtFixedRate(() -> {
+					try {
+						DdsrBrokerImpl current = delegate;
+						if (current == null) {
+							return;
+						}
+						int retired = current.advanceUpdatePolicies(Instant.now());
+						if (retired > 0) {
+							LOG.info("[DDSR] update policies retired " + retired + " superseded implementation(s)");
+						}
+					} catch (RuntimeException sweepFailure) {
+						LOG.warning("[DDSR] update-policy sweep failed, continuing: " + sweepFailure);
+					}
+				}, policySweepSeconds, policySweepSeconds, TimeUnit.SECONDS);
 			}
 			if (expirySeconds > 0) {
 				long sweepSeconds = Math.max(1, expirySeconds / 4);

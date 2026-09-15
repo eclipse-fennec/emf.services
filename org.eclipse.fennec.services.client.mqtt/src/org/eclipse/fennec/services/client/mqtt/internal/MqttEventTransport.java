@@ -71,7 +71,7 @@ public final class MqttEventTransport implements EventSource {
 		int qos() default 0;
 	}
 
-	@Reference
+	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
 	private MqttAsyncClient client;

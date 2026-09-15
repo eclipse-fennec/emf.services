@@ -19,12 +19,14 @@ import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.EObjectResolvingEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
+import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.ComponentDescription;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesPackage;
+import org.eclipse.fennec.services.UpdatePolicy;
 import org.eclipse.fennec.services.VersionedElement;
 
 /**
@@ -43,6 +45,10 @@ import org.eclipse.fennec.services.VersionedElement;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getFlavors <em>Flavors</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getProperties <em>Properties</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getComponentDescription <em>Component Description</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getUpdatePolicy <em>Update Policy</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getReplaces <em>Replaces</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getCutoverGraceMillis <em>Cutover Grace Millis</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getCapabilities <em>Capabilities</em>}</li>
  * </ul>
  *
  * @generated
@@ -167,6 +173,66 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 	 * @ordered
 	 */
 	protected ComponentDescription componentDescription;
+
+	/**
+	 * The default value of the '{@link #getUpdatePolicy() <em>Update Policy</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getUpdatePolicy()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final UpdatePolicy UPDATE_POLICY_EDEFAULT = UpdatePolicy.UNSPECIFIED;
+
+	/**
+	 * The cached value of the '{@link #getUpdatePolicy() <em>Update Policy</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getUpdatePolicy()
+	 * @generated
+	 * @ordered
+	 */
+	protected UpdatePolicy updatePolicy = UPDATE_POLICY_EDEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getReplaces() <em>Replaces</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getReplaces()
+	 * @generated
+	 * @ordered
+	 */
+	protected ServiceImplementation replaces;
+
+	/**
+	 * The default value of the '{@link #getCutoverGraceMillis() <em>Cutover Grace Millis</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getCutoverGraceMillis()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final long CUTOVER_GRACE_MILLIS_EDEFAULT = 0L;
+
+	/**
+	 * The cached value of the '{@link #getCutoverGraceMillis() <em>Cutover Grace Millis</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getCutoverGraceMillis()
+	 * @generated
+	 * @ordered
+	 */
+	protected long cutoverGraceMillis = CUTOVER_GRACE_MILLIS_EDEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getCapabilities() <em>Capabilities</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getCapabilities()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<Capability> capabilities;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -364,12 +430,113 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 	 * @generated
 	 */
 	@Override
+	public UpdatePolicy getUpdatePolicy() {
+		return updatePolicy;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setUpdatePolicy(UpdatePolicy newUpdatePolicy) {
+		UpdatePolicy oldUpdatePolicy = updatePolicy;
+		updatePolicy = newUpdatePolicy == null ? UPDATE_POLICY_EDEFAULT : newUpdatePolicy;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_IMPLEMENTATION__UPDATE_POLICY, oldUpdatePolicy, updatePolicy));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ServiceImplementation getReplaces() {
+		if (replaces != null && replaces.eIsProxy()) {
+			InternalEObject oldReplaces = (InternalEObject)replaces;
+			replaces = (ServiceImplementation)eResolveProxy(oldReplaces);
+			if (replaces != oldReplaces) {
+				if (eNotificationRequired())
+					eNotify(new ENotificationImpl(this, Notification.RESOLVE, ServicesPackage.SERVICE_IMPLEMENTATION__REPLACES, oldReplaces, replaces));
+			}
+		}
+		return replaces;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ServiceImplementation basicGetReplaces() {
+		return replaces;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setReplaces(ServiceImplementation newReplaces) {
+		ServiceImplementation oldReplaces = replaces;
+		replaces = newReplaces;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_IMPLEMENTATION__REPLACES, oldReplaces, replaces));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public long getCutoverGraceMillis() {
+		return cutoverGraceMillis;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setCutoverGraceMillis(long newCutoverGraceMillis) {
+		long oldCutoverGraceMillis = cutoverGraceMillis;
+		cutoverGraceMillis = newCutoverGraceMillis;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS, oldCutoverGraceMillis, cutoverGraceMillis));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EList<Capability> getCapabilities() {
+		if (capabilities == null) {
+			capabilities = new EObjectContainmentEList<Capability>(Capability.class, this, ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES);
+		}
+		return capabilities;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_IMPLEMENTATION__FLAVORS:
 				return ((InternalEList<?>)getFlavors()).basicRemove(otherEnd, msgs);
 			case ServicesPackage.SERVICE_IMPLEMENTATION__PROPERTIES:
 				return ((InternalEList<?>)getProperties()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
+				return ((InternalEList<?>)getCapabilities()).basicRemove(otherEnd, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -399,6 +566,15 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 			case ServicesPackage.SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION:
 				if (resolve) return getComponentDescription();
 				return basicGetComponentDescription();
+			case ServicesPackage.SERVICE_IMPLEMENTATION__UPDATE_POLICY:
+				return getUpdatePolicy();
+			case ServicesPackage.SERVICE_IMPLEMENTATION__REPLACES:
+				if (resolve) return getReplaces();
+				return basicGetReplaces();
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS:
+				return getCutoverGraceMillis();
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
+				return getCapabilities();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -439,6 +615,19 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 			case ServicesPackage.SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION:
 				setComponentDescription((ComponentDescription)newValue);
 				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__UPDATE_POLICY:
+				setUpdatePolicy((UpdatePolicy)newValue);
+				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__REPLACES:
+				setReplaces((ServiceImplementation)newValue);
+				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS:
+				setCutoverGraceMillis((Long)newValue);
+				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
+				getCapabilities().clear();
+				getCapabilities().addAll((Collection<? extends Capability>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -475,6 +664,18 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 			case ServicesPackage.SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION:
 				setComponentDescription((ComponentDescription)null);
 				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__UPDATE_POLICY:
+				setUpdatePolicy(UPDATE_POLICY_EDEFAULT);
+				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__REPLACES:
+				setReplaces((ServiceImplementation)null);
+				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS:
+				setCutoverGraceMillis(CUTOVER_GRACE_MILLIS_EDEFAULT);
+				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
+				getCapabilities().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -503,6 +704,14 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 				return properties != null && !properties.isEmpty();
 			case ServicesPackage.SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION:
 				return componentDescription != null;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__UPDATE_POLICY:
+				return updatePolicy != UPDATE_POLICY_EDEFAULT;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__REPLACES:
+				return replaces != null;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS:
+				return cutoverGraceMillis != CUTOVER_GRACE_MILLIS_EDEFAULT;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
+				return capabilities != null && !capabilities.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}
@@ -557,6 +766,10 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 		result.append(description);
 		result.append(", implementationId: ");
 		result.append(implementationId);
+		result.append(", updatePolicy: ");
+		result.append(updatePolicy);
+		result.append(", cutoverGraceMillis: ");
+		result.append(cutoverGraceMillis);
 		result.append(')');
 		return result.toString();
 	}

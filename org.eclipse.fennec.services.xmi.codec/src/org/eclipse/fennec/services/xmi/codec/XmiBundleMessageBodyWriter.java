@@ -44,7 +44,7 @@ public class XmiBundleMessageBodyWriter implements MessageBodyWriter<XmiBundle> 
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Activate
-	public XmiBundleMessageBodyWriter(@Reference ComponentServiceObjects<ResourceSet> rsObjects) {
+	public XmiBundleMessageBodyWriter(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
 		this.rsObjects = rsObjects;
 	}
 

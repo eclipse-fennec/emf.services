@@ -14,7 +14,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Bag of capabilities a consumer attaches to a lookup. NOT persistent — created per request and passed through getServiceReferences / getAllServiceReferences. The registry uses supportedFlavors to filter implementations the consumer cannot actually invoke.
+ * Bag of capabilities a consumer attaches to a lookup. NOT persistent — created per request and passed through getServiceReferences / getAllServiceReferences. The registry uses supportedFlavors and requirements to filter implementations the consumer cannot actually invoke; supportedFlavors is the coarse transport switch, requirements the general mechanism (a supportedFlavors entry REST is equivalent to a requirement 'services.transport' with filter '(kind=REST)').
  * <!-- end-model-doc -->
  *
  * <p>
@@ -24,6 +24,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ConsumerCapability#getConsumerId <em>Consumer Id</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ConsumerCapability#getSupportedFlavors <em>Supported Flavors</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ConsumerCapability#getProperties <em>Properties</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ConsumerCapability#getRequirements <em>Requirements</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getConsumerCapability()
@@ -88,5 +89,20 @@ public interface ConsumerCapability extends EObject {
 	 * @generated
 	 */
 	EList<Property> getProperties();
+
+	/**
+	 * Returns the value of the '<em><b>Requirements</b></em>' containment reference list.
+	 * The list contents are of type {@link org.eclipse.fennec.services.Requirement}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Requirements every returned implementation must satisfy (all of them, AND). Empty = no constraint beyond supportedFlavors and the LDAP filter of the lookup. Several requirements in the same namespace are allowed and all apply.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Requirements</em>' containment reference list.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getConsumerCapability_Requirements()
+	 * @model containment="true"
+	 * @generated
+	 */
+	EList<Requirement> getRequirements();
 
 } // ConsumerCapability

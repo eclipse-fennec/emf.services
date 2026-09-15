@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <genmodel:GenModel xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
     xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel" modelDirectory="/org.eclipse.fennec.services.model/src-gen" modelPluginID="org.eclipse.fennec.services.model"
-    modelName="ddsr" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    modelName="Services" rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
     importerID="org.eclipse.emf.importer.ecore" complianceLevel="17.0" suppressGenModelAnnotations="false"
     copyrightFields="false" operationReflection="true" importOrganizing="true" oSGiCompatible="true">
   <foreignModel>services.ecore</foreignModel>
@@ -44,6 +44,8 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ServiceEventType/MODIFIED"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ServiceEventType/UNREGISTERING"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ServiceEventType/MODIFIED_ENDMATCH"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ServiceEventType/UPGRADE_AVAILABLE"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ServiceEventType/RETIRED"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//FieldOption">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//FieldOption/REPLACE"/>
@@ -88,6 +90,12 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//HttpMethod/HEAD"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//HttpMethod/OPTIONS"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//ParameterBinding">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/BODY"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/QUERY"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/HEADER"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/PATH"/>
+    </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//MqttQos">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//MqttQos/AT_MOST_ONCE"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//MqttQos/AT_LEAST_ONCE"/>
@@ -103,6 +111,12 @@
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//CatalogStatus">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//CatalogStatus/ACTIVE"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//CatalogStatus/DEPRECATED"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//UpdatePolicy">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//UpdatePolicy/UNSPECIFIED"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//UpdatePolicy/EVERGREEN"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//UpdatePolicy/DEPRECATE_AND_DRAIN"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//UpdatePolicy/HARD_CUTOVER"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//ConnectionState">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ConnectionState/CONNECTED"/>
@@ -200,6 +214,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/status"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/deprecationReason"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/replacedBy"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/updatePolicy"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//LifecycleHook">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//LifecycleHook/kind"/>
@@ -247,10 +262,15 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceImplementation/flavors"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceImplementation/properties"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceImplementation/componentDescription"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceImplementation/updatePolicy"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceImplementation/replaces"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceImplementation/cutoverGraceMillis"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceImplementation/capabilities"/>
     </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//ServiceFlavor">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceFlavor/kind"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceFlavor/operationFlavors"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceFlavor/capabilities"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//RestFlavor">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestFlavor/host"/>
@@ -273,6 +293,12 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestOperationFlavor/method"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestOperationFlavor/path"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestOperationFlavor/returnCodes"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//RestOperationFlavor/parameterBindings"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//RestParameterBinding">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//RestParameterBinding/parameter"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestParameterBinding/binding"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestParameterBinding/wireName"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//MqttOperationFlavor">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/requestTopic"/>
@@ -342,6 +368,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceEvent/type"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceEvent/reference"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceEvent/timestamp"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceEvent/reasonCode"/>
     </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//ServiceListener">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceListener/filter"/>
@@ -418,10 +445,20 @@
         <genParameters ecoreParameter="services.ecore#//RemoteServiceRegistry/removeCatalogEntry/requestor"/>
       </genOperations>
     </genClasses>
+    <genClasses ecoreClass="services.ecore#//Capability">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Capability/namespace"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//Capability/attributes"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//Requirement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Requirement/namespace"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Requirement/filter"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Requirement/optional"/>
+    </genClasses>
     <genClasses ecoreClass="services.ecore#//ConsumerCapability">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerCapability/consumerId"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerCapability/supportedFlavors"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ConsumerCapability/properties"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ConsumerCapability/requirements"/>
     </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//PublishHook">
       <genOperations ecoreOperation="services.ecore#//PublishHook/onPublish">

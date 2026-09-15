@@ -24,6 +24,7 @@ import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesPackage;
+import org.eclipse.fennec.services.UpdatePolicy;
 import org.eclipse.fennec.services.VersionedElement;
 
 /**
@@ -43,6 +44,7 @@ import org.eclipse.fennec.services.VersionedElement;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getStatus <em>Status</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getDeprecationReason <em>Deprecation Reason</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getReplacedBy <em>Replaced By</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getUpdatePolicy <em>Update Policy</em>}</li>
  * </ul>
  *
  * @generated
@@ -187,6 +189,26 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @ordered
 	 */
 	protected ServiceInterface replacedBy;
+
+	/**
+	 * The default value of the '{@link #getUpdatePolicy() <em>Update Policy</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getUpdatePolicy()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final UpdatePolicy UPDATE_POLICY_EDEFAULT = UpdatePolicy.UNSPECIFIED;
+
+	/**
+	 * The cached value of the '{@link #getUpdatePolicy() <em>Update Policy</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getUpdatePolicy()
+	 * @generated
+	 * @ordered
+	 */
+	protected UpdatePolicy updatePolicy = UPDATE_POLICY_EDEFAULT;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -407,6 +429,29 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @generated
 	 */
 	@Override
+	public UpdatePolicy getUpdatePolicy() {
+		return updatePolicy;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setUpdatePolicy(UpdatePolicy newUpdatePolicy) {
+		UpdatePolicy oldUpdatePolicy = updatePolicy;
+		updatePolicy = newUpdatePolicy == null ? UPDATE_POLICY_EDEFAULT : newUpdatePolicy;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY, oldUpdatePolicy, updatePolicy));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_INTERFACE__OPERATIONS:
@@ -446,6 +491,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				if (resolve) return getReplacedBy();
 				return basicGetReplacedBy();
+			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
+				return getUpdatePolicy();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -489,6 +536,9 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				setReplacedBy((ServiceInterface)newValue);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
+				setUpdatePolicy((UpdatePolicy)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -528,6 +578,9 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				setReplacedBy((ServiceInterface)null);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
+				setUpdatePolicy(UPDATE_POLICY_EDEFAULT);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -558,6 +611,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return DEPRECATION_REASON_EDEFAULT == null ? deprecationReason != null : !DEPRECATION_REASON_EDEFAULT.equals(deprecationReason);
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				return replacedBy != null;
+			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
+				return updatePolicy != UPDATE_POLICY_EDEFAULT;
 		}
 		return super.eIsSet(featureID);
 	}
@@ -614,6 +669,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 		result.append(status);
 		result.append(", deprecationReason: ");
 		result.append(deprecationReason);
+		result.append(", updatePolicy: ");
+		result.append(updatePolicy);
 		result.append(')');
 		return result.toString();
 	}

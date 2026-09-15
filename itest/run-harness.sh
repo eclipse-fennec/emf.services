@@ -140,7 +140,12 @@ if [ -z "$UNREG_MS" ] || [ "$UNREG_MS" -gt "$PROVIDER_EXIT_MS" ]; then
   echo "SCENARIO A FAILED: UNREGISTERING ($UNREG_MS) not before provider exit ($PROVIDER_EXIT_MS)"
   cat "$WORK/probe-a.log"; exit 1
 fi
-echo "Scenario A OK: consumer informed $((PROVIDER_EXIT_MS - UNREG_MS)) ms before the provider was gone"
+UNREG_REASON=$(grep -o 'UNREGISTERING_REASON [A-Z_-]*' "$WORK/probe-a.log" | awk '{print $2}')
+if [ "$UNREG_REASON" != "WITHDRAWN" ]; then
+  echo "SCENARIO A FAILED: UNREGISTERING reason is '$UNREG_REASON', expected WITHDRAWN (provider shutdown = withdraw)"
+  cat "$WORK/probe-a.log"; exit 1
+fi
+echo "Scenario A OK: consumer informed $((PROVIDER_EXIT_MS - UNREG_MS)) ms before the provider was gone (reason $UNREG_REASON)"
 grep -E '  [✓✗]' "$WORK/probe-a.log" || true
 
 # ============================================================ Scenario B

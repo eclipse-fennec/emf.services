@@ -277,6 +277,15 @@ public interface ServicesFactory extends EFactory {
 	RestOperationFlavor createRestOperationFlavor();
 
 	/**
+	 * Returns a new object of class '<em>Rest Parameter Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Rest Parameter Binding</em>'.
+	 * @generated
+	 */
+	RestParameterBinding createRestParameterBinding();
+
+	/**
 	 * Returns a new object of class '<em>Mqtt Operation Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -374,6 +383,24 @@ public interface ServicesFactory extends EFactory {
 	 * @generated
 	 */
 	RemoteServiceRegistry createRemoteServiceRegistry();
+
+	/**
+	 * Returns a new object of class '<em>Capability</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Capability</em>'.
+	 * @generated
+	 */
+	Capability createCapability();
+
+	/**
+	 * Returns a new object of class '<em>Requirement</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Requirement</em>'.
+	 * @generated
+	 */
+	Requirement createRequirement();
 
 	/**
 	 * Returns a new object of class '<em>Consumer Capability</em>'.

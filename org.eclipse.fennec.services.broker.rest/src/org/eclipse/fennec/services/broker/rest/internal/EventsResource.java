@@ -64,7 +64,7 @@ public class EventsResource {
 	private static final Logger LOG = Logger.getLogger(EventsResource.class.getName());
 
 	@Reference
-	private SseEventBridge bridge;
+	SseEventBridge bridge;
 
 	@GET
 	@Produces(MediaType.SERVER_SENT_EVENTS)
@@ -79,7 +79,7 @@ public class EventsResource {
 	 * token would be a poor trade. An entirely unparseable value ends up
 	 * as "no filter".
 	 */
-	private static Set<FlavorKind> parseFlavors(String raw) {
+	static Set<FlavorKind> parseFlavors(String raw) {
 		Set<FlavorKind> kinds = EnumSet.noneOf(FlavorKind.class);
 		if (raw == null || raw.isBlank()) {
 			return kinds;

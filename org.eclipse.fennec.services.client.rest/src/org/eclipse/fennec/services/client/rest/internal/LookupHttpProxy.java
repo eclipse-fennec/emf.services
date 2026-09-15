@@ -120,7 +120,7 @@ public final class LookupHttpProxy implements BrokerLookup {
 		return new ArrayList<>(envelope.getReferences());
 	}
 
-	private static String flavorCsv(List<FlavorKind> kinds) {
+	static String flavorCsv(List<FlavorKind> kinds) {
 		StringBuilder sb = new StringBuilder();
 		for (FlavorKind k : kinds) {
 			if (sb.length() > 0) {
@@ -136,7 +136,7 @@ public final class LookupHttpProxy implements BrokerLookup {
 	 * {@code ddsr.fingerprint} StringProperty on the capability travels
 	 * as the {@code fingerprint} query parameter.
 	 */
-	private static String requestedFingerprint(ConsumerCapability capability) {
+	static String requestedFingerprint(ConsumerCapability capability) {
 		if (capability == null) {
 			return null;
 		}

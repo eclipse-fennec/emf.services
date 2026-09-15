@@ -96,10 +96,10 @@ public class SseEventBridge implements EventSink {
 	private final List<Subscription> subscriptions = new CopyOnWriteArrayList<>();
 
 	@Reference
-	private BrokerLookup broker;
+	BrokerLookup broker;
 
 	@Reference(target = "(emf.name=services)")
-	private ComponentServiceObjects<ResourceSet> rsObjects;
+	ComponentServiceObjects<ResourceSet> rsObjects;
 
 	private volatile Sse sse;
 
@@ -230,7 +230,7 @@ public class SseEventBridge implements EventSink {
 	 * implementation declares no flavor at all is delivered to everyone —
 	 * same rule the lookup backend applies.
 	 */
-	private static boolean matches(Subscription s, Set<FlavorKind> eventFlavors) {
+	static boolean matches(Subscription s, Set<FlavorKind> eventFlavors) {
 		if (s.flavors.isEmpty() || eventFlavors.isEmpty()) {
 			return true;
 		}

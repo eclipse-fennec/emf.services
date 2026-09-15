@@ -70,10 +70,10 @@ public class ImplementationsResource {
 	private static final Logger LOG = Logger.getLogger(ImplementationsResource.class.getName());
 
 	@Reference
-	private BrokerImplementations broker;
+	BrokerImplementations broker;
 
 	@Reference(target = "(emf.name=services)")
-	private ComponentServiceObjects<ResourceSet> rsObjects;
+	ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@POST
 	@Consumes(MediaType.APPLICATION_XML)

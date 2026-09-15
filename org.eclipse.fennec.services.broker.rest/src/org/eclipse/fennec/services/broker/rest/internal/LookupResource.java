@@ -77,7 +77,7 @@ import jakarta.ws.rs.core.Response;
 public class LookupResource {
 
 	@Reference
-	private BrokerLookup broker;
+	BrokerLookup broker;
 
 	@GET
 	@Produces(MediaType.APPLICATION_XML)
@@ -148,7 +148,7 @@ public class LookupResource {
 		return Response.ok(new XmiBundle(roots)).type(MediaType.APPLICATION_XML).build();
 	}
 
-	private static ConsumerCapability parseCapability(String flavorsCsv, String consumerId, String fingerprint) {
+	static ConsumerCapability parseCapability(String flavorsCsv, String consumerId, String fingerprint) {
 		boolean hasFlavors = flavorsCsv != null && !flavorsCsv.isBlank();
 		boolean hasConsumerId = consumerId != null && !consumerId.isBlank();
 		boolean hasFingerprint = fingerprint != null && !fingerprint.isBlank();

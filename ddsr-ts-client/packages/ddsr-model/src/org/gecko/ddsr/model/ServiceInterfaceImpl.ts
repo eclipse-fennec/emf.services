@@ -12,6 +12,7 @@ import type { VersionedElement } from './VersionedElement';
 import type { ServiceOperation } from './ServiceOperation';
 import type { ServiceException } from './ServiceException';
 import type { Invariant } from './Invariant';
+import type { UpdatePolicy } from './UpdatePolicy';
 import { CatalogStatus } from './CatalogStatus';
 import type { ServiceInterface } from './ServiceInterface';
 import { DDSRPackage } from './DDSRPackage';
@@ -29,6 +30,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   static readonly STATUS: number = 6;
   static readonly DEPRECATION_REASON: number = 7;
   static readonly REPLACED_BY: number = 8;
+  static readonly UPDATE_POLICY: number = 9;
   static readonly NAME: number = 0;
   static readonly VERSION: number = 1;
 
@@ -40,6 +42,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   private _status: CatalogStatus = CatalogStatus.ACTIVE;
   private _deprecationReason?: string;
   private _replacedBy?: ServiceInterface;
+  private _updatePolicy?: UpdatePolicy;
   private _name: string = "";
   private _version?: string;
 
@@ -219,6 +222,30 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
     }
   }
 
+  get updatePolicy(): UpdatePolicy {
+    return this._updatePolicy!;
+  }
+
+  set updatePolicy(value: UpdatePolicy) {
+    const oldValue = this._updatePolicy;
+    this._updatePolicy = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceInterfaceImpl.UPDATE_POLICY),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceInterfaceImpl.UPDATE_POLICY,
+        merge: () => false
+      });
+    }
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -257,6 +284,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this.deprecationReason;
       case ServiceInterfaceImpl.REPLACED_BY:
         return this.replacedBy;
+      case ServiceInterfaceImpl.UPDATE_POLICY:
+        return this.updatePolicy;
       case ServiceInterfaceImpl.NAME:
         return this.name;
       case ServiceInterfaceImpl.VERSION:
@@ -300,6 +329,10 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         this.replacedBy = newValue as ServiceInterface;
         super.eSet(feature, newValue);
         break;
+      case ServiceInterfaceImpl.UPDATE_POLICY:
+        this.updatePolicy = newValue as UpdatePolicy;
+        super.eSet(feature, newValue);
+        break;
       case ServiceInterfaceImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -333,6 +366,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this._deprecationReason !== undefined;
       case ServiceInterfaceImpl.REPLACED_BY:
         return this._replacedBy !== undefined;
+      case ServiceInterfaceImpl.UPDATE_POLICY:
+        return this._updatePolicy !== undefined;
       case ServiceInterfaceImpl.NAME:
         return this._name !== "";
       case ServiceInterfaceImpl.VERSION:
@@ -368,6 +403,9 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return;
       case ServiceInterfaceImpl.REPLACED_BY:
         this._replacedBy = undefined;
+        return;
+      case ServiceInterfaceImpl.UPDATE_POLICY:
+        this._updatePolicy = undefined;
         return;
       case ServiceInterfaceImpl.NAME:
         this._name = "";

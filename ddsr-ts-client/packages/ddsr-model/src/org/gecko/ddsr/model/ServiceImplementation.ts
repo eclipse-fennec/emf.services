@@ -12,6 +12,8 @@ import type { ServiceInterface } from './ServiceInterface';
 import type { ServiceFlavor } from './ServiceFlavor';
 import type { Property } from './Property';
 import type { ComponentDescription } from './ComponentDescription';
+import type { UpdatePolicy } from './UpdatePolicy';
+import type { Capability } from './Capability';
 
 /**
  * ServiceImplementation
@@ -24,5 +26,9 @@ export interface ServiceImplementation extends NamedElement, VersionedElement {
   flavors: ServiceFlavor[];
   properties: Property[];
   componentDescription?: ComponentDescription;
+  updatePolicy: UpdatePolicy;
+  replaces?: ServiceImplementation;
+  cutoverGraceMillis?: number;
+  capabilities: Capability[];
 
 }

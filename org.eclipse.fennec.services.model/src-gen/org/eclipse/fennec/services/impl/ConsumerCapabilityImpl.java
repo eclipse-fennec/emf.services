@@ -22,6 +22,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.Property;
+import org.eclipse.fennec.services.Requirement;
 import org.eclipse.fennec.services.ServicesPackage;
 
 /**
@@ -35,6 +36,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerCapabilityImpl#getConsumerId <em>Consumer Id</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerCapabilityImpl#getSupportedFlavors <em>Supported Flavors</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerCapabilityImpl#getProperties <em>Properties</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ConsumerCapabilityImpl#getRequirements <em>Requirements</em>}</li>
  * </ul>
  *
  * @generated
@@ -79,6 +81,16 @@ public class ConsumerCapabilityImpl extends MinimalEObjectImpl.Container impleme
 	 * @ordered
 	 */
 	protected EList<Property> properties;
+
+	/**
+	 * The cached value of the '{@link #getRequirements() <em>Requirements</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getRequirements()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<Requirement> requirements;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -154,10 +166,25 @@ public class ConsumerCapabilityImpl extends MinimalEObjectImpl.Container impleme
 	 * @generated
 	 */
 	@Override
+	public EList<Requirement> getRequirements() {
+		if (requirements == null) {
+			requirements = new EObjectContainmentEList<Requirement>(Requirement.class, this, ServicesPackage.CONSUMER_CAPABILITY__REQUIREMENTS);
+		}
+		return requirements;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.CONSUMER_CAPABILITY__PROPERTIES:
 				return ((InternalEList<?>)getProperties()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.CONSUMER_CAPABILITY__REQUIREMENTS:
+				return ((InternalEList<?>)getRequirements()).basicRemove(otherEnd, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -176,6 +203,8 @@ public class ConsumerCapabilityImpl extends MinimalEObjectImpl.Container impleme
 				return getSupportedFlavors();
 			case ServicesPackage.CONSUMER_CAPABILITY__PROPERTIES:
 				return getProperties();
+			case ServicesPackage.CONSUMER_CAPABILITY__REQUIREMENTS:
+				return getRequirements();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -200,6 +229,10 @@ public class ConsumerCapabilityImpl extends MinimalEObjectImpl.Container impleme
 				getProperties().clear();
 				getProperties().addAll((Collection<? extends Property>)newValue);
 				return;
+			case ServicesPackage.CONSUMER_CAPABILITY__REQUIREMENTS:
+				getRequirements().clear();
+				getRequirements().addAll((Collection<? extends Requirement>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -221,6 +254,9 @@ public class ConsumerCapabilityImpl extends MinimalEObjectImpl.Container impleme
 			case ServicesPackage.CONSUMER_CAPABILITY__PROPERTIES:
 				getProperties().clear();
 				return;
+			case ServicesPackage.CONSUMER_CAPABILITY__REQUIREMENTS:
+				getRequirements().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -239,6 +275,8 @@ public class ConsumerCapabilityImpl extends MinimalEObjectImpl.Container impleme
 				return supportedFlavors != null && !supportedFlavors.isEmpty();
 			case ServicesPackage.CONSUMER_CAPABILITY__PROPERTIES:
 				return properties != null && !properties.isEmpty();
+			case ServicesPackage.CONSUMER_CAPABILITY__REQUIREMENTS:
+				return requirements != null && !requirements.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}

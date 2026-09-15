@@ -21,6 +21,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <ul>
  *   <li>{@link org.eclipse.fennec.services.ServiceFlavor#getKind <em>Kind</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceFlavor#getOperationFlavors <em>Operation Flavors</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceFlavor#getCapabilities <em>Capabilities</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceFlavor()
@@ -71,5 +72,20 @@ public interface ServiceFlavor extends NamedElement {
 	 * @generated
 	 */
 	EList<ServiceOperationFlavor> getOperationFlavors();
+
+	/**
+	 * Returns the value of the '<em><b>Capabilities</b></em>' containment reference list.
+	 * The list contents are of type {@link org.eclipse.fennec.services.Capability}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Transport-level capabilities of this flavor (MQTT protocol version, QoS ceiling, TLS, supported media types, …). Added to the implementation's effective capability set when matching Requirements. The 'services.transport' capability with kind = this flavor's kind is implied and need not be listed.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Capabilities</em>' containment reference list.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceFlavor_Capabilities()
+	 * @model containment="true"
+	 * @generated
+	 */
+	EList<Capability> getCapabilities();
 
 } // ServiceFlavor

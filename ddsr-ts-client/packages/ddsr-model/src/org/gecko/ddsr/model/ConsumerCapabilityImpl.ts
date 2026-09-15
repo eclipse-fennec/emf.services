@@ -9,6 +9,7 @@ import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
 import type { FlavorKind } from './FlavorKind';
 import type { Property } from './Property';
+import type { Requirement } from './Requirement';
 import type { ConsumerCapability } from './ConsumerCapability';
 import { DDSRPackage } from './DDSRPackage';
 
@@ -21,11 +22,13 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
   static readonly CONSUMER_ID: number = 0;
   static readonly SUPPORTED_FLAVORS: number = 1;
   static readonly PROPERTIES: number = 2;
+  static readonly REQUIREMENTS: number = 3;
 
   // Private fields
   private _consumerId?: string;
   private _supportedFlavors: FlavorKind[] = [];
   private _properties: Property[] = [];
+  private _requirements: Requirement[] = [];
 
   /**
    * Returns the EClass of this object
@@ -107,6 +110,30 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
     }
   }
 
+  get requirements(): Requirement[] {
+    return this._requirements;
+  }
+
+  set requirements(value: Requirement[]) {
+    const oldValue = this._requirements;
+    this._requirements = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ConsumerCapabilityImpl.REQUIREMENTS),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ConsumerCapabilityImpl.REQUIREMENTS,
+        merge: () => false
+      });
+    }
+  }
+
   // Reflective API
 
   /**
@@ -121,6 +148,8 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
         return this.supportedFlavors;
       case ConsumerCapabilityImpl.PROPERTIES:
         return this.properties;
+      case ConsumerCapabilityImpl.REQUIREMENTS:
+        return this.requirements;
       default:
         return super.eGet(feature);
     }
@@ -144,6 +173,10 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
         this.properties = newValue as Property[];
         super.eSet(feature, newValue);
         break;
+      case ConsumerCapabilityImpl.REQUIREMENTS:
+        this.requirements = newValue as Requirement[];
+        super.eSet(feature, newValue);
+        break;
       default:
         super.eSet(feature, newValue);
     }
@@ -161,6 +194,8 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
         return this._supportedFlavors !== undefined && this._supportedFlavors.length > 0;
       case ConsumerCapabilityImpl.PROPERTIES:
         return this._properties !== undefined && this._properties.length > 0;
+      case ConsumerCapabilityImpl.REQUIREMENTS:
+        return this._requirements !== undefined && this._requirements.length > 0;
       default:
         return super.eIsSet(feature);
     }
@@ -180,6 +215,9 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
         return;
       case ConsumerCapabilityImpl.PROPERTIES:
         this._properties = [];
+        return;
+      case ConsumerCapabilityImpl.REQUIREMENTS:
+        this._requirements = [];
         return;
       default:
         super.eUnset(feature);

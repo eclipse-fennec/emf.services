@@ -13,6 +13,7 @@ import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
 import org.eclipse.fennec.services.BoolProperty;
+import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.CollectionSizeConstraint;
 import org.eclipse.fennec.services.CollectionType;
@@ -48,6 +49,7 @@ import org.eclipse.fennec.services.MqttQos;
 import org.eclipse.fennec.services.NamedElement;
 import org.eclipse.fennec.services.NumericRangeConstraint;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.ParameterConstraint;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.PublishHook;
@@ -59,8 +61,10 @@ import org.eclipse.fennec.services.ReferencePolicyOption;
 import org.eclipse.fennec.services.RegistryKind;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.RequiredConstraint;
+import org.eclipse.fennec.services.Requirement;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.SatisfiedReference;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
@@ -83,6 +87,7 @@ import org.eclipse.fennec.services.StringListProperty;
 import org.eclipse.fennec.services.StringPatternConstraint;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.UnsatisfiedReference;
+import org.eclipse.fennec.services.UpdatePolicy;
 import org.eclipse.fennec.services.VersionedElement;
 
 import org.eclipse.fennec.services.util.ServicesValidator;
@@ -337,6 +342,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass restParameterBindingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EClass mqttOperationFlavorEClass = null;
 
 	/**
@@ -422,6 +434,20 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass remoteServiceRegistryEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass capabilityEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass requirementEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -554,6 +580,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EEnum parameterBindingEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EEnum mqttQosEEnum = null;
 
 	/**
@@ -576,6 +609,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EEnum catalogStatusEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum updatePolicyEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1380,6 +1420,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getServiceInterface_UpdatePolicy() {
+		return (EAttribute)serviceInterfaceEClass.getEStructuralFeatures().get(7);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getLifecycleHook() {
 		return lifecycleHookEClass;
 	}
@@ -1790,6 +1840,46 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getServiceImplementation_UpdatePolicy() {
+		return (EAttribute)serviceImplementationEClass.getEStructuralFeatures().get(6);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceImplementation_Replaces() {
+		return (EReference)serviceImplementationEClass.getEStructuralFeatures().get(7);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getServiceImplementation_CutoverGraceMillis() {
+		return (EAttribute)serviceImplementationEClass.getEStructuralFeatures().get(8);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceImplementation_Capabilities() {
+		return (EReference)serviceImplementationEClass.getEStructuralFeatures().get(9);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getServiceFlavor() {
 		return serviceFlavorEClass;
 	}
@@ -1812,6 +1902,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EReference getServiceFlavor_OperationFlavors() {
 		return (EReference)serviceFlavorEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceFlavor_Capabilities() {
+		return (EReference)serviceFlavorEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -1992,6 +2092,56 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EAttribute getRestOperationFlavor_ReturnCodes() {
 		return (EAttribute)restOperationFlavorEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRestOperationFlavor_ParameterBindings() {
+		return (EReference)restOperationFlavorEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getRestParameterBinding() {
+		return restParameterBindingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRestParameterBinding_Parameter() {
+		return (EReference)restParameterBindingEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getRestParameterBinding_Binding() {
+		return (EAttribute)restParameterBindingEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getRestParameterBinding_WireName() {
+		return (EAttribute)restParameterBindingEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -2560,6 +2710,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getServiceEvent_ReasonCode() {
+		return (EAttribute)serviceEventEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getServiceListener() {
 		return serviceListenerEClass;
 	}
@@ -2900,6 +3060,76 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EClass getCapability() {
+		return capabilityEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getCapability_Namespace() {
+		return (EAttribute)capabilityEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getCapability_Attributes() {
+		return (EReference)capabilityEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getRequirement() {
+		return requirementEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getRequirement_Namespace() {
+		return (EAttribute)requirementEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getRequirement_Filter() {
+		return (EAttribute)requirementEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getRequirement_Optional() {
+		return (EAttribute)requirementEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getConsumerCapability() {
 		return consumerCapabilityEClass;
 	}
@@ -2932,6 +3162,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EReference getConsumerCapability_Properties() {
 		return (EReference)consumerCapabilityEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getConsumerCapability_Requirements() {
+		return (EReference)consumerCapabilityEClass.getEStructuralFeatures().get(3);
 	}
 
 	/**
@@ -3180,6 +3420,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EEnum getParameterBinding() {
+		return parameterBindingEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getMqttQos() {
 		return mqttQosEEnum;
 	}
@@ -3212,6 +3462,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EEnum getCatalogStatus() {
 		return catalogStatusEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getUpdatePolicy() {
+		return updatePolicyEEnum;
 	}
 
 	/**
@@ -3347,6 +3607,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__STATUS);
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__DEPRECATION_REASON);
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__REPLACED_BY);
+		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__UPDATE_POLICY);
 
 		lifecycleHookEClass = createEClass(LIFECYCLE_HOOK);
 		createEAttribute(lifecycleHookEClass, LIFECYCLE_HOOK__KIND);
@@ -3394,10 +3655,15 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceImplementationEClass, SERVICE_IMPLEMENTATION__FLAVORS);
 		createEReference(serviceImplementationEClass, SERVICE_IMPLEMENTATION__PROPERTIES);
 		createEReference(serviceImplementationEClass, SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION);
+		createEAttribute(serviceImplementationEClass, SERVICE_IMPLEMENTATION__UPDATE_POLICY);
+		createEReference(serviceImplementationEClass, SERVICE_IMPLEMENTATION__REPLACES);
+		createEAttribute(serviceImplementationEClass, SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS);
+		createEReference(serviceImplementationEClass, SERVICE_IMPLEMENTATION__CAPABILITIES);
 
 		serviceFlavorEClass = createEClass(SERVICE_FLAVOR);
 		createEAttribute(serviceFlavorEClass, SERVICE_FLAVOR__KIND);
 		createEReference(serviceFlavorEClass, SERVICE_FLAVOR__OPERATION_FLAVORS);
+		createEReference(serviceFlavorEClass, SERVICE_FLAVOR__CAPABILITIES);
 
 		restFlavorEClass = createEClass(REST_FLAVOR);
 		createEAttribute(restFlavorEClass, REST_FLAVOR__HOST);
@@ -3420,6 +3686,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(restOperationFlavorEClass, REST_OPERATION_FLAVOR__METHOD);
 		createEAttribute(restOperationFlavorEClass, REST_OPERATION_FLAVOR__PATH);
 		createEAttribute(restOperationFlavorEClass, REST_OPERATION_FLAVOR__RETURN_CODES);
+		createEReference(restOperationFlavorEClass, REST_OPERATION_FLAVOR__PARAMETER_BINDINGS);
+
+		restParameterBindingEClass = createEClass(REST_PARAMETER_BINDING);
+		createEReference(restParameterBindingEClass, REST_PARAMETER_BINDING__PARAMETER);
+		createEAttribute(restParameterBindingEClass, REST_PARAMETER_BINDING__BINDING);
+		createEAttribute(restParameterBindingEClass, REST_PARAMETER_BINDING__WIRE_NAME);
 
 		mqttOperationFlavorEClass = createEClass(MQTT_OPERATION_FLAVOR);
 		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__REQUEST_TOPIC);
@@ -3485,6 +3757,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(serviceEventEClass, SERVICE_EVENT__TYPE);
 		createEReference(serviceEventEClass, SERVICE_EVENT__REFERENCE);
 		createEAttribute(serviceEventEClass, SERVICE_EVENT__TIMESTAMP);
+		createEAttribute(serviceEventEClass, SERVICE_EVENT__REASON_CODE);
 
 		serviceListenerEClass = createEClass(SERVICE_LISTENER);
 		createEAttribute(serviceListenerEClass, SERVICE_LISTENER__FILTER);
@@ -3524,10 +3797,20 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEOperation(remoteServiceRegistryEClass, REMOTE_SERVICE_REGISTRY___DEPRECATE_CATALOG_ENTRY__SERVICEINTERFACE_STRING);
 		createEOperation(remoteServiceRegistryEClass, REMOTE_SERVICE_REGISTRY___REMOVE_CATALOG_ENTRY__SERVICEINTERFACE_STRING);
 
+		capabilityEClass = createEClass(CAPABILITY);
+		createEAttribute(capabilityEClass, CAPABILITY__NAMESPACE);
+		createEReference(capabilityEClass, CAPABILITY__ATTRIBUTES);
+
+		requirementEClass = createEClass(REQUIREMENT);
+		createEAttribute(requirementEClass, REQUIREMENT__NAMESPACE);
+		createEAttribute(requirementEClass, REQUIREMENT__FILTER);
+		createEAttribute(requirementEClass, REQUIREMENT__OPTIONAL);
+
 		consumerCapabilityEClass = createEClass(CONSUMER_CAPABILITY);
 		createEAttribute(consumerCapabilityEClass, CONSUMER_CAPABILITY__CONSUMER_ID);
 		createEAttribute(consumerCapabilityEClass, CONSUMER_CAPABILITY__SUPPORTED_FLAVORS);
 		createEReference(consumerCapabilityEClass, CONSUMER_CAPABILITY__PROPERTIES);
+		createEReference(consumerCapabilityEClass, CONSUMER_CAPABILITY__REQUIREMENTS);
 
 		publishHookEClass = createEClass(PUBLISH_HOOK);
 		createEOperation(publishHookEClass, PUBLISH_HOOK___ON_PUBLISH__SERVICEPROVIDER_SERVICEIMPLEMENTATION);
@@ -3557,10 +3840,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		diagnosticSeverityEEnum = createEEnum(DIAGNOSTIC_SEVERITY);
 		flavorKindEEnum = createEEnum(FLAVOR_KIND);
 		httpMethodEEnum = createEEnum(HTTP_METHOD);
+		parameterBindingEEnum = createEEnum(PARAMETER_BINDING);
 		mqttQosEEnum = createEEnum(MQTT_QOS);
 		registryKindEEnum = createEEnum(REGISTRY_KIND);
 		expressionLanguageEEnum = createEEnum(EXPRESSION_LANGUAGE);
 		catalogStatusEEnum = createEEnum(CATALOG_STATUS);
+		updatePolicyEEnum = createEEnum(UPDATE_POLICY);
 		connectionStateEEnum = createEEnum(CONNECTION_STATE);
 	}
 
@@ -3729,6 +4014,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getServiceInterface_Status(), this.getCatalogStatus(), "status", "ACTIVE", 1, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceInterface_DeprecationReason(), ecorePackage.getEString(), "deprecationReason", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceInterface_ReplacedBy(), this.getServiceInterface(), null, "replacedBy", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceInterface_UpdatePolicy(), this.getUpdatePolicy(), "updatePolicy", null, 1, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(lifecycleHookEClass, LifecycleHook.class, "LifecycleHook", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getLifecycleHook_Kind(), this.getLifecycleHookKind(), "kind", null, 1, 1, LifecycleHook.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -3776,10 +4062,15 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getServiceImplementation_Flavors(), this.getServiceFlavor(), null, "flavors", null, 0, -1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceImplementation_Properties(), this.getProperty(), null, "properties", null, 0, -1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceImplementation_ComponentDescription(), this.getComponentDescription(), null, "componentDescription", null, 0, 1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceImplementation_UpdatePolicy(), this.getUpdatePolicy(), "updatePolicy", null, 1, 1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceImplementation_Replaces(), this.getServiceImplementation(), null, "replaces", null, 0, 1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceImplementation_CutoverGraceMillis(), ecorePackage.getELong(), "cutoverGraceMillis", null, 0, 1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceImplementation_Capabilities(), this.getCapability(), null, "capabilities", null, 0, -1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(serviceFlavorEClass, ServiceFlavor.class, "ServiceFlavor", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceFlavor_Kind(), this.getFlavorKind(), "kind", null, 1, 1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceFlavor_OperationFlavors(), this.getServiceOperationFlavor(), null, "operationFlavors", null, 0, -1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceFlavor_Capabilities(), this.getCapability(), null, "capabilities", null, 0, -1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(restFlavorEClass, RestFlavor.class, "RestFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getRestFlavor_Host(), ecorePackage.getEString(), "host", null, 0, 1, RestFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -3802,6 +4093,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getRestOperationFlavor_Method(), this.getHttpMethod(), "method", null, 1, 1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestOperationFlavor_Path(), ecorePackage.getEString(), "path", null, 0, 1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestOperationFlavor_ReturnCodes(), ecorePackage.getEInt(), "returnCodes", null, 1, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getRestOperationFlavor_ParameterBindings(), this.getRestParameterBinding(), null, "parameterBindings", null, 0, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(restParameterBindingEClass, RestParameterBinding.class, "RestParameterBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getRestParameterBinding_Parameter(), this.getParameter(), null, "parameter", null, 1, 1, RestParameterBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getRestParameterBinding_Binding(), this.getParameterBinding(), "binding", null, 1, 1, RestParameterBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getRestParameterBinding_WireName(), ecorePackage.getEString(), "wireName", null, 0, 1, RestParameterBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(mqttOperationFlavorEClass, MqttOperationFlavor.class, "MqttOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getMqttOperationFlavor_RequestTopic(), ecorePackage.getEString(), "requestTopic", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -3873,6 +4170,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getServiceEvent_Type(), this.getServiceEventType(), "type", null, 1, 1, ServiceEvent.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceEvent_Reference(), this.getServiceReference(), null, "reference", null, 1, 1, ServiceEvent.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceEvent_Timestamp(), ecorePackage.getEDate(), "timestamp", null, 0, 1, ServiceEvent.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceEvent_ReasonCode(), ecorePackage.getEString(), "reasonCode", null, 0, 1, ServiceEvent.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(serviceListenerEClass, ServiceListener.class, "ServiceListener", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceListener_Filter(), ecorePackage.getEString(), "filter", null, 0, 1, ServiceListener.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -3949,10 +4247,20 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEParameter(op, this.getServiceInterface(), "serviceInterface", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, ecorePackage.getEString(), "requestor", 0, 1, IS_UNIQUE, IS_ORDERED);
 
+		initEClass(capabilityEClass, Capability.class, "Capability", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getCapability_Namespace(), ecorePackage.getEString(), "namespace", null, 1, 1, Capability.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getCapability_Attributes(), this.getProperty(), null, "attributes", null, 0, -1, Capability.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(requirementEClass, Requirement.class, "Requirement", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getRequirement_Namespace(), ecorePackage.getEString(), "namespace", null, 1, 1, Requirement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getRequirement_Filter(), ecorePackage.getEString(), "filter", null, 0, 1, Requirement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getRequirement_Optional(), ecorePackage.getEBoolean(), "optional", null, 0, 1, Requirement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		initEClass(consumerCapabilityEClass, ConsumerCapability.class, "ConsumerCapability", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getConsumerCapability_ConsumerId(), ecorePackage.getEString(), "consumerId", null, 0, 1, ConsumerCapability.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getConsumerCapability_SupportedFlavors(), this.getFlavorKind(), "supportedFlavors", null, 1, -1, ConsumerCapability.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getConsumerCapability_Properties(), this.getProperty(), null, "properties", null, 0, -1, ConsumerCapability.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getConsumerCapability_Requirements(), this.getRequirement(), null, "requirements", null, 0, -1, ConsumerCapability.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(publishHookEClass, PublishHook.class, "PublishHook", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
@@ -4024,6 +4332,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(serviceEventTypeEEnum, ServiceEventType.MODIFIED);
 		addEEnumLiteral(serviceEventTypeEEnum, ServiceEventType.UNREGISTERING);
 		addEEnumLiteral(serviceEventTypeEEnum, ServiceEventType.MODIFIED_ENDMATCH);
+		addEEnumLiteral(serviceEventTypeEEnum, ServiceEventType.UPGRADE_AVAILABLE);
+		addEEnumLiteral(serviceEventTypeEEnum, ServiceEventType.RETIRED);
 
 		initEEnum(fieldOptionEEnum, FieldOption.class, "FieldOption");
 		addEEnumLiteral(fieldOptionEEnum, FieldOption.REPLACE);
@@ -4068,6 +4378,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(httpMethodEEnum, HttpMethod.HEAD);
 		addEEnumLiteral(httpMethodEEnum, HttpMethod.OPTIONS);
 
+		initEEnum(parameterBindingEEnum, ParameterBinding.class, "ParameterBinding");
+		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.BODY);
+		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.QUERY);
+		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.HEADER);
+		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.PATH);
+
 		initEEnum(mqttQosEEnum, MqttQos.class, "MqttQos");
 		addEEnumLiteral(mqttQosEEnum, MqttQos.AT_MOST_ONCE);
 		addEEnumLiteral(mqttQosEEnum, MqttQos.AT_LEAST_ONCE);
@@ -4083,6 +4399,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEEnum(catalogStatusEEnum, CatalogStatus.class, "CatalogStatus");
 		addEEnumLiteral(catalogStatusEEnum, CatalogStatus.ACTIVE);
 		addEEnumLiteral(catalogStatusEEnum, CatalogStatus.DEPRECATED);
+
+		initEEnum(updatePolicyEEnum, UpdatePolicy.class, "UpdatePolicy");
+		addEEnumLiteral(updatePolicyEEnum, UpdatePolicy.UNSPECIFIED);
+		addEEnumLiteral(updatePolicyEEnum, UpdatePolicy.EVERGREEN);
+		addEEnumLiteral(updatePolicyEEnum, UpdatePolicy.DEPRECATE_AND_DRAIN);
+		addEEnumLiteral(updatePolicyEEnum, UpdatePolicy.HARD_CUTOVER);
 
 		initEEnum(connectionStateEEnum, ConnectionState.class, "ConnectionState");
 		addEEnumLiteral(connectionStateEEnum, ConnectionState.CONNECTED);
@@ -4133,7 +4455,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   new String[] {
 			   "complianceLevel", "17.0",
 			   "oSGiCompatible", "true",
-			   "basePackage", "org.gecko.ddsr.model",
+			   "basePackage", "org.eclipse.fennec",
 			   "resource", "XMI",
 			   "documentation", "Gecko DDSR \u2014 Dynamic Distributed Service Registry. Language-neutral model of an OSGi-inspired service registry that spans Java, TypeScript, and Python. Combines OSGi DS (declarative components, references, lifecycle) with OSGi service-registry events and a UDDI-style central Broker (Remote Registry). The model is the contract between Java and TypeScript implementations \u2014 see REQUIREMENTS.md NFR-Behavioral-Parity."
 		   });
@@ -4177,7 +4499,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (serviceEventTypeEEnum,
 		   source,
 		   new String[] {
-			   "documentation", "Lifecycle event types. Values follow org.osgi.framework.ServiceEvent and are bitwise-combinable so listener filters can subscribe to multiple types at once. UNSPECIFIED = no type set; exists only so that none of the meaningful literals is the EMF default, because EMF omits an attribute whose value equals the default and a required type would then be missing on the wire (see OPEN_ISSUES W4). REGISTERED = service appeared; MODIFIED = properties changed, still matches subscriber filter; UNREGISTERING = service is being removed; MODIFIED_ENDMATCH = properties changed, no longer matches subscriber filter."
+			   "documentation", "Lifecycle event types. Values follow org.osgi.framework.ServiceEvent and are bitwise-combinable so listener filters can subscribe to multiple types at once. UNSPECIFIED = no type set; exists only so that none of the meaningful literals is the EMF default, because EMF omits an attribute whose value equals the default and a required type would then be missing on the wire (see OPEN_ISSUES W4). REGISTERED = service appeared; MODIFIED = properties changed, still matches subscriber filter; UNREGISTERING = service is being removed; MODIFIED_ENDMATCH = properties changed, no longer matches subscriber filter. UPGRADE_AVAILABLE = a newer ServiceImplementation that declares replaces = the referenced one has been published under DEPRECATE_AND_DRAIN; the old service stays live, consumers should re-lookup and migrate at their own pace. RETIRED = the service has been fully removed from the registry after an UNREGISTERING; sessions still holding a lease on it are released. Both extend the OSGi set; see docs/UPDATE_POLICY.md. ServiceEvent.reasonCode tells why an UNREGISTERING / RETIRED happened."
 		   });
 		addAnnotation
 		  (fieldOptionEEnum,
@@ -4222,6 +4544,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "HTTP request method used by a RestOperationFlavor."
 		   });
 		addAnnotation
+		  (parameterBindingEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "Where a Parameter of a ServiceOperation travels on a REST wire (RestParameterBinding). BODY = part of the request payload; this is the default, so a parameter without an explicit binding is BODY and the literal is omitted from the wire by EMF, which is intended here. QUERY = query parameter, key = wireName or the parameter name. HEADER = HTTP header, name = wireName or the parameter name. PATH = substituted into a \'{name}\' template segment of RestOperationFlavor.path. Transport-specific by design: it lives in the flavor layer (im1), not on the catalog Parameter (sd1), so a binding change never moves a contract address."
+		   });
+		addAnnotation
 		  (mqttQosEEnum,
 		   source,
 		   new String[] {
@@ -4244,6 +4572,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Lifecycle marker on a ServiceInterface in the API catalog. ACTIVE = freely publishable and lookupable. DEPRECATED = still usable (existing implementations stay live, lookups still resolve), but new publishImplementation calls return a WARNING diagnostic and the catalog UI flags the entry for migration. There is no further status \u2014 removeCatalogEntry rejects while implementations exist."
+		   });
+		addAnnotation
+		  (updatePolicyEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "How the broker treats a ServiceImplementation once a successor for it is published (docs/UPDATE_POLICY.md). UNSPECIFIED = not set: on a ServiceInterface the broker default applies (DEPRECATE_AND_DRAIN), on a ServiceImplementation the policy of its ServiceInterface applies \u2014 it is the EMF default literal so that any explicit choice always reaches the wire (same reasoning as ServiceEventType.UNSPECIFIED, OPEN_ISSUES W4). EVERGREEN = old and new stay registered side by side indefinitely; retirement is a manual withdraw (broker API itself, infrastructure services). DEPRECATE_AND_DRAIN = the successor is published, the old one is flagged and lookups prefer the successor, consumers get UPGRADE_AVAILABLE, the old one is retired once the last ConsumerSession lease on it has been released or expired. HARD_CUTOVER = the successor is published, after cutoverGraceMillis the broker sends UNREGISTERING for the old one regardless of open leases (security fix, breaking change)."
 		   });
 		addAnnotation
 		  (connectionStateEEnum,
@@ -4636,6 +4970,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Optional migration hint: another ServiceInterface that supersedes this one. Non-containment. Lets tooling chain deprecated \u2192 successor \u2192 successor for multi-step migration trails."
 		   });
 		addAnnotation
+		  (getServiceInterface_UpdatePolicy(),
+		   source,
+		   new String[] {
+			   "documentation", "Default update policy for every ServiceImplementation of this interface; an implementation may override it via ServiceImplementation.updatePolicy. UNSPECIFIED = broker default (DEPRECATE_AND_DRAIN). Lifecycle metadata like status/deprecationReason/replacedBy: not part of the sd1 fingerprint and to be neutralized by contract addressing, so changing the policy does not move the catalog address."
+		   });
+		addAnnotation
 		  (lifecycleHookEClass,
 		   source,
 		   new String[] {
@@ -4882,6 +5222,30 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Back-link to the DS ComponentDescription, if this implementation is DS-driven. Non-containment; can be null for plain (non-DS) implementations."
 		   });
 		addAnnotation
+		  (getServiceImplementation_UpdatePolicy(),
+		   source,
+		   new String[] {
+			   "documentation", "Per-implementation override of ServiceInterface.updatePolicy. UNSPECIFIED = inherit from the interface (the common case). Evaluated by the broker when a successor declaring replaces = this implementation is published. Not part of the im1 fingerprint."
+		   });
+		addAnnotation
+		  (getServiceImplementation_Replaces(),
+		   source,
+		   new String[] {
+			   "documentation", "The registered ServiceImplementation this one supersedes, typically the previous version under the same name. Non-containment, resolved by the broker via (name, version) like serviceInterfaces are resolved against the catalog. Null = plain publish (today\'s behaviour: same (name, version) is deduplicated synchronously, a different one simply coexists). Set = the effective update policy decides what happens to the predecessor: nothing (EVERGREEN), UPGRADE_AVAILABLE + drain (DEPRECATE_AND_DRAIN), or UNREGISTERING after cutoverGraceMillis (HARD_CUTOVER)."
+		   });
+		addAnnotation
+		  (getServiceImplementation_CutoverGraceMillis(),
+		   source,
+		   new String[] {
+			   "documentation", "HARD_CUTOVER only: failover window in milliseconds between publishing this implementation and the broker retiring the one named in replaces. 0 / unset = broker default. Ignored for the other policies."
+		   });
+		addAnnotation
+		  (getServiceImplementation_Capabilities(),
+		   source,
+		   new String[] {
+			   "documentation", "Implementation-level capabilities, valid for every flavor of this implementation (content types, encodings, tenant/region, \u2026). Transport-specific ones belong on the ServiceFlavor. The broker derives a \'services.transport\' capability per flavor from ServiceFlavor.kind automatically, so plain publishers need not declare anything here."
+		   });
+		addAnnotation
 		  (serviceFlavorEClass,
 		   source,
 		   new String[] {
@@ -4898,6 +5262,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Per-operation transport bindings (HTTP method+path for REST, request/response topic for MQTT, \u2026). Empty = the flavor\'s interface-level defaults apply to every operation."
+		   });
+		addAnnotation
+		  (getServiceFlavor_Capabilities(),
+		   source,
+		   new String[] {
+			   "documentation", "Transport-level capabilities of this flavor (MQTT protocol version, QoS ceiling, TLS, supported media types, \u2026). Added to the implementation\'s effective capability set when matching Requirements. The \'services.transport\' capability with kind = this flavor\'s kind is implied and need not be listed."
 		   });
 		addAnnotation
 		  (restFlavorEClass,
@@ -4987,7 +5357,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes."
+			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings)."
 		   });
 		addAnnotation
 		  (getRestOperationFlavor_Method(),
@@ -5006,6 +5376,36 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation\'s ServiceExceptions."
+		   });
+		addAnnotation
+		  (getRestOperationFlavor_ParameterBindings(),
+		   source,
+		   new String[] {
+			   "documentation", "Where each Parameter of the operation travels on the wire. Parameters without an entry are BODY (today\'s behaviour: all arguments in the XMI payload, several of them as the multi-arg bundle). Lets a REST binding express GET /payments/{id}?currency=EUR with a tenant header instead of forcing everything into the body (OPEN_ISSUES W3)."
+		   });
+		addAnnotation
+		  (restParameterBindingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Wire placement of one operation Parameter inside a RestOperationFlavor. Owned by the flavor, so it is implementation-specific (im1 layer) and never touches the catalog contract (sd1)."
+		   });
+		addAnnotation
+		  (getRestParameterBinding_Parameter(),
+		   source,
+		   new String[] {
+			   "documentation", "The Parameter of the bound ServiceOperation. Non-containment: parameters are owned by the catalog operation, same resolution rule as ServiceOperationFlavor.operation."
+		   });
+		addAnnotation
+		  (getRestParameterBinding_Binding(),
+		   source,
+		   new String[] {
+			   "documentation", "BODY / QUERY / HEADER / PATH. PATH requires a matching \'{parameterName}\' segment in RestOperationFlavor.path; the broker checks that on publish (the static OCL only checks that a path exists)."
+		   });
+		addAnnotation
+		  (getRestParameterBinding_WireName(),
+		   source,
+		   new String[] {
+			   "documentation", "Name used on the wire when it differs from the Parameter name: query key, header name (\'X-Tenant\') or path template variable. Null = the Parameter name."
 		   });
 		addAnnotation
 		  (mqttOperationFlavorEClass,
@@ -5356,6 +5756,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "When the event was generated. Optional in OSGi semantics; useful for audit trails and event-stream ordering across the federation."
 		   });
 		addAnnotation
+		  (getServiceEvent_ReasonCode(),
+		   source,
+		   new String[] {
+			   "documentation", "Why the transition happened; lets a consumer tell \'gone for good\' from \'replaced\' from \'parked\'. Short stable upper-case token, null for plain REGISTERED / MODIFIED. Broker vocabulary: WITHDRAWN (provider withdrew), REPLACED (same (name, version) republished, or DEPRECATE_AND_DRAIN drain finished), CUTOVER (HARD_CUTOVER grace elapsed), COLDIFIED (idle sweep moved the entry to the cold cache, it is still discoverable and rehydrates on demand), SESSION_EXPIRED, PROVIDER_LOST. Free-form so transports and future policies can add tokens without a model change."
+		   });
+		addAnnotation
 		  (serviceListenerEClass,
 		   source,
 		   new String[] {
@@ -5704,10 +6110,52 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Providers known to the broker. Non-containment: providers also live under their LocalServiceRegistry."
 		   });
 		addAnnotation
+		  (capabilityEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Something a ServiceImplementation or ServiceFlavor offers, modelled like an OSGi Provide-Capability: a namespace plus typed attributes. Matched against Requirement entries of a ConsumerCapability at lookup time (docs/WIRE_CHANNELS.md \u00a76): a Requirement is satisfied when a Capability with the same namespace exists whose attributes match the Requirement\'s LDAP filter. The effective capability set of an implementation is its own capabilities plus those of its flavors. Namespace conventions (proposal, extensible): \'services.transport\' with attributes kind (REST|MQTT) and version; \'services.contentType\' with type; \'services.encoding\' with format (XMI|JSON). Providers may add their own namespaces (\'acme.region\')."
+		   });
+		addAnnotation
+		  (getCapability_Namespace(),
+		   source,
+		   new String[] {
+			   "documentation", "Capability namespace, dotted lower-case (\'services.transport\'). Matching is exact and case-sensitive."
+		   });
+		addAnnotation
+		  (getCapability_Attributes(),
+		   source,
+		   new String[] {
+			   "documentation", "Typed attributes of the capability (the same Property hierarchy the registry already evaluates LDAP filters against). Property.name is the attribute key; keys are unique within one capability. An empty list means \'present, no further detail\' and satisfies any Requirement in the namespace that carries no filter."
+		   });
+		addAnnotation
+		  (requirementEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Something a consumer needs from a candidate implementation, modelled like an OSGi Require-Capability. Satisfied when the candidate\'s effective capability set contains a Capability in the same namespace whose attributes match filter (null filter = namespace presence is enough). All requirements of a ConsumerCapability must be satisfied for a ServiceReference to be returned by getServiceReferences; getAllServiceReferences ignores requirements like it ignores supportedFlavors."
+		   });
+		addAnnotation
+		  (getRequirement_Namespace(),
+		   source,
+		   new String[] {
+			   "documentation", "Namespace to look for, matched exactly against Capability.namespace."
+		   });
+		addAnnotation
+		  (getRequirement_Filter(),
+		   source,
+		   new String[] {
+			   "documentation", "OSGi/LDAP filter evaluated against the attributes of a Capability in the namespace, e.g. \'(&(kind=MQTT)(version>=5))\' or \'(type=application/*)\'. Null = any capability in the namespace satisfies the requirement."
+		   });
+		addAnnotation
+		  (getRequirement_Optional(),
+		   source,
+		   new String[] {
+			   "documentation", "OSGi resolution:=optional. False (default) = hard requirement, unmatched candidates are dropped. True = preference: candidates that satisfy it rank before candidates that do not, none is dropped."
+		   });
+		addAnnotation
 		  (consumerCapabilityEClass,
 		   source,
 		   new String[] {
-			   "documentation", "Bag of capabilities a consumer attaches to a lookup. NOT persistent \u2014 created per request and passed through getServiceReferences / getAllServiceReferences. The registry uses supportedFlavors to filter implementations the consumer cannot actually invoke."
+			   "documentation", "Bag of capabilities a consumer attaches to a lookup. NOT persistent \u2014 created per request and passed through getServiceReferences / getAllServiceReferences. The registry uses supportedFlavors and requirements to filter implementations the consumer cannot actually invoke; supportedFlavors is the coarse transport switch, requirements the general mechanism (a supportedFlavors entry REST is equivalent to a requirement \'services.transport\' with filter \'(kind=REST)\')."
 		   });
 		addAnnotation
 		  (getConsumerCapability_ConsumerId(),
@@ -5726,6 +6174,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Additional capability hints (accepted content types, encoding preferences, \u2026). Open-ended bag."
+		   });
+		addAnnotation
+		  (getConsumerCapability_Requirements(),
+		   source,
+		   new String[] {
+			   "documentation", "Requirements every returned implementation must satisfy (all of them, AND). Empty = no constraint beyond supportedFlavors and the LDAP filter of the lookup. Several requirements in the same namespace are allowed and all apply."
 		   });
 		addAnnotation
 		  (publishHookEClass,
@@ -5838,7 +6292,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (serviceImplementationEClass,
 		   source,
 		   new String[] {
-			   "constraints", "atLeastOneInterface operationFlavorsCoverInterfaces"
+			   "constraints", "atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative"
+		   });
+		addAnnotation
+		  (restOperationFlavorEClass,
+		   source,
+		   new String[] {
+			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath"
 		   });
 		addAnnotation
 		  (serviceRegistrationEClass,
@@ -5857,6 +6317,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "constraints", "publishedImplsHaveFlavor publishedImplsReferenceCatalog publishedImplsOwnedByListedProvider"
+		   });
+		addAnnotation
+		  (capabilityEClass,
+		   source,
+		   new String[] {
+			   "constraints", "attributeNamesUnique"
 		   });
 	}
 
@@ -5907,7 +6373,17 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "atLeastOneInterface", "serviceInterfaces->notEmpty()",
-			   "operationFlavorsCoverInterfaces", "flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))"
+			   "operationFlavorsCoverInterfaces", "flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))",
+			   "replacesIsNotSelf", "replaces = null or replaces <> self",
+			   "cutoverGraceNonNegative", "cutoverGraceMillis >= 0"
+		   });
+		addAnnotation
+		  (restOperationFlavorEClass,
+		   source,
+		   new String[] {
+			   "bindingsReferenceOperationParameters", "parameterBindings->forAll(b | operation.parameters->includes(b.parameter))",
+			   "oneBindingPerParameter", "parameterBindings->isUnique(b | b.parameter)",
+			   "pathBindingsNeedPath", "parameterBindings->forAll(b | b.binding.toString() <> \'PATH\' or path <> null)"
 		   });
 		addAnnotation
 		  (serviceRegistrationEClass,
@@ -5934,6 +6410,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "publishedImplsHaveFlavor", "implementations->forAll(i | i.flavors->notEmpty())",
 			   "publishedImplsReferenceCatalog", "implementations->forAll(i | i.serviceInterfaces->forAll(si | catalog->includes(si)))",
 			   "publishedImplsOwnedByListedProvider", "implementations->forAll(i | providers->exists(p | p.implementations->includes(i)))"
+		   });
+		addAnnotation
+		  (capabilityEClass,
+		   source,
+		   new String[] {
+			   "attributeNamesUnique", "attributes->isUnique(a | a.name)"
 		   });
 	}
 

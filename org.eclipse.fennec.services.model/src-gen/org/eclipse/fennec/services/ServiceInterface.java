@@ -26,6 +26,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getStatus <em>Status</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getDeprecationReason <em>Deprecation Reason</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getReplacedBy <em>Replaced By</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getUpdatePolicy <em>Update Policy</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface()
@@ -183,5 +184,33 @@ public interface ServiceInterface extends NamedElement, VersionedElement {
 	 * @generated
 	 */
 	void setReplacedBy(ServiceInterface value);
+
+	/**
+	 * Returns the value of the '<em><b>Update Policy</b></em>' attribute.
+	 * The literals are from the enumeration {@link org.eclipse.fennec.services.UpdatePolicy}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Default update policy for every ServiceImplementation of this interface; an implementation may override it via ServiceImplementation.updatePolicy. UNSPECIFIED = broker default (DEPRECATE_AND_DRAIN). Lifecycle metadata like status/deprecationReason/replacedBy: not part of the sd1 fingerprint and to be neutralized by contract addressing, so changing the policy does not move the catalog address.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Update Policy</em>' attribute.
+	 * @see org.eclipse.fennec.services.UpdatePolicy
+	 * @see #setUpdatePolicy(UpdatePolicy)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface_UpdatePolicy()
+	 * @model required="true"
+	 * @generated
+	 */
+	UpdatePolicy getUpdatePolicy();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceInterface#getUpdatePolicy <em>Update Policy</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Update Policy</em>' attribute.
+	 * @see org.eclipse.fennec.services.UpdatePolicy
+	 * @see #getUpdatePolicy()
+	 * @generated
+	 */
+	void setUpdatePolicy(UpdatePolicy value);
 
 } // ServiceInterface

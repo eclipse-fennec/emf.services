@@ -5,102 +5,101 @@
  * @generated
  */
 
+import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceFlavor } from './ServiceFlavor';
-import { ServiceFlavorImpl } from './ServiceFlavorImpl';
-import type { RestFlavor } from './RestFlavor';
+import type { Requirement } from './Requirement';
 import { DDSRPackage } from './DDSRPackage';
 
 /**
- * Implementation of RestFlavor
+ * Implementation of Requirement
  * @generated
  */
-export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
+export class RequirementImpl extends BasicEObject implements Requirement {
   // Feature ID Constants (eLiterals)
-  static readonly HOST: number = 4;
-  static readonly BASE_PATH: number = 5;
-  static readonly CONTENT_TYPES: number = 6;
+  static readonly NAMESPACE: number = 0;
+  static readonly FILTER: number = 1;
+  static readonly OPTIONAL: number = 2;
 
   // Private fields
-  private _host?: string;
-  private _basePath: string = "";
-  private _contentTypes: string[] = [];
+  private _namespace: string = "";
+  private _filter?: string;
+  private _optional?: boolean;
 
   /**
    * Returns the EClass of this object
    */
   override eClass(): EClass {
-    return DDSRPackage.Literals.REST_FLAVOR;
+    return DDSRPackage.Literals.REQUIREMENT;
   }
 
   // Getters and Setters
-  get host(): string {
-    return this._host!;
+  get namespace(): string {
+    return this._namespace!;
   }
 
-  set host(value: string) {
-    const oldValue = this._host;
-    this._host = value;
+  set namespace(value: string) {
+    const oldValue = this._namespace;
+    this._namespace = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RestFlavorImpl.HOST),
+        getFeature: () => this.eClass().getEStructuralFeature(RequirementImpl.NAMESPACE),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => RestFlavorImpl.HOST,
+        getFeatureID: () => RequirementImpl.NAMESPACE,
         merge: () => false
       });
     }
   }
 
-  get basePath(): string {
-    return this._basePath!;
+  get filter(): string {
+    return this._filter!;
   }
 
-  set basePath(value: string) {
-    const oldValue = this._basePath;
-    this._basePath = value;
+  set filter(value: string) {
+    const oldValue = this._filter;
+    this._filter = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RestFlavorImpl.BASE_PATH),
+        getFeature: () => this.eClass().getEStructuralFeature(RequirementImpl.FILTER),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => RestFlavorImpl.BASE_PATH,
+        getFeatureID: () => RequirementImpl.FILTER,
         merge: () => false
       });
     }
   }
 
-  get contentTypes(): string[] {
-    return this._contentTypes;
+  get optional(): boolean {
+    return this._optional!;
   }
 
-  set contentTypes(value: string[]) {
-    const oldValue = this._contentTypes;
-    this._contentTypes = value;
+  set optional(value: boolean) {
+    const oldValue = this._optional;
+    this._optional = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RestFlavorImpl.CONTENT_TYPES),
+        getFeature: () => this.eClass().getEStructuralFeature(RequirementImpl.OPTIONAL),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => RestFlavorImpl.CONTENT_TYPES,
+        getFeatureID: () => RequirementImpl.OPTIONAL,
         merge: () => false
       });
     }
@@ -114,12 +113,12 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eGet(feature: EStructuralFeature): unknown {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        return this.host;
-      case RestFlavorImpl.BASE_PATH:
-        return this.basePath;
-      case RestFlavorImpl.CONTENT_TYPES:
-        return this.contentTypes;
+      case RequirementImpl.NAMESPACE:
+        return this.namespace;
+      case RequirementImpl.FILTER:
+        return this.filter;
+      case RequirementImpl.OPTIONAL:
+        return this.optional;
       default:
         return super.eGet(feature);
     }
@@ -131,16 +130,16 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eSet(feature: EStructuralFeature, newValue: unknown): void {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        this.host = newValue as string;
+      case RequirementImpl.NAMESPACE:
+        this.namespace = newValue as string;
         super.eSet(feature, newValue);
         break;
-      case RestFlavorImpl.BASE_PATH:
-        this.basePath = newValue as string;
+      case RequirementImpl.FILTER:
+        this.filter = newValue as string;
         super.eSet(feature, newValue);
         break;
-      case RestFlavorImpl.CONTENT_TYPES:
-        this.contentTypes = newValue as string[];
+      case RequirementImpl.OPTIONAL:
+        this.optional = newValue as boolean;
         super.eSet(feature, newValue);
         break;
       default:
@@ -154,12 +153,12 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eIsSet(feature: EStructuralFeature): boolean {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        return this._host !== undefined;
-      case RestFlavorImpl.BASE_PATH:
-        return this._basePath !== "";
-      case RestFlavorImpl.CONTENT_TYPES:
-        return this._contentTypes !== undefined && this._contentTypes.length > 0;
+      case RequirementImpl.NAMESPACE:
+        return this._namespace !== "";
+      case RequirementImpl.FILTER:
+        return this._filter !== undefined;
+      case RequirementImpl.OPTIONAL:
+        return this._optional !== undefined;
       default:
         return super.eIsSet(feature);
     }
@@ -171,14 +170,14 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   override eUnset(feature: EStructuralFeature): void {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case RestFlavorImpl.HOST:
-        this._host = undefined;
+      case RequirementImpl.NAMESPACE:
+        this._namespace = "";
         return;
-      case RestFlavorImpl.BASE_PATH:
-        this._basePath = "";
+      case RequirementImpl.FILTER:
+        this._filter = undefined;
         return;
-      case RestFlavorImpl.CONTENT_TYPES:
-        this._contentTypes = [];
+      case RequirementImpl.OPTIONAL:
+        this._optional = undefined;
         return;
       default:
         super.eUnset(feature);

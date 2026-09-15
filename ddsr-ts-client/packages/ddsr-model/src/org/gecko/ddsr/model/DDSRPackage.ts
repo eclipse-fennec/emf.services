@@ -104,6 +104,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_INTERFACE__STATUS: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__DEPRECATION_REASON: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__REPLACED_BY: null as unknown as EAttribute | EReference,
+    SERVICE_INTERFACE__UPDATE_POLICY: null as unknown as EAttribute | EReference,
     LIFECYCLE_HOOK: null as unknown as EClass,
     LIFECYCLE_HOOK__KIND: null as unknown as EAttribute | EReference,
     LIFECYCLE_HOOK__PARAMETER: null as unknown as EAttribute | EReference,
@@ -145,9 +146,14 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_IMPLEMENTATION__FLAVORS: null as unknown as EAttribute | EReference,
     SERVICE_IMPLEMENTATION__PROPERTIES: null as unknown as EAttribute | EReference,
     SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION: null as unknown as EAttribute | EReference,
+    SERVICE_IMPLEMENTATION__UPDATE_POLICY: null as unknown as EAttribute | EReference,
+    SERVICE_IMPLEMENTATION__REPLACES: null as unknown as EAttribute | EReference,
+    SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS: null as unknown as EAttribute | EReference,
+    SERVICE_IMPLEMENTATION__CAPABILITIES: null as unknown as EAttribute | EReference,
     SERVICE_FLAVOR: null as unknown as EClass,
     SERVICE_FLAVOR__KIND: null as unknown as EAttribute | EReference,
     SERVICE_FLAVOR__OPERATION_FLAVORS: null as unknown as EAttribute | EReference,
+    SERVICE_FLAVOR__CAPABILITIES: null as unknown as EAttribute | EReference,
     REST_FLAVOR: null as unknown as EClass,
     REST_FLAVOR__HOST: null as unknown as EAttribute | EReference,
     REST_FLAVOR__BASE_PATH: null as unknown as EAttribute | EReference,
@@ -166,6 +172,11 @@ export class DDSRPackage extends BasicEPackage {
     REST_OPERATION_FLAVOR__METHOD: null as unknown as EAttribute | EReference,
     REST_OPERATION_FLAVOR__PATH: null as unknown as EAttribute | EReference,
     REST_OPERATION_FLAVOR__RETURN_CODES: null as unknown as EAttribute | EReference,
+    REST_OPERATION_FLAVOR__PARAMETER_BINDINGS: null as unknown as EAttribute | EReference,
+    REST_PARAMETER_BINDING: null as unknown as EClass,
+    REST_PARAMETER_BINDING__PARAMETER: null as unknown as EAttribute | EReference,
+    REST_PARAMETER_BINDING__BINDING: null as unknown as EAttribute | EReference,
+    REST_PARAMETER_BINDING__WIRE_NAME: null as unknown as EAttribute | EReference,
     MQTT_OPERATION_FLAVOR: null as unknown as EClass,
     MQTT_OPERATION_FLAVOR__REQUEST_TOPIC: null as unknown as EAttribute | EReference,
     MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC: null as unknown as EAttribute | EReference,
@@ -218,6 +229,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_EVENT__TYPE: null as unknown as EAttribute | EReference,
     SERVICE_EVENT__REFERENCE: null as unknown as EAttribute | EReference,
     SERVICE_EVENT__TIMESTAMP: null as unknown as EAttribute | EReference,
+    SERVICE_EVENT__REASON_CODE: null as unknown as EAttribute | EReference,
     SERVICE_LISTENER: null as unknown as EClass,
     SERVICE_LISTENER__FILTER: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRY: null as unknown as EClass,
@@ -239,10 +251,18 @@ export class DDSRPackage extends BasicEPackage {
     REMOTE_SERVICE_REGISTRY__CATALOG: null as unknown as EAttribute | EReference,
     REMOTE_SERVICE_REGISTRY__IMPLEMENTATIONS: null as unknown as EAttribute | EReference,
     REMOTE_SERVICE_REGISTRY__PROVIDERS: null as unknown as EAttribute | EReference,
+    CAPABILITY: null as unknown as EClass,
+    CAPABILITY__NAMESPACE: null as unknown as EAttribute | EReference,
+    CAPABILITY__ATTRIBUTES: null as unknown as EAttribute | EReference,
+    REQUIREMENT: null as unknown as EClass,
+    REQUIREMENT__NAMESPACE: null as unknown as EAttribute | EReference,
+    REQUIREMENT__FILTER: null as unknown as EAttribute | EReference,
+    REQUIREMENT__OPTIONAL: null as unknown as EAttribute | EReference,
     CONSUMER_CAPABILITY: null as unknown as EClass,
     CONSUMER_CAPABILITY__CONSUMER_ID: null as unknown as EAttribute | EReference,
     CONSUMER_CAPABILITY__SUPPORTED_FLAVORS: null as unknown as EAttribute | EReference,
     CONSUMER_CAPABILITY__PROPERTIES: null as unknown as EAttribute | EReference,
+    CONSUMER_CAPABILITY__REQUIREMENTS: null as unknown as EAttribute | EReference,
     PUBLISH_HOOK: null as unknown as EClass,
     DISCOVERY_HOOK: null as unknown as EClass,
     DISTRIBUTION_HOOK: null as unknown as EClass,
@@ -869,6 +889,14 @@ export class DDSRPackage extends BasicEPackage {
     serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_replacedBy);
     DDSRPackage.Literals.SERVICE_INTERFACE__REPLACED_BY = serviceInterface_replacedBy;
 
+    // Create updatePolicy feature
+    const serviceInterface_updatePolicy = new BasicEAttribute();
+    serviceInterface_updatePolicy.setName('updatePolicy');
+    serviceInterface_updatePolicy.setLowerBound(1);
+    serviceInterface_updatePolicy.setUpperBound(1);
+    serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_updatePolicy);
+    DDSRPackage.Literals.SERVICE_INTERFACE__UPDATE_POLICY = serviceInterface_updatePolicy;
+
     // Create LifecycleHook class
     const lifecycleHookClass = new BasicEClass();
     lifecycleHookClass.setName('LifecycleHook');
@@ -1216,6 +1244,40 @@ export class DDSRPackage extends BasicEPackage {
     serviceImplementationClass.getEStructuralFeatures().push(serviceImplementation_componentDescription);
     DDSRPackage.Literals.SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION = serviceImplementation_componentDescription;
 
+    // Create updatePolicy feature
+    const serviceImplementation_updatePolicy = new BasicEAttribute();
+    serviceImplementation_updatePolicy.setName('updatePolicy');
+    serviceImplementation_updatePolicy.setLowerBound(1);
+    serviceImplementation_updatePolicy.setUpperBound(1);
+    serviceImplementationClass.getEStructuralFeatures().push(serviceImplementation_updatePolicy);
+    DDSRPackage.Literals.SERVICE_IMPLEMENTATION__UPDATE_POLICY = serviceImplementation_updatePolicy;
+
+    // Create replaces feature
+    const serviceImplementation_replaces = new BasicEReference();
+    serviceImplementation_replaces.setContainment(false);
+    serviceImplementation_replaces.setName('replaces');
+    serviceImplementation_replaces.setLowerBound(0);
+    serviceImplementation_replaces.setUpperBound(1);
+    serviceImplementationClass.getEStructuralFeatures().push(serviceImplementation_replaces);
+    DDSRPackage.Literals.SERVICE_IMPLEMENTATION__REPLACES = serviceImplementation_replaces;
+
+    // Create cutoverGraceMillis feature
+    const serviceImplementation_cutoverGraceMillis = new BasicEAttribute();
+    serviceImplementation_cutoverGraceMillis.setName('cutoverGraceMillis');
+    serviceImplementation_cutoverGraceMillis.setLowerBound(0);
+    serviceImplementation_cutoverGraceMillis.setUpperBound(1);
+    serviceImplementationClass.getEStructuralFeatures().push(serviceImplementation_cutoverGraceMillis);
+    DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS = serviceImplementation_cutoverGraceMillis;
+
+    // Create capabilities feature
+    const serviceImplementation_capabilities = new BasicEReference();
+    serviceImplementation_capabilities.setContainment(true);
+    serviceImplementation_capabilities.setName('capabilities');
+    serviceImplementation_capabilities.setLowerBound(0);
+    serviceImplementation_capabilities.setUpperBound(-1);
+    serviceImplementationClass.getEStructuralFeatures().push(serviceImplementation_capabilities);
+    DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CAPABILITIES = serviceImplementation_capabilities;
+
     // Create ServiceFlavor class
     const serviceFlavorClass = new BasicEClass();
     serviceFlavorClass.setName('ServiceFlavor');
@@ -1241,6 +1303,15 @@ export class DDSRPackage extends BasicEPackage {
     serviceFlavor_operationFlavors.setUpperBound(-1);
     serviceFlavorClass.getEStructuralFeatures().push(serviceFlavor_operationFlavors);
     DDSRPackage.Literals.SERVICE_FLAVOR__OPERATION_FLAVORS = serviceFlavor_operationFlavors;
+
+    // Create capabilities feature
+    const serviceFlavor_capabilities = new BasicEReference();
+    serviceFlavor_capabilities.setContainment(true);
+    serviceFlavor_capabilities.setName('capabilities');
+    serviceFlavor_capabilities.setLowerBound(0);
+    serviceFlavor_capabilities.setUpperBound(-1);
+    serviceFlavorClass.getEStructuralFeatures().push(serviceFlavor_capabilities);
+    DDSRPackage.Literals.SERVICE_FLAVOR__CAPABILITIES = serviceFlavor_capabilities;
 
     // Create RestFlavor class
     const restFlavorClass = new BasicEClass();
@@ -1390,6 +1461,49 @@ export class DDSRPackage extends BasicEPackage {
     restOperationFlavor_returnCodes.setUpperBound(-1);
     restOperationFlavorClass.getEStructuralFeatures().push(restOperationFlavor_returnCodes);
     DDSRPackage.Literals.REST_OPERATION_FLAVOR__RETURN_CODES = restOperationFlavor_returnCodes;
+
+    // Create parameterBindings feature
+    const restOperationFlavor_parameterBindings = new BasicEReference();
+    restOperationFlavor_parameterBindings.setContainment(true);
+    restOperationFlavor_parameterBindings.setName('parameterBindings');
+    restOperationFlavor_parameterBindings.setLowerBound(0);
+    restOperationFlavor_parameterBindings.setUpperBound(-1);
+    restOperationFlavorClass.getEStructuralFeatures().push(restOperationFlavor_parameterBindings);
+    DDSRPackage.Literals.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS = restOperationFlavor_parameterBindings;
+
+    // Create RestParameterBinding class
+    const restParameterBindingClass = new BasicEClass();
+    restParameterBindingClass.setName('RestParameterBinding');
+    restParameterBindingClass.setAbstract(false);
+    restParameterBindingClass.setInterface(false);
+    this.getEClassifiers().push(restParameterBindingClass);
+    restParameterBindingClass.setEPackage(this);
+    DDSRPackage.Literals.REST_PARAMETER_BINDING = restParameterBindingClass;
+
+    // Create parameter feature
+    const restParameterBinding_parameter = new BasicEReference();
+    restParameterBinding_parameter.setContainment(false);
+    restParameterBinding_parameter.setName('parameter');
+    restParameterBinding_parameter.setLowerBound(1);
+    restParameterBinding_parameter.setUpperBound(1);
+    restParameterBindingClass.getEStructuralFeatures().push(restParameterBinding_parameter);
+    DDSRPackage.Literals.REST_PARAMETER_BINDING__PARAMETER = restParameterBinding_parameter;
+
+    // Create binding feature
+    const restParameterBinding_binding = new BasicEAttribute();
+    restParameterBinding_binding.setName('binding');
+    restParameterBinding_binding.setLowerBound(1);
+    restParameterBinding_binding.setUpperBound(1);
+    restParameterBindingClass.getEStructuralFeatures().push(restParameterBinding_binding);
+    DDSRPackage.Literals.REST_PARAMETER_BINDING__BINDING = restParameterBinding_binding;
+
+    // Create wireName feature
+    const restParameterBinding_wireName = new BasicEAttribute();
+    restParameterBinding_wireName.setName('wireName');
+    restParameterBinding_wireName.setLowerBound(0);
+    restParameterBinding_wireName.setUpperBound(1);
+    restParameterBindingClass.getEStructuralFeatures().push(restParameterBinding_wireName);
+    DDSRPackage.Literals.REST_PARAMETER_BINDING__WIRE_NAME = restParameterBinding_wireName;
 
     // Create MqttOperationFlavor class
     const mqttOperationFlavorClass = new BasicEClass();
@@ -1835,6 +1949,14 @@ export class DDSRPackage extends BasicEPackage {
     serviceEventClass.getEStructuralFeatures().push(serviceEvent_timestamp);
     DDSRPackage.Literals.SERVICE_EVENT__TIMESTAMP = serviceEvent_timestamp;
 
+    // Create reasonCode feature
+    const serviceEvent_reasonCode = new BasicEAttribute();
+    serviceEvent_reasonCode.setName('reasonCode');
+    serviceEvent_reasonCode.setLowerBound(0);
+    serviceEvent_reasonCode.setUpperBound(1);
+    serviceEventClass.getEStructuralFeatures().push(serviceEvent_reasonCode);
+    DDSRPackage.Literals.SERVICE_EVENT__REASON_CODE = serviceEvent_reasonCode;
+
     // Create ServiceListener class
     const serviceListenerClass = new BasicEClass();
     serviceListenerClass.setName('ServiceListener');
@@ -2020,6 +2142,65 @@ export class DDSRPackage extends BasicEPackage {
     remoteServiceRegistryClass.getEStructuralFeatures().push(remoteServiceRegistry_providers);
     DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__PROVIDERS = remoteServiceRegistry_providers;
 
+    // Create Capability class
+    const capabilityClass = new BasicEClass();
+    capabilityClass.setName('Capability');
+    capabilityClass.setAbstract(false);
+    capabilityClass.setInterface(false);
+    this.getEClassifiers().push(capabilityClass);
+    capabilityClass.setEPackage(this);
+    DDSRPackage.Literals.CAPABILITY = capabilityClass;
+
+    // Create namespace feature
+    const capability_namespace = new BasicEAttribute();
+    capability_namespace.setName('namespace');
+    capability_namespace.setLowerBound(1);
+    capability_namespace.setUpperBound(1);
+    capabilityClass.getEStructuralFeatures().push(capability_namespace);
+    DDSRPackage.Literals.CAPABILITY__NAMESPACE = capability_namespace;
+
+    // Create attributes feature
+    const capability_attributes = new BasicEReference();
+    capability_attributes.setContainment(true);
+    capability_attributes.setName('attributes');
+    capability_attributes.setLowerBound(0);
+    capability_attributes.setUpperBound(-1);
+    capabilityClass.getEStructuralFeatures().push(capability_attributes);
+    DDSRPackage.Literals.CAPABILITY__ATTRIBUTES = capability_attributes;
+
+    // Create Requirement class
+    const requirementClass = new BasicEClass();
+    requirementClass.setName('Requirement');
+    requirementClass.setAbstract(false);
+    requirementClass.setInterface(false);
+    this.getEClassifiers().push(requirementClass);
+    requirementClass.setEPackage(this);
+    DDSRPackage.Literals.REQUIREMENT = requirementClass;
+
+    // Create namespace feature
+    const requirement_namespace = new BasicEAttribute();
+    requirement_namespace.setName('namespace');
+    requirement_namespace.setLowerBound(1);
+    requirement_namespace.setUpperBound(1);
+    requirementClass.getEStructuralFeatures().push(requirement_namespace);
+    DDSRPackage.Literals.REQUIREMENT__NAMESPACE = requirement_namespace;
+
+    // Create filter feature
+    const requirement_filter = new BasicEAttribute();
+    requirement_filter.setName('filter');
+    requirement_filter.setLowerBound(0);
+    requirement_filter.setUpperBound(1);
+    requirementClass.getEStructuralFeatures().push(requirement_filter);
+    DDSRPackage.Literals.REQUIREMENT__FILTER = requirement_filter;
+
+    // Create optional feature
+    const requirement_optional = new BasicEAttribute();
+    requirement_optional.setName('optional');
+    requirement_optional.setLowerBound(0);
+    requirement_optional.setUpperBound(1);
+    requirementClass.getEStructuralFeatures().push(requirement_optional);
+    DDSRPackage.Literals.REQUIREMENT__OPTIONAL = requirement_optional;
+
     // Create ConsumerCapability class
     const consumerCapabilityClass = new BasicEClass();
     consumerCapabilityClass.setName('ConsumerCapability');
@@ -2053,6 +2234,15 @@ export class DDSRPackage extends BasicEPackage {
     consumerCapability_properties.setUpperBound(-1);
     consumerCapabilityClass.getEStructuralFeatures().push(consumerCapability_properties);
     DDSRPackage.Literals.CONSUMER_CAPABILITY__PROPERTIES = consumerCapability_properties;
+
+    // Create requirements feature
+    const consumerCapability_requirements = new BasicEReference();
+    consumerCapability_requirements.setContainment(true);
+    consumerCapability_requirements.setName('requirements');
+    consumerCapability_requirements.setLowerBound(0);
+    consumerCapability_requirements.setUpperBound(-1);
+    consumerCapabilityClass.getEStructuralFeatures().push(consumerCapability_requirements);
+    DDSRPackage.Literals.CONSUMER_CAPABILITY__REQUIREMENTS = consumerCapability_requirements;
 
     // Create PublishHook class
     const publishHookClass = new BasicEClass();
@@ -2154,8 +2344,13 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__FLAVORS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_FLAVOR);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION as BasicEReference).setEType(DDSRPackage.Literals.COMPONENT_DESCRIPTION);
+    (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__REPLACES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
+    (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
     (DDSRPackage.Literals.SERVICE_FLAVOR__OPERATION_FLAVORS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
+    (DDSRPackage.Literals.SERVICE_FLAVOR__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__OPERATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION);
+    (DDSRPackage.Literals.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS as BasicEReference).setEType(DDSRPackage.Literals.REST_PARAMETER_BINDING);
+    (DDSRPackage.Literals.REST_PARAMETER_BINDING__PARAMETER as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROVIDER as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
     (DDSRPackage.Literals.SERVICE_REFERENCE__REGISTRATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REGISTRATION);
@@ -2188,7 +2383,9 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__CATALOG as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
     (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__IMPLEMENTATIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
     (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__PROVIDERS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
+    (DDSRPackage.Literals.CAPABILITY__ATTRIBUTES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.CONSUMER_CAPABILITY__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
+    (DDSRPackage.Literals.CONSUMER_CAPABILITY__REQUIREMENTS as BasicEReference).setEType(DDSRPackage.Literals.REQUIREMENT);
 
     // ============================================
     // Register XML name mappings from ExtendedMetaData annotations

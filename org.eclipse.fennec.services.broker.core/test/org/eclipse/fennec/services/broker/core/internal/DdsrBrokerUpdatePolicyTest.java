@@ -55,7 +55,7 @@ class DdsrBrokerUpdatePolicyTest {
 	@TempDir
 	Path tmp;
 
-	private final RecordingSink sink = new RecordingSink();
+	private final RecordingEventSink sink = new RecordingEventSink();
 	private Path snapshot;
 	private DdsrBrokerImpl broker;
 	private ServiceInterface payment;
@@ -72,23 +72,6 @@ class DdsrBrokerUpdatePolicyTest {
 	// ------------------------------------------------------------------
 	// Fixtures
 	// ------------------------------------------------------------------
-
-	private static final class RecordingSink implements EventSink {
-		final List<ServiceEvent> received = new ArrayList<>();
-
-		@Override
-		public void publish(ServiceEvent event) {
-			received.add(event);
-		}
-
-		List<ServiceEventType> types() {
-			return received.stream().map(ServiceEvent::getType).toList();
-		}
-
-		List<String> reasons() {
-			return received.stream().map(ServiceEvent::getReasonCode).toList();
-		}
-	}
 
 	private static ServiceInterface serviceInterface(String name, String... operations) {
 		ServiceInterface si = ServicesFactory.eINSTANCE.createServiceInterface();

@@ -53,13 +53,13 @@ class DdsrBrokerLifecycleTimingTest {
 	@TempDir
 	Path tmp;
 
-	private RecordingSink sink;
+	private RecordingEventSink sink;
 
 	private DdsrBrokerImpl broker;
 
 	@BeforeEach
 	void setUp() {
-		sink = new RecordingSink();
+		sink = new RecordingEventSink();
 		broker = new DdsrBrokerImpl(tmp.resolve("broker-state.xmi"), new InMemoryLookupBackend(), sink);
 		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
 	}
@@ -67,20 +67,6 @@ class DdsrBrokerLifecycleTimingTest {
 	// ------------------------------------------------------------------
 	// Fixtures
 	// ------------------------------------------------------------------
-
-	private static final class RecordingSink implements EventSink {
-
-		private final List<ServiceEvent> received = new ArrayList<>();
-
-		@Override
-		public void publish(ServiceEvent event) {
-			received.add(event);
-		}
-
-		List<ServiceEventType> types() {
-			return received.stream().map(ServiceEvent::getType).toList();
-		}
-	}
 
 	private static ServiceInterface serviceInterface(String name, String... operations) {
 		ServiceInterface si = ServicesFactory.eINSTANCE.createServiceInterface();

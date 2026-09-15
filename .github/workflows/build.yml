@@ -22,3 +22,34 @@ concurrency:
 jobs:
   verify:
     uses: eclipse-fennec/.github/.github/workflows/reusable-verify.yml@4c8b1daf597d0ae439253b59c42d7e52049d5137 # v1.1.2
+
+  # The docs site is only built and deployed by the snapshot workflow, so a PR
+  # cannot break the deploy — except that it can: a dependency bump that npm ci
+  # refuses (peer conflict) only surfaces after the merge, in the snapshot
+  # build's docs job (mermaid 12 vs vitepress-plugin-mermaid, 2026-09-15). This
+  # job runs the same install + build without the Pages deploy, so such PRs go
+  # red before they land. Same Node and action pins as reusable-docs.yml.
+  docs-check:
+    name: Docs build check (no deploy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920 # v2.20.0
+        with:
+          egress-policy: audit
+      - name: Git Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+      - name: Install dependencies
+        working-directory: docs-site
+        run: npm ci
+      - name: Build docs
+        working-directory: docs-site
+        env:
+          DOCS_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: npm run docs:build

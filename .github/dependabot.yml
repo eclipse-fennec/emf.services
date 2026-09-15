@@ -28,3 +28,10 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "build(deps)"
+    ignore:
+      # vitepress-plugin-mermaid (latest 2.0.17) declares peer mermaid "10 || 11".
+      # A mermaid major bump breaks `npm ci` with ERESOLVE and thereby the docs
+      # job of the snapshot build (2026-09-15). Lift this once the plugin
+      # supports mermaid 12.
+      - dependency-name: "mermaid"
+        update-types: ["version-update:semver-major"]

@@ -268,6 +268,22 @@ export class DDSRPackage extends BasicEPackage {
     PUBLISH_HOOK: null as unknown as EClass,
     DISCOVERY_HOOK: null as unknown as EClass,
     DISTRIBUTION_HOOK: null as unknown as EClass,
+    LANGUAGE_BINDING: null as unknown as EClass,
+    LANGUAGE_BINDING__SERVICE_INTERFACES: null as unknown as EAttribute | EReference,
+    LANGUAGE_BINDING__TARGET_PACKAGE: null as unknown as EAttribute | EReference,
+    LANGUAGE_BINDING__TYPE_MAPPINGS: null as unknown as EAttribute | EReference,
+    LANGUAGE_BINDING__PACKAGE_MAPPINGS: null as unknown as EAttribute | EReference,
+    TYPE_MAPPING: null as unknown as EClass,
+    TYPE_MAPPING__NEUTRAL_TYPE: null as unknown as EAttribute | EReference,
+    TYPE_MAPPING__TARGET: null as unknown as EAttribute | EReference,
+    TYPE_MAPPING__GENERATED: null as unknown as EAttribute | EReference,
+    PACKAGE_MAPPING: null as unknown as EClass,
+    PACKAGE_MAPPING__NS_U_R_I: null as unknown as EAttribute | EReference,
+    PACKAGE_MAPPING__TARGET: null as unknown as EAttribute | EReference,
+    JAVA_BINDING: null as unknown as EClass,
+    JAVA_BINDING__API_TYPE: null as unknown as EAttribute | EReference,
+    TYPE_SCRIPT_BINDING: null as unknown as EClass,
+    PYTHON_BINDING: null as unknown as EClass,
   };
 
   private constructor() {
@@ -2290,6 +2306,143 @@ export class DDSRPackage extends BasicEPackage {
     distributionHookClass.setEPackage(this);
     DDSRPackage.Literals.DISTRIBUTION_HOOK = distributionHookClass;
 
+    // Create LanguageBinding class
+    const languageBindingClass = new BasicEClass();
+    languageBindingClass.setName('LanguageBinding');
+    languageBindingClass.setAbstract(true);
+    languageBindingClass.setInterface(false);
+    this.getEClassifiers().push(languageBindingClass);
+    languageBindingClass.setEPackage(this);
+    DDSRPackage.Literals.LANGUAGE_BINDING = languageBindingClass;
+
+    // Create serviceInterfaces feature
+    const languageBinding_serviceInterfaces = new BasicEReference();
+    languageBinding_serviceInterfaces.setContainment(false);
+    languageBinding_serviceInterfaces.setName('serviceInterfaces');
+    languageBinding_serviceInterfaces.setLowerBound(1);
+    languageBinding_serviceInterfaces.setUpperBound(-1);
+    languageBindingClass.getEStructuralFeatures().push(languageBinding_serviceInterfaces);
+    DDSRPackage.Literals.LANGUAGE_BINDING__SERVICE_INTERFACES = languageBinding_serviceInterfaces;
+
+    // Create targetPackage feature
+    const languageBinding_targetPackage = new BasicEAttribute();
+    languageBinding_targetPackage.setName('targetPackage');
+    languageBinding_targetPackage.setLowerBound(1);
+    languageBinding_targetPackage.setUpperBound(1);
+    languageBindingClass.getEStructuralFeatures().push(languageBinding_targetPackage);
+    DDSRPackage.Literals.LANGUAGE_BINDING__TARGET_PACKAGE = languageBinding_targetPackage;
+
+    // Create typeMappings feature
+    const languageBinding_typeMappings = new BasicEReference();
+    languageBinding_typeMappings.setContainment(true);
+    languageBinding_typeMappings.setName('typeMappings');
+    languageBinding_typeMappings.setLowerBound(0);
+    languageBinding_typeMappings.setUpperBound(-1);
+    languageBindingClass.getEStructuralFeatures().push(languageBinding_typeMappings);
+    DDSRPackage.Literals.LANGUAGE_BINDING__TYPE_MAPPINGS = languageBinding_typeMappings;
+
+    // Create packageMappings feature
+    const languageBinding_packageMappings = new BasicEReference();
+    languageBinding_packageMappings.setContainment(true);
+    languageBinding_packageMappings.setName('packageMappings');
+    languageBinding_packageMappings.setLowerBound(0);
+    languageBinding_packageMappings.setUpperBound(-1);
+    languageBindingClass.getEStructuralFeatures().push(languageBinding_packageMappings);
+    DDSRPackage.Literals.LANGUAGE_BINDING__PACKAGE_MAPPINGS = languageBinding_packageMappings;
+
+    // Create TypeMapping class
+    const typeMappingClass = new BasicEClass();
+    typeMappingClass.setName('TypeMapping');
+    typeMappingClass.setAbstract(false);
+    typeMappingClass.setInterface(false);
+    this.getEClassifiers().push(typeMappingClass);
+    typeMappingClass.setEPackage(this);
+    DDSRPackage.Literals.TYPE_MAPPING = typeMappingClass;
+
+    // Create neutralType feature
+    const typeMapping_neutralType = new BasicEAttribute();
+    typeMapping_neutralType.setName('neutralType');
+    typeMapping_neutralType.setLowerBound(1);
+    typeMapping_neutralType.setUpperBound(1);
+    typeMappingClass.getEStructuralFeatures().push(typeMapping_neutralType);
+    DDSRPackage.Literals.TYPE_MAPPING__NEUTRAL_TYPE = typeMapping_neutralType;
+
+    // Create target feature
+    const typeMapping_target = new BasicEAttribute();
+    typeMapping_target.setName('target');
+    typeMapping_target.setLowerBound(1);
+    typeMapping_target.setUpperBound(1);
+    typeMappingClass.getEStructuralFeatures().push(typeMapping_target);
+    DDSRPackage.Literals.TYPE_MAPPING__TARGET = typeMapping_target;
+
+    // Create generated feature
+    const typeMapping_generated = new BasicEAttribute();
+    typeMapping_generated.setName('generated');
+    typeMapping_generated.setLowerBound(1);
+    typeMapping_generated.setUpperBound(1);
+    typeMappingClass.getEStructuralFeatures().push(typeMapping_generated);
+    DDSRPackage.Literals.TYPE_MAPPING__GENERATED = typeMapping_generated;
+
+    // Create PackageMapping class
+    const packageMappingClass = new BasicEClass();
+    packageMappingClass.setName('PackageMapping');
+    packageMappingClass.setAbstract(false);
+    packageMappingClass.setInterface(false);
+    this.getEClassifiers().push(packageMappingClass);
+    packageMappingClass.setEPackage(this);
+    DDSRPackage.Literals.PACKAGE_MAPPING = packageMappingClass;
+
+    // Create nsURI feature
+    const packageMapping_nsURI = new BasicEAttribute();
+    packageMapping_nsURI.setName('nsURI');
+    packageMapping_nsURI.setLowerBound(1);
+    packageMapping_nsURI.setUpperBound(1);
+    packageMappingClass.getEStructuralFeatures().push(packageMapping_nsURI);
+    DDSRPackage.Literals.PACKAGE_MAPPING__NS_U_R_I = packageMapping_nsURI;
+
+    // Create target feature
+    const packageMapping_target = new BasicEAttribute();
+    packageMapping_target.setName('target');
+    packageMapping_target.setLowerBound(1);
+    packageMapping_target.setUpperBound(1);
+    packageMappingClass.getEStructuralFeatures().push(packageMapping_target);
+    DDSRPackage.Literals.PACKAGE_MAPPING__TARGET = packageMapping_target;
+
+    // Create JavaBinding class
+    const javaBindingClass = new BasicEClass();
+    javaBindingClass.setName('JavaBinding');
+    javaBindingClass.setAbstract(false);
+    javaBindingClass.setInterface(false);
+    this.getEClassifiers().push(javaBindingClass);
+    javaBindingClass.setEPackage(this);
+    DDSRPackage.Literals.JAVA_BINDING = javaBindingClass;
+
+    // Create apiType feature
+    const javaBinding_apiType = new BasicEAttribute();
+    javaBinding_apiType.setName('apiType');
+    javaBinding_apiType.setLowerBound(1);
+    javaBinding_apiType.setUpperBound(1);
+    javaBindingClass.getEStructuralFeatures().push(javaBinding_apiType);
+    DDSRPackage.Literals.JAVA_BINDING__API_TYPE = javaBinding_apiType;
+
+    // Create TypeScriptBinding class
+    const typeScriptBindingClass = new BasicEClass();
+    typeScriptBindingClass.setName('TypeScriptBinding');
+    typeScriptBindingClass.setAbstract(false);
+    typeScriptBindingClass.setInterface(false);
+    this.getEClassifiers().push(typeScriptBindingClass);
+    typeScriptBindingClass.setEPackage(this);
+    DDSRPackage.Literals.TYPE_SCRIPT_BINDING = typeScriptBindingClass;
+
+    // Create PythonBinding class
+    const pythonBindingClass = new BasicEClass();
+    pythonBindingClass.setName('PythonBinding');
+    pythonBindingClass.setAbstract(false);
+    pythonBindingClass.setInterface(false);
+    this.getEClassifiers().push(pythonBindingClass);
+    pythonBindingClass.setEPackage(this);
+    DDSRPackage.Literals.PYTHON_BINDING = pythonBindingClass;
+
 
     // ============================================
     // Set ESuperTypes (must be done after all classes are created)
@@ -2335,6 +2488,10 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_REGISTRY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.LOCAL_SERVICE_REGISTRY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_REGISTRY);
     (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_REGISTRY);
+    (DDSRPackage.Literals.LANGUAGE_BINDING as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
+    (DDSRPackage.Literals.JAVA_BINDING as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.LANGUAGE_BINDING);
+    (DDSRPackage.Literals.TYPE_SCRIPT_BINDING as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.LANGUAGE_BINDING);
+    (DDSRPackage.Literals.PYTHON_BINDING as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.LANGUAGE_BINDING);
 
     // ============================================
     // Set ETypes for EReferences (must be done after all classes are created)
@@ -2406,6 +2563,9 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.CAPABILITY__ATTRIBUTES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.CONSUMER_CAPABILITY__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.CONSUMER_CAPABILITY__REQUIREMENTS as BasicEReference).setEType(DDSRPackage.Literals.REQUIREMENT);
+    (DDSRPackage.Literals.LANGUAGE_BINDING__SERVICE_INTERFACES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
+    (DDSRPackage.Literals.LANGUAGE_BINDING__TYPE_MAPPINGS as BasicEReference).setEType(DDSRPackage.Literals.TYPE_MAPPING);
+    (DDSRPackage.Literals.LANGUAGE_BINDING__PACKAGE_MAPPINGS as BasicEReference).setEType(DDSRPackage.Literals.PACKAGE_MAPPING);
 
     // ============================================
     // Register XML name mappings from ExtendedMetaData annotations

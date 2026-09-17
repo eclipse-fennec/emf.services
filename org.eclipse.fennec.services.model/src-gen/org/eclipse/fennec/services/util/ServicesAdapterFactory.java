@@ -284,6 +284,30 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createDistributionHookAdapter();
 			}
 			@Override
+			public Adapter caseLanguageBinding(LanguageBinding object) {
+				return createLanguageBindingAdapter();
+			}
+			@Override
+			public Adapter caseTypeMapping(TypeMapping object) {
+				return createTypeMappingAdapter();
+			}
+			@Override
+			public Adapter casePackageMapping(PackageMapping object) {
+				return createPackageMappingAdapter();
+			}
+			@Override
+			public Adapter caseJavaBinding(JavaBinding object) {
+				return createJavaBindingAdapter();
+			}
+			@Override
+			public Adapter caseTypeScriptBinding(TypeScriptBinding object) {
+				return createTypeScriptBindingAdapter();
+			}
+			@Override
+			public Adapter casePythonBinding(PythonBinding object) {
+				return createPythonBindingAdapter();
+			}
+			@Override
 			public Adapter defaultCase(EObject object) {
 				return createEObjectAdapter();
 			}
@@ -1056,6 +1080,90 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createDistributionHookAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.LanguageBinding <em>Language Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.LanguageBinding
+	 * @generated
+	 */
+	public Adapter createLanguageBindingAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.TypeMapping <em>Type Mapping</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.TypeMapping
+	 * @generated
+	 */
+	public Adapter createTypeMappingAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.PackageMapping <em>Package Mapping</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.PackageMapping
+	 * @generated
+	 */
+	public Adapter createPackageMappingAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.JavaBinding <em>Java Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.JavaBinding
+	 * @generated
+	 */
+	public Adapter createJavaBindingAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.TypeScriptBinding <em>Type Script Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.TypeScriptBinding
+	 * @generated
+	 */
+	public Adapter createTypeScriptBindingAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.PythonBinding <em>Python Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.PythonBinding
+	 * @generated
+	 */
+	public Adapter createPythonBindingAdapter() {
 		return null;
 	}
 

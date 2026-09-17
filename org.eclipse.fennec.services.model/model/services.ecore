@@ -1803,4 +1803,115 @@
       <eParameters name="event" eType="#//ServiceEvent"/>
     </eOperations>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ApiType">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Which OSGi API annotation a generated Java interface carries. PROVIDER = @ProviderType, the default for a service contract that providers implement; CONSUMER = @ConsumerType for a callback contract that consumers implement; NONE = no annotation."/>
+    </eAnnotations>
+    <eLiterals name="PROVIDER"/>
+    <eLiterals name="CONSUMER" value="1"/>
+    <eLiterals name="NONE" value="2"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="LanguageBinding" abstract="true" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="uniqueTypeMappings uniquePackageMappings"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How the contracts of a catalog are rendered in one programming language. A binding is build-time configuration, NOT part of a contract: it REFERENCES the ServiceInterfaces it renders instead of being contained in them, it lives in its own document in the generating project, and it never travels on the wire. That keeps the catalog language-neutral and keeps every binding out of the sd1 fingerprint — two providers of the same contract in different languages still see the same contract. The binding classes live in this metamodel so a toolchain in any language needs nothing but services.ecore."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="uniqueTypeMappings" value="typeMappings->isUnique(neutralType)"/>
+      <details key="uniquePackageMappings" value="packageMappings->isUnique(nsURI)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="serviceInterfaces" lowerBound="1"
+        upperBound="-1" eType="#//ServiceInterface">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The contracts this binding renders. Non-containment: the ServiceInterfaces are owned by the catalog, the binding only points at them — typically as a cross-document href into the published contract document."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetPackage" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where the generated code lives, in the naming of the target language: a package for Java ('org.acme.payment'), a module path for TypeScript ('@acme/payment'), a module for Python ('acme.payment'). The output DIRECTORY is not part of this — that is the build's business (bnd's 'output' attribute); the generator derives the path inside it from this name."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="typeMappings" upperBound="-1"
+        eType="#//TypeMapping" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Overrides for Parameter.type, the language-neutral type name. A generator knows the standard set ('string', 'int', 'double', …) on its own; only what it cannot know is stated here, e.g. 'money.Money' to 'com.acme.money.Money'."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="packageMappings" upperBound="-1"
+        eType="#//PackageMapping" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where the generated types of a referenced metamodel live in this language. Resolves Parameter.eType: the contract names an EClass by nsURI, and only the target language's own code generator knows the package it ended up in — for Java that is the genmodel's basePackage, which the .ecore does not carry."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="TypeMapping">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One language-neutral type name and what it is called in the target language — a Parameter.type, or the symbolic ServiceException.type. Positional under its binding, so it does NOT mix in NamedElement. Without a mapping a generator falls back to the last segment of the symbolic name, in the binding&#39;s targetPackage, and generates nothing: a contract names types symbolically, and only the binding knows what they are called in a language."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="neutralType" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The value of Parameter.type this entry matches."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="target" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The type name emitted for it, qualified as the target language needs it."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="generated" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Whether the target type is written by the generator or already exists. False (the default) means the type is there — a hand-written class, or one another generator owns, such as the EMF class behind an eType; the generated code only refers to it. True means the contract owns it and the generator writes it, which is how a declared ServiceException becomes a class in the target language: name, version, doc and typed payload all come from the contract, so no hand-written copy can drift from it."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="PackageMapping">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One metamodel and the package/module its generated types live in, in the target language. Positional under its binding."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nsURI" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Namespace URI of the EPackage, as Parameter.eType names it."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="target" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Package or module prefix for that metamodel's types; the classifier name is appended."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="JavaBinding" eSuperTypes="#//LanguageBinding">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Java rendering: targetPackage is the Java package, and the generated interface is named after the ServiceInterface."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiType" lowerBound="1"
+        eType="#//ApiType" defaultValueLiteral="PROVIDER">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Which OSGi API annotation the generated interface carries."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="TypeScriptBinding" eSuperTypes="#//LanguageBinding">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="TypeScript rendering: targetPackage is the module path. Carries no language specifics yet — it exists so a template can dispatch on the binding type, and gains attributes when the TypeScript generator does."/>
+    </eAnnotations>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="PythonBinding" eSuperTypes="#//LanguageBinding">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Python rendering: targetPackage is the module. Same as TypeScriptBinding — a discriminator today, attributes when its generator arrives."/>
+    </eAnnotations>
+  </eClassifiers>
 </ecore:EPackage>

@@ -412,6 +412,51 @@ public interface ServicesFactory extends EFactory {
 	ConsumerCapability createConsumerCapability();
 
 	/**
+	 * Returns a new object of class '<em>Type Mapping</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Type Mapping</em>'.
+	 * @generated
+	 */
+	TypeMapping createTypeMapping();
+
+	/**
+	 * Returns a new object of class '<em>Package Mapping</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Package Mapping</em>'.
+	 * @generated
+	 */
+	PackageMapping createPackageMapping();
+
+	/**
+	 * Returns a new object of class '<em>Java Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Java Binding</em>'.
+	 * @generated
+	 */
+	JavaBinding createJavaBinding();
+
+	/**
+	 * Returns a new object of class '<em>Type Script Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Type Script Binding</em>'.
+	 * @generated
+	 */
+	TypeScriptBinding createTypeScriptBinding();
+
+	/**
+	 * Returns a new object of class '<em>Python Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Python Binding</em>'.
+	 * @generated
+	 */
+	PythonBinding createPythonBinding();
+
+	/**
 	 * Returns the package supported by this factory.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

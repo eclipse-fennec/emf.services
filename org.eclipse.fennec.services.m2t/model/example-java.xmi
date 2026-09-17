@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:JavaBinding xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="example-java"
+    targetPackage="org.eclipse.fennec.services.m2t.example"
+    apiType="PROVIDER">
+  <serviceInterfaces href="payment.xmi#/"/>
+  <serviceInterfaces href="persons.xmi#/"/>
+  <typeMappings neutralType="fennec.services.example.PersonNotFound"
+      target="org.eclipse.fennec.services.m2t.example.PersonNotFoundException"
+      generated="true"/>
+  <packageMappings nsURI="http://geckoprojects.org/ddsr/example"
+      target="org.eclipse.fennec.services.examples.model.ddsrexample"/>
+</services:JavaBinding>

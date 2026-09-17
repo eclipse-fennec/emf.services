@@ -64,6 +64,12 @@ export type { ConsumerCapability } from './ConsumerCapability';
 export type { PublishHook } from './PublishHook';
 export type { DiscoveryHook } from './DiscoveryHook';
 export type { DistributionHook } from './DistributionHook';
+export type { LanguageBinding } from './LanguageBinding';
+export type { TypeMapping } from './TypeMapping';
+export type { PackageMapping } from './PackageMapping';
+export type { JavaBinding } from './JavaBinding';
+export type { TypeScriptBinding } from './TypeScriptBinding';
+export type { PythonBinding } from './PythonBinding';
 
 // Implementations (including abstract classes, as they're extended by subclasses)
 export { PropertyImpl } from './PropertyImpl';
@@ -114,6 +120,12 @@ export { RemoteServiceRegistryImpl } from './RemoteServiceRegistryImpl';
 export { CapabilityImpl } from './CapabilityImpl';
 export { RequirementImpl } from './RequirementImpl';
 export { ConsumerCapabilityImpl } from './ConsumerCapabilityImpl';
+export { LanguageBindingImpl } from './LanguageBindingImpl';
+export { TypeMappingImpl } from './TypeMappingImpl';
+export { PackageMappingImpl } from './PackageMappingImpl';
+export { JavaBindingImpl } from './JavaBindingImpl';
+export { TypeScriptBindingImpl } from './TypeScriptBindingImpl';
+export { PythonBindingImpl } from './PythonBindingImpl';
 
 // Enums
 export { ServiceScope, getServiceScope, getServiceScopeByLiteral } from './ServiceScope';
@@ -137,3 +149,4 @@ export { ExpressionLanguage, getExpressionLanguage, getExpressionLanguageByLiter
 export { CatalogStatus, getCatalogStatus, getCatalogStatusByLiteral } from './CatalogStatus';
 export { UpdatePolicy, getUpdatePolicy, getUpdatePolicyByLiteral } from './UpdatePolicy';
 export { ConnectionState, getConnectionState, getConnectionStateByLiteral } from './ConnectionState';
+export { ApiType, getApiType, getApiTypeByLiteral } from './ApiType';

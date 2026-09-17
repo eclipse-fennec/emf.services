@@ -94,6 +94,16 @@ import type { Requirement } from './Requirement';
 import { RequirementImpl } from './RequirementImpl';
 import type { ConsumerCapability } from './ConsumerCapability';
 import { ConsumerCapabilityImpl } from './ConsumerCapabilityImpl';
+import type { TypeMapping } from './TypeMapping';
+import { TypeMappingImpl } from './TypeMappingImpl';
+import type { PackageMapping } from './PackageMapping';
+import { PackageMappingImpl } from './PackageMappingImpl';
+import type { JavaBinding } from './JavaBinding';
+import { JavaBindingImpl } from './JavaBindingImpl';
+import type { TypeScriptBinding } from './TypeScriptBinding';
+import { TypeScriptBindingImpl } from './TypeScriptBindingImpl';
+import type { PythonBinding } from './PythonBinding';
+import { PythonBindingImpl } from './PythonBindingImpl';
 
 /**
  * Factory for creating DDSR model objects
@@ -417,6 +427,41 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new TypeMapping instance
+   */
+  createTypeMapping(): TypeMapping {
+    return new TypeMappingImpl();
+  }
+
+  /**
+   * Create a new PackageMapping instance
+   */
+  createPackageMapping(): PackageMapping {
+    return new PackageMappingImpl();
+  }
+
+  /**
+   * Create a new JavaBinding instance
+   */
+  createJavaBinding(): JavaBinding {
+    return new JavaBindingImpl();
+  }
+
+  /**
+   * Create a new TypeScriptBinding instance
+   */
+  createTypeScriptBinding(): TypeScriptBinding {
+    return new TypeScriptBindingImpl();
+  }
+
+  /**
+   * Create a new PythonBinding instance
+   */
+  createPythonBinding(): PythonBinding {
+    return new PythonBindingImpl();
+  }
+
+  /**
    * Create an instance of the given class
    */
   override create(eClass: EClass): EObject {
@@ -507,6 +552,16 @@ export class DDSRFactory extends BasicEFactory {
         return this.createRequirement();
       case 'ConsumerCapability':
         return this.createConsumerCapability();
+      case 'TypeMapping':
+        return this.createTypeMapping();
+      case 'PackageMapping':
+        return this.createPackageMapping();
+      case 'JavaBinding':
+        return this.createJavaBinding();
+      case 'TypeScriptBinding':
+        return this.createTypeScriptBinding();
+      case 'PythonBinding':
+        return this.createPythonBinding();
       default:
         throw new Error(`Unknown class: ${eClass.getName()}`);
     }

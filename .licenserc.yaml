@@ -59,6 +59,7 @@ header:
     - '**/*.html'
     - '**/*.drawio*'
     - '**/*.ftl'
+    - '**/*.mtl'
     - '**/*.aird'
     - '**/*.basic'
     - '**/*.txt'

@@ -542,7 +542,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="properties" upperBound="-1"
         eType="#//Property" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Typed payload fields (e.g. errorCode: int, retryable: bool, accountId: string). Empty = no structured payload, only a message."/>
+        <details key="documentation" value="Constant metadata of this error, e.g. code=202 or retryable=false. A Property carries a name AND a value, and sd1 hashes that value — so what stands here is part of the contract and the same for every occurrence of the error, not per-instance data. Per-instance payload is deliberately not modelled: a value that differs per occurrence could never be part of a contract fingerprint. Empty = the error carries nothing but its identity."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -967,15 +967,17 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="RestOperationFlavor" eSuperTypes="#//ServiceOperationFlavor">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath"/>
+      <details key="constraints" value="bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings)."/>
+      <details key="documentation" value="REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings)."/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
       <details key="bindingsReferenceOperationParameters" value="parameterBindings->forAll(b | operation.parameters->includes(b.parameter))"/>
       <details key="oneBindingPerParameter" value="parameterBindings->isUnique(b | b.parameter)"/>
       <details key="pathBindingsNeedPath" value="parameterBindings->forAll(b | b.binding.toString() &lt;> 'PATH' or path &lt;> null)"/>
+      <details key="exceptionBindingsReferenceOperationExceptions" value="exceptionBindings->forAll(b | operation.exceptions->includes(b.exception))"/>
+      <details key="oneBindingPerException" value="exceptionBindings->isUnique(b | b.exception)"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1"
         eType="#//HttpMethod">
@@ -997,7 +999,13 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="parameterBindings" upperBound="-1"
         eType="#//RestParameterBinding" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Where each Parameter of the operation travels on the wire. Parameters without an entry are BODY (today's behaviour: all arguments in the XMI payload, several of them as the multi-arg bundle). Lets a REST binding express GET /payments/{id}?currency=EUR with a tenant header instead of forcing everything into the body (OPEN_ISSUES W3)."/>
+        <details key="documentation" value="Where each Parameter of the operation travels on the wire. Lets a REST binding express GET /payments/{id}?currency=EUR with a tenant header instead of forcing everything into the body (OPEN_ISSUES W3). A parameter without an entry keeps the convention the SDKs used before the bindings were driven: a single EObject is the payload, anything else a query parameter. The model names BODY as the default, but there is no encoding for several primitive arguments in one payload, so an undeclared parameter travels the older way until that wire shape exists."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="exceptionBindings" upperBound="-1"
+        eType="#//RestExceptionBinding" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Which HTTP status each declared error of the operation travels as. returnCodes says which statuses mean success; this says what the others mean. An exception without an entry is a 500 — it is still the exception it is, just without a status of its own. Transport-specific by design, like ParameterBinding: it lives in the flavor layer, so a status change never moves a contract address, and an MQTT flavor answers with a reason code instead."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -1020,6 +1028,23 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="wireName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Name used on the wire when it differs from the Parameter name: query key, header name ('X-Tenant') or path template variable. Null = the Parameter name."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RestExceptionBinding">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The HTTP status one declared ServiceException of an operation travels as. Owned by the flavor, so it is implementation-specific (im1 layer) and never touches the catalog contract (sd1) — the same layering as RestParameterBinding. Without such a binding an error is a 500."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="exception" lowerBound="1"
+        eType="#//ServiceException">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The declared error of the bound ServiceOperation. Non-containment: exceptions are owned by the catalog ServiceInterface, same resolution rule as RestParameterBinding.parameter."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="status" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt" defaultValueLiteral="500">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="HTTP status this error is answered with, e.g. 409 for a conflict or 404 for something not found. A plain int rather than an enum: the set of codes in use is not ours to close, and a provider that answers with 418 is stating a fact, not asking permission."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>

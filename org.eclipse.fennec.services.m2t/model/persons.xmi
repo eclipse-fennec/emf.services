@@ -23,6 +23,7 @@
   <exceptions name="PersonNotFound" version="1.0.0"
       type="fennec.services.example.PersonNotFound"
       description="No person is registered under the given identifier.">
-    <properties xsi:type="services:StringProperty" name="personId" description="The identifier that was looked up."/>
+    <properties xsi:type="services:IntProperty" name="code" value="404" description="The DDSR diagnostic code of this error."/>
+    <properties xsi:type="services:BoolProperty" name="retryable" value="false" description="Whether calling again can succeed."/>
   </exceptions>
 </services:ServiceInterface>

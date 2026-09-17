@@ -11,8 +11,8 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { ServiceOperation, RestFlavor, RestOperationFlavor } from '@ddsr/model';
-import { HttpMethod } from '@ddsr/model';
+import type { ServiceOperation, RestFlavor, RestOperationFlavor, RestParameterBinding } from '@ddsr/model';
+import { HttpMethod, ParameterBinding } from '@ddsr/model';
 import type { EObject } from '@emfts/core';
 import { serializeToXmi } from './xmi-support';
 
@@ -24,9 +24,17 @@ export interface RestRequest {
 /**
  * Builds a fetch-compatible request from DDSR model metadata.
  *
- * - GET/DELETE: params go into query string
- * - POST/PUT: if params contain EObjects, serialize to XMI body;
- *   otherwise JSON body
+ * Where an argument travels is the provider's statement: a
+ * RestParameterBinding on the operation flavor says it per parameter —
+ * PATH into a template segment, QUERY into the query string, HEADER as a
+ * request header, BODY into the payload — under `wireName` where one is
+ * given (#74). The mirror of the Java RestServiceInvoker, field for field.
+ *
+ * An argument whose parameter carries no binding keeps the older
+ * convention: a single EObject becomes the XMI body, anything else a
+ * query parameter. The model names BODY as the default, but there is no
+ * encoding for several primitive arguments in one payload, so an
+ * undeclared parameter travels the way it always has.
  */
 export function buildRequest(
   _operation: ServiceOperation,
@@ -37,11 +45,16 @@ export function buildRequest(
   const base = (flavor.host ?? '') + flavor.basePath;
   const method = httpMethodString(opFlavor.method);
 
-  // Substitute {name}-style path templates from params; used params
-  // are consumed and do not additionally appear in the query string.
+  const placed = place(params, opFlavor);
+  params = placed.rest;
+
+  // Substitute {name}-style path templates: from the PATH bindings first,
+  // then from any remaining argument of the same name, so a flavor that
+  // declares nothing keeps working. Used arguments are consumed and do not
+  // additionally appear in the query string.
   const usedInPath = new Set<string>();
   const path = (opFlavor.path ?? '').replace(/\{([^}]+)\}/g, (match, key: string) => {
-    const value = params[key];
+    const value = placed.path[key] ?? params[key];
     if (value === undefined || value === null) return match;
     usedInPath.add(key);
     return encodeURIComponent(String(value));
@@ -60,23 +73,64 @@ export function buildRequest(
 
   const headers: Record<string, string> = {
     'Accept': accept,
+    ...Object.fromEntries(Object.entries(placed.header).map(([k, v]) => [k, String(v)])),
   };
 
-  // Check if params contain an EObject (XMI body for broker calls)
-  const bodyObj = findEObject(params);
+  // A declared BODY argument wins; otherwise an undeclared EObject is the
+  // body, as it always was.
+  const bodyObj = findEObject(placed.body) ?? findEObject(params);
 
   if (bodyObj) {
-    // EObject → XMI body (broker API calls)
     headers['Content-Type'] = 'application/xml';
     const body = serializeToXmi(bodyObj);
-    const url = appendQueryParams(base + path, withoutEObjects(params));
+    const url = appendQueryParams(base + path, { ...placed.query, ...withoutEObjects(params) });
     return { url, init: { method, headers, body } };
   }
 
-  // Simple params → always query parameters, regardless of HTTP method.
-  // Many JAX-RS services use @QueryParam even on POST (e.g. Payment.charge).
-  const url = appendQueryParams(base + path, params);
+  const url = appendQueryParams(base + path, { ...placed.query, ...params });
   return { url, init: { method, headers } };
+}
+
+interface Placed {
+  path: Record<string, unknown>;
+  query: Record<string, unknown>;
+  header: Record<string, unknown>;
+  body: Record<string, unknown>;
+  /** Arguments whose parameter carries no binding. */
+  rest: Record<string, unknown>;
+}
+
+/** Sort the arguments into the places the flavor declares for them. */
+function place(params: Record<string, unknown>, opFlavor: RestOperationFlavor): Placed {
+  const placed: Placed = { path: {}, query: {}, header: {}, body: {}, rest: {} };
+  const bindings = toArray<RestParameterBinding>(opFlavor.parameterBindings);
+
+  for (const [name, value] of Object.entries(params)) {
+    const binding = bindings.find(b => b.parameter?.name === name);
+    if (!binding) {
+      placed.rest[name] = value;
+      continue;
+    }
+    const wireName = binding.wireName && binding.wireName.trim().length > 0 ? binding.wireName : name;
+    switch (binding.binding) {
+      case ParameterBinding.PATH: placed.path[wireName] = value; break;
+      case ParameterBinding.QUERY: placed.query[wireName] = value; break;
+      case ParameterBinding.HEADER: placed.header[wireName] = value; break;
+      default: placed.body[wireName] = value; break;
+    }
+  }
+  return placed;
+}
+
+/** Convert an EList or array-like to a plain array. */
+function toArray<T>(list: unknown): T[] {
+  if (!list) return [];
+  if (Array.isArray(list)) return list;
+  if (typeof (list as any).size === 'function') {
+    const size = (list as any).size();
+    return Array.from({ length: size }, (_, i) => (list as any).get(i) as T);
+  }
+  return [];
 }
 
 function httpMethodString(method: HttpMethod): string {

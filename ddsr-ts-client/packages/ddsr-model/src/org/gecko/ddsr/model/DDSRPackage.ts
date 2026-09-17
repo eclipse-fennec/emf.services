@@ -271,6 +271,7 @@ export class DDSRPackage extends BasicEPackage {
     LANGUAGE_BINDING: null as unknown as EClass,
     LANGUAGE_BINDING__SERVICE_INTERFACES: null as unknown as EAttribute | EReference,
     LANGUAGE_BINDING__TARGET_PACKAGE: null as unknown as EAttribute | EReference,
+    LANGUAGE_BINDING__FILE_HEADER: null as unknown as EAttribute | EReference,
     LANGUAGE_BINDING__TYPE_MAPPINGS: null as unknown as EAttribute | EReference,
     LANGUAGE_BINDING__PACKAGE_MAPPINGS: null as unknown as EAttribute | EReference,
     TYPE_MAPPING: null as unknown as EClass,
@@ -2331,6 +2332,14 @@ export class DDSRPackage extends BasicEPackage {
     languageBinding_targetPackage.setUpperBound(1);
     languageBindingClass.getEStructuralFeatures().push(languageBinding_targetPackage);
     DDSRPackage.Literals.LANGUAGE_BINDING__TARGET_PACKAGE = languageBinding_targetPackage;
+
+    // Create fileHeader feature
+    const languageBinding_fileHeader = new BasicEAttribute();
+    languageBinding_fileHeader.setName('fileHeader');
+    languageBinding_fileHeader.setLowerBound(0);
+    languageBinding_fileHeader.setUpperBound(-1);
+    languageBindingClass.getEStructuralFeatures().push(languageBinding_fileHeader);
+    DDSRPackage.Literals.LANGUAGE_BINDING__FILE_HEADER = languageBinding_fileHeader;
 
     // Create typeMappings feature
     const languageBinding_typeMappings = new BasicEReference();

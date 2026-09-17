@@ -22,13 +22,15 @@ export abstract class LanguageBindingImpl extends BasicEObject implements Langua
   // Feature ID Constants (eLiterals)
   static readonly SERVICE_INTERFACES: number = 1;
   static readonly TARGET_PACKAGE: number = 2;
-  static readonly TYPE_MAPPINGS: number = 3;
-  static readonly PACKAGE_MAPPINGS: number = 4;
+  static readonly FILE_HEADER: number = 3;
+  static readonly TYPE_MAPPINGS: number = 4;
+  static readonly PACKAGE_MAPPINGS: number = 5;
   static readonly NAME: number = 0;
 
   // Private fields
   private _serviceInterfaces: ServiceInterface[] = [];
   private _targetPackage: string = "";
+  private _fileHeader: string[] = [];
   private _typeMappings: TypeMapping[] = [];
   private _packageMappings: PackageMapping[] = [];
   private _name: string = "";
@@ -84,6 +86,30 @@ export abstract class LanguageBindingImpl extends BasicEObject implements Langua
         isTouch: () => false,
         isReset: () => false,
         getFeatureID: () => LanguageBindingImpl.TARGET_PACKAGE,
+        merge: () => false
+      });
+    }
+  }
+
+  get fileHeader(): string[] {
+    return this._fileHeader;
+  }
+
+  set fileHeader(value: string[]) {
+    const oldValue = this._fileHeader;
+    this._fileHeader = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(LanguageBindingImpl.FILE_HEADER),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => LanguageBindingImpl.FILE_HEADER,
         merge: () => false
       });
     }
@@ -157,6 +183,8 @@ export abstract class LanguageBindingImpl extends BasicEObject implements Langua
         return this.serviceInterfaces;
       case LanguageBindingImpl.TARGET_PACKAGE:
         return this.targetPackage;
+      case LanguageBindingImpl.FILE_HEADER:
+        return this.fileHeader;
       case LanguageBindingImpl.TYPE_MAPPINGS:
         return this.typeMappings;
       case LanguageBindingImpl.PACKAGE_MAPPINGS:
@@ -180,6 +208,10 @@ export abstract class LanguageBindingImpl extends BasicEObject implements Langua
         break;
       case LanguageBindingImpl.TARGET_PACKAGE:
         this.targetPackage = newValue as string;
+        super.eSet(feature, newValue);
+        break;
+      case LanguageBindingImpl.FILE_HEADER:
+        this.fileHeader = newValue as string[];
         super.eSet(feature, newValue);
         break;
       case LanguageBindingImpl.TYPE_MAPPINGS:
@@ -209,6 +241,8 @@ export abstract class LanguageBindingImpl extends BasicEObject implements Langua
         return this._serviceInterfaces !== undefined && this._serviceInterfaces.length > 0;
       case LanguageBindingImpl.TARGET_PACKAGE:
         return this._targetPackage !== "";
+      case LanguageBindingImpl.FILE_HEADER:
+        return this._fileHeader !== undefined && this._fileHeader.length > 0;
       case LanguageBindingImpl.TYPE_MAPPINGS:
         return this._typeMappings !== undefined && this._typeMappings.length > 0;
       case LanguageBindingImpl.PACKAGE_MAPPINGS:
@@ -231,6 +265,9 @@ export abstract class LanguageBindingImpl extends BasicEObject implements Langua
         return;
       case LanguageBindingImpl.TARGET_PACKAGE:
         this._targetPackage = "";
+        return;
+      case LanguageBindingImpl.FILE_HEADER:
+        this._fileHeader = [];
         return;
       case LanguageBindingImpl.TYPE_MAPPINGS:
         this._typeMappings = [];

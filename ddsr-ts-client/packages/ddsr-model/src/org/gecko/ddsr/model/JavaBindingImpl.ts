@@ -18,7 +18,7 @@ import { DDSRPackage } from './DDSRPackage';
  */
 export class JavaBindingImpl extends LanguageBindingImpl implements JavaBinding {
   // Feature ID Constants (eLiterals)
-  static readonly API_TYPE: number = 5;
+  static readonly API_TYPE: number = 6;
 
   // Private fields
   private _apiType: ApiType = ApiType.PROVIDER;

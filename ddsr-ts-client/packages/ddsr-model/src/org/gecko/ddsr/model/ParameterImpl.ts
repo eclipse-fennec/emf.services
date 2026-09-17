@@ -6,7 +6,7 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
+import type { EClass, EStructuralFeature, EClassifier } from '@emfts/core';
 import type { NamedElement } from './NamedElement';
 import type { ParameterConstraint } from './ParameterConstraint';
 import type { Parameter } from './Parameter';
@@ -20,15 +20,21 @@ export class ParameterImpl extends BasicEObject implements Parameter {
   // Feature ID Constants (eLiterals)
   static readonly INDEX: number = 1;
   static readonly TYPE: number = 2;
-  static readonly OPTIONAL: number = 3;
-  static readonly DEFAULT_VALUE: number = 4;
-  static readonly DESCRIPTION: number = 5;
-  static readonly CONSTRAINTS: number = 6;
+  static readonly E_TYPE: number = 3;
+  static readonly LOWER_BOUND: number = 4;
+  static readonly UPPER_BOUND: number = 5;
+  static readonly OPTIONAL: number = 6;
+  static readonly DEFAULT_VALUE: number = 7;
+  static readonly DESCRIPTION: number = 8;
+  static readonly CONSTRAINTS: number = 9;
   static readonly NAME: number = 0;
 
   // Private fields
   private _index: number = 0;
-  private _type: string = "";
+  private _type?: string;
+  private _eType?: EClassifier;
+  private _lowerBound: number = 1;
+  private _upperBound: number = 1;
   private _optional: boolean = false;
   private _defaultValue?: string;
   private _description?: string;
@@ -86,6 +92,78 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         isTouch: () => false,
         isReset: () => false,
         getFeatureID: () => ParameterImpl.TYPE,
+        merge: () => false
+      });
+    }
+  }
+
+  get eType(): EClassifier {
+    return this._eType!;
+  }
+
+  set eType(value: EClassifier) {
+    const oldValue = this._eType;
+    this._eType = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ParameterImpl.E_TYPE),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ParameterImpl.E_TYPE,
+        merge: () => false
+      });
+    }
+  }
+
+  get lowerBound(): number {
+    return this._lowerBound!;
+  }
+
+  set lowerBound(value: number) {
+    const oldValue = this._lowerBound;
+    this._lowerBound = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ParameterImpl.LOWER_BOUND),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ParameterImpl.LOWER_BOUND,
+        merge: () => false
+      });
+    }
+  }
+
+  get upperBound(): number {
+    return this._upperBound!;
+  }
+
+  set upperBound(value: number) {
+    const oldValue = this._upperBound;
+    this._upperBound = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ParameterImpl.UPPER_BOUND),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ParameterImpl.UPPER_BOUND,
         merge: () => false
       });
     }
@@ -207,6 +285,12 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         return this.index;
       case ParameterImpl.TYPE:
         return this.type;
+      case ParameterImpl.E_TYPE:
+        return this.eType;
+      case ParameterImpl.LOWER_BOUND:
+        return this.lowerBound;
+      case ParameterImpl.UPPER_BOUND:
+        return this.upperBound;
       case ParameterImpl.OPTIONAL:
         return this.optional;
       case ParameterImpl.DEFAULT_VALUE:
@@ -234,6 +318,18 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         break;
       case ParameterImpl.TYPE:
         this.type = newValue as string;
+        super.eSet(feature, newValue);
+        break;
+      case ParameterImpl.E_TYPE:
+        this.eType = newValue as EClassifier;
+        super.eSet(feature, newValue);
+        break;
+      case ParameterImpl.LOWER_BOUND:
+        this.lowerBound = newValue as number;
+        super.eSet(feature, newValue);
+        break;
+      case ParameterImpl.UPPER_BOUND:
+        this.upperBound = newValue as number;
         super.eSet(feature, newValue);
         break;
       case ParameterImpl.OPTIONAL:
@@ -270,7 +366,13 @@ export class ParameterImpl extends BasicEObject implements Parameter {
       case ParameterImpl.INDEX:
         return this._index !== 0;
       case ParameterImpl.TYPE:
-        return this._type !== "";
+        return this._type !== undefined;
+      case ParameterImpl.E_TYPE:
+        return this._eType !== undefined;
+      case ParameterImpl.LOWER_BOUND:
+        return this._lowerBound !== 1;
+      case ParameterImpl.UPPER_BOUND:
+        return this._upperBound !== 1;
       case ParameterImpl.OPTIONAL:
         return this._optional !== false;
       case ParameterImpl.DEFAULT_VALUE:
@@ -296,7 +398,16 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         this._index = 0;
         return;
       case ParameterImpl.TYPE:
-        this._type = "";
+        this._type = undefined;
+        return;
+      case ParameterImpl.E_TYPE:
+        this._eType = undefined;
+        return;
+      case ParameterImpl.LOWER_BOUND:
+        this._lowerBound = 1;
+        return;
+      case ParameterImpl.UPPER_BOUND:
+        this._upperBound = 1;
         return;
       case ParameterImpl.OPTIONAL:
         this._optional = false;

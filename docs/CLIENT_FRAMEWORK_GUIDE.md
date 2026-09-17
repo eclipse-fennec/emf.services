@@ -222,6 +222,41 @@ and the application's `Registration` handle follows the fresh reference —
 keep the handle, do not re-publish yourself. `0` disables heartbeats; the
 broker then never retires that provider for silence.
 
+#### Typed operations — EMF values and lists (#41)
+
+A `ServiceOperation` states its data contract through `Parameter` slots,
+and its result is a `Parameter` of its own (`returnValue`, unset = void).
+For an EMF data service the type is the metamodel type itself:
+
+```java
+// list(offset?, limit?): DataSet[]
+ServiceOperation list = ServicesFactory.eINSTANCE.createServiceOperation();
+list.setName("list");
+list.getParameters().add(optionalInt("offset", 0));
+list.getParameters().add(optionalInt("limit", 1));
+
+Parameter result = ServicesFactory.eINSTANCE.createParameter();
+result.setName("result");                       // convention; never hashed
+result.setEType(AtlasPackage.Literals.DATA_SET); // the EClass served
+result.setUpperBound(-1);                        // a finite list of them
+list.setReturnValue(result);
+```
+
+Three things to know:
+
+- **`eType` travels as a cross-document href** (`<nsURI>#//<Name>`).
+  Neither the broker nor a consumer needs your metamodel on its classpath
+  to hold, hash or forward the contract — it reads the URI. Use `type`
+  (the language-neutral string) for everything non-EMF; at least one of
+  the two must be set.
+- **`upperBound = -1` is what separates `list` from `get`.** Both reach
+  the sd1 fingerprint, so changing a result from one instance to a list
+  is a contract change and shows up as one.
+- **Single-valued optionality stays on `optional`.** `lowerBound` is
+  there for multi-valued slots ("at least two elements"); for a single
+  value set `optional` and, if you write `lowerBound` at all, write the
+  `0` that matches it.
+
 ### 5.3 `DdsrConsumer`
 
 ```java
@@ -439,8 +474,8 @@ These are not in scope for the Day-1 SDK but the SDK must not lock us out of the
 From `org.eclipse.fennec.services.model.ddsr`:
 
 - `ServiceInterface(name, version, description, operations[], exceptions[], invariants[], status, deprecationReason, replacedBy)`
-- `ServiceOperation(name, description, parameters[], returnType, returnConstraints[], exceptions[], preconditions[], postconditions[])`
-- `Parameter(name, index, type, optional, defaultValue, description, constraints[])`
+- `ServiceOperation(name, description, parameters[], returnValue?, exceptions[], preconditions[], postconditions[])` — `returnValue` is a `Parameter` (unset = void), so type, multiplicity and constraints of the result live in one place
+- `Parameter(name, index, type, eType?, lowerBound, upperBound, optional, defaultValue, description, constraints[])` — `eType` names the metamodel type (an `EClass` for EObject values, an Ecore `EDataType` for primitives) and is serialized as a cross-document href, so a reader never has to have the provider's metamodel; `upperBound = -1` makes the slot a finite list. `type` stays the language-neutral name for everything non-EMF; at least one of the two must be set.
 - `ParameterConstraint` abstract; concrete: `RequiredConstraint`, `NumericRangeConstraint(min,max,inclusiveMin,inclusiveMax)`, `StringPatternConstraint(pattern,minLength,maxLength)`, `EnumerationConstraint(allowedValues[])`, `CollectionSizeConstraint(minSize,maxSize)`, `ExpressionConstraint(language, expression, message)`
 - `ServiceException(name, version, type, description, properties[])`
 - `ServiceProvider(name, version, symbolicName, descriptions[], implementations[])`  *(implementations are CONTAINMENT — exclusive ownership)*

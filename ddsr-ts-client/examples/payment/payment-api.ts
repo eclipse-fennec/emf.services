@@ -31,7 +31,7 @@ export function buildPaymentInterface(): ServiceInterface {
 
   const charge = factory.createServiceOperation();
   charge.name = 'charge';
-  charge.returnType = 'double';
+  charge.returnValue = returnValue('double');
   charge.description = 'Charge an amount. Returns the remaining balance.';
   charge.parameters.push(parameter('amount', 0, 'double', false, undefined, 'Amount to charge.'));
   charge.parameters.push(parameter('currency', 1, 'string', true, 'EUR', 'ISO 4217 currency code.'));
@@ -39,7 +39,7 @@ export function buildPaymentInterface(): ServiceInterface {
 
   const getBalance = factory.createServiceOperation();
   getBalance.name = 'getBalance';
-  getBalance.returnType = 'double';
+  getBalance.returnValue = returnValue('double');
   getBalance.description = 'Get current account balance.';
   getBalance.parameters.push(parameter('accountId', 0, 'string', false, undefined, 'The account identifier.'));
   payment.operations.push(getBalance);
@@ -62,6 +62,19 @@ function parameter(
   p.optional = optional;
   if (defaultValue !== undefined) p.defaultValue = defaultValue;
   p.description = description;
+  return p;
+}
+
+/**
+ * The return slot, a Parameter of its own since #41. NamedElement forces
+ * a name on it; 'result' is the convention both SDKs use, and the name
+ * never reaches the fingerprint (it has no wire role).
+ */
+function returnValue(type: string) {
+  const p = factory.createParameter();
+  p.name = 'result';
+  p.index = 0;
+  p.type = type;
   return p;
 }
 

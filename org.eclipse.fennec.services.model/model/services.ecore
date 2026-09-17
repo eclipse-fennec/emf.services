@@ -289,15 +289,10 @@
         <details key="documentation" value="Ordered list of input parameters. Order is the visible order in the generated stub signature and is determined by Parameter.index."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="returnType" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="returnValue" eType="#//Parameter"
+        containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Language-neutral name of the return type (e.g. 'string', 'int', 'money.Money'). Unset = void/None/no return value."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="returnConstraints" upperBound="-1"
-        eType="#//ParameterConstraint" containment="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Constraints on the return value (same constraint language as parameters). Empty = no constraints."/>
+        <details key="documentation" value="The operation's return slot, expressed as a Parameter: type, multiplicity and constraints in one place. Unset = void/None/no return value. 'index' is meaningless here and stays 0, 'optional' says the result may be null, 'defaultValue' has no meaning. Replaces the former 'returnType' string and 'returnConstraints' — a Parameter carries its own constraints."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exceptions" upperBound="-1"
@@ -320,17 +315,42 @@
     </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Parameter" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="typeOrEType boundsOrdered requiredSlotHasLowerBound"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="A typed, named, positional input to a ServiceOperation. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping)."/>
+      <details key="documentation" value="A typed, named, positional input to a ServiceOperation — and, as ServiceOperation.returnValue, its return slot. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping)."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="typeOrEType" value="type &lt;> null or eType &lt;> null"/>
+      <details key="boundsOrdered" value="upperBound = -1 or upperBound >= lowerBound"/>
+      <details key="requiredSlotHasLowerBound" value="optional or lowerBound >= 1"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Zero-based position in the operation signature. Independent of the name so that renaming a parameter does not reorder others."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Language-neutral type name. Code Publisher maps to the idiomatic language type (e.g. 'string' → Java String / TS string / Python str). Custom types reference other ServiceInterfaces by qualified name."/>
+        <details key="documentation" value="Language-neutral type name. Code Publisher maps to the idiomatic language type (e.g. 'string' → Java String / TS string / Python str). Custom types reference other ServiceInterfaces by qualified name. For EMF values 'eType' is the precise statement: where it is set it wins for stub generation and 'type' may be omitted. At least one of the two MUST be set."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="eType" eType="ecore:EClass http://www.eclipse.org/emf/2002/Ecore#//EClassifier">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Metamodel type of this value: an EClass for EObject values, an Ecore EDataType for primitives (EString, EInt, EDouble, …). Serialized as a cross-document href '&lt;nsURI>#//&lt;Name>' and NOT required to be resolvable by the reader — broker, fingerprint and stub generators read the proxy URI, so a catalog document parses and hashes without the provider's domain metamodel on the classpath."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lowerBound" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Minimum number of values, inclusive, with the same meaning as ETypedElement.lowerBound: 1 = one value required, 0 = may be absent. Precedence: for a SINGLE-valued slot (upperBound = 1) 'optional' is authoritative and this value is ignored — by the sd1 canonical form as well, which is why a contract written before the bounds existed keeps its fingerprint. It earns its keep on multi-valued slots ('at least two elements'). Only the genuine contradiction is rejected: a slot that is not optional cannot have a lower bound of 0."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upperBound" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
+        defaultValueLiteral="1">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded but finite collection. Unbounded streams over time are NOT meant here — those belong to the interaction-style work in WIRE_CHANNELS.md. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="optional" lowerBound="1"
@@ -363,7 +383,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="RequiredConstraint" eSuperTypes="#//ParameterConstraint">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Marker constraint: parameter MUST NOT be null/None/undefined. Redundant with Parameter.optional = false but explicit, useful for return-value constraints where Parameter.optional does not apply."/>
+      <details key="documentation" value="Marker constraint: parameter MUST NOT be null/None/undefined. Redundant with Parameter.optional = false (and with lowerBound = 1) but explicit — a publisher that states nullability through constraints rather than through the flag says the same thing."/>
     </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="NumericRangeConstraint" eSuperTypes="#//ParameterConstraint">
@@ -488,7 +508,7 @@
       <details key="constraints" value="sizeBoundsNonNegative sizeBoundsOrdered"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize]."/>
+      <details key="documentation" value="Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize]. Distinct from Parameter.lowerBound/upperBound: those declare the multiplicity of the slot and are part of the contract signature (they reach the sd1 fingerprint and the generated stub), this constraint is a runtime validity check inside a declared multiplicity."/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
       <details key="sizeBoundsNonNegative" value="(minSize = null or minSize >= 0) and (maxSize = null or maxSize >= 0)"/>

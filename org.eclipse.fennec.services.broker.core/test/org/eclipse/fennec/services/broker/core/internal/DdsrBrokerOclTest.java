@@ -27,6 +27,7 @@ import org.eclipse.fennec.m2x.ocl.engine.internal.OclValidationDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ConsumerSession;
+import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -208,5 +209,61 @@ class DdsrBrokerOclTest {
 
 		assertThat(diagnostic.getSeverity()).isEqualTo(Diagnostic.ERROR);
 		assertThat(diagnostic.toString()).contains("atLeastOneInterface");
+	}
+
+	// ------------------------------------------------------------------
+	// Parameter invariants (#41)
+
+	@Test
+	void aParameterMustSayWhatItCarries() {
+		Parameter untyped = ServicesFactory.eINSTANCE.createParameter();
+		untyped.setName("amount");
+
+		assertThat(Diagnostician.INSTANCE.validate(untyped).toString()).contains("typeOrEType");
+
+		untyped.setEType(ServicesPackage.eINSTANCE.getParameter());
+		assertThat(Diagnostician.INSTANCE.validate(untyped).getSeverity())
+				.as("a metamodel type alone is a complete statement")
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	@Test
+	void boundsMustNotBeInverted() {
+		Parameter p = ServicesFactory.eINSTANCE.createParameter();
+		p.setName("ids");
+		p.setType("string");
+		p.setLowerBound(3);
+		p.setUpperBound(2);
+
+		assertThat(Diagnostician.INSTANCE.validate(p).toString()).contains("boundsOrdered");
+
+		p.setUpperBound(-1);
+		assertThat(Diagnostician.INSTANCE.validate(p).getSeverity())
+				.as("-1 is unbounded, not a smaller upper bound")
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	@Test
+	void onlyTheGenuineContradictionBetweenOptionalAndLowerBoundIsRejected() {
+		Parameter required = ServicesFactory.eINSTANCE.createParameter();
+		required.setName("amount");
+		required.setType("double");
+		required.setLowerBound(0);
+
+		assertThat(Diagnostician.INSTANCE.validate(required).toString())
+				.as("not optional but a minimum of zero values is a contradiction")
+				.contains("requiredSlotHasLowerBound");
+
+		// The shape every contract written before #41 has: optional, and
+		// lowerBound left at the model default. It must stay valid — for
+		// a single value 'optional' is the authoritative statement.
+		Parameter legacy = ServicesFactory.eINSTANCE.createParameter();
+		legacy.setName("currency");
+		legacy.setType("string");
+		legacy.setOptional(true);
+
+		assertThat(Diagnostician.INSTANCE.validate(legacy).getSeverity())
+				.as("a contract that never heard of bounds stays valid")
+				.isEqualTo(Diagnostic.OK);
 	}
 }

@@ -157,8 +157,7 @@
     <genClasses ecoreClass="services.ecore#//ServiceOperation">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceOperation/description"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/parameters"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceOperation/returnType"/>
-      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/returnConstraints"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/returnValue"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/exceptions"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/preconditions"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/postconditions"/>
@@ -166,6 +165,9 @@
     <genClasses ecoreClass="services.ecore#//Parameter">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/index"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/type"/>
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//Parameter/eType"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/lowerBound"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/upperBound"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/optional"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/defaultValue"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/description"/>

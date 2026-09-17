@@ -22,6 +22,7 @@ import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.HttpMethod;
+import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
@@ -138,7 +139,10 @@ class ProviderImplReconnectTest {
 		si.setVersion("1.0.0");
 		ServiceOperation charge = ServicesFactory.eINSTANCE.createServiceOperation();
 		charge.setName("charge");
-		charge.setReturnType("double");
+		Parameter chargeResult = ServicesFactory.eINSTANCE.createParameter();
+		chargeResult.setName("result");
+		chargeResult.setType("double");
+		charge.setReturnValue(chargeResult);
 		si.getOperations().add(charge);
 
 		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();

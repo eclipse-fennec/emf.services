@@ -65,6 +65,14 @@ directory — which in the image **is** the volume mount point
 `/opt/services/data`. On start it restores the snapshot if one is there,
 so a restart keeps catalog, providers and implementations.
 
+A snapshot is only readable by the model version that wrote it. EMF
+rejects a document carrying a feature the current model no longer has —
+`ServiceOperation.returnType` became `returnValue` with issue #41, for
+example — and the broker then logs a WARNING and **starts with an empty
+registry**. Upgrading across such a model change therefore means the
+providers re-publish; delete the stale `broker-state.xmi` so the warning
+does not repeat on every start.
+
 The mount has to be writable by uid 65532. A named volume inherits the
 image's ownership and just works; a **bind-mounted host directory does
 not** unless you chown it:

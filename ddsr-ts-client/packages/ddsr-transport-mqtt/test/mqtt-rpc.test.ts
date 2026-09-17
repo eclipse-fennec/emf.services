@@ -102,7 +102,10 @@ const factory = DDSRFactory.eINSTANCE;
 function paymentMqttFlavor(): { flavor: MqttFlavor; charge: ServiceOperation } {
   const charge = factory.createServiceOperation();
   charge.name = 'charge';
-  charge.returnType = 'double';
+  const chargeResult = factory.createParameter();
+  chargeResult.name = 'result';
+  chargeResult.type = 'double';
+  charge.returnValue = chargeResult;
 
   const flavor = factory.createMqttFlavor();
   flavor.name = 'payments-mqtt';

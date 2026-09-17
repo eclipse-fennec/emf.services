@@ -393,7 +393,106 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateParameter(Parameter parameter, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return validate_EveryDefaultConstraint(parameter, diagnostics, context);
+		if (!validate_NoCircularContainment(parameter, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validateParameter_typeOrEType(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validateParameter_boundsOrdered(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validateParameter_requiredSlotHasLowerBound(parameter, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * The cached validation expression for the typeOrEType constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String PARAMETER__TYPE_OR_ETYPE__EEXPRESSION = "type <> null or eType <> null";
+
+	/**
+	 * Validates the typeOrEType constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateParameter_typeOrEType(Parameter parameter, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.PARAMETER,
+				 parameter,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "typeOrEType",
+				 PARAMETER__TYPE_OR_ETYPE__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the boundsOrdered constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String PARAMETER__BOUNDS_ORDERED__EEXPRESSION = "upperBound = -1 or upperBound >= lowerBound";
+
+	/**
+	 * Validates the boundsOrdered constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateParameter_boundsOrdered(Parameter parameter, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.PARAMETER,
+				 parameter,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "boundsOrdered",
+				 PARAMETER__BOUNDS_ORDERED__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the requiredSlotHasLowerBound constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String PARAMETER__REQUIRED_SLOT_HAS_LOWER_BOUND__EEXPRESSION = "optional or lowerBound >= 1";
+
+	/**
+	 * Validates the requiredSlotHasLowerBound constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateParameter_requiredSlotHasLowerBound(Parameter parameter, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.PARAMETER,
+				 parameter,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "requiredSlotHasLowerBound",
+				 PARAMETER__REQUIRED_SLOT_HAS_LOWER_BOUND__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
 	}
 
 	/**

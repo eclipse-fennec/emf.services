@@ -241,7 +241,7 @@ public final class PaymentPublisher {
 
 		ServiceOperation charge = ServicesFactory.eINSTANCE.createServiceOperation();
 		charge.setName("charge");
-		charge.setReturnType("double");
+		charge.setReturnValue(returnValue("double"));
 		charge.setDescription("Charge an amount. Returns the remaining balance.");
 		charge.getParameters().add(parameter("amount",   0, "double", false, null, "Amount to charge."));
 		charge.getParameters().add(parameter("currency", 1, "string", true,  "EUR", "ISO 4217 currency code."));
@@ -249,7 +249,7 @@ public final class PaymentPublisher {
 
 		ServiceOperation getBalance = ServicesFactory.eINSTANCE.createServiceOperation();
 		getBalance.setName("getBalance");
-		getBalance.setReturnType("double");
+		getBalance.setReturnValue(returnValue("double"));
 		getBalance.setDescription("Get current account balance.");
 		getBalance.getParameters().add(parameter("accountId", 0, "string", false, null, "The account identifier."));
 		payment.getOperations().add(getBalance);
@@ -268,6 +268,19 @@ public final class PaymentPublisher {
 		}
 		LOG.info("[DDSR-Payment-Java] Payment catalog entry added");
 		return payment;
+	}
+
+	/**
+	 * The return slot, a Parameter of its own since #41. NamedElement
+	 * forces a name on it; {@code result} is the convention both SDKs
+	 * use, and the name never reaches the fingerprint — it has no wire
+	 * role.
+	 */
+	private static Parameter returnValue(String type) {
+		Parameter p = ServicesFactory.eINSTANCE.createParameter();
+		p.setName("result");
+		p.setType(type);
+		return p;
 	}
 
 	private static Parameter parameter(String name, int index, String type, boolean optional,

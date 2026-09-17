@@ -10,7 +10,10 @@ comparison. Two frozen schemes exist:
 | **im1** | `ServiceImplementation` | "does the broker still hold my registration, unchanged?" | `im1:<sha256-hex>` |
 
 Both schemes are **frozen with their tag**: any change to the canonical
-form is a new tag (`sd2`, `im2`), never a silent edit. The reference
+form that would move an already computable value is a new tag (`sd2`,
+`im2`), never a silent edit. New model state may be added to the grammar
+only when every fingerprint that could be computed before stays
+bit-identical — see [Typed slots and multiplicity](#typed-slots-and-multiplicity--and-why-the-tag-is-still-sd1). The reference
 implementations live in
 `org.eclipse.fennec.services.xmi.codec` (Java,
 `ServiceDescriptionFingerprint` / `ServiceImplementationFingerprint`)
@@ -46,10 +49,13 @@ divergence between the languages is a bug in one of them, never a
 I|<name>|version=<version>|status=<literal>
   X|<name>|type=|version=            exceptions, sorted by name
     pr|<tag>|<name>|value=<value>      exception properties, sorted
-  O|<name>|returnType=<type>         operations, DECLARED order
-    p|<name>|type=|index=|optional=|defaultValue=
+  O|<name>|returnType=<type>[|returnEType=][|returnLower=|returnUpper=][|returnOptional=true]
+    p|<name>|type=|index=|optional=|defaultValue=[|eType=][|lower=|upper=]
     x|<exceptionName>                  op exceptions, sorted by name
 ```
+
+The bracketed fields are the **extension fields** of issue #41; they are
+appended in that order and only where they apply — see below.
 
 Property tags: `S` string, `i` int, `l` long, `d` double, `f` float,
 `s` short, `b` bool, `SL` string list; an unknown subclass renders `?`
@@ -57,6 +63,44 @@ plus its eClass name (conservative: visible, the hash moves).
 
 Operation **order is contract** (it renders in declared order);
 exceptions are sorted by name (a set, not a sequence).
+
+### Typed slots and multiplicity — and why the tag is still sd1
+
+Since #41 a `Parameter` can name its metamodel type (`eType`, an EClass
+or an Ecore EDataType) and its multiplicity (`lowerBound`/`upperBound`),
+and an operation's return is a `Parameter` of its own
+(`ServiceOperation.returnValue`) instead of a bare string. The canonical
+form renders the new state **only where it says something the old model
+could not express**, so no fingerprint that could be computed before
+moves — which is the reason the tag did not have to become `sd2`:
+
+- `returnType=` is the return slot's `type`, exactly where the old
+  `ServiceOperation.returnType` string stood. No return slot renders the
+  same empty field as a void operation did.
+- `eType=` / `returnEType=` render `<nsURI>#//<Name>`, read from the
+  **proxy URI** where the metamodel is not on the classpath — the normal
+  case for a broker holding a foreign provider's contract. Resolving is
+  never required, and a resolved classifier renders identically. Absent
+  where no `eType` is set.
+- `lower=`/`upper=` render **as a pair and only for a multi-valued slot**
+  (`upperBound ≠ 1`). For a single value the multiplicity is already
+  fully stated by `optional`, and `lowerBound` would be a second, weaker
+  copy of it: a factory-built `Parameter` answers the model default `1`,
+  one parsed from a document written before the bounds existed answers
+  nothing, and an optional parameter written consistently says `0`. All
+  three mean the same thing, so none of them may move the hash — in
+  either language.
+- `returnOptional=true` renders only for a nullable result; the old model
+  had no return-side optionality, so `false` stays silent.
+- The return slot's **name never renders**. `NamedElement` forces one on
+  it (`result` by convention in both SDKs), but unlike a parameter name
+  it has no wire role — it is not an argument-map key — and emitting it
+  would move the fingerprint of every contract migrated from the old
+  string.
+
+This is the one documented way to extend a frozen scheme: the grammar
+grew, no computable value changed. An extension that cannot meet that
+bar is an `sd2`.
 
 ## im1 — implementation fingerprint
 

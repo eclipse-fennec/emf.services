@@ -20,6 +20,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.InternalEObject;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.DoubleProperty;
@@ -57,8 +61,8 @@ import org.eclipse.fennec.services.StringProperty;
  * I|&lt;name&gt;|version=&lt;version&gt;|status=&lt;ACTIVE|DEPRECATED&gt;
  *   X|&lt;name&gt;|type=&lt;type&gt;|version=&lt;version&gt;          interface exceptions, sorted by name
  *     pr|&lt;tag&gt;|&lt;name&gt;|value=&lt;value&gt;                 exception payload properties, sorted by name
- *   O|&lt;name&gt;|returnType=&lt;returnType&gt;                 operations, DECLARED order
- *     p|&lt;name&gt;|type=&lt;type&gt;|index=&lt;index&gt;|optional=&lt;true|false&gt;|defaultValue=&lt;default&gt;
+ *   O|&lt;name&gt;|returnType=&lt;type&gt;[ext]               operations, DECLARED order
+ *     p|&lt;name&gt;|type=&lt;type&gt;|index=&lt;index&gt;|optional=&lt;true|false&gt;|defaultValue=&lt;default&gt;[ext]
  *     x|&lt;name&gt;                                       referenced exceptions, sorted by name
  * </pre>
  *
@@ -96,6 +100,19 @@ import org.eclipse.fennec.services.StringProperty;
  *       an empty list distinguishable from a single empty element.</li>
  *   <li><b>status</b> always renders explicitly (EMF omits the default
  *       {@code ACTIVE} on the wire; the canonical form does not).</li>
+ *   <li><b>Extension fields</b> (issue #41), appended to their line in
+ *       this order and only where they apply:
+ *       {@code |eType=} / {@code |returnEType=} (the referenced
+ *       classifier as {@code <nsURI>#//<Name>}, absent when unset),
+ *       {@code |lower=|upper=} / {@code |returnLower=|returnUpper=} (as
+ *       a PAIR and only for a multi-valued slot), and
+ *       {@code |returnOptional=true} for a nullable result. Everything
+ *       the old model could already express renders exactly as before,
+ *       which is why this stays {@code sd1} — see
+ *       docs/FINGERPRINTS.md. The return slot's NAME never renders: it
+ *       has no wire role, and emitting it would move the fingerprint of
+ *       every contract migrated from the old {@code returnType}
+ *       string.</li>
  * </ul>
  *
  * The fingerprint value is {@code "sd1:" + sha256-hex(utf8(canonicalForm))}
@@ -155,13 +172,17 @@ public final class ServiceDescriptionFingerprint {
 		}
 
 		for (ServiceOperation op : serviceInterface.getOperations()) {
-			lines.add("  O|" + esc(op.getName()) + "|returnType=" + esc(op.getReturnType()));
+			Parameter returnValue = op.getReturnValue();
+			lines.add("  O|" + esc(op.getName())
+					+ "|returnType=" + esc(returnValue != null ? returnValue.getType() : null)
+					+ returnExtensions(returnValue));
 			for (Parameter p : op.getParameters()) {
 				lines.add("    p|" + esc(p.getName())
 						+ "|type=" + esc(p.getType())
 						+ "|index=" + p.getIndex()
 						+ "|optional=" + p.isOptional()
-						+ "|defaultValue=" + esc(p.getDefaultValue()));
+						+ "|defaultValue=" + esc(p.getDefaultValue())
+						+ parameterExtensions(p));
 			}
 			List<ServiceException> raised = new ArrayList<>(op.getExceptions());
 			raised.sort(Comparator.comparing(ServiceException::getName,
@@ -174,6 +195,60 @@ public final class ServiceDescriptionFingerprint {
 	}
 
 	// ------------------------------------------------------------------
+
+	/**
+	 * {@code |eType=…|lower=…|upper=…} for a parameter — each field only
+	 * where it says something the pre-#41 model could not.
+	 */
+	static String parameterExtensions(Parameter parameter) {
+		String uri = eTypeUri(parameter.getEType());
+		return (uri != null ? "|eType=" + esc(uri) : "") + boundFields(parameter, "lower", "upper");
+	}
+
+	/** The same fields for the return slot, under {@code return…} names. */
+	static String returnExtensions(Parameter returnValue) {
+		if (returnValue == null) {
+			return "";
+		}
+		String uri = eTypeUri(returnValue.getEType());
+		return (uri != null ? "|returnEType=" + esc(uri) : "")
+				+ boundFields(returnValue, "returnLower", "returnUpper")
+				+ (returnValue.isOptional() ? "|returnOptional=true" : "");
+	}
+
+	/**
+	 * Both bounds, as a pair and ONLY for a multi-valued slot. Where
+	 * {@code upperBound} is 1 the multiplicity is already fully stated by
+	 * {@code optional}, and {@code lowerBound} would be a second, weaker
+	 * copy of it: the model default is 1, a document written before the
+	 * bounds existed carries nothing, and an optional parameter written
+	 * consistently says 0. All three mean the same thing, so none of them
+	 * may move the hash — in either language.
+	 */
+	static String boundFields(Parameter slot, String lowerName, String upperName) {
+		int upper = slot.getUpperBound();
+		if (upper == 1) {
+			return "";
+		}
+		return "|" + lowerName + "=" + slot.getLowerBound() + "|" + upperName + "=" + upper;
+	}
+
+	/**
+	 * {@code <nsURI>#//<Name>} for a referenced classifier, read from the
+	 * PROXY URI where the metamodel is not on the classpath — the normal
+	 * case for a broker holding a foreign provider's contract. Resolving
+	 * is never required, and a resolved classifier renders identically.
+	 */
+	static String eTypeUri(EClassifier eType) {
+		if (eType == null) {
+			return null;
+		}
+		if (eType.eIsProxy()) {
+			URI proxyURI = ((InternalEObject) eType).eProxyURI();
+			return proxyURI != null ? proxyURI.toString() : null;
+		}
+		return EcoreUtil.getURI(eType).toString();
+	}
 
 	static List<Property> sortedByName(List<Property> properties) {
 		List<Property> sorted = new ArrayList<>(properties);

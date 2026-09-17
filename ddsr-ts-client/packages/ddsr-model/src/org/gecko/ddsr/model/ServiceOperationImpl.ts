@@ -9,7 +9,6 @@ import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
 import type { NamedElement } from './NamedElement';
 import type { Parameter } from './Parameter';
-import type { ParameterConstraint } from './ParameterConstraint';
 import type { ServiceException } from './ServiceException';
 import type { Invariant } from './Invariant';
 import type { ServiceOperation } from './ServiceOperation';
@@ -23,18 +22,16 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
   // Feature ID Constants (eLiterals)
   static readonly DESCRIPTION: number = 1;
   static readonly PARAMETERS: number = 2;
-  static readonly RETURN_TYPE: number = 3;
-  static readonly RETURN_CONSTRAINTS: number = 4;
-  static readonly EXCEPTIONS: number = 5;
-  static readonly PRECONDITIONS: number = 6;
-  static readonly POSTCONDITIONS: number = 7;
+  static readonly RETURN_VALUE: number = 3;
+  static readonly EXCEPTIONS: number = 4;
+  static readonly PRECONDITIONS: number = 5;
+  static readonly POSTCONDITIONS: number = 6;
   static readonly NAME: number = 0;
 
   // Private fields
   private _description?: string;
   private _parameters: Parameter[] = [];
-  private _returnType?: string;
-  private _returnConstraints: ParameterConstraint[] = [];
+  private _returnValue?: Parameter;
   private _exceptions: ServiceException[] = [];
   private _preconditions: Invariant[] = [];
   private _postconditions: Invariant[] = [];
@@ -96,49 +93,25 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
     }
   }
 
-  get returnType(): string {
-    return this._returnType!;
+  get returnValue(): Parameter {
+    return this._returnValue!;
   }
 
-  set returnType(value: string) {
-    const oldValue = this._returnType;
-    this._returnType = value;
+  set returnValue(value: Parameter) {
+    const oldValue = this._returnValue;
+    this._returnValue = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.RETURN_TYPE),
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.RETURN_VALUE),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => ServiceOperationImpl.RETURN_TYPE,
-        merge: () => false
-      });
-    }
-  }
-
-  get returnConstraints(): ParameterConstraint[] {
-    return this._returnConstraints;
-  }
-
-  set returnConstraints(value: ParameterConstraint[]) {
-    const oldValue = this._returnConstraints;
-    this._returnConstraints = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.RETURN_CONSTRAINTS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceOperationImpl.RETURN_CONSTRAINTS,
+        getFeatureID: () => ServiceOperationImpl.RETURN_VALUE,
         merge: () => false
       });
     }
@@ -236,10 +209,8 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         return this.description;
       case ServiceOperationImpl.PARAMETERS:
         return this.parameters;
-      case ServiceOperationImpl.RETURN_TYPE:
-        return this.returnType;
-      case ServiceOperationImpl.RETURN_CONSTRAINTS:
-        return this.returnConstraints;
+      case ServiceOperationImpl.RETURN_VALUE:
+        return this.returnValue;
       case ServiceOperationImpl.EXCEPTIONS:
         return this.exceptions;
       case ServiceOperationImpl.PRECONDITIONS:
@@ -267,12 +238,8 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         this.parameters = newValue as Parameter[];
         super.eSet(feature, newValue);
         break;
-      case ServiceOperationImpl.RETURN_TYPE:
-        this.returnType = newValue as string;
-        super.eSet(feature, newValue);
-        break;
-      case ServiceOperationImpl.RETURN_CONSTRAINTS:
-        this.returnConstraints = newValue as ParameterConstraint[];
+      case ServiceOperationImpl.RETURN_VALUE:
+        this.returnValue = newValue as Parameter;
         super.eSet(feature, newValue);
         break;
       case ServiceOperationImpl.EXCEPTIONS:
@@ -306,10 +273,8 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         return this._description !== undefined;
       case ServiceOperationImpl.PARAMETERS:
         return this._parameters !== undefined && this._parameters.length > 0;
-      case ServiceOperationImpl.RETURN_TYPE:
-        return this._returnType !== undefined;
-      case ServiceOperationImpl.RETURN_CONSTRAINTS:
-        return this._returnConstraints !== undefined && this._returnConstraints.length > 0;
+      case ServiceOperationImpl.RETURN_VALUE:
+        return this._returnValue !== undefined;
       case ServiceOperationImpl.EXCEPTIONS:
         return this._exceptions !== undefined && this._exceptions.length > 0;
       case ServiceOperationImpl.PRECONDITIONS:
@@ -335,11 +300,8 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
       case ServiceOperationImpl.PARAMETERS:
         this._parameters = [];
         return;
-      case ServiceOperationImpl.RETURN_TYPE:
-        this._returnType = undefined;
-        return;
-      case ServiceOperationImpl.RETURN_CONSTRAINTS:
-        this._returnConstraints = [];
+      case ServiceOperationImpl.RETURN_VALUE:
+        this._returnValue = undefined;
         return;
       case ServiceOperationImpl.EXCEPTIONS:
         this._exceptions = [];

@@ -7,7 +7,7 @@
     description="DDSR broker catalog management: list, add, deprecate, remove ServiceInterface entries.">
   <operations name="listCatalog"
       description="Return the current registry snapshot including the catalog.">
-    <returnType>RemoteServiceRegistry</returnType>
+    <returnValue name="result" type="RemoteServiceRegistry"/>
   </operations>
   <operations name="addCatalogEntry"
       description="Add a new ServiceInterface to the catalog. Rejects duplicates by name."
@@ -16,7 +16,7 @@
         description="The interface to add, fully populated."/>
     <parameters name="requestor" index="1" type="string" optional="true" defaultValue="anonymous"
         description="Symbolic identity that initiated the change (governance audit)."/>
-    <returnType>Diagnostic</returnType>
+    <returnValue name="result" type="Diagnostic"/>
   </operations>
   <operations name="deprecateCatalogEntry"
       description="Soft-deprecate an existing entry. Existing implementations keep working; new publishes emit a WARNING."
@@ -26,14 +26,14 @@
     <parameters name="deprecationReason" index="1" type="string" optional="true"
         description="Free-form reason surfaced in the WARNING diagnostic."/>
     <parameters name="requestor" index="2" type="string" optional="true" defaultValue="anonymous"/>
-    <returnType>Diagnostic</returnType>
+    <returnValue name="result" type="Diagnostic"/>
   </operations>
   <operations name="removeCatalogEntry"
       description="Strict-Reject removal: rejects while any implementation references the interface."
       exceptions="//@exceptions.1 //@exceptions.2">
     <parameters name="name" index="0" type="string"/>
     <parameters name="requestor" index="1" type="string" optional="true" defaultValue="anonymous"/>
-    <returnType>Diagnostic</returnType>
+    <returnValue name="result" type="Diagnostic"/>
   </operations>
   <exceptions name="CatalogEntryAlreadyExists" type="org.eclipse.fennec.services.broker.exception.CatalogEntryAlreadyExists"
       description="An entry with the same name already exists. HTTP 409, code 202."/>

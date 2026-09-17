@@ -10,7 +10,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize].
+ * Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize]. Distinct from Parameter.lowerBound/upperBound: those declare the multiplicity of the slot and are part of the contract signature (they reach the sd1 fingerprint and the generated stub), this constraint is a runtime validity check inside a declared multiplicity.
  * <!-- end-model-doc -->
  *
  * <p>

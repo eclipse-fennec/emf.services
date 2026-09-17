@@ -940,18 +940,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getServiceOperation_ReturnType() {
-		return (EAttribute)serviceOperationEClass.getEStructuralFeatures().get(2);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EReference getServiceOperation_ReturnConstraints() {
-		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(3);
+	public EReference getServiceOperation_ReturnValue() {
+		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -961,7 +951,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EReference getServiceOperation_Exceptions() {
-		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(4);
+		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(3);
 	}
 
 	/**
@@ -971,7 +961,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EReference getServiceOperation_Preconditions() {
-		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(5);
+		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(4);
 	}
 
 	/**
@@ -981,7 +971,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EReference getServiceOperation_Postconditions() {
-		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(6);
+		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(5);
 	}
 
 	/**
@@ -1020,8 +1010,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getParameter_Optional() {
-		return (EAttribute)parameterEClass.getEStructuralFeatures().get(2);
+	public EReference getParameter_EType() {
+		return (EReference)parameterEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -1030,7 +1020,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getParameter_DefaultValue() {
+	public EAttribute getParameter_LowerBound() {
 		return (EAttribute)parameterEClass.getEStructuralFeatures().get(3);
 	}
 
@@ -1040,7 +1030,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getParameter_Description() {
+	public EAttribute getParameter_UpperBound() {
 		return (EAttribute)parameterEClass.getEStructuralFeatures().get(4);
 	}
 
@@ -1050,8 +1040,38 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getParameter_Optional() {
+		return (EAttribute)parameterEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getParameter_DefaultValue() {
+		return (EAttribute)parameterEClass.getEStructuralFeatures().get(6);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getParameter_Description() {
+		return (EAttribute)parameterEClass.getEStructuralFeatures().get(7);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getParameter_Constraints() {
-		return (EReference)parameterEClass.getEStructuralFeatures().get(5);
+		return (EReference)parameterEClass.getEStructuralFeatures().get(8);
 	}
 
 	/**
@@ -3548,8 +3568,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		serviceOperationEClass = createEClass(SERVICE_OPERATION);
 		createEAttribute(serviceOperationEClass, SERVICE_OPERATION__DESCRIPTION);
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__PARAMETERS);
-		createEAttribute(serviceOperationEClass, SERVICE_OPERATION__RETURN_TYPE);
-		createEReference(serviceOperationEClass, SERVICE_OPERATION__RETURN_CONSTRAINTS);
+		createEReference(serviceOperationEClass, SERVICE_OPERATION__RETURN_VALUE);
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__EXCEPTIONS);
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__PRECONDITIONS);
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__POSTCONDITIONS);
@@ -3557,6 +3576,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		parameterEClass = createEClass(PARAMETER);
 		createEAttribute(parameterEClass, PARAMETER__INDEX);
 		createEAttribute(parameterEClass, PARAMETER__TYPE);
+		createEReference(parameterEClass, PARAMETER__ETYPE);
+		createEAttribute(parameterEClass, PARAMETER__LOWER_BOUND);
+		createEAttribute(parameterEClass, PARAMETER__UPPER_BOUND);
 		createEAttribute(parameterEClass, PARAMETER__OPTIONAL);
 		createEAttribute(parameterEClass, PARAMETER__DEFAULT_VALUE);
 		createEAttribute(parameterEClass, PARAMETER__DESCRIPTION);
@@ -3955,15 +3977,17 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(serviceOperationEClass, ServiceOperation.class, "ServiceOperation", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceOperation_Description(), ecorePackage.getEString(), "description", null, 0, 1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceOperation_Parameters(), this.getParameter(), null, "parameters", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getServiceOperation_ReturnType(), ecorePackage.getEString(), "returnType", null, 0, 1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEReference(getServiceOperation_ReturnConstraints(), this.getParameterConstraint(), null, "returnConstraints", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceOperation_ReturnValue(), this.getParameter(), null, "returnValue", null, 0, 1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceOperation_Exceptions(), this.getServiceException(), null, "exceptions", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceOperation_Preconditions(), this.getInvariant(), null, "preconditions", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceOperation_Postconditions(), this.getInvariant(), null, "postconditions", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(parameterEClass, Parameter.class, "Parameter", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getParameter_Index(), ecorePackage.getEInt(), "index", null, 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getParameter_Type(), ecorePackage.getEString(), "type", null, 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getParameter_Type(), ecorePackage.getEString(), "type", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getParameter_EType(), ecorePackage.getEClassifier(), null, "eType", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getParameter_LowerBound(), ecorePackage.getEInt(), "lowerBound", "1", 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getParameter_UpperBound(), ecorePackage.getEInt(), "upperBound", "1", 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getParameter_Optional(), ecorePackage.getEBoolean(), "optional", "false", 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getParameter_DefaultValue(), ecorePackage.getEString(), "defaultValue", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getParameter_Description(), ecorePackage.getEString(), "description", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -4682,16 +4706,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Ordered list of input parameters. Order is the visible order in the generated stub signature and is determined by Parameter.index."
 		   });
 		addAnnotation
-		  (getServiceOperation_ReturnType(),
+		  (getServiceOperation_ReturnValue(),
 		   source,
 		   new String[] {
-			   "documentation", "Language-neutral name of the return type (e.g. \'string\', \'int\', \'money.Money\'). Unset = void/None/no return value."
-		   });
-		addAnnotation
-		  (getServiceOperation_ReturnConstraints(),
-		   source,
-		   new String[] {
-			   "documentation", "Constraints on the return value (same constraint language as parameters). Empty = no constraints."
+			   "documentation", "The operation\'s return slot, expressed as a Parameter: type, multiplicity and constraints in one place. Unset = void/None/no return value. \'index\' is meaningless here and stays 0, \'optional\' says the result may be null, \'defaultValue\' has no meaning. Replaces the former \'returnType\' string and \'returnConstraints\' \u2014 a Parameter carries its own constraints."
 		   });
 		addAnnotation
 		  (getServiceOperation_Exceptions(),
@@ -4715,7 +4733,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (parameterEClass,
 		   source,
 		   new String[] {
-			   "documentation", "A typed, named, positional input to a ServiceOperation. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping)."
+			   "documentation", "A typed, named, positional input to a ServiceOperation \u2014 and, as ServiceOperation.returnValue, its return slot. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping)."
 		   });
 		addAnnotation
 		  (getParameter_Index(),
@@ -4727,7 +4745,25 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getParameter_Type(),
 		   source,
 		   new String[] {
-			   "documentation", "Language-neutral type name. Code Publisher maps to the idiomatic language type (e.g. \'string\' \u2192 Java String / TS string / Python str). Custom types reference other ServiceInterfaces by qualified name."
+			   "documentation", "Language-neutral type name. Code Publisher maps to the idiomatic language type (e.g. \'string\' \u2192 Java String / TS string / Python str). Custom types reference other ServiceInterfaces by qualified name. For EMF values \'eType\' is the precise statement: where it is set it wins for stub generation and \'type\' may be omitted. At least one of the two MUST be set."
+		   });
+		addAnnotation
+		  (getParameter_EType(),
+		   source,
+		   new String[] {
+			   "documentation", "Metamodel type of this value: an EClass for EObject values, an Ecore EDataType for primitives (EString, EInt, EDouble, \u2026). Serialized as a cross-document href \'<nsURI>#//<Name>\' and NOT required to be resolvable by the reader \u2014 broker, fingerprint and stub generators read the proxy URI, so a catalog document parses and hashes without the provider\'s domain metamodel on the classpath."
+		   });
+		addAnnotation
+		  (getParameter_LowerBound(),
+		   source,
+		   new String[] {
+			   "documentation", "Minimum number of values, inclusive, with the same meaning as ETypedElement.lowerBound: 1 = one value required, 0 = may be absent. Precedence: for a SINGLE-valued slot (upperBound = 1) \'optional\' is authoritative and this value is ignored \u2014 by the sd1 canonical form as well, which is why a contract written before the bounds existed keeps its fingerprint. It earns its keep on multi-valued slots (\'at least two elements\'). Only the genuine contradiction is rejected: a slot that is not optional cannot have a lower bound of 0."
+		   });
+		addAnnotation
+		  (getParameter_UpperBound(),
+		   source,
+		   new String[] {
+			   "documentation", "Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded but finite collection. Unbounded streams over time are NOT meant here \u2014 those belong to the interaction-style work in WIRE_CHANNELS.md. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds."
 		   });
 		addAnnotation
 		  (getParameter_Optional(),
@@ -4763,7 +4799,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (requiredConstraintEClass,
 		   source,
 		   new String[] {
-			   "documentation", "Marker constraint: parameter MUST NOT be null/None/undefined. Redundant with Parameter.optional = false but explicit, useful for return-value constraints where Parameter.optional does not apply."
+			   "documentation", "Marker constraint: parameter MUST NOT be null/None/undefined. Redundant with Parameter.optional = false (and with lowerBound = 1) but explicit \u2014 a publisher that states nullability through constraints rather than through the flag says the same thing."
 		   });
 		addAnnotation
 		  (numericRangeConstraintEClass,
@@ -4883,7 +4919,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (collectionSizeConstraintEClass,
 		   source,
 		   new String[] {
-			   "documentation", "Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize]."
+			   "documentation", "Bounds on collection-typed parameters (lists, arrays, sets). Implementation rejects values whose count is outside [minSize, maxSize]. Distinct from Parameter.lowerBound/upperBound: those declare the multiplicity of the slot and are part of the contract signature (they reach the sd1 fingerprint and the generated stub), this constraint is a runtime validity check inside a declared multiplicity."
 		   });
 		addAnnotation
 		  (getCollectionSizeConstraint_MinSize(),
@@ -6265,6 +6301,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "constraints", "validSemver"
 		   });
 		addAnnotation
+		  (parameterEClass,
+		   source,
+		   new String[] {
+			   "constraints", "typeOrEType boundsOrdered requiredSlotHasLowerBound"
+		   });
+		addAnnotation
 		  (numericRangeConstraintEClass,
 		   source,
 		   new String[] {
@@ -6339,6 +6381,14 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "validSemver", "version = null or version.matches(\'^\\\\d+\\\\.\\\\d+\\\\.\\\\d+(-[0-9A-Za-z.-]+)?$\')"
+		   });
+		addAnnotation
+		  (parameterEClass,
+		   source,
+		   new String[] {
+			   "typeOrEType", "type <> null or eType <> null",
+			   "boundsOrdered", "upperBound = -1 or upperBound >= lowerBound",
+			   "requiredSlotHasLowerBound", "optional or lowerBound >= 1"
 		   });
 		addAnnotation
 		  (numericRangeConstraintEClass,

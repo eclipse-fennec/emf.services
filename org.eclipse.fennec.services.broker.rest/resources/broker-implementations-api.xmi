@@ -12,14 +12,14 @@
         description="The provider that owns the implementation (must contain it)."/>
     <parameters name="implementation" index="1" type="ServiceImplementation"
         description="The implementation to publish; MUST be contained in provider.implementations."/>
-    <returnType>Diagnostic</returnType>
+    <returnValue name="result" type="Diagnostic"/>
   </operations>
   <operations name="withdrawImplementation"
       description="Withdraw a previously published implementation. Provider ownership is verified."
       exceptions="//@exceptions.0 //@exceptions.2">
     <parameters name="provider" index="0" type="ServiceProvider"/>
     <parameters name="implementation" index="1" type="ServiceImplementation"/>
-    <returnType>Diagnostic</returnType>
+    <returnValue name="result" type="Diagnostic"/>
   </operations>
   <exceptions name="ImplementationOwnershipViolation" type="org.eclipse.fennec.services.broker.exception.ImplementationOwnershipViolation"
       description="Implementation does not belong to the given provider. HTTP 403, code 211."/>

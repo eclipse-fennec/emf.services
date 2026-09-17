@@ -5,7 +5,7 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { EObject, EClassifier, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
 import type { NamedElement } from './NamedElement';
 import type { ParameterConstraint } from './ParameterConstraint';
 
@@ -15,7 +15,10 @@ import type { ParameterConstraint } from './ParameterConstraint';
  */
 export interface Parameter extends NamedElement {
   index: number;
-  type: string;
+  type?: string;
+  eType?: EClassifier;
+  lowerBound?: number;
+  upperBound?: number;
   optional: boolean;
   defaultValue?: string;
   description?: string;

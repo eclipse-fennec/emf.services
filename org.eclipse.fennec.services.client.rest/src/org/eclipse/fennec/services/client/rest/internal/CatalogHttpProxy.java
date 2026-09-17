@@ -13,12 +13,12 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
-import org.eclipse.fennec.services.broker.core.BrokerCatalog;
-import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;

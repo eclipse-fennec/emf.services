@@ -13,12 +13,12 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
-import org.eclipse.fennec.services.broker.core.BrokerImplementations;
-import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceRegistration;
+import org.eclipse.fennec.services.broker.core.BrokerImplementations;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;

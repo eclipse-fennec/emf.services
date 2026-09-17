@@ -18,11 +18,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.CatalogStatus;
+import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.DoubleProperty;
@@ -51,7 +51,6 @@ import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.junit.jupiter.api.BeforeEach;
-import org.eclipse.fennec.services.ConsumerSession;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

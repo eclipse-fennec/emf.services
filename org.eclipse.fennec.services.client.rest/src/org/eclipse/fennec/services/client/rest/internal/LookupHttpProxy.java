@@ -18,15 +18,14 @@ import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.ConsumerCapability;
-import org.eclipse.fennec.services.Property;
-import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.LocalServiceRegistry;
+import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.ServiceImplementation;
-import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.StringProperty;
+import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.osgi.service.component.annotations.Component;

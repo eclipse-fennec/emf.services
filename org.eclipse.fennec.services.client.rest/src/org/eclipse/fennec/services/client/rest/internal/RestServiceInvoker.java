@@ -18,13 +18,13 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.fennec.services.client.DdsrException;
-import org.eclipse.fennec.services.client.ServiceInvoker;
-import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
+import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.ServiceInvoker;
+import org.eclipse.fennec.services.client.ServiceLocator;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;

@@ -40,7 +40,7 @@ Private-Package: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
 	org.eclipse.fennec.m2x.ocl.api;version="[0.1.1,0.1.2)",\
-	org.eclipse.fennec.m2x.ocl.engine;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.engine;version="[0.1.1,0.1.2)";packages='*',\
 	org.eclipse.fennec.m2x.ocl.model;version="[0.1.1,0.1.2)",\
 	org.eclipse.fennec.m2x.ocl.parser;version="[0.1.1,0.1.2)",\
 	org.eclipse.fennec.m2x.unit;version="[0.1.1,0.1.2)",\

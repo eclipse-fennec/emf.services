@@ -16,8 +16,6 @@ package org.eclipse.fennec.services.broker.core.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
@@ -32,7 +30,6 @@ import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventDocument;
-import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

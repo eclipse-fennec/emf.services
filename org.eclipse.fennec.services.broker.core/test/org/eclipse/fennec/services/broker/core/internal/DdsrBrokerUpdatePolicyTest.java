@@ -17,7 +17,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.fennec.services.ConsumerSession;
@@ -25,7 +24,6 @@ import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
-import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -35,7 +33,6 @@ import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.UpdatePolicy;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
-import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

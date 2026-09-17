@@ -18,6 +18,7 @@ import type { PackageMapping } from './PackageMapping';
 export interface LanguageBinding extends NamedElement {
   serviceInterfaces: ServiceInterface[];
   targetPackage: string;
+  fileHeader: string[];
   typeMappings: TypeMapping[];
   packageMappings: PackageMapping[];
 

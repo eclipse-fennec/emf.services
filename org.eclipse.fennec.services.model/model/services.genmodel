@@ -502,6 +502,7 @@
     <genClasses image="false" ecoreClass="services.ecore#//LanguageBinding">
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//LanguageBinding/serviceInterfaces"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//LanguageBinding/targetPackage"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//LanguageBinding/fileHeader"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//LanguageBinding/typeMappings"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//LanguageBinding/packageMappings"/>
     </genClasses>

@@ -21,6 +21,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <ul>
  *   <li>{@link org.eclipse.fennec.services.LanguageBinding#getServiceInterfaces <em>Service Interfaces</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.LanguageBinding#getTargetPackage <em>Target Package</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.LanguageBinding#getFileHeader <em>File Header</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.LanguageBinding#getTypeMappings <em>Type Mappings</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.LanguageBinding#getPackageMappings <em>Package Mappings</em>}</li>
  * </ul>
@@ -72,6 +73,21 @@ public interface LanguageBinding extends NamedElement {
 	 * @generated
 	 */
 	void setTargetPackage(String value);
+
+	/**
+	 * Returns the value of the '<em><b>File Header</b></em>' attribute list.
+	 * The list contents are of type {@link java.lang.String}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Header text placed at the top of every generated file, one entry per line and WITHOUT comment markers — the generator wraps the lines in the comment syntax of its own language, so the same header serves Java, TypeScript and Python. Empty = no header. One entry per line on purpose: a header does not end up as escaped newlines inside one attribute, and a template can prefix and indent each line the way its language wants.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>File Header</em>' attribute list.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getLanguageBinding_FileHeader()
+	 * @model
+	 * @generated
+	 */
+	EList<String> getFileHeader();
 
 	/**
 	 * Returns the value of the '<em><b>Type Mappings</b></em>' containment reference list.

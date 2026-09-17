@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:53592534ff61220514f58358936a953408dac40f270d0e4e114236d48a25c287", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:3e73731d82dbde28e47e8c210db0dfce67df4f3d6f8b7a2db5bd7537cdcf2938", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -4059,13 +4059,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int LANGUAGE_BINDING__TARGET_PACKAGE = NAMED_ELEMENT_FEATURE_COUNT + 1;
 
 	/**
+	 * The feature id for the '<em><b>File Header</b></em>' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING__FILE_HEADER = NAMED_ELEMENT_FEATURE_COUNT + 2;
+
+	/**
 	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int LANGUAGE_BINDING__TYPE_MAPPINGS = NAMED_ELEMENT_FEATURE_COUNT + 2;
+	int LANGUAGE_BINDING__TYPE_MAPPINGS = NAMED_ELEMENT_FEATURE_COUNT + 3;
 
 	/**
 	 * The feature id for the '<em><b>Package Mappings</b></em>' containment reference list.
@@ -4074,7 +4083,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int LANGUAGE_BINDING__PACKAGE_MAPPINGS = NAMED_ELEMENT_FEATURE_COUNT + 3;
+	int LANGUAGE_BINDING__PACKAGE_MAPPINGS = NAMED_ELEMENT_FEATURE_COUNT + 4;
 
 	/**
 	 * The number of structural features of the '<em>Language Binding</em>' class.
@@ -4083,7 +4092,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int LANGUAGE_BINDING_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 4;
+	int LANGUAGE_BINDING_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 5;
 
 	/**
 	 * The number of operations of the '<em>Language Binding</em>' class.
@@ -4233,6 +4242,15 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int JAVA_BINDING__TARGET_PACKAGE = LANGUAGE_BINDING__TARGET_PACKAGE;
 
 	/**
+	 * The feature id for the '<em><b>File Header</b></em>' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING__FILE_HEADER = LANGUAGE_BINDING__FILE_HEADER;
+
+	/**
 	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -4315,6 +4333,15 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int TYPE_SCRIPT_BINDING__TARGET_PACKAGE = LANGUAGE_BINDING__TARGET_PACKAGE;
 
 	/**
+	 * The feature id for the '<em><b>File Header</b></em>' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING__FILE_HEADER = LANGUAGE_BINDING__FILE_HEADER;
+
+	/**
 	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -4386,6 +4413,15 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @ordered
 	 */
 	int PYTHON_BINDING__TARGET_PACKAGE = LANGUAGE_BINDING__TARGET_PACKAGE;
+
+	/**
+	 * The feature id for the '<em><b>File Header</b></em>' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING__FILE_HEADER = LANGUAGE_BINDING__FILE_HEADER;
 
 	/**
 	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
@@ -7459,6 +7495,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getLanguageBinding_TargetPackage();
 
 	/**
+	 * Returns the meta object for the attribute list '{@link org.eclipse.fennec.services.LanguageBinding#getFileHeader <em>File Header</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute list '<em>File Header</em>'.
+	 * @see org.eclipse.fennec.services.LanguageBinding#getFileHeader()
+	 * @see #getLanguageBinding()
+	 * @generated
+	 */
+	EAttribute getLanguageBinding_FileHeader();
+
+	/**
 	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.services.LanguageBinding#getTypeMappings <em>Type Mappings</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -10052,6 +10099,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute LANGUAGE_BINDING__TARGET_PACKAGE = eINSTANCE.getLanguageBinding_TargetPackage();
+
+		/**
+		 * The meta object literal for the '<em><b>File Header</b></em>' attribute list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute LANGUAGE_BINDING__FILE_HEADER = eINSTANCE.getLanguageBinding_FileHeader();
 
 		/**
 		 * The meta object literal for the '<em><b>Type Mappings</b></em>' containment reference list feature.

@@ -127,14 +127,17 @@ class ServiceInterfaceTemplateTest {
 	}
 
 	@Test
-	void theDeclaredPayloadBecomesTypedState() throws Exception {
+	void theDeclaredPropertiesBecomeConstantMetadata() throws Exception {
+		// A Property carries a name AND a value, and sd1 hashes that value —
+		// so it is contract metadata, the same for every occurrence of the
+		// error, not per-instance payload.
 		String source = generated("PersonNotFoundException.java");
 
 		assertThat(source)
-				.as("a payload field is what lets a consumer read structured data instead of parsing a message")
-				.contains("private final String personId;")
-				.contains("public PersonNotFoundException(String message, String personId) {")
-				.contains("public String getPersonId() {");
+				.contains("private static final Map<String, Object> PROPERTIES = "
+						+ "Map.of(\"code\", 404, \"retryable\", false);")
+				.contains("public Map<String, Object> getProperties() {")
+				.contains("import java.util.Map;");
 	}
 
 	@Test

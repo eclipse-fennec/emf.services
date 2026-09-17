@@ -60,6 +60,8 @@ public interface [service.name/] {
 [line/]
 [/for]
 
+import java.util.Map;
+
 /**
  * [exceptionDoc(raised)/]
  *
@@ -70,23 +72,25 @@ public interface [service.name/] {
 public class [simpleName(exceptionType(binding, raised))/] extends Exception {
 
 	private static final long serialVersionUID = 1L;
-[for (payload : Property | raised.properties->sortedBy(f | f.name))]
 
-	private final [propertyType(payload)/] [payload.name/];
-[/for]
+	/**
+	 * The constant metadata the contract declares for this error. Same for
+	 * every occurrence — a value that differed per occurrence could not be
+	 * part of the contract, and the sd1 fingerprint hashes these.
+	 */
+	private static final Map<String, Object> PROPERTIES = Map.of([for (constant : Property | raised.properties->sortedBy(f | f.name)) separator(', ')]"[constant.name/]", [propertyLiteral(constant)/][/for]);
 
-	public [simpleName(exceptionType(binding, raised))/](String message[for (payload : Property | raised.properties->sortedBy(f | f.name))], [propertyType(payload)/] [payload.name/][/for]) {
+	public [simpleName(exceptionType(binding, raised))/](String message) {
 		super(message);
-[for (payload : Property | raised.properties->sortedBy(f | f.name))]
-		this.[payload.name/] = [payload.name/];
-[/for]
 	}
-[for (payload : Property | raised.properties->sortedBy(f | f.name))]
 
-	public [propertyType(payload)/] get[payload.name.toUpperFirst()/]() {
-		return [payload.name/];
+	public [simpleName(exceptionType(binding, raised))/](String message, Throwable cause) {
+		super(message, cause);
 	}
-[/for]
+
+	public Map<String, Object> getProperties() {
+		return PROPERTIES;
+	}
 }
 [/file]
 [/for]
@@ -256,17 +260,20 @@ where no eType is given does the language-neutral 'type' string decide.
 	else if primitive = 'char' then 'Character'
 	else primitive endif endif endif endif endif endif endif endif /]
 
-[comment]A declared payload field renders as the Java type of its Property kind.[/comment]
-[query public propertyType(payload : Property) : String =
-	if payload.oclIsKindOf(StringProperty) then 'String'
-	else if payload.oclIsKindOf(IntProperty) then 'int'
-	else if payload.oclIsKindOf(LongProperty) then 'long'
-	else if payload.oclIsKindOf(DoubleProperty) then 'double'
-	else if payload.oclIsKindOf(FloatProperty) then 'float'
-	else if payload.oclIsKindOf(ShortProperty) then 'short'
-	else if payload.oclIsKindOf(BoolProperty) then 'boolean'
-	else if payload.oclIsKindOf(StringListProperty) then 'List<String>'
-	else 'String' endif endif endif endif endif endif endif endif /]
+[comment]
+A declared constant renders as a Java literal of its Property kind. Long gets
+its suffix, a string its quotes, a string list becomes List.of(...).
+[/comment]
+[query public propertyLiteral(constant : Property) : String =
+	if constant.oclIsKindOf(StringProperty) then '"'.concat(constant.oclAsType(StringProperty).value).concat('"')
+	else if constant.oclIsKindOf(IntProperty) then constant.oclAsType(IntProperty).value.toString()
+	else if constant.oclIsKindOf(LongProperty) then constant.oclAsType(LongProperty).value.toString().concat('L')
+	else if constant.oclIsKindOf(ShortProperty) then constant.oclAsType(ShortProperty).value.toString()
+	else if constant.oclIsKindOf(DoubleProperty) then constant.oclAsType(DoubleProperty).value.toString()
+	else if constant.oclIsKindOf(FloatProperty) then constant.oclAsType(FloatProperty).value.toString().concat('f')
+	else if constant.oclIsKindOf(BoolProperty) then constant.oclAsType(BoolProperty).value.toString()
+	else if constant.oclIsKindOf(StringListProperty) then 'List.of()'
+	else '""' endif endif endif endif endif endif endif endif /]
 
 [comment]===================== imports =====================[/comment]
 

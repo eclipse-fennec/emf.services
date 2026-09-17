@@ -9,6 +9,8 @@
  */
 package org.eclipse.fennec.services.m2t.example;
 
+import java.util.Map;
+
 /**
  * No person is registered under the given identifier.
  *
@@ -20,14 +22,22 @@ public class PersonNotFoundException extends Exception {
 
 	private static final long serialVersionUID = 1L;
 
-	private final String personId;
+	/**
+	 * The constant metadata the contract declares for this error. Same for
+	 * every occurrence — a value that differed per occurrence could not be
+	 * part of the contract, and the sd1 fingerprint hashes these.
+	 */
+	private static final Map<String, Object> PROPERTIES = Map.of("code", 404, "retryable", false);
 
-	public PersonNotFoundException(String message, String personId) {
+	public PersonNotFoundException(String message) {
 		super(message);
-		this.personId = personId;
 	}
 
-	public String getPersonId() {
-		return personId;
+	public PersonNotFoundException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public Map<String, Object> getProperties() {
+		return PROPERTIES;
 	}
 }

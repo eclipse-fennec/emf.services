@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:303f60d37cee9a5db64aaa82a9dbc210c2077c03298db9dee7748ac0eaf5e213", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:53592534ff61220514f58358936a953408dac40f270d0e4e114236d48a25c287", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -4022,6 +4022,408 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int DISTRIBUTION_HOOK_OPERATION_COUNT = 2;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.LanguageBindingImpl <em>Language Binding</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.impl.LanguageBindingImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLanguageBinding()
+	 * @generated
+	 */
+	int LANGUAGE_BINDING = 54;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING__NAME = NAMED_ELEMENT__NAME;
+
+	/**
+	 * The feature id for the '<em><b>Service Interfaces</b></em>' reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING__SERVICE_INTERFACES = NAMED_ELEMENT_FEATURE_COUNT + 0;
+
+	/**
+	 * The feature id for the '<em><b>Target Package</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING__TARGET_PACKAGE = NAMED_ELEMENT_FEATURE_COUNT + 1;
+
+	/**
+	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING__TYPE_MAPPINGS = NAMED_ELEMENT_FEATURE_COUNT + 2;
+
+	/**
+	 * The feature id for the '<em><b>Package Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING__PACKAGE_MAPPINGS = NAMED_ELEMENT_FEATURE_COUNT + 3;
+
+	/**
+	 * The number of structural features of the '<em>Language Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 4;
+
+	/**
+	 * The number of operations of the '<em>Language Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int LANGUAGE_BINDING_OPERATION_COUNT = NAMED_ELEMENT_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.TypeMappingImpl <em>Type Mapping</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.impl.TypeMappingImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeMapping()
+	 * @generated
+	 */
+	int TYPE_MAPPING = 55;
+
+	/**
+	 * The feature id for the '<em><b>Neutral Type</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_MAPPING__NEUTRAL_TYPE = 0;
+
+	/**
+	 * The feature id for the '<em><b>Target</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_MAPPING__TARGET = 1;
+
+	/**
+	 * The feature id for the '<em><b>Generated</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_MAPPING__GENERATED = 2;
+
+	/**
+	 * The number of structural features of the '<em>Type Mapping</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_MAPPING_FEATURE_COUNT = 3;
+
+	/**
+	 * The number of operations of the '<em>Type Mapping</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_MAPPING_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.PackageMappingImpl <em>Package Mapping</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.impl.PackageMappingImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPackageMapping()
+	 * @generated
+	 */
+	int PACKAGE_MAPPING = 56;
+
+	/**
+	 * The feature id for the '<em><b>Ns URI</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PACKAGE_MAPPING__NS_URI = 0;
+
+	/**
+	 * The feature id for the '<em><b>Target</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PACKAGE_MAPPING__TARGET = 1;
+
+	/**
+	 * The number of structural features of the '<em>Package Mapping</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PACKAGE_MAPPING_FEATURE_COUNT = 2;
+
+	/**
+	 * The number of operations of the '<em>Package Mapping</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PACKAGE_MAPPING_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.JavaBindingImpl <em>Java Binding</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.impl.JavaBindingImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getJavaBinding()
+	 * @generated
+	 */
+	int JAVA_BINDING = 57;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING__NAME = LANGUAGE_BINDING__NAME;
+
+	/**
+	 * The feature id for the '<em><b>Service Interfaces</b></em>' reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING__SERVICE_INTERFACES = LANGUAGE_BINDING__SERVICE_INTERFACES;
+
+	/**
+	 * The feature id for the '<em><b>Target Package</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING__TARGET_PACKAGE = LANGUAGE_BINDING__TARGET_PACKAGE;
+
+	/**
+	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING__TYPE_MAPPINGS = LANGUAGE_BINDING__TYPE_MAPPINGS;
+
+	/**
+	 * The feature id for the '<em><b>Package Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING__PACKAGE_MAPPINGS = LANGUAGE_BINDING__PACKAGE_MAPPINGS;
+
+	/**
+	 * The feature id for the '<em><b>Api Type</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING__API_TYPE = LANGUAGE_BINDING_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>Java Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING_FEATURE_COUNT = LANGUAGE_BINDING_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>Java Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int JAVA_BINDING_OPERATION_COUNT = LANGUAGE_BINDING_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.TypeScriptBindingImpl <em>Type Script Binding</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.impl.TypeScriptBindingImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeScriptBinding()
+	 * @generated
+	 */
+	int TYPE_SCRIPT_BINDING = 58;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING__NAME = LANGUAGE_BINDING__NAME;
+
+	/**
+	 * The feature id for the '<em><b>Service Interfaces</b></em>' reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING__SERVICE_INTERFACES = LANGUAGE_BINDING__SERVICE_INTERFACES;
+
+	/**
+	 * The feature id for the '<em><b>Target Package</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING__TARGET_PACKAGE = LANGUAGE_BINDING__TARGET_PACKAGE;
+
+	/**
+	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING__TYPE_MAPPINGS = LANGUAGE_BINDING__TYPE_MAPPINGS;
+
+	/**
+	 * The feature id for the '<em><b>Package Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING__PACKAGE_MAPPINGS = LANGUAGE_BINDING__PACKAGE_MAPPINGS;
+
+	/**
+	 * The number of structural features of the '<em>Type Script Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING_FEATURE_COUNT = LANGUAGE_BINDING_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Type Script Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TYPE_SCRIPT_BINDING_OPERATION_COUNT = LANGUAGE_BINDING_OPERATION_COUNT + 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.PythonBindingImpl <em>Python Binding</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.impl.PythonBindingImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPythonBinding()
+	 * @generated
+	 */
+	int PYTHON_BINDING = 59;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING__NAME = LANGUAGE_BINDING__NAME;
+
+	/**
+	 * The feature id for the '<em><b>Service Interfaces</b></em>' reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING__SERVICE_INTERFACES = LANGUAGE_BINDING__SERVICE_INTERFACES;
+
+	/**
+	 * The feature id for the '<em><b>Target Package</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING__TARGET_PACKAGE = LANGUAGE_BINDING__TARGET_PACKAGE;
+
+	/**
+	 * The feature id for the '<em><b>Type Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING__TYPE_MAPPINGS = LANGUAGE_BINDING__TYPE_MAPPINGS;
+
+	/**
+	 * The feature id for the '<em><b>Package Mappings</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING__PACKAGE_MAPPINGS = LANGUAGE_BINDING__PACKAGE_MAPPINGS;
+
+	/**
+	 * The number of structural features of the '<em>Python Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING_FEATURE_COUNT = LANGUAGE_BINDING_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of operations of the '<em>Python Binding</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PYTHON_BINDING_OPERATION_COUNT = LANGUAGE_BINDING_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ServiceScope <em>Service Scope</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -4029,7 +4431,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceScope()
 	 * @generated
 	 */
-	int SERVICE_SCOPE = 54;
+	int SERVICE_SCOPE = 60;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferenceCardinality <em>Reference Cardinality</em>}' enum.
@@ -4039,7 +4441,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferenceCardinality()
 	 * @generated
 	 */
-	int REFERENCE_CARDINALITY = 55;
+	int REFERENCE_CARDINALITY = 61;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferencePolicy <em>Reference Policy</em>}' enum.
@@ -4049,7 +4451,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferencePolicy()
 	 * @generated
 	 */
-	int REFERENCE_POLICY = 56;
+	int REFERENCE_POLICY = 62;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferencePolicyOption <em>Reference Policy Option</em>}' enum.
@@ -4059,7 +4461,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferencePolicyOption()
 	 * @generated
 	 */
-	int REFERENCE_POLICY_OPTION = 57;
+	int REFERENCE_POLICY_OPTION = 63;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConfigurationPolicy <em>Configuration Policy</em>}' enum.
@@ -4069,7 +4471,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConfigurationPolicy()
 	 * @generated
 	 */
-	int CONFIGURATION_POLICY = 58;
+	int CONFIGURATION_POLICY = 64;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ComponentState <em>Component State</em>}' enum.
@@ -4079,7 +4481,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getComponentState()
 	 * @generated
 	 */
-	int COMPONENT_STATE = 59;
+	int COMPONENT_STATE = 65;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ServiceEventType <em>Service Event Type</em>}' enum.
@@ -4089,7 +4491,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceEventType()
 	 * @generated
 	 */
-	int SERVICE_EVENT_TYPE = 60;
+	int SERVICE_EVENT_TYPE = 66;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.FieldOption <em>Field Option</em>}' enum.
@@ -4099,7 +4501,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getFieldOption()
 	 * @generated
 	 */
-	int FIELD_OPTION = 61;
+	int FIELD_OPTION = 67;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CollectionType <em>Collection Type</em>}' enum.
@@ -4109,7 +4511,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCollectionType()
 	 * @generated
 	 */
-	int COLLECTION_TYPE = 62;
+	int COLLECTION_TYPE = 68;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.LifecycleHookKind <em>Lifecycle Hook Kind</em>}' enum.
@@ -4119,7 +4521,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLifecycleHookKind()
 	 * @generated
 	 */
-	int LIFECYCLE_HOOK_KIND = 63;
+	int LIFECYCLE_HOOK_KIND = 69;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferenceBindingKind <em>Reference Binding Kind</em>}' enum.
@@ -4129,7 +4531,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferenceBindingKind()
 	 * @generated
 	 */
-	int REFERENCE_BINDING_KIND = 64;
+	int REFERENCE_BINDING_KIND = 70;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.DiagnosticSeverity <em>Diagnostic Severity</em>}' enum.
@@ -4139,7 +4541,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDiagnosticSeverity()
 	 * @generated
 	 */
-	int DIAGNOSTIC_SEVERITY = 65;
+	int DIAGNOSTIC_SEVERITY = 71;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.FlavorKind <em>Flavor Kind</em>}' enum.
@@ -4149,7 +4551,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getFlavorKind()
 	 * @generated
 	 */
-	int FLAVOR_KIND = 66;
+	int FLAVOR_KIND = 72;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.HttpMethod <em>Http Method</em>}' enum.
@@ -4159,7 +4561,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getHttpMethod()
 	 * @generated
 	 */
-	int HTTP_METHOD = 67;
+	int HTTP_METHOD = 73;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ParameterBinding <em>Parameter Binding</em>}' enum.
@@ -4169,7 +4571,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getParameterBinding()
 	 * @generated
 	 */
-	int PARAMETER_BINDING = 68;
+	int PARAMETER_BINDING = 74;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.MqttQos <em>Mqtt Qos</em>}' enum.
@@ -4179,7 +4581,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMqttQos()
 	 * @generated
 	 */
-	int MQTT_QOS = 69;
+	int MQTT_QOS = 75;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.RegistryKind <em>Registry Kind</em>}' enum.
@@ -4189,7 +4591,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRegistryKind()
 	 * @generated
 	 */
-	int REGISTRY_KIND = 70;
+	int REGISTRY_KIND = 76;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ExpressionLanguage <em>Expression Language</em>}' enum.
@@ -4199,7 +4601,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getExpressionLanguage()
 	 * @generated
 	 */
-	int EXPRESSION_LANGUAGE = 71;
+	int EXPRESSION_LANGUAGE = 77;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CatalogStatus <em>Catalog Status</em>}' enum.
@@ -4209,7 +4611,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCatalogStatus()
 	 * @generated
 	 */
-	int CATALOG_STATUS = 72;
+	int CATALOG_STATUS = 78;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.UpdatePolicy <em>Update Policy</em>}' enum.
@@ -4219,7 +4621,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getUpdatePolicy()
 	 * @generated
 	 */
-	int UPDATE_POLICY = 73;
+	int UPDATE_POLICY = 79;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConnectionState <em>Connection State</em>}' enum.
@@ -4229,7 +4631,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConnectionState()
 	 * @generated
 	 */
-	int CONNECTION_STATE = 74;
+	int CONNECTION_STATE = 80;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.ApiType <em>Api Type</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.ApiType
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiType()
+	 * @generated
+	 */
+	int API_TYPE = 81;
 
 
 	/**
@@ -7015,6 +7427,176 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EOperation getDistributionHook__OnInbound__ServiceEvent();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.LanguageBinding <em>Language Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Language Binding</em>'.
+	 * @see org.eclipse.fennec.services.LanguageBinding
+	 * @generated
+	 */
+	EClass getLanguageBinding();
+
+	/**
+	 * Returns the meta object for the reference list '{@link org.eclipse.fennec.services.LanguageBinding#getServiceInterfaces <em>Service Interfaces</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference list '<em>Service Interfaces</em>'.
+	 * @see org.eclipse.fennec.services.LanguageBinding#getServiceInterfaces()
+	 * @see #getLanguageBinding()
+	 * @generated
+	 */
+	EReference getLanguageBinding_ServiceInterfaces();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.LanguageBinding#getTargetPackage <em>Target Package</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Target Package</em>'.
+	 * @see org.eclipse.fennec.services.LanguageBinding#getTargetPackage()
+	 * @see #getLanguageBinding()
+	 * @generated
+	 */
+	EAttribute getLanguageBinding_TargetPackage();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.services.LanguageBinding#getTypeMappings <em>Type Mappings</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Type Mappings</em>'.
+	 * @see org.eclipse.fennec.services.LanguageBinding#getTypeMappings()
+	 * @see #getLanguageBinding()
+	 * @generated
+	 */
+	EReference getLanguageBinding_TypeMappings();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.services.LanguageBinding#getPackageMappings <em>Package Mappings</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Package Mappings</em>'.
+	 * @see org.eclipse.fennec.services.LanguageBinding#getPackageMappings()
+	 * @see #getLanguageBinding()
+	 * @generated
+	 */
+	EReference getLanguageBinding_PackageMappings();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.TypeMapping <em>Type Mapping</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Type Mapping</em>'.
+	 * @see org.eclipse.fennec.services.TypeMapping
+	 * @generated
+	 */
+	EClass getTypeMapping();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.TypeMapping#getNeutralType <em>Neutral Type</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Neutral Type</em>'.
+	 * @see org.eclipse.fennec.services.TypeMapping#getNeutralType()
+	 * @see #getTypeMapping()
+	 * @generated
+	 */
+	EAttribute getTypeMapping_NeutralType();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.TypeMapping#getTarget <em>Target</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Target</em>'.
+	 * @see org.eclipse.fennec.services.TypeMapping#getTarget()
+	 * @see #getTypeMapping()
+	 * @generated
+	 */
+	EAttribute getTypeMapping_Target();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.TypeMapping#isGenerated <em>Generated</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Generated</em>'.
+	 * @see org.eclipse.fennec.services.TypeMapping#isGenerated()
+	 * @see #getTypeMapping()
+	 * @generated
+	 */
+	EAttribute getTypeMapping_Generated();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.PackageMapping <em>Package Mapping</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Package Mapping</em>'.
+	 * @see org.eclipse.fennec.services.PackageMapping
+	 * @generated
+	 */
+	EClass getPackageMapping();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.PackageMapping#getNsURI <em>Ns URI</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Ns URI</em>'.
+	 * @see org.eclipse.fennec.services.PackageMapping#getNsURI()
+	 * @see #getPackageMapping()
+	 * @generated
+	 */
+	EAttribute getPackageMapping_NsURI();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.PackageMapping#getTarget <em>Target</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Target</em>'.
+	 * @see org.eclipse.fennec.services.PackageMapping#getTarget()
+	 * @see #getPackageMapping()
+	 * @generated
+	 */
+	EAttribute getPackageMapping_Target();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.JavaBinding <em>Java Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Java Binding</em>'.
+	 * @see org.eclipse.fennec.services.JavaBinding
+	 * @generated
+	 */
+	EClass getJavaBinding();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.JavaBinding#getApiType <em>Api Type</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Api Type</em>'.
+	 * @see org.eclipse.fennec.services.JavaBinding#getApiType()
+	 * @see #getJavaBinding()
+	 * @generated
+	 */
+	EAttribute getJavaBinding_ApiType();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.TypeScriptBinding <em>Type Script Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Type Script Binding</em>'.
+	 * @see org.eclipse.fennec.services.TypeScriptBinding
+	 * @generated
+	 */
+	EClass getTypeScriptBinding();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.PythonBinding <em>Python Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Python Binding</em>'.
+	 * @see org.eclipse.fennec.services.PythonBinding
+	 * @generated
+	 */
+	EClass getPythonBinding();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.ServiceScope <em>Service Scope</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -7223,6 +7805,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EEnum getConnectionState();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.ApiType <em>Api Type</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Api Type</em>'.
+	 * @see org.eclipse.fennec.services.ApiType
+	 * @generated
+	 */
+	EEnum getApiType();
 
 	/**
 	 * Returns the factory that creates the instances of the model.
@@ -9436,6 +10028,146 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EOperation DISTRIBUTION_HOOK___ON_INBOUND__SERVICEEVENT = eINSTANCE.getDistributionHook__OnInbound__ServiceEvent();
 
 		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.LanguageBindingImpl <em>Language Binding</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.impl.LanguageBindingImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLanguageBinding()
+		 * @generated
+		 */
+		EClass LANGUAGE_BINDING = eINSTANCE.getLanguageBinding();
+
+		/**
+		 * The meta object literal for the '<em><b>Service Interfaces</b></em>' reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference LANGUAGE_BINDING__SERVICE_INTERFACES = eINSTANCE.getLanguageBinding_ServiceInterfaces();
+
+		/**
+		 * The meta object literal for the '<em><b>Target Package</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute LANGUAGE_BINDING__TARGET_PACKAGE = eINSTANCE.getLanguageBinding_TargetPackage();
+
+		/**
+		 * The meta object literal for the '<em><b>Type Mappings</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference LANGUAGE_BINDING__TYPE_MAPPINGS = eINSTANCE.getLanguageBinding_TypeMappings();
+
+		/**
+		 * The meta object literal for the '<em><b>Package Mappings</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference LANGUAGE_BINDING__PACKAGE_MAPPINGS = eINSTANCE.getLanguageBinding_PackageMappings();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.TypeMappingImpl <em>Type Mapping</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.impl.TypeMappingImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeMapping()
+		 * @generated
+		 */
+		EClass TYPE_MAPPING = eINSTANCE.getTypeMapping();
+
+		/**
+		 * The meta object literal for the '<em><b>Neutral Type</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TYPE_MAPPING__NEUTRAL_TYPE = eINSTANCE.getTypeMapping_NeutralType();
+
+		/**
+		 * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TYPE_MAPPING__TARGET = eINSTANCE.getTypeMapping_Target();
+
+		/**
+		 * The meta object literal for the '<em><b>Generated</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TYPE_MAPPING__GENERATED = eINSTANCE.getTypeMapping_Generated();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.PackageMappingImpl <em>Package Mapping</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.impl.PackageMappingImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPackageMapping()
+		 * @generated
+		 */
+		EClass PACKAGE_MAPPING = eINSTANCE.getPackageMapping();
+
+		/**
+		 * The meta object literal for the '<em><b>Ns URI</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute PACKAGE_MAPPING__NS_URI = eINSTANCE.getPackageMapping_NsURI();
+
+		/**
+		 * The meta object literal for the '<em><b>Target</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute PACKAGE_MAPPING__TARGET = eINSTANCE.getPackageMapping_Target();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.JavaBindingImpl <em>Java Binding</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.impl.JavaBindingImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getJavaBinding()
+		 * @generated
+		 */
+		EClass JAVA_BINDING = eINSTANCE.getJavaBinding();
+
+		/**
+		 * The meta object literal for the '<em><b>Api Type</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute JAVA_BINDING__API_TYPE = eINSTANCE.getJavaBinding_ApiType();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.TypeScriptBindingImpl <em>Type Script Binding</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.impl.TypeScriptBindingImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeScriptBinding()
+		 * @generated
+		 */
+		EClass TYPE_SCRIPT_BINDING = eINSTANCE.getTypeScriptBinding();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.PythonBindingImpl <em>Python Binding</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.impl.PythonBindingImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPythonBinding()
+		 * @generated
+		 */
+		EClass PYTHON_BINDING = eINSTANCE.getPythonBinding();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.ServiceScope <em>Service Scope</em>}' enum.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -9644,6 +10376,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum CONNECTION_STATE = eINSTANCE.getConnectionState();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.ApiType <em>Api Type</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.ApiType
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiType()
+		 * @generated
+		 */
+		EEnum API_TYPE = eINSTANCE.getApiType();
 
 	}
 

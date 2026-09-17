@@ -123,6 +123,11 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ConnectionState/DEGRADED"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ConnectionState/OFFLINE"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//ApiType">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiType/PROVIDER"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiType/CONSUMER"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiType/NONE"/>
+    </genEnums>
     <genClasses image="false" ecoreClass="services.ecore#//NamedElement">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//NamedElement/name"/>
     </genClasses>
@@ -494,5 +499,25 @@
         <genParameters ecoreParameter="services.ecore#//DistributionHook/onInbound/event"/>
       </genOperations>
     </genClasses>
+    <genClasses image="false" ecoreClass="services.ecore#//LanguageBinding">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//LanguageBinding/serviceInterfaces"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//LanguageBinding/targetPackage"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//LanguageBinding/typeMappings"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//LanguageBinding/packageMappings"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//TypeMapping">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//TypeMapping/neutralType"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//TypeMapping/target"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//TypeMapping/generated"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//PackageMapping">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//PackageMapping/nsURI"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//PackageMapping/target"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//JavaBinding">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//JavaBinding/apiType"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//TypeScriptBinding"/>
+    <genClasses ecoreClass="services.ecore#//PythonBinding"/>
   </genPackages>
 </genmodel:GenModel>

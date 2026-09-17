@@ -1,0 +1,33 @@
+Bundle-Name: Fennec Services M2T Templates
+Bundle-Description: MOFM2T templates that turn a ServiceInterface into language bindings, \
+ plus the example that exercises them. The templates are the deliverable; the generated \
+ sources are here to prove they compile.
+
+src: ${^src},src-gen
+
+# The contract is read through its JavaBinding: the binding references the
+# ServiceInterface, so handing the generator the binding brings both.
+-generate: \
+	"../org.eclipse.fennec.services.model/model/services.ecore,model/*.xmi,templates/*.mtl"; \
+		output   = src-gen/; \
+		generate = fennecM2T; \
+		ecore    = "../org.eclipse.fennec.services.model/model/services.ecore,../org.eclipse.fennec.services.examples.model/model/example.ecore"; \
+		model    = "model/example-java.xmi"; \
+		template = "templates/service-interface.mtl"
+
+-privatepackage: \
+	org.eclipse.fennec.services.m2t.example
+
+-buildpath: \
+	org.eclipse.fennec.services.examples.model;version=snapshot,\
+	org.osgi.service.component.annotations;version=latest
+
+# Plain JUnit: the test reads what the generator wrote into src-gen. It is the
+# net under the generator's quietest failure — a template it cannot use
+# produces no file and no diagnostic, and the build stays green.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest
+
+-includeresource.templates: templates=templates
+

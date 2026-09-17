@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="PersonDirectory"
+    version="1.0.0"
+    description="Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result and a declared exception.">
+  <operations name="get" description="One person by identifier." exceptions="//@exceptions.0">
+    <parameters name="id" type="string" description="Identifier of the person."/>
+    <returnValue name="result" description="The person with that identifier.">
+      <eType xsi:type="ecore:EClass" href="http://geckoprojects.org/ddsr/example#//Person"/>
+    </returnValue>
+  </operations>
+  <operations name="list" description="A page of the directory, in directory order.">
+    <parameters name="offset" type="int" optional="true" defaultValue="0" description="Index of the first person to return."/>
+    <parameters name="limit" index="1" type="int" optional="true" defaultValue="50" description="Maximum number of persons to return."/>
+    <returnValue name="result" upperBound="-1" description="The requested page; empty when the offset is past the end.">
+      <eType xsi:type="ecore:EClass" href="http://geckoprojects.org/ddsr/example#//Person"/>
+    </returnValue>
+  </operations>
+  <exceptions name="PersonNotFound" version="1.0.0"
+      type="fennec.services.example.PersonNotFound"
+      description="No person is registered under the given identifier.">
+    <properties xsi:type="services:StringProperty" name="personId" description="The identifier that was looked up."/>
+  </exceptions>
+</services:ServiceInterface>

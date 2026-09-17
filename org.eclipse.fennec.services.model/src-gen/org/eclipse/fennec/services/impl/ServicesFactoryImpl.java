@@ -100,6 +100,11 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.CAPABILITY: return createCapability();
 			case ServicesPackage.REQUIREMENT: return createRequirement();
 			case ServicesPackage.CONSUMER_CAPABILITY: return createConsumerCapability();
+			case ServicesPackage.TYPE_MAPPING: return createTypeMapping();
+			case ServicesPackage.PACKAGE_MAPPING: return createPackageMapping();
+			case ServicesPackage.JAVA_BINDING: return createJavaBinding();
+			case ServicesPackage.TYPE_SCRIPT_BINDING: return createTypeScriptBinding();
+			case ServicesPackage.PYTHON_BINDING: return createPythonBinding();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -155,6 +160,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createUpdatePolicyFromString(eDataType, initialValue);
 			case ServicesPackage.CONNECTION_STATE:
 				return createConnectionStateFromString(eDataType, initialValue);
+			case ServicesPackage.API_TYPE:
+				return createApiTypeFromString(eDataType, initialValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -210,6 +217,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertUpdatePolicyToString(eDataType, instanceValue);
 			case ServicesPackage.CONNECTION_STATE:
 				return convertConnectionStateToString(eDataType, instanceValue);
+			case ServicesPackage.API_TYPE:
+				return convertApiTypeToString(eDataType, instanceValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -693,6 +702,61 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	@Override
+	public TypeMapping createTypeMapping() {
+		TypeMappingImpl typeMapping = new TypeMappingImpl();
+		return typeMapping;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public PackageMapping createPackageMapping() {
+		PackageMappingImpl packageMapping = new PackageMappingImpl();
+		return packageMapping;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public JavaBinding createJavaBinding() {
+		JavaBindingImpl javaBinding = new JavaBindingImpl();
+		return javaBinding;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public TypeScriptBinding createTypeScriptBinding() {
+		TypeScriptBindingImpl typeScriptBinding = new TypeScriptBindingImpl();
+		return typeScriptBinding;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public PythonBinding createPythonBinding() {
+		PythonBindingImpl pythonBinding = new PythonBindingImpl();
+		return pythonBinding;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public ServiceScope createServiceScopeFromString(EDataType eDataType, String initialValue) {
 		ServiceScope result = ServiceScope.get(initialValue);
 		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
@@ -1105,6 +1169,26 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	public String convertConnectionStateToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ApiType createApiTypeFromString(EDataType eDataType, String initialValue) {
+		ApiType result = ApiType.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertApiTypeToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

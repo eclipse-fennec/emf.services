@@ -193,6 +193,18 @@ public class ServicesValidator extends EObjectValidator {
 				return validateDiscoveryHook((DiscoveryHook)value, diagnostics, context);
 			case ServicesPackage.DISTRIBUTION_HOOK:
 				return validateDistributionHook((DistributionHook)value, diagnostics, context);
+			case ServicesPackage.LANGUAGE_BINDING:
+				return validateLanguageBinding((LanguageBinding)value, diagnostics, context);
+			case ServicesPackage.TYPE_MAPPING:
+				return validateTypeMapping((TypeMapping)value, diagnostics, context);
+			case ServicesPackage.PACKAGE_MAPPING:
+				return validatePackageMapping((PackageMapping)value, diagnostics, context);
+			case ServicesPackage.JAVA_BINDING:
+				return validateJavaBinding((JavaBinding)value, diagnostics, context);
+			case ServicesPackage.TYPE_SCRIPT_BINDING:
+				return validateTypeScriptBinding((TypeScriptBinding)value, diagnostics, context);
+			case ServicesPackage.PYTHON_BINDING:
+				return validatePythonBinding((PythonBinding)value, diagnostics, context);
 			case ServicesPackage.SERVICE_SCOPE:
 				return validateServiceScope((ServiceScope)value, diagnostics, context);
 			case ServicesPackage.REFERENCE_CARDINALITY:
@@ -235,6 +247,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateUpdatePolicy((UpdatePolicy)value, diagnostics, context);
 			case ServicesPackage.CONNECTION_STATE:
 				return validateConnectionState((ConnectionState)value, diagnostics, context);
+			case ServicesPackage.API_TYPE:
+				return validateApiType((ApiType)value, diagnostics, context);
 			default:
 				return true;
 		}
@@ -1581,6 +1595,162 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	public boolean validateLanguageBinding(LanguageBinding languageBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		if (!validate_NoCircularContainment(languageBinding, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniqueTypeMappings(languageBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniquePackageMappings(languageBinding, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * The cached validation expression for the uniqueTypeMappings constraint of '<em>Language Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String LANGUAGE_BINDING__UNIQUE_TYPE_MAPPINGS__EEXPRESSION = "typeMappings->isUnique(neutralType)";
+
+	/**
+	 * Validates the uniqueTypeMappings constraint of '<em>Language Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateLanguageBinding_uniqueTypeMappings(LanguageBinding languageBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.LANGUAGE_BINDING,
+				 languageBinding,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "uniqueTypeMappings",
+				 LANGUAGE_BINDING__UNIQUE_TYPE_MAPPINGS__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the uniquePackageMappings constraint of '<em>Language Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String LANGUAGE_BINDING__UNIQUE_PACKAGE_MAPPINGS__EEXPRESSION = "packageMappings->isUnique(nsURI)";
+
+	/**
+	 * Validates the uniquePackageMappings constraint of '<em>Language Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateLanguageBinding_uniquePackageMappings(LanguageBinding languageBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.LANGUAGE_BINDING,
+				 languageBinding,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "uniquePackageMappings",
+				 LANGUAGE_BINDING__UNIQUE_PACKAGE_MAPPINGS__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateTypeMapping(TypeMapping typeMapping, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(typeMapping, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validatePackageMapping(PackageMapping packageMapping, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(packageMapping, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateJavaBinding(JavaBinding javaBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		if (!validate_NoCircularContainment(javaBinding, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniqueTypeMappings(javaBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniquePackageMappings(javaBinding, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateTypeScriptBinding(TypeScriptBinding typeScriptBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		if (!validate_NoCircularContainment(typeScriptBinding, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniqueTypeMappings(typeScriptBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniquePackageMappings(typeScriptBinding, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validatePythonBinding(PythonBinding pythonBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		if (!validate_NoCircularContainment(pythonBinding, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniqueTypeMappings(pythonBinding, diagnostics, context);
+		if (result || diagnostics != null) result &= validateLanguageBinding_uniquePackageMappings(pythonBinding, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public boolean validateServiceScope(ServiceScope serviceScope, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
@@ -1762,6 +1932,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateConnectionState(ConnectionState connectionState, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateApiType(ApiType apiType, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

@@ -12,6 +12,7 @@ import org.eclipse.emf.ecore.EValidator;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
+import org.eclipse.fennec.services.ApiType;
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.CatalogStatus;
@@ -39,6 +40,8 @@ import org.eclipse.fennec.services.FloatProperty;
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.Invariant;
+import org.eclipse.fennec.services.JavaBinding;
+import org.eclipse.fennec.services.LanguageBinding;
 import org.eclipse.fennec.services.LifecycleHook;
 import org.eclipse.fennec.services.LifecycleHookKind;
 import org.eclipse.fennec.services.LocalServiceRegistry;
@@ -48,11 +51,13 @@ import org.eclipse.fennec.services.MqttOperationFlavor;
 import org.eclipse.fennec.services.MqttQos;
 import org.eclipse.fennec.services.NamedElement;
 import org.eclipse.fennec.services.NumericRangeConstraint;
+import org.eclipse.fennec.services.PackageMapping;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.ParameterConstraint;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.PublishHook;
+import org.eclipse.fennec.services.PythonBinding;
 import org.eclipse.fennec.services.ReferenceBinding;
 import org.eclipse.fennec.services.ReferenceBindingKind;
 import org.eclipse.fennec.services.ReferenceCardinality;
@@ -86,6 +91,8 @@ import org.eclipse.fennec.services.ShortProperty;
 import org.eclipse.fennec.services.StringListProperty;
 import org.eclipse.fennec.services.StringPatternConstraint;
 import org.eclipse.fennec.services.StringProperty;
+import org.eclipse.fennec.services.TypeMapping;
+import org.eclipse.fennec.services.TypeScriptBinding;
 import org.eclipse.fennec.services.UnsatisfiedReference;
 import org.eclipse.fennec.services.UpdatePolicy;
 import org.eclipse.fennec.services.VersionedElement;
@@ -482,6 +489,48 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass languageBindingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass typeMappingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass packageMappingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass javaBindingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass typeScriptBindingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass pythonBindingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EEnum serviceScopeEEnum = null;
 
 	/**
@@ -623,6 +672,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EEnum connectionStateEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum apiTypeEEnum = null;
 
 	/**
 	 * Creates an instance of the model <b>Package</b>, registered with
@@ -3300,6 +3356,166 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EClass getLanguageBinding() {
+		return languageBindingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getLanguageBinding_ServiceInterfaces() {
+		return (EReference)languageBindingEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getLanguageBinding_TargetPackage() {
+		return (EAttribute)languageBindingEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getLanguageBinding_TypeMappings() {
+		return (EReference)languageBindingEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getLanguageBinding_PackageMappings() {
+		return (EReference)languageBindingEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getTypeMapping() {
+		return typeMappingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTypeMapping_NeutralType() {
+		return (EAttribute)typeMappingEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTypeMapping_Target() {
+		return (EAttribute)typeMappingEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTypeMapping_Generated() {
+		return (EAttribute)typeMappingEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getPackageMapping() {
+		return packageMappingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getPackageMapping_NsURI() {
+		return (EAttribute)packageMappingEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getPackageMapping_Target() {
+		return (EAttribute)packageMappingEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getJavaBinding() {
+		return javaBindingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getJavaBinding_ApiType() {
+		return (EAttribute)javaBindingEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getTypeScriptBinding() {
+		return typeScriptBindingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getPythonBinding() {
+		return pythonBindingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getServiceScope() {
 		return serviceScopeEEnum;
 	}
@@ -3502,6 +3718,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EEnum getConnectionState() {
 		return connectionStateEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getApiType() {
+		return apiTypeEEnum;
 	}
 
 	/**
@@ -3847,6 +4073,28 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEOperation(distributionHookEClass, DISTRIBUTION_HOOK___ON_OUTBOUND__SERVICEEVENT);
 		createEOperation(distributionHookEClass, DISTRIBUTION_HOOK___ON_INBOUND__SERVICEEVENT);
 
+		languageBindingEClass = createEClass(LANGUAGE_BINDING);
+		createEReference(languageBindingEClass, LANGUAGE_BINDING__SERVICE_INTERFACES);
+		createEAttribute(languageBindingEClass, LANGUAGE_BINDING__TARGET_PACKAGE);
+		createEReference(languageBindingEClass, LANGUAGE_BINDING__TYPE_MAPPINGS);
+		createEReference(languageBindingEClass, LANGUAGE_BINDING__PACKAGE_MAPPINGS);
+
+		typeMappingEClass = createEClass(TYPE_MAPPING);
+		createEAttribute(typeMappingEClass, TYPE_MAPPING__NEUTRAL_TYPE);
+		createEAttribute(typeMappingEClass, TYPE_MAPPING__TARGET);
+		createEAttribute(typeMappingEClass, TYPE_MAPPING__GENERATED);
+
+		packageMappingEClass = createEClass(PACKAGE_MAPPING);
+		createEAttribute(packageMappingEClass, PACKAGE_MAPPING__NS_URI);
+		createEAttribute(packageMappingEClass, PACKAGE_MAPPING__TARGET);
+
+		javaBindingEClass = createEClass(JAVA_BINDING);
+		createEAttribute(javaBindingEClass, JAVA_BINDING__API_TYPE);
+
+		typeScriptBindingEClass = createEClass(TYPE_SCRIPT_BINDING);
+
+		pythonBindingEClass = createEClass(PYTHON_BINDING);
+
 		// Create enums
 		serviceScopeEEnum = createEEnum(SERVICE_SCOPE);
 		referenceCardinalityEEnum = createEEnum(REFERENCE_CARDINALITY);
@@ -3869,6 +4117,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		catalogStatusEEnum = createEEnum(CATALOG_STATUS);
 		updatePolicyEEnum = createEEnum(UPDATE_POLICY);
 		connectionStateEEnum = createEEnum(CONNECTION_STATE);
+		apiTypeEEnum = createEEnum(API_TYPE);
 	}
 
 	/**
@@ -3940,6 +4189,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		serviceRegistryEClass.getESuperTypes().add(this.getNamedElement());
 		localServiceRegistryEClass.getESuperTypes().add(this.getServiceRegistry());
 		remoteServiceRegistryEClass.getESuperTypes().add(this.getServiceRegistry());
+		languageBindingEClass.getESuperTypes().add(this.getNamedElement());
+		javaBindingEClass.getESuperTypes().add(this.getLanguageBinding());
+		typeScriptBindingEClass.getESuperTypes().add(this.getLanguageBinding());
+		pythonBindingEClass.getESuperTypes().add(this.getLanguageBinding());
 
 		// Initialize classes, features, and operations; add parameters
 		initEClass(namedElementEClass, NamedElement.class, "NamedElement", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -4318,6 +4571,28 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		op = initEOperation(getDistributionHook__OnInbound__ServiceEvent(), this.getDiagnostic(), "onInbound", 0, 1, IS_UNIQUE, IS_ORDERED);
 		addEParameter(op, this.getServiceEvent(), "event", 0, 1, IS_UNIQUE, IS_ORDERED);
 
+		initEClass(languageBindingEClass, LanguageBinding.class, "LanguageBinding", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getLanguageBinding_ServiceInterfaces(), this.getServiceInterface(), null, "serviceInterfaces", null, 1, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getLanguageBinding_TargetPackage(), ecorePackage.getEString(), "targetPackage", null, 1, 1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getLanguageBinding_TypeMappings(), this.getTypeMapping(), null, "typeMappings", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getLanguageBinding_PackageMappings(), this.getPackageMapping(), null, "packageMappings", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(typeMappingEClass, TypeMapping.class, "TypeMapping", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getTypeMapping_NeutralType(), ecorePackage.getEString(), "neutralType", null, 1, 1, TypeMapping.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getTypeMapping_Target(), ecorePackage.getEString(), "target", null, 1, 1, TypeMapping.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getTypeMapping_Generated(), ecorePackage.getEBoolean(), "generated", "false", 1, 1, TypeMapping.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(packageMappingEClass, PackageMapping.class, "PackageMapping", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getPackageMapping_NsURI(), ecorePackage.getEString(), "nsURI", null, 1, 1, PackageMapping.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getPackageMapping_Target(), ecorePackage.getEString(), "target", null, 1, 1, PackageMapping.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(javaBindingEClass, JavaBinding.class, "JavaBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getJavaBinding_ApiType(), this.getApiType(), "apiType", "PROVIDER", 1, 1, JavaBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(typeScriptBindingEClass, TypeScriptBinding.class, "TypeScriptBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(pythonBindingEClass, PythonBinding.class, "PythonBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
 		// Initialize enums and add enum literals
 		initEEnum(serviceScopeEEnum, ServiceScope.class, "ServiceScope");
 		addEEnumLiteral(serviceScopeEEnum, ServiceScope.SINGLETON);
@@ -4434,6 +4709,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(connectionStateEEnum, ConnectionState.CONNECTED);
 		addEEnumLiteral(connectionStateEEnum, ConnectionState.DEGRADED);
 		addEEnumLiteral(connectionStateEEnum, ConnectionState.OFFLINE);
+
+		initEEnum(apiTypeEEnum, ApiType.class, "ApiType");
+		addEEnumLiteral(apiTypeEEnum, ApiType.PROVIDER);
+		addEEnumLiteral(apiTypeEEnum, ApiType.CONSUMER);
+		addEEnumLiteral(apiTypeEEnum, ApiType.NONE);
 
 		// Create resource
 		createResource(eNS_URI);
@@ -6277,6 +6557,108 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   new String[] {
 			   "documentation", "Called when the local registry receives an event from the broker (over the SSE stream or initial snapshot). Return OK to deliver to local listeners; ERROR/CANCEL to drop the event silently for this local."
 		   });
+		addAnnotation
+		  (apiTypeEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "Which OSGi API annotation a generated Java interface carries. PROVIDER = @ProviderType, the default for a service contract that providers implement; CONSUMER = @ConsumerType for a callback contract that consumers implement; NONE = no annotation."
+		   });
+		addAnnotation
+		  (languageBindingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "How the contracts of a catalog are rendered in one programming language. A binding is build-time configuration, NOT part of a contract: it REFERENCES the ServiceInterfaces it renders instead of being contained in them, it lives in its own document in the generating project, and it never travels on the wire. That keeps the catalog language-neutral and keeps every binding out of the sd1 fingerprint \u2014 two providers of the same contract in different languages still see the same contract. The binding classes live in this metamodel so a toolchain in any language needs nothing but services.ecore."
+		   });
+		addAnnotation
+		  (getLanguageBinding_ServiceInterfaces(),
+		   source,
+		   new String[] {
+			   "documentation", "The contracts this binding renders. Non-containment: the ServiceInterfaces are owned by the catalog, the binding only points at them \u2014 typically as a cross-document href into the published contract document."
+		   });
+		addAnnotation
+		  (getLanguageBinding_TargetPackage(),
+		   source,
+		   new String[] {
+			   "documentation", "Where the generated code lives, in the naming of the target language: a package for Java (\'org.acme.payment\'), a module path for TypeScript (\'@acme/payment\'), a module for Python (\'acme.payment\'). The output DIRECTORY is not part of this \u2014 that is the build\'s business (bnd\'s \'output\' attribute); the generator derives the path inside it from this name."
+		   });
+		addAnnotation
+		  (getLanguageBinding_TypeMappings(),
+		   source,
+		   new String[] {
+			   "documentation", "Overrides for Parameter.type, the language-neutral type name. A generator knows the standard set (\'string\', \'int\', \'double\', \u2026) on its own; only what it cannot know is stated here, e.g. \'money.Money\' to \'com.acme.money.Money\'."
+		   });
+		addAnnotation
+		  (getLanguageBinding_PackageMappings(),
+		   source,
+		   new String[] {
+			   "documentation", "Where the generated types of a referenced metamodel live in this language. Resolves Parameter.eType: the contract names an EClass by nsURI, and only the target language\'s own code generator knows the package it ended up in \u2014 for Java that is the genmodel\'s basePackage, which the .ecore does not carry."
+		   });
+		addAnnotation
+		  (typeMappingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "One language-neutral type name and what it is called in the target language \u2014 a Parameter.type, or the symbolic ServiceException.type. Positional under its binding, so it does NOT mix in NamedElement. Without a mapping a generator falls back to the last segment of the symbolic name, in the binding\'s targetPackage, and generates nothing: a contract names types symbolically, and only the binding knows what they are called in a language."
+		   });
+		addAnnotation
+		  (getTypeMapping_NeutralType(),
+		   source,
+		   new String[] {
+			   "documentation", "The value of Parameter.type this entry matches."
+		   });
+		addAnnotation
+		  (getTypeMapping_Target(),
+		   source,
+		   new String[] {
+			   "documentation", "The type name emitted for it, qualified as the target language needs it."
+		   });
+		addAnnotation
+		  (getTypeMapping_Generated(),
+		   source,
+		   new String[] {
+			   "documentation", "Whether the target type is written by the generator or already exists. False (the default) means the type is there \u2014 a hand-written class, or one another generator owns, such as the EMF class behind an eType; the generated code only refers to it. True means the contract owns it and the generator writes it, which is how a declared ServiceException becomes a class in the target language: name, version, doc and typed payload all come from the contract, so no hand-written copy can drift from it."
+		   });
+		addAnnotation
+		  (packageMappingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "One metamodel and the package/module its generated types live in, in the target language. Positional under its binding."
+		   });
+		addAnnotation
+		  (getPackageMapping_NsURI(),
+		   source,
+		   new String[] {
+			   "documentation", "Namespace URI of the EPackage, as Parameter.eType names it."
+		   });
+		addAnnotation
+		  (getPackageMapping_Target(),
+		   source,
+		   new String[] {
+			   "documentation", "Package or module prefix for that metamodel\'s types; the classifier name is appended."
+		   });
+		addAnnotation
+		  (javaBindingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Java rendering: targetPackage is the Java package, and the generated interface is named after the ServiceInterface."
+		   });
+		addAnnotation
+		  (getJavaBinding_ApiType(),
+		   source,
+		   new String[] {
+			   "documentation", "Which OSGi API annotation the generated interface carries."
+		   });
+		addAnnotation
+		  (typeScriptBindingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "TypeScript rendering: targetPackage is the module path. Carries no language specifics yet \u2014 it exists so a template can dispatch on the binding type, and gains attributes when the TypeScript generator does."
+		   });
+		addAnnotation
+		  (pythonBindingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Python rendering: targetPackage is the module. Same as TypeScriptBinding \u2014 a discriminator today, attributes when its generator arrives."
+		   });
 	}
 
 	/**
@@ -6365,6 +6747,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "constraints", "attributeNamesUnique"
+		   });
+		addAnnotation
+		  (languageBindingEClass,
+		   source,
+		   new String[] {
+			   "constraints", "uniqueTypeMappings uniquePackageMappings"
 		   });
 	}
 
@@ -6466,6 +6854,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "attributeNamesUnique", "attributes->isUnique(a | a.name)"
+		   });
+		addAnnotation
+		  (languageBindingEClass,
+		   source,
+		   new String[] {
+			   "uniqueTypeMappings", "typeMappings->isUnique(neutralType)",
+			   "uniquePackageMappings", "packageMappings->isUnique(nsURI)"
 		   });
 	}
 

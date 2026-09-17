@@ -1,0 +1,289 @@
+[module serviceinterface(_'http://eclipse.org/fennec/services/1.0', _'http://www.eclipse.org/emf/2002/Ecore')/]
+[comment]
+Copyright (c) 2026 Contributors to the Eclipse Foundation.
+
+This program and the accompanying materials are made
+available under the terms of the Eclipse Public License 2.0
+which is available at https://www.eclipse.org/legal/epl-2.0/
+
+SPDX-License-Identifier: EPL-2.0
+
+Contributors:
+  Data In Motion Consulting - initial implementation
+[/comment]
+[comment]
+One Java interface per ServiceInterface a JavaBinding names, plus the
+package-info for the package they land in.
+
+The binding is the input model: it references the contracts, so handing the
+generator the binding brings both, and the published contract document stays
+free of build-time detail. The metamodels of EClass-typed slots have to be
+handed to the generator as well (its 'ecore' attribute) — an unresolved
+eType is a proxy, and a proxy has no name to generate from.
+[/comment]
+
+[template public main(binding : JavaBinding)]
+[for (service : ServiceInterface | binding.serviceInterfaces)]
+[file (sourcePath(binding, service.name), false)]
+package [binding.targetPackage/];
+
+[for (imported : String | imports(binding, service))]
+import [imported/];
+[/for]
+
+/**
+ * [service.description/]
+ *
+ * <p>Generated from the {@code [service.name/]} contract, version
+ * [service.version/]. Do not edit — change the contract instead.
+ */
+[if (apiAnnotation(binding) <> '')]
+[apiAnnotation(binding)/]
+[/if]
+public interface [service.name/] {
+[for (operation : ServiceOperation | service.operations)]
+
+	/**
+[for (line : String | javadoc(binding, operation))]
+	 * [line/]
+[/for]
+	 */
+	[returnType(binding, operation)/] [operation.name/]([for (parameter : Parameter | operation.parameters->sortedBy(p | p.index)) separator(', ')][slotType(binding, parameter)/] [parameter.name/][/for])[if (operation.exceptions->notEmpty())] throws [for (raised : ServiceException | operation.exceptions->sortedBy(e | e.name)) separator(', ')][simpleName(exceptionType(binding, raised))/][/for][/if];
+[/for]
+}
+[/file]
+[for (raised : ServiceException | ownExceptions(binding, service))]
+[file (sourcePath(binding, simpleName(exceptionType(binding, raised))), false)]
+package [binding.targetPackage/];
+
+/**
+ * [exceptionDoc(raised)/]
+ *
+ * <p>Generated from the {@code [raised.name/]} exception of the
+ * {@code [service.name/]} contract, version [raised.version/]. Do not edit —
+ * change the contract instead.
+ */
+public class [simpleName(exceptionType(binding, raised))/] extends Exception {
+
+	private static final long serialVersionUID = 1L;
+[for (payload : Property | raised.properties->sortedBy(f | f.name))]
+
+	private final [propertyType(payload)/] [payload.name/];
+[/for]
+
+	public [simpleName(exceptionType(binding, raised))/](String message[for (payload : Property | raised.properties->sortedBy(f | f.name))], [propertyType(payload)/] [payload.name/][/for]) {
+		super(message);
+[for (payload : Property | raised.properties->sortedBy(f | f.name))]
+		this.[payload.name/] = [payload.name/];
+[/for]
+	}
+[for (payload : Property | raised.properties->sortedBy(f | f.name))]
+
+	public [propertyType(payload)/] get[payload.name.toUpperFirst()/]() {
+		return [payload.name/];
+	}
+[/for]
+}
+[/file]
+[/for]
+[/for]
+[file (sourcePath(binding, 'package-info'), false)]
+/*
+ * Generated from the contracts of the [binding.name/] binding. Do not edit.
+ */
+@org.osgi.annotation.bundle.Export
+[if (uniformVersion(binding) <> '')]
+@org.osgi.annotation.versioning.Version("[uniformVersion(binding)/]")
+[/if]
+package [binding.targetPackage/];
+[/file]
+[/template]
+
+[comment]===================== javadoc =====================[/comment]
+
+[comment]
+Every javadoc line of an operation, description first, then the tags. Built as
+one sequence on purpose: a multi-line block that iterates zero times still
+contributes the newline after its tail, so one loop over finished lines is the
+only shape that cannot leave a stray blank line in the comment.
+[/comment]
+[query public javadoc(binding : JavaBinding, operation : ServiceOperation) : Sequence(String) =
+	Sequence{operationDoc(operation)}
+		->union(operation.parameters->sortedBy(p | p.index)
+			->collect(p | '@param '.concat(p.name).concat(' ').concat(paramDoc(p))))
+		->union(returnDoc(operation))
+		->union(operation.exceptions->sortedBy(e | e.name)
+			->collect(e | '@throws '.concat(simpleName(exceptionType(binding, e))).concat(' ').concat(exceptionDoc(e))))
+		->asSequence() /]
+
+[comment]
+Every description is read from its owner, never handed to a query as a string:
+an unset description is null, and a query called with null evaluates invalid.
+[/comment]
+[query public operationDoc(operation : ServiceOperation) : String =
+	if operation.description.oclIsUndefined() then '' else operation.description endif /]
+
+[query public exceptionDoc(raised : ServiceException) : String =
+	if raised.description.oclIsUndefined() then '' else raised.description endif /]
+
+[query public paramDoc(parameter : Parameter) : String =
+	(if parameter.description.oclIsUndefined() then '' else parameter.description endif)
+		.concat(if parameter.optional
+			then (if parameter.defaultValue.oclIsUndefined() then ' Optional.'
+				else ' Optional, defaults to {@code '.concat(parameter.defaultValue).concat('}.') endif)
+			else '' endif) /]
+
+[comment]
+@return carries no name, so an undocumented result contributes nothing — the
+signature already says what comes back. @param and @throws always render: their
+name is information even without a description.
+[/comment]
+[query public returnDoc(operation : ServiceOperation) : Sequence(String) =
+	if operation.returnValue.oclIsUndefined() then Sequence{}
+	else if operation.returnValue.description.oclIsUndefined() then Sequence{}
+	else Sequence{'@return '.concat(operation.returnValue.description)} endif endif /]
+
+[comment]===================== paths and names =====================[/comment]
+
+[query public sourcePath(binding : JavaBinding, name : String) : String =
+	binding.targetPackage.substitute('.', '/').concat('/').concat(name).concat('.java') /]
+
+[comment]
+The Java simple name of a fully qualified one. tokenize() over '.' and the
+last segment — a class in the default package has no dot and stays as it is.
+[/comment]
+[query public simpleName(qualified : String) : String =
+	if qualified.strstr('.') then qualified.tokenize('.')->last() else qualified endif /]
+
+[comment]
+The package version: the contracts' version where they agree on one, nothing
+where they do not — a package cannot carry two.
+[/comment]
+[query public uniformVersion(binding : JavaBinding) : String =
+	if binding.serviceInterfaces->collect(version)->asSet()->size() = 1
+	then binding.serviceInterfaces->first().version
+	else '' endif /]
+
+[comment]
+A contract names its exception types SYMBOLICALLY — ServiceException.type is
+what travels on the wire, not a Java class. What it is called in Java, and
+whether that class exists or has to be written, is the binding's business.
+[/comment]
+[query public exceptionType(binding : JavaBinding, raised : ServiceException) : String =
+	mappedType(binding, raised.type) /]
+
+[comment]
+The language type for a symbolic name: the binding's mapping where there is
+one, otherwise the last segment of the symbolic name in the target package.
+[/comment]
+[query public mappedType(binding : JavaBinding, symbolic : String) : String =
+	if binding.typeMappings->exists(m | m.neutralType = symbolic)
+	then binding.typeMappings->select(m | m.neutralType = symbolic)->first().target
+	else binding.targetPackage.concat('.').concat(simpleName(symbolic)) endif /]
+
+[comment]The exceptions the contract owns — the binding says the generator writes them.[/comment]
+[query public ownExceptions(binding : JavaBinding, service : ServiceInterface) : Sequence(ServiceException) =
+	service.exceptions
+		->select(e | binding.typeMappings->exists(m | m.neutralType = e.type and m.generated))
+		->asSequence() /]
+
+[comment]===================== types =====================[/comment]
+
+[query public returnType(binding : JavaBinding, operation : ServiceOperation) : String =
+	if operation.returnValue.oclIsUndefined() then 'void'
+	else slotType(binding, operation.returnValue) endif /]
+
+[comment]A slot renders as its element type, or as a List of it when multi-valued.[/comment]
+[query public slotType(binding : JavaBinding, slot : Parameter) : String =
+	if slot.upperBound = 1 then elementType(binding, slot)
+	else 'List<'.concat(boxed(elementType(binding, slot))).concat('>') endif /]
+
+[comment]
+eType wins where it is set: an EClass renders as its name (imported through the
+binding's packageMappings), an Ecore EDataType through its instance class. Only
+where no eType is given does the language-neutral 'type' string decide.
+[/comment]
+[query public elementType(binding : JavaBinding, slot : Parameter) : String =
+	if slot.eType.oclIsUndefined() then javaType(slot.type)
+	else if slot.eType.oclIsKindOf(EDataType) then simpleName(slot.eType.instanceClassName)
+	else slot.eType.name endif endif /]
+
+[query public javaType(neutral : String) : String =
+	if neutral = 'string' then 'String'
+	else if neutral = 'boolean' then 'boolean'
+	else if neutral = 'int' then 'int'
+	else if neutral = 'long' then 'long'
+	else if neutral = 'float' then 'float'
+	else if neutral = 'double' then 'double'
+	else neutral endif endif endif endif endif endif /]
+
+[query public boxed(primitive : String) : String =
+	if primitive = 'boolean' then 'Boolean'
+	else if primitive = 'int' then 'Integer'
+	else if primitive = 'long' then 'Long'
+	else if primitive = 'float' then 'Float'
+	else if primitive = 'double' then 'Double'
+	else if primitive = 'short' then 'Short'
+	else if primitive = 'byte' then 'Byte'
+	else if primitive = 'char' then 'Character'
+	else primitive endif endif endif endif endif endif endif endif /]
+
+[comment]A declared payload field renders as the Java type of its Property kind.[/comment]
+[query public propertyType(payload : Property) : String =
+	if payload.oclIsKindOf(StringProperty) then 'String'
+	else if payload.oclIsKindOf(IntProperty) then 'int'
+	else if payload.oclIsKindOf(LongProperty) then 'long'
+	else if payload.oclIsKindOf(DoubleProperty) then 'double'
+	else if payload.oclIsKindOf(FloatProperty) then 'float'
+	else if payload.oclIsKindOf(ShortProperty) then 'short'
+	else if payload.oclIsKindOf(BoolProperty) then 'boolean'
+	else if payload.oclIsKindOf(StringListProperty) then 'List<String>'
+	else 'String' endif endif endif endif endif endif endif endif /]
+
+[comment]===================== imports =====================[/comment]
+
+[query public imports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
+	exceptionImports(binding, service)
+		->union(slotImports(binding, service))
+		->union(listImport(service))
+		->union(annotationImport(binding))
+		->select(i | i <> '')
+		->reject(i | i = binding.targetPackage.concat('.').concat(simpleName(i)))
+		->asSet()->sortedBy(i | i) /]
+
+[query public exceptionImports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
+	service.operations->collect(o | o.exceptions)
+		->collect(e | exceptionType(binding, e))->asSequence() /]
+
+[query public slotImports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
+	slots(service)->collect(s | qualifiedType(binding, s))->asSequence() /]
+
+[query public slots(service : ServiceInterface) : Sequence(Parameter) =
+	service.operations->collect(o | o.parameters)
+		->union(service.operations->collect(o | o.returnValue)->reject(s | s.oclIsUndefined()))
+		->asSequence() /]
+
+[comment]Only an EClass needs an import, and only where the binding maps its metamodel.[/comment]
+[query public qualifiedType(binding : JavaBinding, slot : Parameter) : String =
+	if slot.eType.oclIsUndefined() then ''
+	else if slot.eType.oclIsKindOf(EDataType) then ''
+	else if binding.packageMappings->exists(m | m.nsURI = slot.eType.ePackage.nsURI)
+		then binding.packageMappings->select(m | m.nsURI = slot.eType.ePackage.nsURI)
+			->first().target.concat('.').concat(slot.eType.name)
+		else '' endif endif endif /]
+
+[query public listImport(service : ServiceInterface) : Sequence(String) =
+	if slots(service)->exists(s | s.upperBound <> 1)
+	then Sequence{'java.util.List'} else Sequence{} endif /]
+
+[query public apiAnnotation(binding : JavaBinding) : String =
+	if binding.apiType = ApiType::PROVIDER then '@ProviderType'
+	else if binding.apiType = ApiType::CONSUMER then '@ConsumerType'
+	else '' endif endif /]
+
+[query public annotationImport(binding : JavaBinding) : Sequence(String) =
+	if binding.apiType = ApiType::PROVIDER
+	then Sequence{'org.osgi.annotation.versioning.ProviderType'}
+	else if binding.apiType = ApiType::CONSUMER
+	then Sequence{'org.osgi.annotation.versioning.ConsumerType'}
+	else Sequence{} endif endif /]

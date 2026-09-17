@@ -10,7 +10,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Marker constraint: parameter MUST NOT be null/None/undefined. Redundant with Parameter.optional = false but explicit, useful for return-value constraints where Parameter.optional does not apply.
+ * Marker constraint: parameter MUST NOT be null/None/undefined. Redundant with Parameter.optional = false (and with lowerBound = 1) but explicit — a publisher that states nullability through constraints rather than through the flag says the same thing.
  * <!-- end-model-doc -->
  *
  *

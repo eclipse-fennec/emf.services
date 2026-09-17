@@ -21,7 +21,6 @@ import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.Invariant;
 import org.eclipse.fennec.services.Parameter;
-import org.eclipse.fennec.services.ParameterConstraint;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesPackage;
@@ -37,8 +36,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getName <em>Name</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getDescription <em>Description</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getParameters <em>Parameters</em>}</li>
- *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getReturnType <em>Return Type</em>}</li>
- *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getReturnConstraints <em>Return Constraints</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getReturnValue <em>Return Value</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getExceptions <em>Exceptions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getPreconditions <em>Preconditions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceOperationImpl#getPostconditions <em>Postconditions</em>}</li>
@@ -98,34 +96,14 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 	protected EList<Parameter> parameters;
 
 	/**
-	 * The default value of the '{@link #getReturnType() <em>Return Type</em>}' attribute.
+	 * The cached value of the '{@link #getReturnValue() <em>Return Value</em>}' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see #getReturnType()
+	 * @see #getReturnValue()
 	 * @generated
 	 * @ordered
 	 */
-	protected static final String RETURN_TYPE_EDEFAULT = null;
-
-	/**
-	 * The cached value of the '{@link #getReturnType() <em>Return Type</em>}' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see #getReturnType()
-	 * @generated
-	 * @ordered
-	 */
-	protected String returnType = RETURN_TYPE_EDEFAULT;
-
-	/**
-	 * The cached value of the '{@link #getReturnConstraints() <em>Return Constraints</em>}' containment reference list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see #getReturnConstraints()
-	 * @generated
-	 * @ordered
-	 */
-	protected EList<ParameterConstraint> returnConstraints;
+	protected Parameter returnValue;
 
 	/**
 	 * The cached value of the '{@link #getExceptions() <em>Exceptions</em>}' reference list.
@@ -241,8 +219,8 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 	 * @generated
 	 */
 	@Override
-	public String getReturnType() {
-		return returnType;
+	public Parameter getReturnValue() {
+		return returnValue;
 	}
 
 	/**
@@ -250,25 +228,34 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	@Override
-	public void setReturnType(String newReturnType) {
-		String oldReturnType = returnType;
-		returnType = newReturnType;
-		if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_OPERATION__RETURN_TYPE, oldReturnType, returnType));
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EList<ParameterConstraint> getReturnConstraints() {
-		if (returnConstraints == null) {
-			returnConstraints = new EObjectContainmentEList<ParameterConstraint>(ParameterConstraint.class, this, ServicesPackage.SERVICE_OPERATION__RETURN_CONSTRAINTS);
+	public NotificationChain basicSetReturnValue(Parameter newReturnValue, NotificationChain msgs) {
+		Parameter oldReturnValue = returnValue;
+		returnValue = newReturnValue;
+		if (eNotificationRequired()) {
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_OPERATION__RETURN_VALUE, oldReturnValue, newReturnValue);
+			if (msgs == null) msgs = notification; else msgs.add(notification);
 		}
-		return returnConstraints;
+		return msgs;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setReturnValue(Parameter newReturnValue) {
+		if (newReturnValue != returnValue) {
+			NotificationChain msgs = null;
+			if (returnValue != null)
+				msgs = ((InternalEObject)returnValue).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.SERVICE_OPERATION__RETURN_VALUE, null, msgs);
+			if (newReturnValue != null)
+				msgs = ((InternalEObject)newReturnValue).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.SERVICE_OPERATION__RETURN_VALUE, null, msgs);
+			msgs = basicSetReturnValue(newReturnValue, msgs);
+			if (msgs != null) msgs.dispatch();
+		}
+		else if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_OPERATION__RETURN_VALUE, newReturnValue, newReturnValue));
 	}
 
 	/**
@@ -320,8 +307,8 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 		switch (featureID) {
 			case ServicesPackage.SERVICE_OPERATION__PARAMETERS:
 				return ((InternalEList<?>)getParameters()).basicRemove(otherEnd, msgs);
-			case ServicesPackage.SERVICE_OPERATION__RETURN_CONSTRAINTS:
-				return ((InternalEList<?>)getReturnConstraints()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.SERVICE_OPERATION__RETURN_VALUE:
+				return basicSetReturnValue(null, msgs);
 			case ServicesPackage.SERVICE_OPERATION__PRECONDITIONS:
 				return ((InternalEList<?>)getPreconditions()).basicRemove(otherEnd, msgs);
 			case ServicesPackage.SERVICE_OPERATION__POSTCONDITIONS:
@@ -344,10 +331,8 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 				return getDescription();
 			case ServicesPackage.SERVICE_OPERATION__PARAMETERS:
 				return getParameters();
-			case ServicesPackage.SERVICE_OPERATION__RETURN_TYPE:
-				return getReturnType();
-			case ServicesPackage.SERVICE_OPERATION__RETURN_CONSTRAINTS:
-				return getReturnConstraints();
+			case ServicesPackage.SERVICE_OPERATION__RETURN_VALUE:
+				return getReturnValue();
 			case ServicesPackage.SERVICE_OPERATION__EXCEPTIONS:
 				return getExceptions();
 			case ServicesPackage.SERVICE_OPERATION__PRECONDITIONS:
@@ -377,12 +362,8 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 				getParameters().clear();
 				getParameters().addAll((Collection<? extends Parameter>)newValue);
 				return;
-			case ServicesPackage.SERVICE_OPERATION__RETURN_TYPE:
-				setReturnType((String)newValue);
-				return;
-			case ServicesPackage.SERVICE_OPERATION__RETURN_CONSTRAINTS:
-				getReturnConstraints().clear();
-				getReturnConstraints().addAll((Collection<? extends ParameterConstraint>)newValue);
+			case ServicesPackage.SERVICE_OPERATION__RETURN_VALUE:
+				setReturnValue((Parameter)newValue);
 				return;
 			case ServicesPackage.SERVICE_OPERATION__EXCEPTIONS:
 				getExceptions().clear();
@@ -417,11 +398,8 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_OPERATION__PARAMETERS:
 				getParameters().clear();
 				return;
-			case ServicesPackage.SERVICE_OPERATION__RETURN_TYPE:
-				setReturnType(RETURN_TYPE_EDEFAULT);
-				return;
-			case ServicesPackage.SERVICE_OPERATION__RETURN_CONSTRAINTS:
-				getReturnConstraints().clear();
+			case ServicesPackage.SERVICE_OPERATION__RETURN_VALUE:
+				setReturnValue((Parameter)null);
 				return;
 			case ServicesPackage.SERVICE_OPERATION__EXCEPTIONS:
 				getExceptions().clear();
@@ -450,10 +428,8 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 				return DESCRIPTION_EDEFAULT == null ? description != null : !DESCRIPTION_EDEFAULT.equals(description);
 			case ServicesPackage.SERVICE_OPERATION__PARAMETERS:
 				return parameters != null && !parameters.isEmpty();
-			case ServicesPackage.SERVICE_OPERATION__RETURN_TYPE:
-				return RETURN_TYPE_EDEFAULT == null ? returnType != null : !RETURN_TYPE_EDEFAULT.equals(returnType);
-			case ServicesPackage.SERVICE_OPERATION__RETURN_CONSTRAINTS:
-				return returnConstraints != null && !returnConstraints.isEmpty();
+			case ServicesPackage.SERVICE_OPERATION__RETURN_VALUE:
+				return returnValue != null;
 			case ServicesPackage.SERVICE_OPERATION__EXCEPTIONS:
 				return exceptions != null && !exceptions.isEmpty();
 			case ServicesPackage.SERVICE_OPERATION__PRECONDITIONS:
@@ -478,8 +454,6 @@ public class ServiceOperationImpl extends MinimalEObjectImpl.Container implement
 		result.append(name);
 		result.append(", description: ");
 		result.append(description);
-		result.append(", returnType: ");
-		result.append(returnType);
 		result.append(')');
 		return result.toString();
 	}

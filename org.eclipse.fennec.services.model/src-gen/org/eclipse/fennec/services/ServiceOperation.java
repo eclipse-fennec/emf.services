@@ -21,8 +21,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <ul>
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getDescription <em>Description</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getParameters <em>Parameters</em>}</li>
- *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getReturnType <em>Return Type</em>}</li>
- *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getReturnConstraints <em>Return Constraints</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getReturnValue <em>Return Value</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getExceptions <em>Exceptions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getPreconditions <em>Preconditions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getPostconditions <em>Postconditions</em>}</li>
@@ -75,44 +74,29 @@ public interface ServiceOperation extends NamedElement {
 	EList<Parameter> getParameters();
 
 	/**
-	 * Returns the value of the '<em><b>Return Type</b></em>' attribute.
+	 * Returns the value of the '<em><b>Return Value</b></em>' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Language-neutral name of the return type (e.g. 'string', 'int', 'money.Money'). Unset = void/None/no return value.
+	 * The operation's return slot, expressed as a Parameter: type, multiplicity and constraints in one place. Unset = void/None/no return value. 'index' is meaningless here and stays 0, 'optional' says the result may be null, 'defaultValue' has no meaning. Replaces the former 'returnType' string and 'returnConstraints' — a Parameter carries its own constraints.
 	 * <!-- end-model-doc -->
-	 * @return the value of the '<em>Return Type</em>' attribute.
-	 * @see #setReturnType(String)
-	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceOperation_ReturnType()
-	 * @model
-	 * @generated
-	 */
-	String getReturnType();
-
-	/**
-	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceOperation#getReturnType <em>Return Type</em>}' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @param value the new value of the '<em>Return Type</em>' attribute.
-	 * @see #getReturnType()
-	 * @generated
-	 */
-	void setReturnType(String value);
-
-	/**
-	 * Returns the value of the '<em><b>Return Constraints</b></em>' containment reference list.
-	 * The list contents are of type {@link org.eclipse.fennec.services.ParameterConstraint}.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * <!-- begin-model-doc -->
-	 * Constraints on the return value (same constraint language as parameters). Empty = no constraints.
-	 * <!-- end-model-doc -->
-	 * @return the value of the '<em>Return Constraints</em>' containment reference list.
-	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceOperation_ReturnConstraints()
+	 * @return the value of the '<em>Return Value</em>' containment reference.
+	 * @see #setReturnValue(Parameter)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceOperation_ReturnValue()
 	 * @model containment="true"
 	 * @generated
 	 */
-	EList<ParameterConstraint> getReturnConstraints();
+	Parameter getReturnValue();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceOperation#getReturnValue <em>Return Value</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Return Value</em>' containment reference.
+	 * @see #getReturnValue()
+	 * @generated
+	 */
+	void setReturnValue(Parameter value);
 
 	/**
 	 * Returns the value of the '<em><b>Exceptions</b></em>' reference list.

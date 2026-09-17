@@ -99,3 +99,87 @@ describe('ServiceDescriptionFingerprint (sd1) — cross-language golden', () => 
     expect(canonicalForm(undefined)).toBeUndefined();
   });
 });
+
+// Issue #41: typed slots and multiplicity. The scheme tag stays sd1
+// because the new fields are rendered only where they deviate from what
+// the old model could already say.
+const TYPED_XMI = `<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:services="http://eclipse.org/fennec/services/1.0" name="DataSetService" version="1.0.0">
+  <operations name="get">
+    <parameters name="id" type="string"/>
+    <returnValue name="result">
+      <eType href="http://example.org/atlas/1.0#//DataSet"/>
+    </returnValue>
+  </operations>
+  <operations name="list">
+    <parameters name="limit" type="int" lowerBound="0" optional="true"/>
+    <returnValue name="result" upperBound="-1">
+      <eType href="http://example.org/atlas/1.0#//DataSet"/>
+    </returnValue>
+  </operations>
+</services:ServiceInterface>`;
+
+function typedInterface(): ServiceInterface {
+  const si = firstOfClass<ServiceInterface>(asRoots(deserializeFromXmi(TYPED_XMI)), 'ServiceInterface');
+  if (!si) throw new Error('fixture without ServiceInterface');
+  return si;
+}
+
+describe('ServiceDescriptionFingerprint (sd1) — typed slots and multiplicity (#41)', () => {
+  it('renders the metamodel URI of an unresolved eType', () => {
+    expect(canonicalForm(typedInterface())).toContain(
+      'O|get|returnType=|returnEType=http://example.org/atlas/1.0#//DataSet'
+    );
+  });
+
+  it('separates a single instance from a list of them', () => {
+    const canonical = canonicalForm(typedInterface())!;
+    const [get, list] = canonical.split('\n').filter(l => l.startsWith('  O|'));
+    expect(get).not.toContain('returnUpper');
+    expect(list).toContain('|returnLower=1|returnUpper=-1');
+  });
+
+  it('a single-valued slot hashes the same however it states its lower bound', () => {
+    // The trap this closes: a factory-built Parameter answers the model
+    // default 1, one parsed from an XMI document that predates the bounds
+    // answers nothing at all, and an optional parameter written
+    // consistently says 0. All three mean "one value, may be omitted" and
+    // `optional` already carries that — so none of them may move the
+    // hash, in either language.
+    const factory = DDSRFactory.eINSTANCE;
+    const build = (lowerBound: number | undefined) => {
+      const si = factory.createServiceInterface();
+      si.name = 'Payment';
+      const op = factory.createServiceOperation();
+      op.name = 'charge';
+      const p = factory.createParameter();
+      p.name = 'currency';
+      p.type = 'string';
+      p.optional = true;
+      if (lowerBound !== undefined) p.lowerBound = lowerBound;
+      op.parameters.push(p);
+      si.operations.push(op);
+      return si;
+    };
+    expect(fingerprint(build(0))).toBe(fingerprint(build(undefined)));
+    expect(fingerprint(build(1))).toBe(fingerprint(build(undefined)));
+  });
+
+  it('a stated multiplicity does move the hash', () => {
+    const factory = DDSRFactory.eINSTANCE;
+    const build = (upperBound: number) => {
+      const si = factory.createServiceInterface();
+      si.name = 'DataSetService';
+      const op = factory.createServiceOperation();
+      op.name = 'list';
+      const result = factory.createParameter();
+      result.name = 'result';
+      result.type = 'DataSet';
+      result.upperBound = upperBound;
+      op.returnValue = result;
+      si.operations.push(op);
+      return si;
+    };
+    expect(fingerprint(build(-1))).not.toBe(fingerprint(build(1)));
+  });
+});

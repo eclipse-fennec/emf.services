@@ -8,7 +8,6 @@
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
 import type { NamedElement } from './NamedElement';
 import type { Parameter } from './Parameter';
-import type { ParameterConstraint } from './ParameterConstraint';
 import type { ServiceException } from './ServiceException';
 import type { Invariant } from './Invariant';
 
@@ -19,8 +18,7 @@ import type { Invariant } from './Invariant';
 export interface ServiceOperation extends NamedElement {
   description?: string;
   parameters: Parameter[];
-  returnType?: string;
-  returnConstraints: ParameterConstraint[];
+  returnValue?: Parameter;
   exceptions: ServiceException[];
   preconditions: Invariant[];
   postconditions: Invariant[];

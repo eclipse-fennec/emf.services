@@ -10,6 +10,7 @@ import org.eclipse.emf.common.notify.NotificationChain;
 import org.eclipse.emf.common.util.EList;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.InternalEObject;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
@@ -33,6 +34,9 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getName <em>Name</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getIndex <em>Index</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getType <em>Type</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getEType <em>EType</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getLowerBound <em>Lower Bound</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getUpperBound <em>Upper Bound</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#isOptional <em>Optional</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getDefaultValue <em>Default Value</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getDescription <em>Description</em>}</li>
@@ -101,6 +105,56 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 	 * @ordered
 	 */
 	protected String type = TYPE_EDEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getEType() <em>EType</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getEType()
+	 * @generated
+	 * @ordered
+	 */
+	protected EClassifier eType;
+
+	/**
+	 * The default value of the '{@link #getLowerBound() <em>Lower Bound</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getLowerBound()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final int LOWER_BOUND_EDEFAULT = 1;
+
+	/**
+	 * The cached value of the '{@link #getLowerBound() <em>Lower Bound</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getLowerBound()
+	 * @generated
+	 * @ordered
+	 */
+	protected int lowerBound = LOWER_BOUND_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getUpperBound() <em>Upper Bound</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getUpperBound()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final int UPPER_BOUND_EDEFAULT = 1;
+
+	/**
+	 * The cached value of the '{@link #getUpperBound() <em>Upper Bound</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getUpperBound()
+	 * @generated
+	 * @ordered
+	 */
+	protected int upperBound = UPPER_BOUND_EDEFAULT;
 
 	/**
 	 * The default value of the '{@link #isOptional() <em>Optional</em>}' attribute.
@@ -266,6 +320,92 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 	 * @generated
 	 */
 	@Override
+	public EClassifier getEType() {
+		if (eType != null && eType.eIsProxy()) {
+			InternalEObject oldEType = (InternalEObject)eType;
+			eType = (EClassifier)eResolveProxy(oldEType);
+			if (eType != oldEType) {
+				if (eNotificationRequired())
+					eNotify(new ENotificationImpl(this, Notification.RESOLVE, ServicesPackage.PARAMETER__ETYPE, oldEType, eType));
+			}
+		}
+		return eType;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public EClassifier basicGetEType() {
+		return eType;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setEType(EClassifier newEType) {
+		EClassifier oldEType = eType;
+		eType = newEType;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.PARAMETER__ETYPE, oldEType, eType));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public int getLowerBound() {
+		return lowerBound;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setLowerBound(int newLowerBound) {
+		int oldLowerBound = lowerBound;
+		lowerBound = newLowerBound;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.PARAMETER__LOWER_BOUND, oldLowerBound, lowerBound));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public int getUpperBound() {
+		return upperBound;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setUpperBound(int newUpperBound) {
+		int oldUpperBound = upperBound;
+		upperBound = newUpperBound;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.PARAMETER__UPPER_BOUND, oldUpperBound, upperBound));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public boolean isOptional() {
 		return optional;
 	}
@@ -370,6 +510,13 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 				return getIndex();
 			case ServicesPackage.PARAMETER__TYPE:
 				return getType();
+			case ServicesPackage.PARAMETER__ETYPE:
+				if (resolve) return getEType();
+				return basicGetEType();
+			case ServicesPackage.PARAMETER__LOWER_BOUND:
+				return getLowerBound();
+			case ServicesPackage.PARAMETER__UPPER_BOUND:
+				return getUpperBound();
 			case ServicesPackage.PARAMETER__OPTIONAL:
 				return isOptional();
 			case ServicesPackage.PARAMETER__DEFAULT_VALUE:
@@ -399,6 +546,15 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 				return;
 			case ServicesPackage.PARAMETER__TYPE:
 				setType((String)newValue);
+				return;
+			case ServicesPackage.PARAMETER__ETYPE:
+				setEType((EClassifier)newValue);
+				return;
+			case ServicesPackage.PARAMETER__LOWER_BOUND:
+				setLowerBound((Integer)newValue);
+				return;
+			case ServicesPackage.PARAMETER__UPPER_BOUND:
+				setUpperBound((Integer)newValue);
 				return;
 			case ServicesPackage.PARAMETER__OPTIONAL:
 				setOptional((Boolean)newValue);
@@ -434,6 +590,15 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 			case ServicesPackage.PARAMETER__TYPE:
 				setType(TYPE_EDEFAULT);
 				return;
+			case ServicesPackage.PARAMETER__ETYPE:
+				setEType((EClassifier)null);
+				return;
+			case ServicesPackage.PARAMETER__LOWER_BOUND:
+				setLowerBound(LOWER_BOUND_EDEFAULT);
+				return;
+			case ServicesPackage.PARAMETER__UPPER_BOUND:
+				setUpperBound(UPPER_BOUND_EDEFAULT);
+				return;
 			case ServicesPackage.PARAMETER__OPTIONAL:
 				setOptional(OPTIONAL_EDEFAULT);
 				return;
@@ -464,6 +629,12 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 				return index != INDEX_EDEFAULT;
 			case ServicesPackage.PARAMETER__TYPE:
 				return TYPE_EDEFAULT == null ? type != null : !TYPE_EDEFAULT.equals(type);
+			case ServicesPackage.PARAMETER__ETYPE:
+				return eType != null;
+			case ServicesPackage.PARAMETER__LOWER_BOUND:
+				return lowerBound != LOWER_BOUND_EDEFAULT;
+			case ServicesPackage.PARAMETER__UPPER_BOUND:
+				return upperBound != UPPER_BOUND_EDEFAULT;
 			case ServicesPackage.PARAMETER__OPTIONAL:
 				return optional != OPTIONAL_EDEFAULT;
 			case ServicesPackage.PARAMETER__DEFAULT_VALUE:
@@ -492,6 +663,10 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 		result.append(index);
 		result.append(", type: ");
 		result.append(type);
+		result.append(", lowerBound: ");
+		result.append(lowerBound);
+		result.append(", upperBound: ");
+		result.append(upperBound);
 		result.append(", optional: ");
 		result.append(optional);
 		result.append(", defaultValue: ");

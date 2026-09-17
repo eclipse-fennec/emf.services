@@ -206,7 +206,13 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				loaded = resourceSet.getResource(uri, true);
 			} catch (Exception ex) {
 				// Corrupt snapshot — treat as empty start. Caller decides
-				// how to react via the snapshot() diagnostic.
+				// how to react via the snapshot() diagnostic. Say so
+				// loudly: a snapshot written by an older model version
+				// fails here too (EMF throws on a feature the model no
+				// longer has), and silently starting empty would look
+				// like the registry simply lost everything.
+				LOG.warning("[DDSR] snapshot " + this.snapshotPath
+						+ " could not be read, starting with an empty registry: " + ex);
 				loaded = null;
 			}
 		}

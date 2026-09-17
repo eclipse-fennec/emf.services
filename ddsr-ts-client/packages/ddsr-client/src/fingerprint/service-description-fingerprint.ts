@@ -27,6 +27,18 @@ import { eClassName, toArray } from '../internal/emf-util';
  * attribute values as strings, so every numeric/boolean rendering here
  * coerces along the property/parameter TYPE before rendering — the
  * canonical form is computed over model semantics, not reader artifacts.
+ *
+ * Extension fields (issue #41) — Parameter.eType, lowerBound, upperBound
+ * and the return slot that is now a Parameter of its own — are appended
+ * to their line ONLY where they say something the old model could not:
+ * an eType, or a multiplicity other than "exactly one" (for a
+ * single-valued slot `optional` already carries the whole story, so the
+ * bounds stay out of the line). A contract written before the model carried types and
+ * multiplicity therefore keeps its sd1 value byte for byte, which is why
+ * the tag stays "sd1". The return slot's NAME is never rendered: unlike a
+ * parameter name it has no wire role (it is not an argument-map key), and
+ * emitting it would move the fingerprint of every contract migrated from
+ * the old returnType string.
  */
 export const FINGERPRINT_SCHEME = 'sd1';
 
@@ -54,11 +66,16 @@ export function canonicalForm(serviceInterface: ServiceInterface | undefined): s
   }
 
   for (const op of toArray<ServiceOperation>(serviceInterface.operations)) {
-    lines.push(`  O|${esc(op.name)}|returnType=${esc(op.returnType)}`);
+    const returnValue = op.returnValue;
+    lines.push(
+      `  O|${esc(op.name)}|returnType=${esc(returnValue?.type)}` +
+      returnExtensions(returnValue)
+    );
     for (const p of toArray<Parameter>(op.parameters)) {
       lines.push(
         `    p|${esc(p.name)}|type=${esc(p.type)}|index=${intText(p.index)}` +
-        `|optional=${boolText(p.optional)}|defaultValue=${esc(p.defaultValue)}`
+        `|optional=${boolText(p.optional)}|defaultValue=${esc(p.defaultValue)}` +
+        parameterExtensions(p)
       );
     }
     for (const ex of sortByName(toArray<ServiceException>(op.exceptions))) {
@@ -69,6 +86,70 @@ export function canonicalForm(serviceInterface: ServiceInterface | undefined): s
 }
 
 // --------------------------------------------------------------------
+
+/**
+ * `|eType=…|lower=…|upper=…` for a parameter — each field only where it
+ * deviates from its default. Mirrors the Java side field for field.
+ */
+function parameterExtensions(p: Parameter): string {
+  let out = '';
+  const uri = eTypeUri(p.eType);
+  if (uri) out += `|eType=${esc(uri)}`;
+  out += boundFields(p, 'lower', 'upper');
+  return out;
+}
+
+/** The same fields for the return slot, under `return…` names. */
+function returnExtensions(returnValue: Parameter | undefined): string {
+  if (!returnValue) return '';
+  let out = '';
+  const uri = eTypeUri(returnValue.eType);
+  if (uri) out += `|returnEType=${esc(uri)}`;
+  out += boundFields(returnValue, 'returnLower', 'returnUpper');
+  if (boolText(returnValue.optional) === 'true') out += '|returnOptional=true';
+  return out;
+}
+
+/**
+ * `<nsURI>#//<Name>` for a referenced EClassifier — read from the PROXY
+ * URI where the metamodel is not on hand, which is the normal case for a
+ * broker holding a foreign provider's contract. Resolving is never
+ * required, and a resolved classifier must render identically.
+ */
+function eTypeUri(eType: unknown): string | undefined {
+  if (!eType) return undefined;
+  const proxyURI = (eType as { eProxyURI?: () => { toString(): string } | null }).eProxyURI?.();
+  if (proxyURI) return proxyURI.toString();
+  const classifier = eType as {
+    getEPackage?: () => { getNsURI?: () => string | undefined } | null;
+    getName?: () => string | undefined;
+  };
+  const nsURI = classifier.getEPackage?.()?.getNsURI?.();
+  const name = classifier.getName?.();
+  if (!name) return undefined;
+  return nsURI ? `${nsURI}#//${name}` : name;
+}
+
+/**
+ * Both bounds, rendered as a pair and ONLY for a multi-valued slot.
+ * Where upperBound is 1 the multiplicity is already fully stated by
+ * `optional`, and rendering lowerBound as well would be a second, weaker
+ * copy of it: the model default is 1, an XMI document that predates the
+ * bounds yields nothing, and the two must not hash differently. So a
+ * single-valued slot contributes nothing here, whatever it declares.
+ */
+function boundFields(slot: Parameter, lowerName: string, upperName: string): string {
+  const upper = boundOf(slot.upperBound);
+  if (upper === 1) return '';
+  return `|${lowerName}=${boundOf(slot.lowerBound)}|${upperName}=${upper}`;
+}
+
+/** A bound as declared, falling back to the model default 1. */
+function boundOf(raw: unknown): number {
+  if (raw === undefined || raw === null || raw === '') return 1;
+  const value = typeof raw === 'number' ? Math.trunc(raw) : Number.parseInt(String(raw).trim(), 10);
+  return Number.isNaN(value) ? 1 : value;
+}
 
 // Shared with the im1 mirror (Java: package-private helpers).
 export function sortByName<T extends { name?: string }>(items: T[]): T[] {

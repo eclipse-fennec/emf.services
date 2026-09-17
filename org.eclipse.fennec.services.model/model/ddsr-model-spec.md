@@ -130,8 +130,7 @@ Modelliert *was* ein Service kann — Methoden, Parameter mit Constraints, Excep
 |---|---|---|---|
 | `description` | `EString` | `0..1` | Doku-Text |
 | `parameters` | `Parameter` | `0..*` | **containment**, Reihenfolge per `index` |
-| `returnType` | `EString` | `0..1` | sprachneutraler Typname (z.B. `"string"`, `"int"`, `"money.Money"`); `null` = void |
-| `returnConstraints` | `ParameterConstraint` | `0..*` | **containment**, Constraints am Return-Wert (gleiche Constraint-Sprache wie auf Parametern) |
+| `returnValue` | `Parameter` | `0..1` | **containment**, der Rückgabe-Slot als vollwertiger Parameter — Typ, Multiplizität und Constraints an einer Stelle; unset = void. `index` ist hier bedeutungslos, `optional` heißt „Ergebnis darf null sein" |
 | `exceptions` | `ServiceException` | `0..*` | non-containment, Verweise auf am `ServiceInterface` definierte Exceptions, die diese Operation werfen kann |
 
 ### `Parameter` `extends NamedElement`
@@ -139,7 +138,10 @@ Modelliert *was* ein Service kann — Methoden, Parameter mit Constraints, Excep
 | Feature | Typ | Bounds | Default | Notes |
 |---|---|---|---|---|
 | `index` | `EInt` | `1..1` | | Positionsindex (0-based) — sprachneutral und sprach-unabhängig vom Argument-Name |
-| `type` | `EString` | `1..1` | | sprachneutraler Typname |
+| `type` | `EString` | `0..1` | | sprachneutraler Typname; mindestens eines von `type`/`eType` MUSS gesetzt sein |
+| `eType` | `ecore::EClassifier` | `0..1` | | non-containment, der Metamodell-Typ: eine `EClass` für EObject-Werte, ein Ecore-`EDataType` für Primitive. Wandert als dokumentübergreifender href `<nsURI>#//<Name>` über die Leitung und muss vom Leser **nicht** auflösbar sein |
+| `lowerBound` | `EInt` | `1..1` | `1` | Mindestanzahl Werte; für einen Einzelwert redundant zu `optional` und konsistent zu halten (`lowerBound = 0` genau dann, wenn `optional`) |
+| `upperBound` | `EInt` | `1..1` | `1` | Maximalanzahl Werte, `-1` = unbegrenzt-endliche Collection. Unbegrenzte Ströme über die Zeit gehören zum Interaction-Style-Thema, nicht hierher |
 | `optional` | `EBoolean` | `1..1` | `false` | |
 | `defaultValue` | `EString` | `0..1` | | String-kodierter Default-Wert (Parsen je Typ Sache der Implementation) |
 | `description` | `EString` | `0..1` | | Doku-Text |

@@ -4,6 +4,8 @@ package org.eclipse.fennec.services;
 
 import org.eclipse.emf.common.util.EList;
 
+import org.eclipse.emf.ecore.EClassifier;
+
 import org.osgi.annotation.versioning.ProviderType;
 
 /**
@@ -12,7 +14,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * A typed, named, positional input to a ServiceOperation. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping).
+ * A typed, named, positional input to a ServiceOperation — and, as ServiceOperation.returnValue, its return slot. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping).
  * <!-- end-model-doc -->
  *
  * <p>
@@ -21,6 +23,9 @@ import org.osgi.annotation.versioning.ProviderType;
  * <ul>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getIndex <em>Index</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getType <em>Type</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.Parameter#getEType <em>EType</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.Parameter#getLowerBound <em>Lower Bound</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.Parameter#getUpperBound <em>Upper Bound</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#isOptional <em>Optional</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getDefaultValue <em>Default Value</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getDescription <em>Description</em>}</li>
@@ -28,7 +33,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getParameter()
- * @model
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='typeOrEType boundsOrdered requiredSlotHasLowerBound'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 typeOrEType='type &lt;&gt; null or eType &lt;&gt; null' boundsOrdered='upperBound = -1 or upperBound &gt;= lowerBound' requiredSlotHasLowerBound='optional or lowerBound &gt;= 1'"
  * @generated
  */
 @ProviderType
@@ -63,12 +69,12 @@ public interface Parameter extends NamedElement {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Language-neutral type name. Code Publisher maps to the idiomatic language type (e.g. 'string' → Java String / TS string / Python str). Custom types reference other ServiceInterfaces by qualified name.
+	 * Language-neutral type name. Code Publisher maps to the idiomatic language type (e.g. 'string' → Java String / TS string / Python str). Custom types reference other ServiceInterfaces by qualified name. For EMF values 'eType' is the precise statement: where it is set it wins for stub generation and 'type' may be omitted. At least one of the two MUST be set.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Type</em>' attribute.
 	 * @see #setType(String)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getParameter_Type()
-	 * @model required="true"
+	 * @model
 	 * @generated
 	 */
 	String getType();
@@ -82,6 +88,83 @@ public interface Parameter extends NamedElement {
 	 * @generated
 	 */
 	void setType(String value);
+
+	/**
+	 * Returns the value of the '<em><b>EType</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Metamodel type of this value: an EClass for EObject values, an Ecore EDataType for primitives (EString, EInt, EDouble, …). Serialized as a cross-document href '<nsURI>#//<Name>' and NOT required to be resolvable by the reader — broker, fingerprint and stub generators read the proxy URI, so a catalog document parses and hashes without the provider's domain metamodel on the classpath.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>EType</em>' reference.
+	 * @see #setEType(EClassifier)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getParameter_EType()
+	 * @model
+	 * @generated
+	 */
+	EClassifier getEType();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.Parameter#getEType <em>EType</em>}' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>EType</em>' reference.
+	 * @see #getEType()
+	 * @generated
+	 */
+	void setEType(EClassifier value);
+
+	/**
+	 * Returns the value of the '<em><b>Lower Bound</b></em>' attribute.
+	 * The default value is <code>"1"</code>.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Minimum number of values, inclusive, with the same meaning as ETypedElement.lowerBound: 1 = one value required, 0 = may be absent. Precedence: for a SINGLE-valued slot (upperBound = 1) 'optional' is authoritative and this value is ignored — by the sd1 canonical form as well, which is why a contract written before the bounds existed keeps its fingerprint. It earns its keep on multi-valued slots ('at least two elements'). Only the genuine contradiction is rejected: a slot that is not optional cannot have a lower bound of 0.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Lower Bound</em>' attribute.
+	 * @see #setLowerBound(int)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getParameter_LowerBound()
+	 * @model default="1"
+	 * @generated
+	 */
+	int getLowerBound();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.Parameter#getLowerBound <em>Lower Bound</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Lower Bound</em>' attribute.
+	 * @see #getLowerBound()
+	 * @generated
+	 */
+	void setLowerBound(int value);
+
+	/**
+	 * Returns the value of the '<em><b>Upper Bound</b></em>' attribute.
+	 * The default value is <code>"1"</code>.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded but finite collection. Unbounded streams over time are NOT meant here — those belong to the interaction-style work in WIRE_CHANNELS.md. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Upper Bound</em>' attribute.
+	 * @see #setUpperBound(int)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getParameter_UpperBound()
+	 * @model default="1"
+	 * @generated
+	 */
+	int getUpperBound();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.Parameter#getUpperBound <em>Upper Bound</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Upper Bound</em>' attribute.
+	 * @see #getUpperBound()
+	 * @generated
+	 */
+	void setUpperBound(int value);
 
 	/**
 	 * Returns the value of the '<em><b>Optional</b></em>' attribute.

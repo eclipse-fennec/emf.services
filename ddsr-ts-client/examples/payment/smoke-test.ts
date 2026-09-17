@@ -47,7 +47,10 @@ function smokeInterface() {
   si.version = '0.0.1';
   const ping = factory.createServiceOperation();
   ping.name = 'ping';
-  ping.returnType = 'string';
+  const pingResult = factory.createParameter();
+  pingResult.name = 'result';
+  pingResult.type = 'string';
+  ping.returnValue = pingResult;
   si.operations.push(ping);
   return si;
 }

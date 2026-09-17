@@ -19,6 +19,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EcoreFactory;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -108,8 +111,18 @@ class ServiceDescriptionFingerprintTest {
 	private static ServiceOperation operation(String name, String returnType) {
 		ServiceOperation op = ServicesFactory.eINSTANCE.createServiceOperation();
 		op.setName(name);
-		op.setReturnType(returnType);
+		Parameter result = ServicesFactory.eINSTANCE.createParameter();
+		result.setName("result");
+		result.setType(returnType);
+		op.setReturnValue(result);
 		return op;
+	}
+
+	/** An EClass nobody can resolve — a foreign provider's metamodel. */
+	private static EClass proxyEClass(String uri) {
+		EClass proxy = EcoreFactory.eINSTANCE.createEClass();
+		((InternalEObject) proxy).eSetProxyURI(URI.createURI(uri));
+		return proxy;
 	}
 
 	@Test
@@ -287,5 +300,97 @@ class ServiceDescriptionFingerprintTest {
 		assertThat(ServiceDescriptionFingerprint.fingerprint(withEmptyList))
 				.as("the count prefix keeps 0 elements apart from 1 empty element")
 				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(withEmptyElement));
+	}
+
+	// ------------------------------------------------------------------
+	// Typed slots and multiplicity (#41)
+
+	@Test
+	void unresolvedMetamodelTypeRendersItsUri() {
+		ServiceInterface si = minimal("DataSetService");
+		ServiceOperation get = ServicesFactory.eINSTANCE.createServiceOperation();
+		get.setName("get");
+		Parameter result = ServicesFactory.eINSTANCE.createParameter();
+		result.setName("result");
+		result.setEType(proxyEClass("http://example.org/atlas/1.0#//DataSet"));
+		get.setReturnValue(result);
+		si.getOperations().add(get);
+
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(si))
+				.as("a broker hashes a contract whose metamodel it does not have")
+				.contains("O|get|returnType=|returnEType=http://example.org/atlas/1.0#//DataSet");
+	}
+
+	@Test
+	void resolvedClassifierRendersTheSameUriAsAProxy() {
+		ServiceInterface resolved = minimal("S");
+		ServiceOperation opResolved = ServicesFactory.eINSTANCE.createServiceOperation();
+		opResolved.setName("get");
+		Parameter fromRegistry = ServicesFactory.eINSTANCE.createParameter();
+		fromRegistry.setName("result");
+		fromRegistry.setEType(ServicesPackage.eINSTANCE.getParameter());
+		opResolved.setReturnValue(fromRegistry);
+		resolved.getOperations().add(opResolved);
+
+		ServiceInterface proxied = minimal("S");
+		ServiceOperation opProxied = ServicesFactory.eINSTANCE.createServiceOperation();
+		opProxied.setName("get");
+		Parameter fromWire = ServicesFactory.eINSTANCE.createParameter();
+		fromWire.setName("result");
+		fromWire.setEType(proxyEClass(ServicesPackage.eNS_URI + "#//Parameter"));
+		opProxied.setReturnValue(fromWire);
+		proxied.getOperations().add(opProxied);
+
+		assertThat(ServiceDescriptionFingerprint.fingerprint(resolved))
+				.as("resolving the metamodel must not change what the contract IS")
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(proxied));
+	}
+
+	@Test
+	void singleValuedSlotHashesTheSameHoweverItStatesItsLowerBound() {
+		// A factory-built Parameter answers the model default 1, one
+		// parsed from a document written before the bounds existed
+		// answers nothing, and an optional parameter written consistently
+		// says 0. All three mean "one value, may be omitted" — and
+		// 'optional' already carries that.
+		ServiceInterface silent = minimal("Payment");
+		ServiceOperation opSilent = operation("charge", "double");
+		Parameter pSilent = ServicesFactory.eINSTANCE.createParameter();
+		pSilent.setName("currency");
+		pSilent.setType("string");
+		pSilent.setOptional(true);
+		opSilent.getParameters().add(pSilent);
+		silent.getOperations().add(opSilent);
+
+		ServiceInterface consistent = minimal("Payment");
+		ServiceOperation opConsistent = operation("charge", "double");
+		Parameter pConsistent = ServicesFactory.eINSTANCE.createParameter();
+		pConsistent.setName("currency");
+		pConsistent.setType("string");
+		pConsistent.setOptional(true);
+		pConsistent.setLowerBound(0);
+		opConsistent.getParameters().add(pConsistent);
+		consistent.getOperations().add(opConsistent);
+
+		assertThat(ServiceDescriptionFingerprint.fingerprint(silent))
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(consistent));
+	}
+
+	@Test
+	void aListOfInstancesIsADifferentContractThanOneInstance() {
+		ServiceInterface one = minimal("DataSetService");
+		ServiceOperation getOne = operation("list", "DataSet");
+		one.getOperations().add(getOne);
+
+		ServiceInterface many = minimal("DataSetService");
+		ServiceOperation getMany = operation("list", "DataSet");
+		getMany.getReturnValue().setUpperBound(-1);
+		many.getOperations().add(getMany);
+
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(many))
+				.contains("|returnLower=1|returnUpper=-1");
+		assertThat(ServiceDescriptionFingerprint.fingerprint(many))
+				.as("the gap issue #41 closes: list and get were indistinguishable")
+				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(one));
 	}
 }

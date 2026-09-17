@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:4cf0744d388ba38d4226d7820ec451f070978ba78257cba90e3c5489fefe1590", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:303f60d37cee9a5db64aaa82a9dbc210c2077c03298db9dee7748ac0eaf5e213", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -587,22 +587,13 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int SERVICE_OPERATION__PARAMETERS = NAMED_ELEMENT_FEATURE_COUNT + 1;
 
 	/**
-	 * The feature id for the '<em><b>Return Type</b></em>' attribute.
+	 * The feature id for the '<em><b>Return Value</b></em>' containment reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_OPERATION__RETURN_TYPE = NAMED_ELEMENT_FEATURE_COUNT + 2;
-
-	/**
-	 * The feature id for the '<em><b>Return Constraints</b></em>' containment reference list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int SERVICE_OPERATION__RETURN_CONSTRAINTS = NAMED_ELEMENT_FEATURE_COUNT + 3;
+	int SERVICE_OPERATION__RETURN_VALUE = NAMED_ELEMENT_FEATURE_COUNT + 2;
 
 	/**
 	 * The feature id for the '<em><b>Exceptions</b></em>' reference list.
@@ -611,7 +602,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_OPERATION__EXCEPTIONS = NAMED_ELEMENT_FEATURE_COUNT + 4;
+	int SERVICE_OPERATION__EXCEPTIONS = NAMED_ELEMENT_FEATURE_COUNT + 3;
 
 	/**
 	 * The feature id for the '<em><b>Preconditions</b></em>' containment reference list.
@@ -620,7 +611,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_OPERATION__PRECONDITIONS = NAMED_ELEMENT_FEATURE_COUNT + 5;
+	int SERVICE_OPERATION__PRECONDITIONS = NAMED_ELEMENT_FEATURE_COUNT + 4;
 
 	/**
 	 * The feature id for the '<em><b>Postconditions</b></em>' containment reference list.
@@ -629,7 +620,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_OPERATION__POSTCONDITIONS = NAMED_ELEMENT_FEATURE_COUNT + 6;
+	int SERVICE_OPERATION__POSTCONDITIONS = NAMED_ELEMENT_FEATURE_COUNT + 5;
 
 	/**
 	 * The number of structural features of the '<em>Service Operation</em>' class.
@@ -638,7 +629,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_OPERATION_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 7;
+	int SERVICE_OPERATION_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 6;
 
 	/**
 	 * The number of operations of the '<em>Service Operation</em>' class.
@@ -687,13 +678,40 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int PARAMETER__TYPE = NAMED_ELEMENT_FEATURE_COUNT + 1;
 
 	/**
+	 * The feature id for the '<em><b>EType</b></em>' reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER__ETYPE = NAMED_ELEMENT_FEATURE_COUNT + 2;
+
+	/**
+	 * The feature id for the '<em><b>Lower Bound</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER__LOWER_BOUND = NAMED_ELEMENT_FEATURE_COUNT + 3;
+
+	/**
+	 * The feature id for the '<em><b>Upper Bound</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER__UPPER_BOUND = NAMED_ELEMENT_FEATURE_COUNT + 4;
+
+	/**
 	 * The feature id for the '<em><b>Optional</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER__OPTIONAL = NAMED_ELEMENT_FEATURE_COUNT + 2;
+	int PARAMETER__OPTIONAL = NAMED_ELEMENT_FEATURE_COUNT + 5;
 
 	/**
 	 * The feature id for the '<em><b>Default Value</b></em>' attribute.
@@ -702,7 +720,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER__DEFAULT_VALUE = NAMED_ELEMENT_FEATURE_COUNT + 3;
+	int PARAMETER__DEFAULT_VALUE = NAMED_ELEMENT_FEATURE_COUNT + 6;
 
 	/**
 	 * The feature id for the '<em><b>Description</b></em>' attribute.
@@ -711,7 +729,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER__DESCRIPTION = NAMED_ELEMENT_FEATURE_COUNT + 4;
+	int PARAMETER__DESCRIPTION = NAMED_ELEMENT_FEATURE_COUNT + 7;
 
 	/**
 	 * The feature id for the '<em><b>Constraints</b></em>' containment reference list.
@@ -720,7 +738,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER__CONSTRAINTS = NAMED_ELEMENT_FEATURE_COUNT + 5;
+	int PARAMETER__CONSTRAINTS = NAMED_ELEMENT_FEATURE_COUNT + 8;
 
 	/**
 	 * The number of structural features of the '<em>Parameter</em>' class.
@@ -729,7 +747,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 6;
+	int PARAMETER_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 9;
 
 	/**
 	 * The number of operations of the '<em>Parameter</em>' class.
@@ -4467,26 +4485,15 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getServiceOperation_Parameters();
 
 	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ServiceOperation#getReturnType <em>Return Type</em>}'.
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.services.ServiceOperation#getReturnValue <em>Return Value</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Return Type</em>'.
-	 * @see org.eclipse.fennec.services.ServiceOperation#getReturnType()
+	 * @return the meta object for the containment reference '<em>Return Value</em>'.
+	 * @see org.eclipse.fennec.services.ServiceOperation#getReturnValue()
 	 * @see #getServiceOperation()
 	 * @generated
 	 */
-	EAttribute getServiceOperation_ReturnType();
-
-	/**
-	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.services.ServiceOperation#getReturnConstraints <em>Return Constraints</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the containment reference list '<em>Return Constraints</em>'.
-	 * @see org.eclipse.fennec.services.ServiceOperation#getReturnConstraints()
-	 * @see #getServiceOperation()
-	 * @generated
-	 */
-	EReference getServiceOperation_ReturnConstraints();
+	EReference getServiceOperation_ReturnValue();
 
 	/**
 	 * Returns the meta object for the reference list '{@link org.eclipse.fennec.services.ServiceOperation#getExceptions <em>Exceptions</em>}'.
@@ -4552,6 +4559,39 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getParameter_Type();
+
+	/**
+	 * Returns the meta object for the reference '{@link org.eclipse.fennec.services.Parameter#getEType <em>EType</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the reference '<em>EType</em>'.
+	 * @see org.eclipse.fennec.services.Parameter#getEType()
+	 * @see #getParameter()
+	 * @generated
+	 */
+	EReference getParameter_EType();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.Parameter#getLowerBound <em>Lower Bound</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Lower Bound</em>'.
+	 * @see org.eclipse.fennec.services.Parameter#getLowerBound()
+	 * @see #getParameter()
+	 * @generated
+	 */
+	EAttribute getParameter_LowerBound();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.Parameter#getUpperBound <em>Upper Bound</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Upper Bound</em>'.
+	 * @see org.eclipse.fennec.services.Parameter#getUpperBound()
+	 * @see #getParameter()
+	 * @generated
+	 */
+	EAttribute getParameter_UpperBound();
 
 	/**
 	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.Parameter#isOptional <em>Optional</em>}'.
@@ -7424,20 +7464,12 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference SERVICE_OPERATION__PARAMETERS = eINSTANCE.getServiceOperation_Parameters();
 
 		/**
-		 * The meta object literal for the '<em><b>Return Type</b></em>' attribute feature.
+		 * The meta object literal for the '<em><b>Return Value</b></em>' containment reference feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute SERVICE_OPERATION__RETURN_TYPE = eINSTANCE.getServiceOperation_ReturnType();
-
-		/**
-		 * The meta object literal for the '<em><b>Return Constraints</b></em>' containment reference list feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EReference SERVICE_OPERATION__RETURN_CONSTRAINTS = eINSTANCE.getServiceOperation_ReturnConstraints();
+		EReference SERVICE_OPERATION__RETURN_VALUE = eINSTANCE.getServiceOperation_ReturnValue();
 
 		/**
 		 * The meta object literal for the '<em><b>Exceptions</b></em>' reference list feature.
@@ -7488,6 +7520,30 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute PARAMETER__TYPE = eINSTANCE.getParameter_Type();
+
+		/**
+		 * The meta object literal for the '<em><b>EType</b></em>' reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference PARAMETER__ETYPE = eINSTANCE.getParameter_EType();
+
+		/**
+		 * The meta object literal for the '<em><b>Lower Bound</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute PARAMETER__LOWER_BOUND = eINSTANCE.getParameter_LowerBound();
+
+		/**
+		 * The meta object literal for the '<em><b>Upper Bound</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute PARAMETER__UPPER_BOUND = eINSTANCE.getParameter_UpperBound();
 
 		/**
 		 * The meta object literal for the '<em><b>Optional</b></em>' attribute feature.

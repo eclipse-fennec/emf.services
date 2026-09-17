@@ -5,7 +5,7 @@
  * @generated
  */
 
-import { BasicEPackage, BasicEClass, BasicEAttribute, BasicEReference } from '@emfts/core';
+import { BasicEPackage, BasicEClass, BasicEAttribute, BasicEReference, getEcorePackage } from '@emfts/core';
 import type { EClass, EAttribute, EReference, EEnum } from '@emfts/core';
 
 /**
@@ -56,14 +56,16 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_OPERATION: null as unknown as EClass,
     SERVICE_OPERATION__DESCRIPTION: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__PARAMETERS: null as unknown as EAttribute | EReference,
-    SERVICE_OPERATION__RETURN_TYPE: null as unknown as EAttribute | EReference,
-    SERVICE_OPERATION__RETURN_CONSTRAINTS: null as unknown as EAttribute | EReference,
+    SERVICE_OPERATION__RETURN_VALUE: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__EXCEPTIONS: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__PRECONDITIONS: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__POSTCONDITIONS: null as unknown as EAttribute | EReference,
     PARAMETER: null as unknown as EClass,
     PARAMETER__INDEX: null as unknown as EAttribute | EReference,
     PARAMETER__TYPE: null as unknown as EAttribute | EReference,
+    PARAMETER__E_TYPE: null as unknown as EAttribute | EReference,
+    PARAMETER__LOWER_BOUND: null as unknown as EAttribute | EReference,
+    PARAMETER__UPPER_BOUND: null as unknown as EAttribute | EReference,
     PARAMETER__OPTIONAL: null as unknown as EAttribute | EReference,
     PARAMETER__DEFAULT_VALUE: null as unknown as EAttribute | EReference,
     PARAMETER__DESCRIPTION: null as unknown as EAttribute | EReference,
@@ -484,22 +486,14 @@ export class DDSRPackage extends BasicEPackage {
     serviceOperationClass.getEStructuralFeatures().push(serviceOperation_parameters);
     DDSRPackage.Literals.SERVICE_OPERATION__PARAMETERS = serviceOperation_parameters;
 
-    // Create returnType feature
-    const serviceOperation_returnType = new BasicEAttribute();
-    serviceOperation_returnType.setName('returnType');
-    serviceOperation_returnType.setLowerBound(0);
-    serviceOperation_returnType.setUpperBound(1);
-    serviceOperationClass.getEStructuralFeatures().push(serviceOperation_returnType);
-    DDSRPackage.Literals.SERVICE_OPERATION__RETURN_TYPE = serviceOperation_returnType;
-
-    // Create returnConstraints feature
-    const serviceOperation_returnConstraints = new BasicEReference();
-    serviceOperation_returnConstraints.setContainment(true);
-    serviceOperation_returnConstraints.setName('returnConstraints');
-    serviceOperation_returnConstraints.setLowerBound(0);
-    serviceOperation_returnConstraints.setUpperBound(-1);
-    serviceOperationClass.getEStructuralFeatures().push(serviceOperation_returnConstraints);
-    DDSRPackage.Literals.SERVICE_OPERATION__RETURN_CONSTRAINTS = serviceOperation_returnConstraints;
+    // Create returnValue feature
+    const serviceOperation_returnValue = new BasicEReference();
+    serviceOperation_returnValue.setContainment(true);
+    serviceOperation_returnValue.setName('returnValue');
+    serviceOperation_returnValue.setLowerBound(0);
+    serviceOperation_returnValue.setUpperBound(1);
+    serviceOperationClass.getEStructuralFeatures().push(serviceOperation_returnValue);
+    DDSRPackage.Literals.SERVICE_OPERATION__RETURN_VALUE = serviceOperation_returnValue;
 
     // Create exceptions feature
     const serviceOperation_exceptions = new BasicEReference();
@@ -548,10 +542,35 @@ export class DDSRPackage extends BasicEPackage {
     // Create type feature
     const parameter_type = new BasicEAttribute();
     parameter_type.setName('type');
-    parameter_type.setLowerBound(1);
+    parameter_type.setLowerBound(0);
     parameter_type.setUpperBound(1);
     parameterClass.getEStructuralFeatures().push(parameter_type);
     DDSRPackage.Literals.PARAMETER__TYPE = parameter_type;
+
+    // Create eType feature
+    const parameter_eType = new BasicEReference();
+    parameter_eType.setContainment(false);
+    parameter_eType.setName('eType');
+    parameter_eType.setLowerBound(0);
+    parameter_eType.setUpperBound(1);
+    parameterClass.getEStructuralFeatures().push(parameter_eType);
+    DDSRPackage.Literals.PARAMETER__E_TYPE = parameter_eType;
+
+    // Create lowerBound feature
+    const parameter_lowerBound = new BasicEAttribute();
+    parameter_lowerBound.setName('lowerBound');
+    parameter_lowerBound.setLowerBound(0);
+    parameter_lowerBound.setUpperBound(1);
+    parameterClass.getEStructuralFeatures().push(parameter_lowerBound);
+    DDSRPackage.Literals.PARAMETER__LOWER_BOUND = parameter_lowerBound;
+
+    // Create upperBound feature
+    const parameter_upperBound = new BasicEAttribute();
+    parameter_upperBound.setName('upperBound');
+    parameter_upperBound.setLowerBound(0);
+    parameter_upperBound.setUpperBound(1);
+    parameterClass.getEStructuralFeatures().push(parameter_upperBound);
+    DDSRPackage.Literals.PARAMETER__UPPER_BOUND = parameter_upperBound;
 
     // Create optional feature
     const parameter_optional = new BasicEAttribute();
@@ -2321,10 +2340,11 @@ export class DDSRPackage extends BasicEPackage {
     // Set ETypes for EReferences (must be done after all classes are created)
     // ============================================
     (DDSRPackage.Literals.SERVICE_OPERATION__PARAMETERS as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
-    (DDSRPackage.Literals.SERVICE_OPERATION__RETURN_CONSTRAINTS as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER_CONSTRAINT);
+    (DDSRPackage.Literals.SERVICE_OPERATION__RETURN_VALUE as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
     (DDSRPackage.Literals.SERVICE_OPERATION__EXCEPTIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
     (DDSRPackage.Literals.SERVICE_OPERATION__PRECONDITIONS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
     (DDSRPackage.Literals.SERVICE_OPERATION__POSTCONDITIONS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
+    (DDSRPackage.Literals.PARAMETER__E_TYPE as BasicEReference).setEType(getEcorePackage().getEClassifier('EClassifier')!);
     (DDSRPackage.Literals.PARAMETER__CONSTRAINTS as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER_CONSTRAINT);
     (DDSRPackage.Literals.SERVICE_EXCEPTION__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_INTERFACE__OPERATIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION);

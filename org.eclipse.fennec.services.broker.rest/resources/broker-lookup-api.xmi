@@ -17,6 +17,6 @@
         description="Comma-separated list of FlavorKind values supported by the consumer (REST, MQTT, ...)."/>
     <parameters name="consumerId" index="3" type="string" optional="true"
         description="Optional consumer identity for audit / policy attribution."/>
-    <returnType>LocalServiceRegistry</returnType>
+    <returnValue name="result" type="LocalServiceRegistry"/>
   </operations>
 </services:ServiceInterface>

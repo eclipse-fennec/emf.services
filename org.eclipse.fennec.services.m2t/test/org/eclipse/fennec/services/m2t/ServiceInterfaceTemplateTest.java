@@ -147,6 +147,28 @@ class ServiceInterfaceTemplateTest {
 	}
 
 	@Test
+	void everyGeneratedFileCarriesTheBindingsFileHeader() throws Exception {
+		// The licence text is language-neutral and lives in the binding; the
+		// comment syntax around it belongs to the template, so the same header
+		// serves a Java, a TypeScript and a Python generator.
+		for (String name : new String[] { "Payment.java", "PersonDirectory.java",
+				"PersonNotFoundException.java", "package-info.java" }) {
+			assertThat(generated(name))
+					.as("%s opens with the header the binding declares", name)
+					.startsWith("/*\n * Copyright (c) 2026 Contributors to the Eclipse Foundation.\n")
+					.contains(" * SPDX-License-Identifier: EPL-2.0\n */\n");
+		}
+	}
+
+	@Test
+	void anEmptyHeaderLineCarriesNoTrailingSpace() throws Exception {
+		assertThat(generated("Payment.java"))
+				.as("a blank line in a comment is ' *', not ' * '")
+				.contains("\n *\n")
+				.doesNotContain(" * \n");
+	}
+
+	@Test
 	void thePackageIsExportedAtTheVersionTheContractsAgreeOn() throws Exception {
 		assertThat(generated("package-info.java"))
 				.contains("@org.osgi.annotation.bundle.Export")

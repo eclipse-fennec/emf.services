@@ -3386,8 +3386,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getLanguageBinding_FileHeader() {
+		return (EAttribute)languageBindingEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getLanguageBinding_TypeMappings() {
-		return (EReference)languageBindingEClass.getEStructuralFeatures().get(2);
+		return (EReference)languageBindingEClass.getEStructuralFeatures().get(3);
 	}
 
 	/**
@@ -3397,7 +3407,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EReference getLanguageBinding_PackageMappings() {
-		return (EReference)languageBindingEClass.getEStructuralFeatures().get(3);
+		return (EReference)languageBindingEClass.getEStructuralFeatures().get(4);
 	}
 
 	/**
@@ -4076,6 +4086,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		languageBindingEClass = createEClass(LANGUAGE_BINDING);
 		createEReference(languageBindingEClass, LANGUAGE_BINDING__SERVICE_INTERFACES);
 		createEAttribute(languageBindingEClass, LANGUAGE_BINDING__TARGET_PACKAGE);
+		createEAttribute(languageBindingEClass, LANGUAGE_BINDING__FILE_HEADER);
 		createEReference(languageBindingEClass, LANGUAGE_BINDING__TYPE_MAPPINGS);
 		createEReference(languageBindingEClass, LANGUAGE_BINDING__PACKAGE_MAPPINGS);
 
@@ -4574,6 +4585,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(languageBindingEClass, LanguageBinding.class, "LanguageBinding", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getLanguageBinding_ServiceInterfaces(), this.getServiceInterface(), null, "serviceInterfaces", null, 1, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getLanguageBinding_TargetPackage(), ecorePackage.getEString(), "targetPackage", null, 1, 1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getLanguageBinding_FileHeader(), ecorePackage.getEString(), "fileHeader", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getLanguageBinding_TypeMappings(), this.getTypeMapping(), null, "typeMappings", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getLanguageBinding_PackageMappings(), this.getPackageMapping(), null, "packageMappings", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
@@ -6580,6 +6592,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Where the generated code lives, in the naming of the target language: a package for Java (\'org.acme.payment\'), a module path for TypeScript (\'@acme/payment\'), a module for Python (\'acme.payment\'). The output DIRECTORY is not part of this \u2014 that is the build\'s business (bnd\'s \'output\' attribute); the generator derives the path inside it from this name."
+		   });
+		addAnnotation
+		  (getLanguageBinding_FileHeader(),
+		   source,
+		   new String[] {
+			   "documentation", "Header text placed at the top of every generated file, one entry per line and WITHOUT comment markers \u2014 the generator wraps the lines in the comment syntax of its own language, so the same header serves Java, TypeScript and Python. Empty = no header. One entry per line on purpose: a header does not end up as escaped newlines inside one attribute, and a template can prefix and indent each line the way its language wants."
 		   });
 		addAnnotation
 		  (getLanguageBinding_TypeMappings(),

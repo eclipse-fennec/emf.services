@@ -15,6 +15,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
+import org.eclipse.emf.ecore.util.EDataTypeUniqueEList;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.EObjectResolvingEList;
 import org.eclipse.emf.ecore.util.InternalEList;
@@ -36,6 +37,7 @@ import org.eclipse.fennec.services.TypeMapping;
  *   <li>{@link org.eclipse.fennec.services.impl.LanguageBindingImpl#getName <em>Name</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.LanguageBindingImpl#getServiceInterfaces <em>Service Interfaces</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.LanguageBindingImpl#getTargetPackage <em>Target Package</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.LanguageBindingImpl#getFileHeader <em>File Header</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.LanguageBindingImpl#getTypeMappings <em>Type Mappings</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.LanguageBindingImpl#getPackageMappings <em>Package Mappings</em>}</li>
  * </ul>
@@ -92,6 +94,16 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 	 * @ordered
 	 */
 	protected String targetPackage = TARGET_PACKAGE_EDEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getFileHeader() <em>File Header</em>}' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getFileHeader()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<String> fileHeader;
 
 	/**
 	 * The cached value of the '{@link #getTypeMappings() <em>Type Mappings</em>}' containment reference list.
@@ -197,6 +209,19 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 	 * @generated
 	 */
 	@Override
+	public EList<String> getFileHeader() {
+		if (fileHeader == null) {
+			fileHeader = new EDataTypeUniqueEList<String>(String.class, this, ServicesPackage.LANGUAGE_BINDING__FILE_HEADER);
+		}
+		return fileHeader;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EList<TypeMapping> getTypeMappings() {
 		if (typeMappings == null) {
 			typeMappings = new EObjectContainmentEList<TypeMapping>(TypeMapping.class, this, ServicesPackage.LANGUAGE_BINDING__TYPE_MAPPINGS);
@@ -247,6 +272,8 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 				return getServiceInterfaces();
 			case ServicesPackage.LANGUAGE_BINDING__TARGET_PACKAGE:
 				return getTargetPackage();
+			case ServicesPackage.LANGUAGE_BINDING__FILE_HEADER:
+				return getFileHeader();
 			case ServicesPackage.LANGUAGE_BINDING__TYPE_MAPPINGS:
 				return getTypeMappings();
 			case ServicesPackage.LANGUAGE_BINDING__PACKAGE_MAPPINGS:
@@ -273,6 +300,10 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 				return;
 			case ServicesPackage.LANGUAGE_BINDING__TARGET_PACKAGE:
 				setTargetPackage((String)newValue);
+				return;
+			case ServicesPackage.LANGUAGE_BINDING__FILE_HEADER:
+				getFileHeader().clear();
+				getFileHeader().addAll((Collection<? extends String>)newValue);
 				return;
 			case ServicesPackage.LANGUAGE_BINDING__TYPE_MAPPINGS:
 				getTypeMappings().clear();
@@ -303,6 +334,9 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 			case ServicesPackage.LANGUAGE_BINDING__TARGET_PACKAGE:
 				setTargetPackage(TARGET_PACKAGE_EDEFAULT);
 				return;
+			case ServicesPackage.LANGUAGE_BINDING__FILE_HEADER:
+				getFileHeader().clear();
+				return;
 			case ServicesPackage.LANGUAGE_BINDING__TYPE_MAPPINGS:
 				getTypeMappings().clear();
 				return;
@@ -327,6 +361,8 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 				return serviceInterfaces != null && !serviceInterfaces.isEmpty();
 			case ServicesPackage.LANGUAGE_BINDING__TARGET_PACKAGE:
 				return TARGET_PACKAGE_EDEFAULT == null ? targetPackage != null : !TARGET_PACKAGE_EDEFAULT.equals(targetPackage);
+			case ServicesPackage.LANGUAGE_BINDING__FILE_HEADER:
+				return fileHeader != null && !fileHeader.isEmpty();
 			case ServicesPackage.LANGUAGE_BINDING__TYPE_MAPPINGS:
 				return typeMappings != null && !typeMappings.isEmpty();
 			case ServicesPackage.LANGUAGE_BINDING__PACKAGE_MAPPINGS:
@@ -349,6 +385,8 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 		result.append(name);
 		result.append(", targetPackage: ");
 		result.append(targetPackage);
+		result.append(", fileHeader: ");
+		result.append(fileHeader);
 		result.append(')');
 		return result.toString();
 	}

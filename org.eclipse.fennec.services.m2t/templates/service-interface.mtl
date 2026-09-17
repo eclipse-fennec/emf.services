@@ -25,7 +25,9 @@ eType is a proxy, and a proxy has no name to generate from.
 [template public main(binding : JavaBinding)]
 [for (service : ServiceInterface | binding.serviceInterfaces)]
 [file (sourcePath(binding, service.name), false)]
-package [binding.targetPackage/];
+[for (line : String | preamble(binding))]
+[line/]
+[/for]
 
 [for (imported : String | imports(binding, service))]
 import [imported/];
@@ -54,7 +56,9 @@ public interface [service.name/] {
 [/file]
 [for (raised : ServiceException | ownExceptions(binding, service))]
 [file (sourcePath(binding, simpleName(exceptionType(binding, raised))), false)]
-package [binding.targetPackage/];
+[for (line : String | preamble(binding))]
+[line/]
+[/for]
 
 /**
  * [exceptionDoc(raised)/]
@@ -88,6 +92,9 @@ public class [simpleName(exceptionType(binding, raised))/] extends Exception {
 [/for]
 [/for]
 [file (sourcePath(binding, 'package-info'), false)]
+[for (line : String | headerLines(binding))]
+[line/]
+[/for]
 /*
  * Generated from the contracts of the [binding.name/] binding. Do not edit.
  */
@@ -98,6 +105,27 @@ public class [simpleName(exceptionType(binding, raised))/] extends Exception {
 package [binding.targetPackage/];
 [/file]
 [/template]
+
+[comment]
+The binding's file header as a Java block comment. The package declaration is
+part of the same sequence on purpose: a multi-line block that iterates zero
+times still contributes the newline after its tail, so a loop that can be empty
+would push the package declaration down a line for every binding without a
+header. One loop that always has something to write cannot.
+[/comment]
+[query public preamble(binding : JavaBinding) : Sequence(String) =
+	headerLines(binding)
+		->append('package '.concat(binding.targetPackage).concat(';')) /]
+
+[query public headerLines(binding : JavaBinding) : Sequence(String) =
+	if binding.fileHeader->isEmpty() then Sequence{}
+	else Sequence{'/*'}
+		->union(binding.fileHeader->collect(line | commentLine(line)))
+		->append(' */')
+	endif /]
+
+[query public commentLine(line : String) : String =
+	if line.size() = 0 then ' *' else ' * '.concat(line) endif /]
 
 [comment]===================== javadoc =====================[/comment]
 

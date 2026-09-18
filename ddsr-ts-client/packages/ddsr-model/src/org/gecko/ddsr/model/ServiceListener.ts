@@ -6,7 +6,7 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceEvent } from './ServiceEvent';
+import type { ServiceEvent } from './ServiceEvent.js';
 
 /**
  * ServiceListener

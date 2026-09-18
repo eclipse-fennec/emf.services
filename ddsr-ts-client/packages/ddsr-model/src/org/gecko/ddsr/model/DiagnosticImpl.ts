@@ -6,10 +6,11 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import { DiagnosticSeverity } from './DiagnosticSeverity';
-import type { Diagnostic } from './Diagnostic';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList, createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import { DiagnosticSeverity } from './DiagnosticSeverity.js';
+import type { Diagnostic } from './Diagnostic.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of Diagnostic
@@ -29,8 +30,8 @@ export class DiagnosticImpl extends BasicEObject implements Diagnostic {
   private _message?: string;
   private _source?: string;
   private _code: number = 0;
-  private _data: string[] = [];
-  private _children: Diagnostic[] = [];
+  private _data!: EList<string>;
+  private _children!: EList<Diagnostic>;
 
   /**
    * Returns the EClass of this object
@@ -136,52 +137,18 @@ export class DiagnosticImpl extends BasicEObject implements Diagnostic {
     }
   }
 
-  get data(): string[] {
+  get data(): EList<string> {
+    if (!this._data) {
+      this._data = createBasicEList<any>(this, this.eClass().getEStructuralFeature('data')!);
+    }
     return this._data;
   }
 
-  set data(value: string[]) {
-    const oldValue = this._data;
-    this._data = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(DiagnosticImpl.DATA),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => DiagnosticImpl.DATA,
-        merge: () => false
-      });
+  get children(): EList<Diagnostic> {
+    if (!this._children) {
+      this._children = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('children') as EReference);
     }
-  }
-
-  get children(): Diagnostic[] {
     return this._children;
-  }
-
-  set children(value: Diagnostic[]) {
-    const oldValue = this._children;
-    this._children = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(DiagnosticImpl.CHILDREN),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => DiagnosticImpl.CHILDREN,
-        merge: () => false
-      });
-    }
   }
 
   // Reflective API
@@ -232,11 +199,13 @@ export class DiagnosticImpl extends BasicEObject implements Diagnostic {
         super.eSet(feature, newValue);
         break;
       case DiagnosticImpl.DATA:
-        this.data = newValue as string[];
+        this.data.clear();
+        this.data.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case DiagnosticImpl.CHILDREN:
-        this.children = newValue as Diagnostic[];
+        this.children.clear();
+        this.children.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -259,9 +228,9 @@ export class DiagnosticImpl extends BasicEObject implements Diagnostic {
       case DiagnosticImpl.CODE:
         return this._code !== 0;
       case DiagnosticImpl.DATA:
-        return this._data !== undefined && this._data.length > 0;
+        return this._data !== undefined && !this._data.isEmpty();
       case DiagnosticImpl.CHILDREN:
-        return this._children !== undefined && this._children.length > 0;
+        return this._children !== undefined && !this._children.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -286,10 +255,10 @@ export class DiagnosticImpl extends BasicEObject implements Diagnostic {
         this._code = 0;
         return;
       case DiagnosticImpl.DATA:
-        this._data = [];
+        if (this._data) this._data.clear();
         return;
       case DiagnosticImpl.CHILDREN:
-        this._children = [];
+        if (this._children) this._children.clear();
         return;
       default:
         super.eUnset(feature);

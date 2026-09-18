@@ -6,7 +6,7 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
+import type { ParameterConstraint } from './ParameterConstraint.js';
 
 /**
  * CollectionSizeConstraint

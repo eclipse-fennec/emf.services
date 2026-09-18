@@ -6,10 +6,11 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
-import type { Capability } from './Capability';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { Property } from './Property.js';
+import type { Capability } from './Capability.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of Capability
@@ -22,7 +23,7 @@ export class CapabilityImpl extends BasicEObject implements Capability {
 
   // Private fields
   private _namespace: string = "";
-  private _attributes: Property[] = [];
+  private _attributes!: EList<Property>;
 
   /**
    * Returns the EClass of this object
@@ -56,28 +57,11 @@ export class CapabilityImpl extends BasicEObject implements Capability {
     }
   }
 
-  get attributes(): Property[] {
-    return this._attributes;
-  }
-
-  set attributes(value: Property[]) {
-    const oldValue = this._attributes;
-    this._attributes = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(CapabilityImpl.ATTRIBUTES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => CapabilityImpl.ATTRIBUTES,
-        merge: () => false
-      });
+  get attributes(): EList<Property> {
+    if (!this._attributes) {
+      this._attributes = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('attributes') as EReference);
     }
+    return this._attributes;
   }
 
   // Reflective API
@@ -108,7 +92,8 @@ export class CapabilityImpl extends BasicEObject implements Capability {
         super.eSet(feature, newValue);
         break;
       case CapabilityImpl.ATTRIBUTES:
-        this.attributes = newValue as Property[];
+        this.attributes.clear();
+        this.attributes.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -125,7 +110,7 @@ export class CapabilityImpl extends BasicEObject implements Capability {
       case CapabilityImpl.NAMESPACE:
         return this._namespace !== "";
       case CapabilityImpl.ATTRIBUTES:
-        return this._attributes !== undefined && this._attributes.length > 0;
+        return this._attributes !== undefined && !this._attributes.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -141,7 +126,7 @@ export class CapabilityImpl extends BasicEObject implements Capability {
         this._namespace = "";
         return;
       case CapabilityImpl.ATTRIBUTES:
-        this._attributes = [];
+        if (this._attributes) this._attributes.clear();
         return;
       default:
         super.eUnset(feature);

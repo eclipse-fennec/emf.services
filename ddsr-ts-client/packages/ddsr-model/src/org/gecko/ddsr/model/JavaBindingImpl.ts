@@ -6,11 +6,11 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { LanguageBinding } from './LanguageBinding';
-import { ApiType } from './ApiType';
-import { LanguageBindingImpl } from './LanguageBindingImpl';
-import type { JavaBinding } from './JavaBinding';
-import { DDSRPackage } from './DDSRPackage';
+import type { LanguageBinding } from './LanguageBinding.js';
+import { ApiType } from './ApiType.js';
+import { LanguageBindingImpl } from './LanguageBindingImpl.js';
+import type { JavaBinding } from './JavaBinding.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of JavaBinding

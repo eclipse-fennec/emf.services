@@ -6,17 +6,18 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { RegistryKind } from './RegistryKind';
-import type { PublishHook } from './PublishHook';
-import type { DiscoveryHook } from './DiscoveryHook';
-import type { DistributionHook } from './DistributionHook';
-import type { ServiceReference } from './ServiceReference';
-import type { ConsumerCapability } from './ConsumerCapability';
-import type { ServiceListener } from './ServiceListener';
-import type { ServiceRegistry } from './ServiceRegistry';
-import { DDSRPackage } from './DDSRPackage';
+import { createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { PublishHook } from './PublishHook.js';
+import type { DiscoveryHook } from './DiscoveryHook.js';
+import type { DistributionHook } from './DistributionHook.js';
+import type { ServiceReference } from './ServiceReference.js';
+import type { ConsumerCapability } from './ConsumerCapability.js';
+import type { ServiceListener } from './ServiceListener.js';
+import { RegistryKind } from './RegistryKind.js';
+import type { ServiceRegistry } from './ServiceRegistry.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceRegistry
@@ -31,10 +32,10 @@ export abstract class ServiceRegistryImpl extends BasicEObject implements Servic
   static readonly NAME: number = 0;
 
   // Private fields
-  private _kind?: RegistryKind;
-  private _publishHooks: PublishHook[] = [];
-  private _discoveryHooks: DiscoveryHook[] = [];
-  private _distributionHooks: DistributionHook[] = [];
+  private _kind: RegistryKind = RegistryKind.LOCAL;
+  private _publishHooks!: EList<PublishHook>;
+  private _discoveryHooks!: EList<DiscoveryHook>;
+  private _distributionHooks!: EList<DistributionHook>;
   private _name: string = "";
 
   /**
@@ -69,76 +70,25 @@ export abstract class ServiceRegistryImpl extends BasicEObject implements Servic
     }
   }
 
-  get publishHooks(): PublishHook[] {
+  get publishHooks(): EList<PublishHook> {
+    if (!this._publishHooks) {
+      this._publishHooks = createEObjectEList(this, this.eClass().getEStructuralFeature('publishHooks') as EReference) as unknown as EList<PublishHook>;
+    }
     return this._publishHooks;
   }
 
-  set publishHooks(value: PublishHook[]) {
-    const oldValue = this._publishHooks;
-    this._publishHooks = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistryImpl.PUBLISH_HOOKS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceRegistryImpl.PUBLISH_HOOKS,
-        merge: () => false
-      });
+  get discoveryHooks(): EList<DiscoveryHook> {
+    if (!this._discoveryHooks) {
+      this._discoveryHooks = createEObjectEList(this, this.eClass().getEStructuralFeature('discoveryHooks') as EReference) as unknown as EList<DiscoveryHook>;
     }
-  }
-
-  get discoveryHooks(): DiscoveryHook[] {
     return this._discoveryHooks;
   }
 
-  set discoveryHooks(value: DiscoveryHook[]) {
-    const oldValue = this._discoveryHooks;
-    this._discoveryHooks = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistryImpl.DISCOVERY_HOOKS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceRegistryImpl.DISCOVERY_HOOKS,
-        merge: () => false
-      });
+  get distributionHooks(): EList<DistributionHook> {
+    if (!this._distributionHooks) {
+      this._distributionHooks = createEObjectEList(this, this.eClass().getEStructuralFeature('distributionHooks') as EReference) as unknown as EList<DistributionHook>;
     }
-  }
-
-  get distributionHooks(): DistributionHook[] {
     return this._distributionHooks;
-  }
-
-  set distributionHooks(value: DistributionHook[]) {
-    const oldValue = this._distributionHooks;
-    this._distributionHooks = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistryImpl.DISTRIBUTION_HOOKS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceRegistryImpl.DISTRIBUTION_HOOKS,
-        merge: () => false
-      });
-    }
   }
 
   get name(): string {
@@ -183,15 +133,18 @@ export abstract class ServiceRegistryImpl extends BasicEObject implements Servic
         super.eSet(feature, newValue);
         break;
       case ServiceRegistryImpl.PUBLISH_HOOKS:
-        this.publishHooks = newValue as PublishHook[];
+        this.publishHooks.clear();
+        this.publishHooks.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceRegistryImpl.DISCOVERY_HOOKS:
-        this.discoveryHooks = newValue as DiscoveryHook[];
+        this.discoveryHooks.clear();
+        this.discoveryHooks.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceRegistryImpl.DISTRIBUTION_HOOKS:
-        this.distributionHooks = newValue as DistributionHook[];
+        this.distributionHooks.clear();
+        this.distributionHooks.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceRegistryImpl.NAME:
@@ -210,13 +163,13 @@ export abstract class ServiceRegistryImpl extends BasicEObject implements Servic
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ServiceRegistryImpl.KIND:
-        return this._kind !== undefined;
+        return this._kind !== RegistryKind.LOCAL;
       case ServiceRegistryImpl.PUBLISH_HOOKS:
-        return this._publishHooks !== undefined && this._publishHooks.length > 0;
+        return this._publishHooks !== undefined && !this._publishHooks.isEmpty();
       case ServiceRegistryImpl.DISCOVERY_HOOKS:
-        return this._discoveryHooks !== undefined && this._discoveryHooks.length > 0;
+        return this._discoveryHooks !== undefined && !this._discoveryHooks.isEmpty();
       case ServiceRegistryImpl.DISTRIBUTION_HOOKS:
-        return this._distributionHooks !== undefined && this._distributionHooks.length > 0;
+        return this._distributionHooks !== undefined && !this._distributionHooks.isEmpty();
       case ServiceRegistryImpl.NAME:
         return this._name !== "";
       default:
@@ -231,16 +184,16 @@ export abstract class ServiceRegistryImpl extends BasicEObject implements Servic
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ServiceRegistryImpl.KIND:
-        this._kind = undefined;
+        this._kind = RegistryKind.LOCAL;
         return;
       case ServiceRegistryImpl.PUBLISH_HOOKS:
-        this._publishHooks = [];
+        if (this._publishHooks) this._publishHooks.clear();
         return;
       case ServiceRegistryImpl.DISCOVERY_HOOKS:
-        this._discoveryHooks = [];
+        if (this._discoveryHooks) this._discoveryHooks.clear();
         return;
       case ServiceRegistryImpl.DISTRIBUTION_HOOKS:
-        this._distributionHooks = [];
+        if (this._distributionHooks) this._distributionHooks.clear();
         return;
       case ServiceRegistryImpl.NAME:
         this._name = "";

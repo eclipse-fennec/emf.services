@@ -6,10 +6,10 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { Diagnostic } from './Diagnostic';
-import type { ConsumerCapability } from './ConsumerCapability';
-import type { ServiceReference } from './ServiceReference';
-import type { ServiceListener } from './ServiceListener';
+import type { Diagnostic } from './Diagnostic.js';
+import type { ConsumerCapability } from './ConsumerCapability.js';
+import type { ServiceReference } from './ServiceReference.js';
+import type { ServiceListener } from './ServiceListener.js';
 
 /**
  * DiscoveryHook

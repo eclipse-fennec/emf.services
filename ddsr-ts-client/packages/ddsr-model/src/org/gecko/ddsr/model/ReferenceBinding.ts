@@ -6,9 +6,9 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ReferenceBindingKind } from './ReferenceBindingKind';
-import type { FieldOption } from './FieldOption';
+import type { NamedElement } from './NamedElement.js';
+import type { ReferenceBindingKind } from './ReferenceBindingKind.js';
+import type { FieldOption } from './FieldOption.js';
 
 /**
  * ReferenceBinding

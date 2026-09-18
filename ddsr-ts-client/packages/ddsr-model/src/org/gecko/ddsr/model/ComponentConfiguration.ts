@@ -5,15 +5,15 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ComponentDescription } from './ComponentDescription';
-import type { ComponentState } from './ComponentState';
-import type { Property } from './Property';
-import type { SatisfiedReference } from './SatisfiedReference';
-import type { UnsatisfiedReference } from './UnsatisfiedReference';
-import type { Diagnostic } from './Diagnostic';
-import type { ServiceReference } from './ServiceReference';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ComponentDescription } from './ComponentDescription.js';
+import type { ComponentState } from './ComponentState.js';
+import type { Property } from './Property.js';
+import type { SatisfiedReference } from './SatisfiedReference.js';
+import type { UnsatisfiedReference } from './UnsatisfiedReference.js';
+import type { Diagnostic } from './Diagnostic.js';
+import type { ServiceReference } from './ServiceReference.js';
 
 /**
  * ComponentConfiguration
@@ -23,9 +23,9 @@ export interface ComponentConfiguration extends NamedElement {
   id: string;
   description: ComponentDescription;
   state: ComponentState;
-  properties: Property[];
-  satisfiedReferences: SatisfiedReference[];
-  unsatisfiedReferences: UnsatisfiedReference[];
+  properties: EList<Property>;
+  satisfiedReferences: EList<SatisfiedReference>;
+  unsatisfiedReferences: EList<UnsatisfiedReference>;
   failure?: Diagnostic;
   service?: ServiceReference;
 

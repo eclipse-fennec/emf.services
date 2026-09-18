@@ -6,17 +6,18 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ServiceInterface } from './ServiceInterface';
-import type { Property } from './Property';
-import type { ComponentReference } from './ComponentReference';
-import type { LifecycleHook } from './LifecycleHook';
-import type { ServiceProvider } from './ServiceProvider';
-import { ServiceScope } from './ServiceScope';
-import { ConfigurationPolicy } from './ConfigurationPolicy';
-import type { ComponentDescription } from './ComponentDescription';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList, createEObjectEList, createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import type { Property } from './Property.js';
+import type { ComponentReference } from './ComponentReference.js';
+import type { LifecycleHook } from './LifecycleHook.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import { ServiceScope } from './ServiceScope.js';
+import { ConfigurationPolicy } from './ConfigurationPolicy.js';
+import type { ComponentDescription } from './ComponentDescription.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ComponentDescription
@@ -46,12 +47,12 @@ export class ComponentDescriptionImpl extends BasicEObject implements ComponentD
   private _defaultEnabled: boolean = true;
   private _immediate: boolean = false;
   private _configurationPolicy: ConfigurationPolicy = ConfigurationPolicy.OPTIONAL;
-  private _configurationPid: string[] = [];
-  private _serviceInterfaces: ServiceInterface[] = [];
-  private _properties: Property[] = [];
-  private _factoryProperties: Property[] = [];
-  private _references: ComponentReference[] = [];
-  private _lifecycleHooks: LifecycleHook[] = [];
+  private _configurationPid!: EList<string>;
+  private _serviceInterfaces!: EList<ServiceInterface>;
+  private _properties!: EList<Property>;
+  private _factoryProperties!: EList<Property>;
+  private _references!: EList<ComponentReference>;
+  private _lifecycleHooks!: EList<LifecycleHook>;
   private _provider?: ServiceProvider;
   private _name: string = "";
 
@@ -207,148 +208,46 @@ export class ComponentDescriptionImpl extends BasicEObject implements ComponentD
     }
   }
 
-  get configurationPid(): string[] {
+  get configurationPid(): EList<string> {
+    if (!this._configurationPid) {
+      this._configurationPid = createBasicEList<any>(this, this.eClass().getEStructuralFeature('configurationPid')!);
+    }
     return this._configurationPid;
   }
 
-  set configurationPid(value: string[]) {
-    const oldValue = this._configurationPid;
-    this._configurationPid = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentDescriptionImpl.CONFIGURATION_PID),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentDescriptionImpl.CONFIGURATION_PID,
-        merge: () => false
-      });
+  get serviceInterfaces(): EList<ServiceInterface> {
+    if (!this._serviceInterfaces) {
+      this._serviceInterfaces = createEObjectEList(this, this.eClass().getEStructuralFeature('serviceInterfaces') as EReference) as unknown as EList<ServiceInterface>;
     }
-  }
-
-  get serviceInterfaces(): ServiceInterface[] {
     return this._serviceInterfaces;
   }
 
-  set serviceInterfaces(value: ServiceInterface[]) {
-    const oldValue = this._serviceInterfaces;
-    this._serviceInterfaces = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentDescriptionImpl.SERVICE_INTERFACES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentDescriptionImpl.SERVICE_INTERFACES,
-        merge: () => false
-      });
+  get properties(): EList<Property> {
+    if (!this._properties) {
+      this._properties = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('properties') as EReference);
     }
-  }
-
-  get properties(): Property[] {
     return this._properties;
   }
 
-  set properties(value: Property[]) {
-    const oldValue = this._properties;
-    this._properties = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentDescriptionImpl.PROPERTIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentDescriptionImpl.PROPERTIES,
-        merge: () => false
-      });
+  get factoryProperties(): EList<Property> {
+    if (!this._factoryProperties) {
+      this._factoryProperties = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('factoryProperties') as EReference);
     }
-  }
-
-  get factoryProperties(): Property[] {
     return this._factoryProperties;
   }
 
-  set factoryProperties(value: Property[]) {
-    const oldValue = this._factoryProperties;
-    this._factoryProperties = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentDescriptionImpl.FACTORY_PROPERTIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentDescriptionImpl.FACTORY_PROPERTIES,
-        merge: () => false
-      });
+  get references(): EList<ComponentReference> {
+    if (!this._references) {
+      this._references = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('references') as EReference);
     }
-  }
-
-  get references(): ComponentReference[] {
     return this._references;
   }
 
-  set references(value: ComponentReference[]) {
-    const oldValue = this._references;
-    this._references = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentDescriptionImpl.REFERENCES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentDescriptionImpl.REFERENCES,
-        merge: () => false
-      });
+  get lifecycleHooks(): EList<LifecycleHook> {
+    if (!this._lifecycleHooks) {
+      this._lifecycleHooks = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('lifecycleHooks') as EReference);
     }
-  }
-
-  get lifecycleHooks(): LifecycleHook[] {
     return this._lifecycleHooks;
-  }
-
-  set lifecycleHooks(value: LifecycleHook[]) {
-    const oldValue = this._lifecycleHooks;
-    this._lifecycleHooks = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentDescriptionImpl.LIFECYCLE_HOOKS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentDescriptionImpl.LIFECYCLE_HOOKS,
-        merge: () => false
-      });
-    }
   }
 
   get provider(): ServiceProvider {
@@ -455,27 +354,33 @@ export class ComponentDescriptionImpl extends BasicEObject implements ComponentD
         super.eSet(feature, newValue);
         break;
       case ComponentDescriptionImpl.CONFIGURATION_PID:
-        this.configurationPid = newValue as string[];
+        this.configurationPid.clear();
+        this.configurationPid.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentDescriptionImpl.SERVICE_INTERFACES:
-        this.serviceInterfaces = newValue as ServiceInterface[];
+        this.serviceInterfaces.clear();
+        this.serviceInterfaces.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentDescriptionImpl.PROPERTIES:
-        this.properties = newValue as Property[];
+        this.properties.clear();
+        this.properties.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentDescriptionImpl.FACTORY_PROPERTIES:
-        this.factoryProperties = newValue as Property[];
+        this.factoryProperties.clear();
+        this.factoryProperties.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentDescriptionImpl.REFERENCES:
-        this.references = newValue as ComponentReference[];
+        this.references.clear();
+        this.references.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentDescriptionImpl.LIFECYCLE_HOOKS:
-        this.lifecycleHooks = newValue as LifecycleHook[];
+        this.lifecycleHooks.clear();
+        this.lifecycleHooks.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentDescriptionImpl.PROVIDER:
@@ -510,17 +415,17 @@ export class ComponentDescriptionImpl extends BasicEObject implements ComponentD
       case ComponentDescriptionImpl.CONFIGURATION_POLICY:
         return this._configurationPolicy !== ConfigurationPolicy.OPTIONAL;
       case ComponentDescriptionImpl.CONFIGURATION_PID:
-        return this._configurationPid !== undefined && this._configurationPid.length > 0;
+        return this._configurationPid !== undefined && !this._configurationPid.isEmpty();
       case ComponentDescriptionImpl.SERVICE_INTERFACES:
-        return this._serviceInterfaces !== undefined && this._serviceInterfaces.length > 0;
+        return this._serviceInterfaces !== undefined && !this._serviceInterfaces.isEmpty();
       case ComponentDescriptionImpl.PROPERTIES:
-        return this._properties !== undefined && this._properties.length > 0;
+        return this._properties !== undefined && !this._properties.isEmpty();
       case ComponentDescriptionImpl.FACTORY_PROPERTIES:
-        return this._factoryProperties !== undefined && this._factoryProperties.length > 0;
+        return this._factoryProperties !== undefined && !this._factoryProperties.isEmpty();
       case ComponentDescriptionImpl.REFERENCES:
-        return this._references !== undefined && this._references.length > 0;
+        return this._references !== undefined && !this._references.isEmpty();
       case ComponentDescriptionImpl.LIFECYCLE_HOOKS:
-        return this._lifecycleHooks !== undefined && this._lifecycleHooks.length > 0;
+        return this._lifecycleHooks !== undefined && !this._lifecycleHooks.isEmpty();
       case ComponentDescriptionImpl.PROVIDER:
         return this._provider !== undefined;
       case ComponentDescriptionImpl.NAME:
@@ -555,22 +460,22 @@ export class ComponentDescriptionImpl extends BasicEObject implements ComponentD
         this._configurationPolicy = ConfigurationPolicy.OPTIONAL;
         return;
       case ComponentDescriptionImpl.CONFIGURATION_PID:
-        this._configurationPid = [];
+        if (this._configurationPid) this._configurationPid.clear();
         return;
       case ComponentDescriptionImpl.SERVICE_INTERFACES:
-        this._serviceInterfaces = [];
+        if (this._serviceInterfaces) this._serviceInterfaces.clear();
         return;
       case ComponentDescriptionImpl.PROPERTIES:
-        this._properties = [];
+        if (this._properties) this._properties.clear();
         return;
       case ComponentDescriptionImpl.FACTORY_PROPERTIES:
-        this._factoryProperties = [];
+        if (this._factoryProperties) this._factoryProperties.clear();
         return;
       case ComponentDescriptionImpl.REFERENCES:
-        this._references = [];
+        if (this._references) this._references.clear();
         return;
       case ComponentDescriptionImpl.LIFECYCLE_HOOKS:
-        this._lifecycleHooks = [];
+        if (this._lifecycleHooks) this._lifecycleHooks.clear();
         return;
       case ComponentDescriptionImpl.PROVIDER:
         this._provider = undefined;

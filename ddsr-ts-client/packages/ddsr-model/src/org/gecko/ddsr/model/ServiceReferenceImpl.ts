@@ -6,12 +6,13 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
-import type { ServiceProvider } from './ServiceProvider';
-import type { ServiceRegistration } from './ServiceRegistration';
-import type { ServiceReference } from './ServiceReference';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { Property } from './Property.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { ServiceRegistration } from './ServiceRegistration.js';
+import type { ServiceReference } from './ServiceReference.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceReference
@@ -26,7 +27,7 @@ export class ServiceReferenceImpl extends BasicEObject implements ServiceReferen
 
   // Private fields
   private _id: string = "";
-  private _properties: Property[] = [];
+  private _properties!: EList<Property>;
   private _provider?: ServiceProvider;
   private _registration?: ServiceRegistration;
 
@@ -62,28 +63,11 @@ export class ServiceReferenceImpl extends BasicEObject implements ServiceReferen
     }
   }
 
-  get properties(): Property[] {
-    return this._properties;
-  }
-
-  set properties(value: Property[]) {
-    const oldValue = this._properties;
-    this._properties = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceReferenceImpl.PROPERTIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceReferenceImpl.PROPERTIES,
-        merge: () => false
-      });
+  get properties(): EList<Property> {
+    if (!this._properties) {
+      this._properties = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('properties') as EReference);
     }
+    return this._properties;
   }
 
   get provider(): ServiceProvider {
@@ -166,7 +150,8 @@ export class ServiceReferenceImpl extends BasicEObject implements ServiceReferen
         super.eSet(feature, newValue);
         break;
       case ServiceReferenceImpl.PROPERTIES:
-        this.properties = newValue as Property[];
+        this.properties.clear();
+        this.properties.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceReferenceImpl.PROVIDER:
@@ -191,7 +176,7 @@ export class ServiceReferenceImpl extends BasicEObject implements ServiceReferen
       case ServiceReferenceImpl.ID:
         return this._id !== "";
       case ServiceReferenceImpl.PROPERTIES:
-        return this._properties !== undefined && this._properties.length > 0;
+        return this._properties !== undefined && !this._properties.isEmpty();
       case ServiceReferenceImpl.PROVIDER:
         return this._provider !== undefined;
       case ServiceReferenceImpl.REGISTRATION:
@@ -211,7 +196,7 @@ export class ServiceReferenceImpl extends BasicEObject implements ServiceReferen
         this._id = "";
         return;
       case ServiceReferenceImpl.PROPERTIES:
-        this._properties = [];
+        if (this._properties) this._properties.clear();
         return;
       case ServiceReferenceImpl.PROVIDER:
         this._provider = undefined;

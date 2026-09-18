@@ -5,14 +5,14 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ParameterConstraint } from './ParameterConstraint.js';
 
 /**
  * EnumerationConstraint
  * @generated
  */
 export interface EnumerationConstraint extends ParameterConstraint {
-  allowedValues: string[];
+  allowedValues: EList<string>;
 
 }

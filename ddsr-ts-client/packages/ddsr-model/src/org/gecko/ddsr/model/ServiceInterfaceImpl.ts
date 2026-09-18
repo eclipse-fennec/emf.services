@@ -6,16 +6,17 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { ServiceOperation } from './ServiceOperation';
-import type { ServiceException } from './ServiceException';
-import type { Invariant } from './Invariant';
-import type { UpdatePolicy } from './UpdatePolicy';
-import { CatalogStatus } from './CatalogStatus';
-import type { ServiceInterface } from './ServiceInterface';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { ServiceOperation } from './ServiceOperation.js';
+import type { ServiceException } from './ServiceException.js';
+import type { Invariant } from './Invariant.js';
+import { CatalogStatus } from './CatalogStatus.js';
+import { UpdatePolicy } from './UpdatePolicy.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceInterface
@@ -36,13 +37,13 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
 
   // Private fields
   private _description?: string;
-  private _operations: ServiceOperation[] = [];
-  private _exceptions: ServiceException[] = [];
-  private _invariants: Invariant[] = [];
+  private _operations!: EList<ServiceOperation>;
+  private _exceptions!: EList<ServiceException>;
+  private _invariants!: EList<Invariant>;
   private _status: CatalogStatus = CatalogStatus.ACTIVE;
   private _deprecationReason?: string;
   private _replacedBy?: ServiceInterface;
-  private _updatePolicy?: UpdatePolicy;
+  private _updatePolicy: UpdatePolicy = UpdatePolicy.UNSPECIFIED;
   private _name: string = "";
   private _version?: string;
 
@@ -78,76 +79,25 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
     }
   }
 
-  get operations(): ServiceOperation[] {
+  get operations(): EList<ServiceOperation> {
+    if (!this._operations) {
+      this._operations = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('operations') as EReference);
+    }
     return this._operations;
   }
 
-  set operations(value: ServiceOperation[]) {
-    const oldValue = this._operations;
-    this._operations = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceInterfaceImpl.OPERATIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceInterfaceImpl.OPERATIONS,
-        merge: () => false
-      });
+  get exceptions(): EList<ServiceException> {
+    if (!this._exceptions) {
+      this._exceptions = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('exceptions') as EReference);
     }
-  }
-
-  get exceptions(): ServiceException[] {
     return this._exceptions;
   }
 
-  set exceptions(value: ServiceException[]) {
-    const oldValue = this._exceptions;
-    this._exceptions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceInterfaceImpl.EXCEPTIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceInterfaceImpl.EXCEPTIONS,
-        merge: () => false
-      });
+  get invariants(): EList<Invariant> {
+    if (!this._invariants) {
+      this._invariants = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('invariants') as EReference);
     }
-  }
-
-  get invariants(): Invariant[] {
     return this._invariants;
-  }
-
-  set invariants(value: Invariant[]) {
-    const oldValue = this._invariants;
-    this._invariants = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceInterfaceImpl.INVARIANTS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceInterfaceImpl.INVARIANTS,
-        merge: () => false
-      });
-    }
   }
 
   get status(): CatalogStatus {
@@ -306,15 +256,18 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         super.eSet(feature, newValue);
         break;
       case ServiceInterfaceImpl.OPERATIONS:
-        this.operations = newValue as ServiceOperation[];
+        this.operations.clear();
+        this.operations.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceInterfaceImpl.EXCEPTIONS:
-        this.exceptions = newValue as ServiceException[];
+        this.exceptions.clear();
+        this.exceptions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceInterfaceImpl.INVARIANTS:
-        this.invariants = newValue as Invariant[];
+        this.invariants.clear();
+        this.invariants.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceInterfaceImpl.STATUS:
@@ -355,11 +308,11 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
       case ServiceInterfaceImpl.DESCRIPTION:
         return this._description !== undefined;
       case ServiceInterfaceImpl.OPERATIONS:
-        return this._operations !== undefined && this._operations.length > 0;
+        return this._operations !== undefined && !this._operations.isEmpty();
       case ServiceInterfaceImpl.EXCEPTIONS:
-        return this._exceptions !== undefined && this._exceptions.length > 0;
+        return this._exceptions !== undefined && !this._exceptions.isEmpty();
       case ServiceInterfaceImpl.INVARIANTS:
-        return this._invariants !== undefined && this._invariants.length > 0;
+        return this._invariants !== undefined && !this._invariants.isEmpty();
       case ServiceInterfaceImpl.STATUS:
         return this._status !== CatalogStatus.ACTIVE;
       case ServiceInterfaceImpl.DEPRECATION_REASON:
@@ -367,7 +320,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
       case ServiceInterfaceImpl.REPLACED_BY:
         return this._replacedBy !== undefined;
       case ServiceInterfaceImpl.UPDATE_POLICY:
-        return this._updatePolicy !== undefined;
+        return this._updatePolicy !== UpdatePolicy.UNSPECIFIED;
       case ServiceInterfaceImpl.NAME:
         return this._name !== "";
       case ServiceInterfaceImpl.VERSION:
@@ -387,13 +340,13 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         this._description = undefined;
         return;
       case ServiceInterfaceImpl.OPERATIONS:
-        this._operations = [];
+        if (this._operations) this._operations.clear();
         return;
       case ServiceInterfaceImpl.EXCEPTIONS:
-        this._exceptions = [];
+        if (this._exceptions) this._exceptions.clear();
         return;
       case ServiceInterfaceImpl.INVARIANTS:
-        this._invariants = [];
+        if (this._invariants) this._invariants.clear();
         return;
       case ServiceInterfaceImpl.STATUS:
         this._status = CatalogStatus.ACTIVE;
@@ -405,7 +358,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         this._replacedBy = undefined;
         return;
       case ServiceInterfaceImpl.UPDATE_POLICY:
-        this._updatePolicy = undefined;
+        this._updatePolicy = UpdatePolicy.UNSPECIFIED;
         return;
       case ServiceInterfaceImpl.NAME:
         this._name = "";

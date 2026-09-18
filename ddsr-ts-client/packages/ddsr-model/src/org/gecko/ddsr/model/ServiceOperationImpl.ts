@@ -6,13 +6,14 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { Parameter } from './Parameter';
-import type { ServiceException } from './ServiceException';
-import type { Invariant } from './Invariant';
-import type { ServiceOperation } from './ServiceOperation';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList, createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { Parameter } from './Parameter.js';
+import type { ServiceException } from './ServiceException.js';
+import type { Invariant } from './Invariant.js';
+import type { ServiceOperation } from './ServiceOperation.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceOperation
@@ -30,11 +31,11 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
 
   // Private fields
   private _description?: string;
-  private _parameters: Parameter[] = [];
+  private _parameters!: EList<Parameter>;
   private _returnValue?: Parameter;
-  private _exceptions: ServiceException[] = [];
-  private _preconditions: Invariant[] = [];
-  private _postconditions: Invariant[] = [];
+  private _exceptions!: EList<ServiceException>;
+  private _preconditions!: EList<Invariant>;
+  private _postconditions!: EList<Invariant>;
   private _name: string = "";
 
   /**
@@ -69,28 +70,11 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
     }
   }
 
-  get parameters(): Parameter[] {
-    return this._parameters;
-  }
-
-  set parameters(value: Parameter[]) {
-    const oldValue = this._parameters;
-    this._parameters = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.PARAMETERS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceOperationImpl.PARAMETERS,
-        merge: () => false
-      });
+  get parameters(): EList<Parameter> {
+    if (!this._parameters) {
+      this._parameters = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('parameters') as EReference);
     }
+    return this._parameters;
   }
 
   get returnValue(): Parameter {
@@ -117,76 +101,25 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
     }
   }
 
-  get exceptions(): ServiceException[] {
+  get exceptions(): EList<ServiceException> {
+    if (!this._exceptions) {
+      this._exceptions = createEObjectEList(this, this.eClass().getEStructuralFeature('exceptions') as EReference) as unknown as EList<ServiceException>;
+    }
     return this._exceptions;
   }
 
-  set exceptions(value: ServiceException[]) {
-    const oldValue = this._exceptions;
-    this._exceptions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.EXCEPTIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceOperationImpl.EXCEPTIONS,
-        merge: () => false
-      });
+  get preconditions(): EList<Invariant> {
+    if (!this._preconditions) {
+      this._preconditions = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('preconditions') as EReference);
     }
-  }
-
-  get preconditions(): Invariant[] {
     return this._preconditions;
   }
 
-  set preconditions(value: Invariant[]) {
-    const oldValue = this._preconditions;
-    this._preconditions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.PRECONDITIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceOperationImpl.PRECONDITIONS,
-        merge: () => false
-      });
+  get postconditions(): EList<Invariant> {
+    if (!this._postconditions) {
+      this._postconditions = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('postconditions') as EReference);
     }
-  }
-
-  get postconditions(): Invariant[] {
     return this._postconditions;
-  }
-
-  set postconditions(value: Invariant[]) {
-    const oldValue = this._postconditions;
-    this._postconditions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.POSTCONDITIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceOperationImpl.POSTCONDITIONS,
-        merge: () => false
-      });
-    }
   }
 
   get name(): string {
@@ -235,7 +168,8 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         super.eSet(feature, newValue);
         break;
       case ServiceOperationImpl.PARAMETERS:
-        this.parameters = newValue as Parameter[];
+        this.parameters.clear();
+        this.parameters.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceOperationImpl.RETURN_VALUE:
@@ -243,15 +177,18 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         super.eSet(feature, newValue);
         break;
       case ServiceOperationImpl.EXCEPTIONS:
-        this.exceptions = newValue as ServiceException[];
+        this.exceptions.clear();
+        this.exceptions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceOperationImpl.PRECONDITIONS:
-        this.preconditions = newValue as Invariant[];
+        this.preconditions.clear();
+        this.preconditions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceOperationImpl.POSTCONDITIONS:
-        this.postconditions = newValue as Invariant[];
+        this.postconditions.clear();
+        this.postconditions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceOperationImpl.NAME:
@@ -272,15 +209,15 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
       case ServiceOperationImpl.DESCRIPTION:
         return this._description !== undefined;
       case ServiceOperationImpl.PARAMETERS:
-        return this._parameters !== undefined && this._parameters.length > 0;
+        return this._parameters !== undefined && !this._parameters.isEmpty();
       case ServiceOperationImpl.RETURN_VALUE:
         return this._returnValue !== undefined;
       case ServiceOperationImpl.EXCEPTIONS:
-        return this._exceptions !== undefined && this._exceptions.length > 0;
+        return this._exceptions !== undefined && !this._exceptions.isEmpty();
       case ServiceOperationImpl.PRECONDITIONS:
-        return this._preconditions !== undefined && this._preconditions.length > 0;
+        return this._preconditions !== undefined && !this._preconditions.isEmpty();
       case ServiceOperationImpl.POSTCONDITIONS:
-        return this._postconditions !== undefined && this._postconditions.length > 0;
+        return this._postconditions !== undefined && !this._postconditions.isEmpty();
       case ServiceOperationImpl.NAME:
         return this._name !== "";
       default:
@@ -298,19 +235,19 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         this._description = undefined;
         return;
       case ServiceOperationImpl.PARAMETERS:
-        this._parameters = [];
+        if (this._parameters) this._parameters.clear();
         return;
       case ServiceOperationImpl.RETURN_VALUE:
         this._returnValue = undefined;
         return;
       case ServiceOperationImpl.EXCEPTIONS:
-        this._exceptions = [];
+        if (this._exceptions) this._exceptions.clear();
         return;
       case ServiceOperationImpl.PRECONDITIONS:
-        this._preconditions = [];
+        if (this._preconditions) this._preconditions.clear();
         return;
       case ServiceOperationImpl.POSTCONDITIONS:
-        this._postconditions = [];
+        if (this._postconditions) this._postconditions.clear();
         return;
       case ServiceOperationImpl.NAME:
         this._name = "";

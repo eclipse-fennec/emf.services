@@ -132,7 +132,10 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     const opFlavor = firstOpFlavor(flavor);
     expect(requestTopicFor(flavor, opFlavor)).toBe('ddsr/rpc/payments/charge');
     expect(replyBaseFor(flavor, opFlavor)).toBe('ddsr/rpc/payments/charge/reply');
-    expect(qosFor(flavor, opFlavor)).toBe(1); // model default AT_LEAST_ONCE
+    // The operation states no QoS, so the flavor's default applies. It
+    // reads back as AT_MOST_ONCE because the model has no way to say
+    // "unset" (#81) — qosFor treats that as silence.
+    expect(qosFor(flavor, opFlavor)).toBe(1);
   });
 
   it('round-trips an invocation: consumer plugin -> provider server -> answer', async () => {

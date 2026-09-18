@@ -7,10 +7,10 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import { ExpressionLanguage } from './ExpressionLanguage';
-import type { Invariant } from './Invariant';
-import { DDSRPackage } from './DDSRPackage';
+import type { NamedElement } from './NamedElement.js';
+import { ExpressionLanguage } from './ExpressionLanguage.js';
+import type { Invariant } from './Invariant.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of Invariant

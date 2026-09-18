@@ -5,11 +5,11 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { ComponentDescription } from './ComponentDescription';
-import type { ServiceImplementation } from './ServiceImplementation';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { ComponentDescription } from './ComponentDescription.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
 
 /**
  * ServiceProvider
@@ -17,7 +17,7 @@ import type { ServiceImplementation } from './ServiceImplementation';
  */
 export interface ServiceProvider extends NamedElement, VersionedElement {
   symbolicName: string;
-  descriptions: ComponentDescription[];
-  implementations: ServiceImplementation[];
+  descriptions: EList<ComponentDescription>;
+  implementations: EList<ServiceImplementation>;
 
 }

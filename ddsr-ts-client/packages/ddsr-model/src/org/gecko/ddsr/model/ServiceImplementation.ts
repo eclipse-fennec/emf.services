@@ -5,15 +5,15 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { ServiceInterface } from './ServiceInterface';
-import type { ServiceFlavor } from './ServiceFlavor';
-import type { Property } from './Property';
-import type { ComponentDescription } from './ComponentDescription';
-import type { UpdatePolicy } from './UpdatePolicy';
-import type { Capability } from './Capability';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import type { ServiceFlavor } from './ServiceFlavor.js';
+import type { Property } from './Property.js';
+import type { ComponentDescription } from './ComponentDescription.js';
+import type { UpdatePolicy } from './UpdatePolicy.js';
+import type { Capability } from './Capability.js';
 
 /**
  * ServiceImplementation
@@ -22,13 +22,13 @@ import type { Capability } from './Capability';
 export interface ServiceImplementation extends NamedElement, VersionedElement {
   description?: string;
   implementationId: string;
-  serviceInterfaces: ServiceInterface[];
-  flavors: ServiceFlavor[];
-  properties: Property[];
+  serviceInterfaces: EList<ServiceInterface>;
+  flavors: EList<ServiceFlavor>;
+  properties: EList<Property>;
   componentDescription?: ComponentDescription;
   updatePolicy: UpdatePolicy;
   replaces?: ServiceImplementation;
   cutoverGraceMillis?: number;
-  capabilities: Capability[];
+  capabilities: EList<Capability>;
 
 }

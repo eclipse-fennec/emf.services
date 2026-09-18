@@ -5,8 +5,8 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { DiagnosticSeverity } from './DiagnosticSeverity';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { DiagnosticSeverity } from './DiagnosticSeverity.js';
 
 /**
  * Diagnostic
@@ -17,7 +17,7 @@ export interface Diagnostic extends EObject {
   message?: string;
   source?: string;
   code: number;
-  data: string[];
-  children: Diagnostic[];
+  data: EList<string>;
+  children: EList<Diagnostic>;
 
 }

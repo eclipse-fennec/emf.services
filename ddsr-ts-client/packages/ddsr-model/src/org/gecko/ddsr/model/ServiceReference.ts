@@ -5,10 +5,10 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
-import type { ServiceProvider } from './ServiceProvider';
-import type { ServiceRegistration } from './ServiceRegistration';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { Property } from './Property.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { ServiceRegistration } from './ServiceRegistration.js';
 
 /**
  * ServiceReference
@@ -16,7 +16,7 @@ import type { ServiceRegistration } from './ServiceRegistration';
  */
 export interface ServiceReference extends EObject {
   id: string;
-  properties: Property[];
+  properties: EList<Property>;
   provider: ServiceProvider;
   registration?: ServiceRegistration;
 

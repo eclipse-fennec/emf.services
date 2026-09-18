@@ -5,9 +5,9 @@
  * @generated
  */
 
-import type { EObject, EClassifier, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ParameterConstraint } from './ParameterConstraint';
+import type { EObject, EList, EClassifier, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ParameterConstraint } from './ParameterConstraint.js';
 
 /**
  * Parameter
@@ -22,6 +22,6 @@ export interface Parameter extends NamedElement {
   optional: boolean;
   defaultValue?: string;
   description?: string;
-  constraints: ParameterConstraint[];
+  constraints: EList<ParameterConstraint>;
 
 }

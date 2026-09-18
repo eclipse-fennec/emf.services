@@ -6,11 +6,11 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
-import type { MqttQos } from './MqttQos';
-import { ServiceOperationFlavorImpl } from './ServiceOperationFlavorImpl';
-import type { MqttOperationFlavor } from './MqttOperationFlavor';
-import { DDSRPackage } from './DDSRPackage';
+import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
+import { MqttQos } from './MqttQos.js';
+import { ServiceOperationFlavorImpl } from './ServiceOperationFlavorImpl.js';
+import type { MqttOperationFlavor } from './MqttOperationFlavor.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of MqttOperationFlavor
@@ -28,7 +28,7 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
   // Private fields
   private _requestTopic?: string;
   private _responseTopic?: string;
-  private _qos?: MqttQos;
+  private _qos: MqttQos = MqttQos.AT_MOST_ONCE;
   private _retained?: boolean;
   private _correlation: boolean = true;
   private _returnPath?: string;
@@ -256,7 +256,7 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
       case MqttOperationFlavorImpl.RESPONSE_TOPIC:
         return this._responseTopic !== undefined;
       case MqttOperationFlavorImpl.QOS:
-        return this._qos !== undefined;
+        return this._qos !== MqttQos.AT_MOST_ONCE;
       case MqttOperationFlavorImpl.RETAINED:
         return this._retained !== undefined;
       case MqttOperationFlavorImpl.CORRELATION:
@@ -281,7 +281,7 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
         this._responseTopic = undefined;
         return;
       case MqttOperationFlavorImpl.QOS:
-        this._qos = undefined;
+        this._qos = MqttQos.AT_MOST_ONCE;
         return;
       case MqttOperationFlavorImpl.RETAINED:
         this._retained = undefined;

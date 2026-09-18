@@ -5,11 +5,12 @@
  * @generated
  */
 
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
-import { PropertyImpl } from './PropertyImpl';
-import type { StringListProperty } from './StringListProperty';
-import { DDSRPackage } from './DDSRPackage';
+import { createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { Property } from './Property.js';
+import { PropertyImpl } from './PropertyImpl.js';
+import type { StringListProperty } from './StringListProperty.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of StringListProperty
@@ -20,7 +21,7 @@ export class StringListPropertyImpl extends PropertyImpl implements StringListPr
   static readonly VALUE: number = 1;
 
   // Private fields
-  private _value: string[] = [];
+  private _value!: EList<string>;
 
   /**
    * Returns the EClass of this object
@@ -30,28 +31,11 @@ export class StringListPropertyImpl extends PropertyImpl implements StringListPr
   }
 
   // Getters and Setters
-  get value(): string[] {
-    return this._value;
-  }
-
-  set value(value: string[]) {
-    const oldValue = this._value;
-    this._value = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(StringListPropertyImpl.VALUE),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => StringListPropertyImpl.VALUE,
-        merge: () => false
-      });
+  get value(): EList<string> {
+    if (!this._value) {
+      this._value = createBasicEList<any>(this, this.eClass().getEStructuralFeature('value')!);
     }
+    return this._value;
   }
 
   // Reflective API
@@ -76,7 +60,8 @@ export class StringListPropertyImpl extends PropertyImpl implements StringListPr
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case StringListPropertyImpl.VALUE:
-        this.value = newValue as string[];
+        this.value.clear();
+        this.value.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -91,7 +76,7 @@ export class StringListPropertyImpl extends PropertyImpl implements StringListPr
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case StringListPropertyImpl.VALUE:
-        return this._value !== undefined && this._value.length > 0;
+        return this._value !== undefined && !this._value.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -104,7 +89,7 @@ export class StringListPropertyImpl extends PropertyImpl implements StringListPr
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case StringListPropertyImpl.VALUE:
-        this._value = [];
+        if (this._value) this._value.clear();
         return;
       default:
         super.eUnset(feature);

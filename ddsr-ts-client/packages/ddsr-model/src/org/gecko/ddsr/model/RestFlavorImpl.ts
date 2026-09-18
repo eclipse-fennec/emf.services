@@ -5,11 +5,12 @@
  * @generated
  */
 
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceFlavor } from './ServiceFlavor';
-import { ServiceFlavorImpl } from './ServiceFlavorImpl';
-import type { RestFlavor } from './RestFlavor';
-import { DDSRPackage } from './DDSRPackage';
+import { createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ServiceFlavor } from './ServiceFlavor.js';
+import { ServiceFlavorImpl } from './ServiceFlavorImpl.js';
+import type { RestFlavor } from './RestFlavor.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of RestFlavor
@@ -24,7 +25,7 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   // Private fields
   private _host?: string;
   private _basePath: string = "";
-  private _contentTypes: string[] = [];
+  private _contentTypes!: EList<string>;
 
   /**
    * Returns the EClass of this object
@@ -82,28 +83,11 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
     }
   }
 
-  get contentTypes(): string[] {
-    return this._contentTypes;
-  }
-
-  set contentTypes(value: string[]) {
-    const oldValue = this._contentTypes;
-    this._contentTypes = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RestFlavorImpl.CONTENT_TYPES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => RestFlavorImpl.CONTENT_TYPES,
-        merge: () => false
-      });
+  get contentTypes(): EList<string> {
+    if (!this._contentTypes) {
+      this._contentTypes = createBasicEList<any>(this, this.eClass().getEStructuralFeature('contentTypes')!);
     }
+    return this._contentTypes;
   }
 
   // Reflective API
@@ -140,7 +124,8 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
         super.eSet(feature, newValue);
         break;
       case RestFlavorImpl.CONTENT_TYPES:
-        this.contentTypes = newValue as string[];
+        this.contentTypes.clear();
+        this.contentTypes.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -159,7 +144,7 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
       case RestFlavorImpl.BASE_PATH:
         return this._basePath !== "";
       case RestFlavorImpl.CONTENT_TYPES:
-        return this._contentTypes !== undefined && this._contentTypes.length > 0;
+        return this._contentTypes !== undefined && !this._contentTypes.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -178,7 +163,7 @@ export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
         this._basePath = "";
         return;
       case RestFlavorImpl.CONTENT_TYPES:
-        this._contentTypes = [];
+        if (this._contentTypes) this._contentTypes.clear();
         return;
       default:
         super.eUnset(feature);

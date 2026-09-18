@@ -6,11 +6,12 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ServiceOperation } from './ServiceOperation';
-import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
-import { DDSRPackage } from './DDSRPackage';
+import { createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ServiceOperation } from './ServiceOperation.js';
+import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceOperationFlavor
@@ -25,8 +26,8 @@ export abstract class ServiceOperationFlavorImpl extends BasicEObject implements
 
   // Private fields
   private _operation?: ServiceOperation;
-  private _consumes: string[] = [];
-  private _produces: string[] = [];
+  private _consumes!: EList<string>;
+  private _produces!: EList<string>;
   private _name: string = "";
 
   /**
@@ -61,52 +62,18 @@ export abstract class ServiceOperationFlavorImpl extends BasicEObject implements
     }
   }
 
-  get consumes(): string[] {
+  get consumes(): EList<string> {
+    if (!this._consumes) {
+      this._consumes = createBasicEList<any>(this, this.eClass().getEStructuralFeature('consumes')!);
+    }
     return this._consumes;
   }
 
-  set consumes(value: string[]) {
-    const oldValue = this._consumes;
-    this._consumes = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationFlavorImpl.CONSUMES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceOperationFlavorImpl.CONSUMES,
-        merge: () => false
-      });
+  get produces(): EList<string> {
+    if (!this._produces) {
+      this._produces = createBasicEList<any>(this, this.eClass().getEStructuralFeature('produces')!);
     }
-  }
-
-  get produces(): string[] {
     return this._produces;
-  }
-
-  set produces(value: string[]) {
-    const oldValue = this._produces;
-    this._produces = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationFlavorImpl.PRODUCES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceOperationFlavorImpl.PRODUCES,
-        merge: () => false
-      });
-    }
   }
 
   get name(): string {
@@ -149,11 +116,13 @@ export abstract class ServiceOperationFlavorImpl extends BasicEObject implements
         super.eSet(feature, newValue);
         break;
       case ServiceOperationFlavorImpl.CONSUMES:
-        this.consumes = newValue as string[];
+        this.consumes.clear();
+        this.consumes.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceOperationFlavorImpl.PRODUCES:
-        this.produces = newValue as string[];
+        this.produces.clear();
+        this.produces.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceOperationFlavorImpl.NAME:
@@ -174,9 +143,9 @@ export abstract class ServiceOperationFlavorImpl extends BasicEObject implements
       case ServiceOperationFlavorImpl.OPERATION:
         return this._operation !== undefined;
       case ServiceOperationFlavorImpl.CONSUMES:
-        return this._consumes !== undefined && this._consumes.length > 0;
+        return this._consumes !== undefined && !this._consumes.isEmpty();
       case ServiceOperationFlavorImpl.PRODUCES:
-        return this._produces !== undefined && this._produces.length > 0;
+        return this._produces !== undefined && !this._produces.isEmpty();
       case ServiceOperationFlavorImpl.NAME:
         return this._name !== "";
       default:
@@ -194,10 +163,10 @@ export abstract class ServiceOperationFlavorImpl extends BasicEObject implements
         this._operation = undefined;
         return;
       case ServiceOperationFlavorImpl.CONSUMES:
-        this._consumes = [];
+        if (this._consumes) this._consumes.clear();
         return;
       case ServiceOperationFlavorImpl.PRODUCES:
-        this._produces = [];
+        if (this._produces) this._produces.clear();
         return;
       case ServiceOperationFlavorImpl.NAME:
         this._name = "";

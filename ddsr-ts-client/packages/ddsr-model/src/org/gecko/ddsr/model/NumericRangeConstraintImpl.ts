@@ -6,10 +6,10 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
-import { ParameterConstraintImpl } from './ParameterConstraintImpl';
-import type { NumericRangeConstraint } from './NumericRangeConstraint';
-import { DDSRPackage } from './DDSRPackage';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import { ParameterConstraintImpl } from './ParameterConstraintImpl.js';
+import type { NumericRangeConstraint } from './NumericRangeConstraint.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of NumericRangeConstraint

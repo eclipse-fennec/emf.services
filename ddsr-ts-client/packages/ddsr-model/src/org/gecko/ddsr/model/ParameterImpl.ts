@@ -6,11 +6,12 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature, EClassifier } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ParameterConstraint } from './ParameterConstraint';
-import type { Parameter } from './Parameter';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference, EClassifier } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import type { Parameter } from './Parameter.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of Parameter
@@ -38,7 +39,7 @@ export class ParameterImpl extends BasicEObject implements Parameter {
   private _optional: boolean = false;
   private _defaultValue?: string;
   private _description?: string;
-  private _constraints: ParameterConstraint[] = [];
+  private _constraints!: EList<ParameterConstraint>;
   private _name: string = "";
 
   /**
@@ -241,28 +242,11 @@ export class ParameterImpl extends BasicEObject implements Parameter {
     }
   }
 
-  get constraints(): ParameterConstraint[] {
-    return this._constraints;
-  }
-
-  set constraints(value: ParameterConstraint[]) {
-    const oldValue = this._constraints;
-    this._constraints = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ParameterImpl.CONSTRAINTS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ParameterImpl.CONSTRAINTS,
-        merge: () => false
-      });
+  get constraints(): EList<ParameterConstraint> {
+    if (!this._constraints) {
+      this._constraints = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('constraints') as EReference);
     }
+    return this._constraints;
   }
 
   get name(): string {
@@ -345,7 +329,8 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         super.eSet(feature, newValue);
         break;
       case ParameterImpl.CONSTRAINTS:
-        this.constraints = newValue as ParameterConstraint[];
+        this.constraints.clear();
+        this.constraints.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ParameterImpl.NAME:
@@ -380,7 +365,7 @@ export class ParameterImpl extends BasicEObject implements Parameter {
       case ParameterImpl.DESCRIPTION:
         return this._description !== undefined;
       case ParameterImpl.CONSTRAINTS:
-        return this._constraints !== undefined && this._constraints.length > 0;
+        return this._constraints !== undefined && !this._constraints.isEmpty();
       case ParameterImpl.NAME:
         return this._name !== "";
       default:
@@ -419,7 +404,7 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         this._description = undefined;
         return;
       case ParameterImpl.CONSTRAINTS:
-        this._constraints = [];
+        if (this._constraints) this._constraints.clear();
         return;
       case ParameterImpl.NAME:
         this._name = "";

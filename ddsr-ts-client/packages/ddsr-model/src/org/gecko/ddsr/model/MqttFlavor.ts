@@ -5,16 +5,16 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceFlavor } from './ServiceFlavor';
-import type { MqttQos } from './MqttQos';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ServiceFlavor } from './ServiceFlavor.js';
+import type { MqttQos } from './MqttQos.js';
 
 /**
  * MqttFlavor
  * @generated
  */
 export interface MqttFlavor extends ServiceFlavor {
-  brokers: string[];
+  brokers: EList<string>;
   requestTopic: string;
   responseTopic?: string;
   defaultQos: MqttQos;

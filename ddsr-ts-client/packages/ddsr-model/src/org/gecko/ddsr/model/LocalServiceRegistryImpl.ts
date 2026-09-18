@@ -5,22 +5,23 @@
  * @generated
  */
 
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceRegistry } from './ServiceRegistry';
-import type { ServiceReference } from './ServiceReference';
-import type { ServiceRegistration } from './ServiceRegistration';
-import type { ConsumerSession } from './ConsumerSession';
-import type { ComponentConfiguration } from './ComponentConfiguration';
-import type { ServiceProvider } from './ServiceProvider';
-import type { ServiceListener } from './ServiceListener';
-import type { RemoteServiceRegistry } from './RemoteServiceRegistry';
-import type { ServiceImplementation } from './ServiceImplementation';
-import type { Property } from './Property';
-import type { ServiceEvent } from './ServiceEvent';
-import { ConnectionState } from './ConnectionState';
-import { ServiceRegistryImpl } from './ServiceRegistryImpl';
-import type { LocalServiceRegistry } from './LocalServiceRegistry';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList, createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ServiceRegistry } from './ServiceRegistry.js';
+import type { ServiceReference } from './ServiceReference.js';
+import type { ServiceRegistration } from './ServiceRegistration.js';
+import type { ConsumerSession } from './ConsumerSession.js';
+import type { ComponentConfiguration } from './ComponentConfiguration.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { ServiceListener } from './ServiceListener.js';
+import type { RemoteServiceRegistry } from './RemoteServiceRegistry.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import type { Property } from './Property.js';
+import type { ServiceEvent } from './ServiceEvent.js';
+import { ConnectionState } from './ConnectionState.js';
+import { ServiceRegistryImpl } from './ServiceRegistryImpl.js';
+import type { LocalServiceRegistry } from './LocalServiceRegistry.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of LocalServiceRegistry
@@ -38,12 +39,12 @@ export class LocalServiceRegistryImpl extends ServiceRegistryImpl implements Loc
   static readonly CONNECTION_STATE: number = 12;
 
   // Private fields
-  private _references: ServiceReference[] = [];
-  private _registrations: ServiceRegistration[] = [];
-  private _sessions: ConsumerSession[] = [];
-  private _configurations: ComponentConfiguration[] = [];
-  private _providers: ServiceProvider[] = [];
-  private _listeners: ServiceListener[] = [];
+  private _references!: EList<ServiceReference>;
+  private _registrations!: EList<ServiceRegistration>;
+  private _sessions!: EList<ConsumerSession>;
+  private _configurations!: EList<ComponentConfiguration>;
+  private _providers!: EList<ServiceProvider>;
+  private _listeners!: EList<ServiceListener>;
   private _remote?: RemoteServiceRegistry;
   private _connectionState: ConnectionState = ConnectionState.OFFLINE;
 
@@ -55,148 +56,46 @@ export class LocalServiceRegistryImpl extends ServiceRegistryImpl implements Loc
   }
 
   // Getters and Setters
-  get references(): ServiceReference[] {
+  get references(): EList<ServiceReference> {
+    if (!this._references) {
+      this._references = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('references') as EReference);
+    }
     return this._references;
   }
 
-  set references(value: ServiceReference[]) {
-    const oldValue = this._references;
-    this._references = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(LocalServiceRegistryImpl.REFERENCES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => LocalServiceRegistryImpl.REFERENCES,
-        merge: () => false
-      });
+  get registrations(): EList<ServiceRegistration> {
+    if (!this._registrations) {
+      this._registrations = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('registrations') as EReference);
     }
-  }
-
-  get registrations(): ServiceRegistration[] {
     return this._registrations;
   }
 
-  set registrations(value: ServiceRegistration[]) {
-    const oldValue = this._registrations;
-    this._registrations = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(LocalServiceRegistryImpl.REGISTRATIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => LocalServiceRegistryImpl.REGISTRATIONS,
-        merge: () => false
-      });
+  get sessions(): EList<ConsumerSession> {
+    if (!this._sessions) {
+      this._sessions = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('sessions') as EReference);
     }
-  }
-
-  get sessions(): ConsumerSession[] {
     return this._sessions;
   }
 
-  set sessions(value: ConsumerSession[]) {
-    const oldValue = this._sessions;
-    this._sessions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(LocalServiceRegistryImpl.SESSIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => LocalServiceRegistryImpl.SESSIONS,
-        merge: () => false
-      });
+  get configurations(): EList<ComponentConfiguration> {
+    if (!this._configurations) {
+      this._configurations = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('configurations') as EReference);
     }
-  }
-
-  get configurations(): ComponentConfiguration[] {
     return this._configurations;
   }
 
-  set configurations(value: ComponentConfiguration[]) {
-    const oldValue = this._configurations;
-    this._configurations = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(LocalServiceRegistryImpl.CONFIGURATIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => LocalServiceRegistryImpl.CONFIGURATIONS,
-        merge: () => false
-      });
+  get providers(): EList<ServiceProvider> {
+    if (!this._providers) {
+      this._providers = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('providers') as EReference);
     }
-  }
-
-  get providers(): ServiceProvider[] {
     return this._providers;
   }
 
-  set providers(value: ServiceProvider[]) {
-    const oldValue = this._providers;
-    this._providers = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(LocalServiceRegistryImpl.PROVIDERS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => LocalServiceRegistryImpl.PROVIDERS,
-        merge: () => false
-      });
+  get listeners(): EList<ServiceListener> {
+    if (!this._listeners) {
+      this._listeners = createEObjectEList(this, this.eClass().getEStructuralFeature('listeners') as EReference) as unknown as EList<ServiceListener>;
     }
-  }
-
-  get listeners(): ServiceListener[] {
     return this._listeners;
-  }
-
-  set listeners(value: ServiceListener[]) {
-    const oldValue = this._listeners;
-    this._listeners = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(LocalServiceRegistryImpl.LISTENERS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => LocalServiceRegistryImpl.LISTENERS,
-        merge: () => false
-      });
-    }
   }
 
   get remote(): RemoteServiceRegistry {
@@ -283,27 +182,33 @@ export class LocalServiceRegistryImpl extends ServiceRegistryImpl implements Loc
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case LocalServiceRegistryImpl.REFERENCES:
-        this.references = newValue as ServiceReference[];
+        this.references.clear();
+        this.references.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case LocalServiceRegistryImpl.REGISTRATIONS:
-        this.registrations = newValue as ServiceRegistration[];
+        this.registrations.clear();
+        this.registrations.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case LocalServiceRegistryImpl.SESSIONS:
-        this.sessions = newValue as ConsumerSession[];
+        this.sessions.clear();
+        this.sessions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case LocalServiceRegistryImpl.CONFIGURATIONS:
-        this.configurations = newValue as ComponentConfiguration[];
+        this.configurations.clear();
+        this.configurations.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case LocalServiceRegistryImpl.PROVIDERS:
-        this.providers = newValue as ServiceProvider[];
+        this.providers.clear();
+        this.providers.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case LocalServiceRegistryImpl.LISTENERS:
-        this.listeners = newValue as ServiceListener[];
+        this.listeners.clear();
+        this.listeners.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case LocalServiceRegistryImpl.REMOTE:
@@ -326,17 +231,17 @@ export class LocalServiceRegistryImpl extends ServiceRegistryImpl implements Loc
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case LocalServiceRegistryImpl.REFERENCES:
-        return this._references !== undefined && this._references.length > 0;
+        return this._references !== undefined && !this._references.isEmpty();
       case LocalServiceRegistryImpl.REGISTRATIONS:
-        return this._registrations !== undefined && this._registrations.length > 0;
+        return this._registrations !== undefined && !this._registrations.isEmpty();
       case LocalServiceRegistryImpl.SESSIONS:
-        return this._sessions !== undefined && this._sessions.length > 0;
+        return this._sessions !== undefined && !this._sessions.isEmpty();
       case LocalServiceRegistryImpl.CONFIGURATIONS:
-        return this._configurations !== undefined && this._configurations.length > 0;
+        return this._configurations !== undefined && !this._configurations.isEmpty();
       case LocalServiceRegistryImpl.PROVIDERS:
-        return this._providers !== undefined && this._providers.length > 0;
+        return this._providers !== undefined && !this._providers.isEmpty();
       case LocalServiceRegistryImpl.LISTENERS:
-        return this._listeners !== undefined && this._listeners.length > 0;
+        return this._listeners !== undefined && !this._listeners.isEmpty();
       case LocalServiceRegistryImpl.REMOTE:
         return this._remote !== undefined;
       case LocalServiceRegistryImpl.CONNECTION_STATE:
@@ -353,22 +258,22 @@ export class LocalServiceRegistryImpl extends ServiceRegistryImpl implements Loc
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case LocalServiceRegistryImpl.REFERENCES:
-        this._references = [];
+        if (this._references) this._references.clear();
         return;
       case LocalServiceRegistryImpl.REGISTRATIONS:
-        this._registrations = [];
+        if (this._registrations) this._registrations.clear();
         return;
       case LocalServiceRegistryImpl.SESSIONS:
-        this._sessions = [];
+        if (this._sessions) this._sessions.clear();
         return;
       case LocalServiceRegistryImpl.CONFIGURATIONS:
-        this._configurations = [];
+        if (this._configurations) this._configurations.clear();
         return;
       case LocalServiceRegistryImpl.PROVIDERS:
-        this._providers = [];
+        if (this._providers) this._providers.clear();
         return;
       case LocalServiceRegistryImpl.LISTENERS:
-        this._listeners = [];
+        if (this._listeners) this._listeners.clear();
         return;
       case LocalServiceRegistryImpl.REMOTE:
         this._remote = undefined;

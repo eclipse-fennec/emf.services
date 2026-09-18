@@ -6,9 +6,9 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
-import type { NamedElement } from './NamedElement';
-import type { ExpressionLanguage } from './ExpressionLanguage';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import type { NamedElement } from './NamedElement.js';
+import type { ExpressionLanguage } from './ExpressionLanguage.js';
 
 /**
  * ExpressionConstraint

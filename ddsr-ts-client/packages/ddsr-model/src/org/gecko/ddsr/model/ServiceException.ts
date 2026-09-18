@@ -5,10 +5,10 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { Property } from './Property';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { Property } from './Property.js';
 
 /**
  * ServiceException
@@ -17,6 +17,6 @@ import type { Property } from './Property';
 export interface ServiceException extends NamedElement, VersionedElement {
   description?: string;
   type: string;
-  properties: Property[];
+  properties: EList<Property>;
 
 }

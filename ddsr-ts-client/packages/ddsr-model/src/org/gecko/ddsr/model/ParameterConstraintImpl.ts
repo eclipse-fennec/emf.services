@@ -7,8 +7,8 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
-import { DDSRPackage } from './DDSRPackage';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ParameterConstraint

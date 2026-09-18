@@ -5,15 +5,15 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ServiceScope } from './ServiceScope';
-import type { ConfigurationPolicy } from './ConfigurationPolicy';
-import type { ServiceInterface } from './ServiceInterface';
-import type { Property } from './Property';
-import type { ComponentReference } from './ComponentReference';
-import type { LifecycleHook } from './LifecycleHook';
-import type { ServiceProvider } from './ServiceProvider';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ServiceScope } from './ServiceScope.js';
+import type { ConfigurationPolicy } from './ConfigurationPolicy.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import type { Property } from './Property.js';
+import type { ComponentReference } from './ComponentReference.js';
+import type { LifecycleHook } from './LifecycleHook.js';
+import type { ServiceProvider } from './ServiceProvider.js';
 
 /**
  * ComponentDescription
@@ -26,12 +26,12 @@ export interface ComponentDescription extends NamedElement {
   defaultEnabled: boolean;
   immediate: boolean;
   configurationPolicy: ConfigurationPolicy;
-  configurationPid: string[];
-  serviceInterfaces: ServiceInterface[];
-  properties: Property[];
-  factoryProperties: Property[];
-  references: ComponentReference[];
-  lifecycleHooks: LifecycleHook[];
+  configurationPid: EList<string>;
+  serviceInterfaces: EList<ServiceInterface>;
+  properties: EList<Property>;
+  factoryProperties: EList<Property>;
+  references: EList<ComponentReference>;
+  lifecycleHooks: EList<LifecycleHook>;
   provider?: ServiceProvider;
 
 }

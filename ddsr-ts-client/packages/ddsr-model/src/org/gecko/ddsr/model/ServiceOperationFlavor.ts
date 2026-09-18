@@ -5,9 +5,9 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ServiceOperation } from './ServiceOperation';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ServiceOperation } from './ServiceOperation.js';
 
 /**
  * ServiceOperationFlavor
@@ -15,7 +15,7 @@ import type { ServiceOperation } from './ServiceOperation';
  */
 export interface ServiceOperationFlavor extends NamedElement {
   operation: ServiceOperation;
-  consumes: string[];
-  produces: string[];
+  consumes: EList<string>;
+  produces: EList<string>;
 
 }

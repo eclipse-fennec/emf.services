@@ -7,11 +7,11 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ReferenceBindingKind } from './ReferenceBindingKind';
-import type { FieldOption } from './FieldOption';
-import type { ReferenceBinding } from './ReferenceBinding';
-import { DDSRPackage } from './DDSRPackage';
+import type { NamedElement } from './NamedElement.js';
+import { ReferenceBindingKind } from './ReferenceBindingKind.js';
+import { FieldOption } from './FieldOption.js';
+import type { ReferenceBinding } from './ReferenceBinding.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ReferenceBinding
@@ -24,8 +24,8 @@ export class ReferenceBindingImpl extends BasicEObject implements ReferenceBindi
   static readonly NAME: number = 0;
 
   // Private fields
-  private _kind?: ReferenceBindingKind;
-  private _fieldOption?: FieldOption;
+  private _kind: ReferenceBindingKind = ReferenceBindingKind.BIND;
+  private _fieldOption: FieldOption = FieldOption.REPLACE;
   private _name: string = "";
 
   /**
@@ -141,9 +141,9 @@ export class ReferenceBindingImpl extends BasicEObject implements ReferenceBindi
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ReferenceBindingImpl.KIND:
-        return this._kind !== undefined;
+        return this._kind !== ReferenceBindingKind.BIND;
       case ReferenceBindingImpl.FIELD_OPTION:
-        return this._fieldOption !== undefined;
+        return this._fieldOption !== FieldOption.REPLACE;
       case ReferenceBindingImpl.NAME:
         return this._name !== "";
       default:
@@ -158,10 +158,10 @@ export class ReferenceBindingImpl extends BasicEObject implements ReferenceBindi
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ReferenceBindingImpl.KIND:
-        this._kind = undefined;
+        this._kind = ReferenceBindingKind.BIND;
         return;
       case ReferenceBindingImpl.FIELD_OPTION:
-        this._fieldOption = undefined;
+        this._fieldOption = FieldOption.REPLACE;
         return;
       case ReferenceBindingImpl.NAME:
         this._name = "";

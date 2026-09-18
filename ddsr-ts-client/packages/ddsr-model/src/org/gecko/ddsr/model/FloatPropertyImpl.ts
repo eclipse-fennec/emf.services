@@ -6,10 +6,10 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
-import { PropertyImpl } from './PropertyImpl';
-import type { FloatProperty } from './FloatProperty';
-import { DDSRPackage } from './DDSRPackage';
+import type { Property } from './Property.js';
+import { PropertyImpl } from './PropertyImpl.js';
+import type { FloatProperty } from './FloatProperty.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of FloatProperty

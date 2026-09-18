@@ -6,8 +6,8 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { Parameter } from './Parameter';
-import type { ParameterBinding } from './ParameterBinding';
+import type { Parameter } from './Parameter.js';
+import type { ParameterBinding } from './ParameterBinding.js';
 
 /**
  * RestParameterBinding

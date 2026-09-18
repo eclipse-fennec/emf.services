@@ -53,8 +53,8 @@ importers:
         specifier: workspace:*
         version: link:../ddsr-model
       '@emfts/core':
-        specifier: 0.1.1-next.18
-        version: 0.1.1-next.18(sax@1.6.0)
+        specifier: 0.3.0-next.1
+        version: 0.3.0-next.1(sax@1.6.0)
     devDependencies:
       '@types/node':
         specifier: ^24.13.3
@@ -78,8 +78,8 @@ importers:
         specifier: workspace:*
         version: link:../ddsr-model
       '@emfts/core':
-        specifier: 0.1.1-next.18
-        version: 0.1.1-next.18(sax@1.6.0)
+        specifier: 0.3.0-next.1
+        version: 0.3.0-next.1(sax@1.6.0)
     devDependencies:
       sax:
         specifier: ^1.4.3
@@ -94,12 +94,12 @@ importers:
   packages/ddsr-model:
     dependencies:
       '@emfts/core':
-        specifier: 0.1.1-next.18
-        version: 0.1.1-next.18(sax@1.6.0)
+        specifier: 0.3.0-next.1
+        version: 0.3.0-next.1(sax@1.6.0)
     devDependencies:
       '@emfts/codegen':
-        specifier: 0.0.1-next.8
-        version: 0.0.1-next.8
+        specifier: 0.0.2-next.5
+        version: 0.0.2-next.5
       sax:
         specifier: ^1.4.3
         version: 1.6.0
@@ -122,8 +122,8 @@ importers:
         specifier: workspace:*
         version: link:../ddsr-model
       '@emfts/core':
-        specifier: 0.1.1-next.18
-        version: 0.1.1-next.18(sax@1.6.0)
+        specifier: 0.3.0-next.1
+        version: 0.3.0-next.1(sax@1.6.0)
       mqtt:
         specifier: ^5.15.2
         version: 5.15.2
@@ -144,8 +144,8 @@ packages:
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
     engines: {node: '>=6.9.0'}
 
-  '@emfts/codegen@0.0.1-next.8':
-    resolution: {integrity: sha512-lpvTHbQLu2yaFIc8SmNxnkrEbtz+MB1lG5pZPLh4GCMeRkXsyRHJPUm8Sjc58Vnru2dLrc+h5D4pK0rXovw2hg==}
+  '@emfts/codegen@0.0.2-next.5':
+    resolution: {integrity: sha512-0DdwQutDO6pbhHHUmBsiJr4ZaCWzFMOvmMphGusTHSXN5PzzXf8tENdnDpUQ33fIW2hIdOXeXY7KqZmHKAOf2w==}
     hasBin: true
 
   '@emfts/core@0.1.1-next.18':
@@ -153,8 +153,8 @@ packages:
     peerDependencies:
       sax: ^1.4.3
 
-  '@emfts/core@0.1.1-next.8':
-    resolution: {integrity: sha512-Bj3t6ibI4iIGtXPIdgFsOSLNbjTuStvgEo9HmigVL6QXPdE2pxZNYJRuQ9+wstTLFzN89ylOVc1oImzXo1Xy/Q==}
+  '@emfts/core@0.3.0-next.1':
+    resolution: {integrity: sha512-SKLBuuo3P58kd2CuvMygEAVUBcoIUf1j/JAmFpcwMufpvbpBHvGXNgQOYAwqfb9j31pQ68G07ijX1Epdgmw7tw==}
     peerDependencies:
       sax: ^1.4.3
 
@@ -938,9 +938,9 @@ snapshots:
 
   '@babel/runtime@7.29.7': {}
 
-  '@emfts/codegen@0.0.1-next.8':
+  '@emfts/codegen@0.0.2-next.5':
     dependencies:
-      '@emfts/core': 0.1.1-next.8(sax@1.6.0)
+      '@emfts/core': 0.3.0-next.1(sax@1.6.0)
       commander: 12.1.0
       ejs: 3.1.10
       sax: 1.6.0
@@ -949,7 +949,7 @@ snapshots:
     dependencies:
       sax: 1.6.0
 
-  '@emfts/core@0.1.1-next.8(sax@1.6.0)':
+  '@emfts/core@0.3.0-next.1(sax@1.6.0)':
     dependencies:
       sax: 1.6.0
 

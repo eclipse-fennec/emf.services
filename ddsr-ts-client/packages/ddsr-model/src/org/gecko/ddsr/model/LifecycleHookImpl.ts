@@ -7,10 +7,10 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { LifecycleHookKind } from './LifecycleHookKind';
-import type { LifecycleHook } from './LifecycleHook';
-import { DDSRPackage } from './DDSRPackage';
+import type { NamedElement } from './NamedElement.js';
+import { LifecycleHookKind } from './LifecycleHookKind.js';
+import type { LifecycleHook } from './LifecycleHook.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of LifecycleHook
@@ -23,7 +23,7 @@ export class LifecycleHookImpl extends BasicEObject implements LifecycleHook {
   static readonly NAME: number = 0;
 
   // Private fields
-  private _kind?: LifecycleHookKind;
+  private _kind: LifecycleHookKind = LifecycleHookKind.ACTIVATE;
   private _parameter?: number;
   private _name: string = "";
 
@@ -140,7 +140,7 @@ export class LifecycleHookImpl extends BasicEObject implements LifecycleHook {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case LifecycleHookImpl.KIND:
-        return this._kind !== undefined;
+        return this._kind !== LifecycleHookKind.ACTIVATE;
       case LifecycleHookImpl.PARAMETER:
         return this._parameter !== undefined;
       case LifecycleHookImpl.NAME:
@@ -157,7 +157,7 @@ export class LifecycleHookImpl extends BasicEObject implements LifecycleHook {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case LifecycleHookImpl.KIND:
-        this._kind = undefined;
+        this._kind = LifecycleHookKind.ACTIVATE;
         return;
       case LifecycleHookImpl.PARAMETER:
         this._parameter = undefined;

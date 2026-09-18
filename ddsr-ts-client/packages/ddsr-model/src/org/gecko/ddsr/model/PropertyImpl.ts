@@ -7,9 +7,9 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { Property } from './Property';
-import { DDSRPackage } from './DDSRPackage';
+import type { NamedElement } from './NamedElement.js';
+import type { Property } from './Property.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of Property

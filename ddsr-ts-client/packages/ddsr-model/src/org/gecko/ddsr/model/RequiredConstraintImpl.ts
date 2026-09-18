@@ -6,10 +6,10 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
-import { ParameterConstraintImpl } from './ParameterConstraintImpl';
-import type { RequiredConstraint } from './RequiredConstraint';
-import { DDSRPackage } from './DDSRPackage';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import { ParameterConstraintImpl } from './ParameterConstraintImpl.js';
+import type { RequiredConstraint } from './RequiredConstraint.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of RequiredConstraint

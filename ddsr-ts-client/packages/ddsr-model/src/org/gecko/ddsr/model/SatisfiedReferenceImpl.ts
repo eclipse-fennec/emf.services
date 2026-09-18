@@ -6,10 +6,11 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceReference } from './ServiceReference';
-import type { SatisfiedReference } from './SatisfiedReference';
-import { DDSRPackage } from './DDSRPackage';
+import { createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ServiceReference } from './ServiceReference.js';
+import type { SatisfiedReference } from './SatisfiedReference.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of SatisfiedReference
@@ -24,7 +25,7 @@ export class SatisfiedReferenceImpl extends BasicEObject implements SatisfiedRef
   // Private fields
   private _name: string = "";
   private _target?: string;
-  private _boundServices: ServiceReference[] = [];
+  private _boundServices!: EList<ServiceReference>;
 
   /**
    * Returns the EClass of this object
@@ -82,28 +83,11 @@ export class SatisfiedReferenceImpl extends BasicEObject implements SatisfiedRef
     }
   }
 
-  get boundServices(): ServiceReference[] {
-    return this._boundServices;
-  }
-
-  set boundServices(value: ServiceReference[]) {
-    const oldValue = this._boundServices;
-    this._boundServices = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(SatisfiedReferenceImpl.BOUND_SERVICES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => SatisfiedReferenceImpl.BOUND_SERVICES,
-        merge: () => false
-      });
+  get boundServices(): EList<ServiceReference> {
+    if (!this._boundServices) {
+      this._boundServices = createEObjectEList(this, this.eClass().getEStructuralFeature('boundServices') as EReference) as unknown as EList<ServiceReference>;
     }
+    return this._boundServices;
   }
 
   // Reflective API
@@ -140,7 +124,8 @@ export class SatisfiedReferenceImpl extends BasicEObject implements SatisfiedRef
         super.eSet(feature, newValue);
         break;
       case SatisfiedReferenceImpl.BOUND_SERVICES:
-        this.boundServices = newValue as ServiceReference[];
+        this.boundServices.clear();
+        this.boundServices.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -159,7 +144,7 @@ export class SatisfiedReferenceImpl extends BasicEObject implements SatisfiedRef
       case SatisfiedReferenceImpl.TARGET:
         return this._target !== undefined;
       case SatisfiedReferenceImpl.BOUND_SERVICES:
-        return this._boundServices !== undefined && this._boundServices.length > 0;
+        return this._boundServices !== undefined && !this._boundServices.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -178,7 +163,7 @@ export class SatisfiedReferenceImpl extends BasicEObject implements SatisfiedRef
         this._target = undefined;
         return;
       case SatisfiedReferenceImpl.BOUND_SERVICES:
-        this._boundServices = [];
+        if (this._boundServices) this._boundServices.clear();
         return;
       default:
         super.eUnset(feature);

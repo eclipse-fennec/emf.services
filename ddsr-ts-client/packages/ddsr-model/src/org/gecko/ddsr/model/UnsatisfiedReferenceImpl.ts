@@ -6,10 +6,11 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceReference } from './ServiceReference';
-import type { UnsatisfiedReference } from './UnsatisfiedReference';
-import { DDSRPackage } from './DDSRPackage';
+import { createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ServiceReference } from './ServiceReference.js';
+import type { UnsatisfiedReference } from './UnsatisfiedReference.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of UnsatisfiedReference
@@ -24,7 +25,7 @@ export class UnsatisfiedReferenceImpl extends BasicEObject implements Unsatisfie
   // Private fields
   private _name: string = "";
   private _target?: string;
-  private _targetServices: ServiceReference[] = [];
+  private _targetServices!: EList<ServiceReference>;
 
   /**
    * Returns the EClass of this object
@@ -82,28 +83,11 @@ export class UnsatisfiedReferenceImpl extends BasicEObject implements Unsatisfie
     }
   }
 
-  get targetServices(): ServiceReference[] {
-    return this._targetServices;
-  }
-
-  set targetServices(value: ServiceReference[]) {
-    const oldValue = this._targetServices;
-    this._targetServices = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(UnsatisfiedReferenceImpl.TARGET_SERVICES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => UnsatisfiedReferenceImpl.TARGET_SERVICES,
-        merge: () => false
-      });
+  get targetServices(): EList<ServiceReference> {
+    if (!this._targetServices) {
+      this._targetServices = createEObjectEList(this, this.eClass().getEStructuralFeature('targetServices') as EReference) as unknown as EList<ServiceReference>;
     }
+    return this._targetServices;
   }
 
   // Reflective API
@@ -140,7 +124,8 @@ export class UnsatisfiedReferenceImpl extends BasicEObject implements Unsatisfie
         super.eSet(feature, newValue);
         break;
       case UnsatisfiedReferenceImpl.TARGET_SERVICES:
-        this.targetServices = newValue as ServiceReference[];
+        this.targetServices.clear();
+        this.targetServices.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -159,7 +144,7 @@ export class UnsatisfiedReferenceImpl extends BasicEObject implements Unsatisfie
       case UnsatisfiedReferenceImpl.TARGET:
         return this._target !== undefined;
       case UnsatisfiedReferenceImpl.TARGET_SERVICES:
-        return this._targetServices !== undefined && this._targetServices.length > 0;
+        return this._targetServices !== undefined && !this._targetServices.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -178,7 +163,7 @@ export class UnsatisfiedReferenceImpl extends BasicEObject implements Unsatisfie
         this._target = undefined;
         return;
       case UnsatisfiedReferenceImpl.TARGET_SERVICES:
-        this._targetServices = [];
+        if (this._targetServices) this._targetServices.clear();
         return;
       default:
         super.eUnset(feature);

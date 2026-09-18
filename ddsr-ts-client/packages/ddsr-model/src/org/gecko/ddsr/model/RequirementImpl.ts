@@ -7,8 +7,8 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { Requirement } from './Requirement';
-import { DDSRPackage } from './DDSRPackage';
+import type { Requirement } from './Requirement.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of Requirement

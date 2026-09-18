@@ -6,8 +6,8 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { Diagnostic } from './Diagnostic';
-import type { ServiceEvent } from './ServiceEvent';
+import type { Diagnostic } from './Diagnostic.js';
+import type { ServiceEvent } from './ServiceEvent.js';
 
 /**
  * DistributionHook

@@ -6,12 +6,12 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
-import type { NamedElement } from './NamedElement';
-import { ExpressionLanguage } from './ExpressionLanguage';
-import { ParameterConstraintImpl } from './ParameterConstraintImpl';
-import type { ExpressionConstraint } from './ExpressionConstraint';
-import { DDSRPackage } from './DDSRPackage';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import type { NamedElement } from './NamedElement.js';
+import { ExpressionLanguage } from './ExpressionLanguage.js';
+import { ParameterConstraintImpl } from './ParameterConstraintImpl.js';
+import type { ExpressionConstraint } from './ExpressionConstraint.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ExpressionConstraint

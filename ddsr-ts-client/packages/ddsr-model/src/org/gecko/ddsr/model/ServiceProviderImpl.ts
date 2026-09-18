@@ -6,13 +6,14 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { ComponentDescription } from './ComponentDescription';
-import type { ServiceImplementation } from './ServiceImplementation';
-import type { ServiceProvider } from './ServiceProvider';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { ComponentDescription } from './ComponentDescription.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceProvider
@@ -28,8 +29,8 @@ export class ServiceProviderImpl extends BasicEObject implements ServiceProvider
 
   // Private fields
   private _symbolicName: string = "";
-  private _descriptions: ComponentDescription[] = [];
-  private _implementations: ServiceImplementation[] = [];
+  private _descriptions!: EList<ComponentDescription>;
+  private _implementations!: EList<ServiceImplementation>;
   private _name: string = "";
   private _version?: string;
 
@@ -65,52 +66,18 @@ export class ServiceProviderImpl extends BasicEObject implements ServiceProvider
     }
   }
 
-  get descriptions(): ComponentDescription[] {
+  get descriptions(): EList<ComponentDescription> {
+    if (!this._descriptions) {
+      this._descriptions = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('descriptions') as EReference);
+    }
     return this._descriptions;
   }
 
-  set descriptions(value: ComponentDescription[]) {
-    const oldValue = this._descriptions;
-    this._descriptions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceProviderImpl.DESCRIPTIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceProviderImpl.DESCRIPTIONS,
-        merge: () => false
-      });
+  get implementations(): EList<ServiceImplementation> {
+    if (!this._implementations) {
+      this._implementations = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('implementations') as EReference);
     }
-  }
-
-  get implementations(): ServiceImplementation[] {
     return this._implementations;
-  }
-
-  set implementations(value: ServiceImplementation[]) {
-    const oldValue = this._implementations;
-    this._implementations = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceProviderImpl.IMPLEMENTATIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceProviderImpl.IMPLEMENTATIONS,
-        merge: () => false
-      });
-    }
   }
 
   get name(): string {
@@ -163,11 +130,13 @@ export class ServiceProviderImpl extends BasicEObject implements ServiceProvider
         super.eSet(feature, newValue);
         break;
       case ServiceProviderImpl.DESCRIPTIONS:
-        this.descriptions = newValue as ComponentDescription[];
+        this.descriptions.clear();
+        this.descriptions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceProviderImpl.IMPLEMENTATIONS:
-        this.implementations = newValue as ServiceImplementation[];
+        this.implementations.clear();
+        this.implementations.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceProviderImpl.NAME:
@@ -192,9 +161,9 @@ export class ServiceProviderImpl extends BasicEObject implements ServiceProvider
       case ServiceProviderImpl.SYMBOLIC_NAME:
         return this._symbolicName !== "";
       case ServiceProviderImpl.DESCRIPTIONS:
-        return this._descriptions !== undefined && this._descriptions.length > 0;
+        return this._descriptions !== undefined && !this._descriptions.isEmpty();
       case ServiceProviderImpl.IMPLEMENTATIONS:
-        return this._implementations !== undefined && this._implementations.length > 0;
+        return this._implementations !== undefined && !this._implementations.isEmpty();
       case ServiceProviderImpl.NAME:
         return this._name !== "";
       case ServiceProviderImpl.VERSION:
@@ -214,10 +183,10 @@ export class ServiceProviderImpl extends BasicEObject implements ServiceProvider
         this._symbolicName = "";
         return;
       case ServiceProviderImpl.DESCRIPTIONS:
-        this._descriptions = [];
+        if (this._descriptions) this._descriptions.clear();
         return;
       case ServiceProviderImpl.IMPLEMENTATIONS:
-        this._implementations = [];
+        if (this._implementations) this._implementations.clear();
         return;
       case ServiceProviderImpl.NAME:
         this._name = "";

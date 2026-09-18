@@ -1,0 +1,18 @@
+Bundle-Name: Fennec Services REST Flavor Rules
+Bundle-Description: \
+	Where an argument of an operation travels on a REST wire, and how a \
+	parameter of a flavor is identified. Shared by the consumer, which puts \
+	values there, and by the provider side, which reads them from there — \
+	the two must not develop their own reading of the same flavor.
+
+-library: enableEMF
+
+Export-Package: \
+	org.eclipse.fennec.services.flavor.rest
+
+-buildpath: \
+	org.eclipse.fennec.services.model;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

@@ -13,23 +13,17 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.fennec.services.HttpMethod;
-import org.eclipse.fennec.services.Parameter;
-import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
-import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.client.DdsrException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
+import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -45,23 +39,11 @@ import jakarta.ws.rs.core.Response;
 /**
  * REST-flavor implementation of {@link ServiceInvoker}.
  *
- * <p><b>Where an argument travels is the provider's statement.</b> A
- * {@link RestParameterBinding} on the operation flavor says it per
- * parameter — {@code PATH} into a template segment, {@code QUERY} as a
- * query parameter, {@code HEADER} as a request header, {@code BODY} in
- * the payload — under {@code wireName} where one is given, otherwise
- * under the parameter's own name. The broker never reads a flavor: a
- * provider declares its transport and a consumer follows it, and this
- * is the consumer side of that (#74).
- *
- * <p>An argument whose parameter carries <em>no</em> binding keeps the
- * older convention: a single {@link EObject} becomes the XMI body, and
- * anything else is appended as a query parameter. The model documents
- * {@code BODY} as the default, but there is no encoding for several
- * primitive arguments in one body — {@code XmiBundle} is a multi-root
- * envelope for the broker's own API, not an invocation format — so
- * until that wire shape exists, an undeclared parameter travels the way
- * it always has rather than into a body nobody can read.
+ * <p><b>Where an argument travels is the provider's statement.</b>
+ * {@link RestPlacement} holds that rule — it is the same one the
+ * provider side reads the values back with, so the two cannot develop
+ * their own reading of a flavor. This class only turns the placement
+ * into an HTTP request.
  *
  * <p>Response handling: {@code application/xml} bodies are parsed as
  * {@link EObject}; everything else comes back as {@code String}.
@@ -102,7 +84,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		HttpMethod method = op.getMethod() != null ? op.getMethod() : HttpMethod.GET;
 		Response response;
 		try {
-			response = send(target, method, place(op, safeArgs), accept);
+			response = send(target, method, RestPlacement.of(op, safeArgs), accept);
 		} catch (ProcessingException unreachable) {
 			// Connect refused, connect/read timeout, reset: the provider is
 			// registered but not answering. Marked as a transport failure so
@@ -113,21 +95,23 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		return readResponse(response);
 	}
 
-	private static Response send(WebTarget target, HttpMethod method, Placement placement, String accept) {
+	private static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept) {
 		// The body first: it decides whether an undeclared argument was
 		// consumed as the payload or still has to travel as a query
 		// parameter.
-		Entity<?> body = placement.body();
+		Entity<?> body = placement.body()
+				.map(payload -> Entity.entity(payload, MediaType.APPLICATION_XML))
+				.orElse(null);
 
-		for (Map.Entry<String, Object> e : placement.path.entrySet()) {
+		for (Map.Entry<String, Object> e : placement.path().entrySet()) {
 			target = target.resolveTemplate(e.getKey(), String.valueOf(e.getValue()));
 		}
-		for (Map.Entry<String, Object> e : placement.queryParameters().entrySet()) {
+		for (Map.Entry<String, Object> e : placement.query().entrySet()) {
 			target = target.queryParam(e.getKey(), String.valueOf(e.getValue()));
 		}
 
 		Invocation.Builder request = target.request(accept);
-		for (Map.Entry<String, Object> e : placement.header.entrySet()) {
+		for (Map.Entry<String, Object> e : placement.header().entrySet()) {
 			request = request.header(e.getKey(), e.getValue());
 		}
 
@@ -144,129 +128,10 @@ public final class RestServiceInvoker implements ServiceInvoker {
 	}
 
 	/**
-	 * Sort the arguments into the places the flavor declares for them.
-	 * Keyed by wire name, so a binding can rename a parameter on the wire
-	 * without touching the contract.
+	 * The flavor for an operation: by the flavor's own name first, then by
+	 * the name of the operation it binds — a provider may name a flavor
+	 * differently from the operation it serves.
 	 */
-	static Placement place(RestOperationFlavor op, Map<String, Object> args) {
-		Placement placement = new Placement();
-		for (Map.Entry<String, Object> arg : args.entrySet()) {
-			RestParameterBinding binding = bindingFor(op, arg.getKey());
-			if (binding == null) {
-				placement.undeclared.put(arg.getKey(), arg.getValue());
-				continue;
-			}
-			String wireName = binding.getWireName() != null && !binding.getWireName().isBlank()
-					? binding.getWireName()
-					: arg.getKey();
-			ParameterBinding where = binding.getBinding() != null ? binding.getBinding() : ParameterBinding.BODY;
-			switch (where) {
-			case PATH -> placement.path.put(wireName, arg.getValue());
-			case QUERY -> placement.query.put(wireName, arg.getValue());
-			case HEADER -> placement.header.put(wireName, arg.getValue());
-			case BODY -> placement.declaredBody.put(wireName, arg.getValue());
-			}
-		}
-		return placement;
-	}
-
-	private static RestParameterBinding bindingFor(RestOperationFlavor op, String parameterName) {
-		for (RestParameterBinding binding : op.getParameterBindings()) {
-			Parameter bound = boundParameter(op, binding);
-			if (bound != null && parameterName.equals(bound.getName())) {
-				return binding;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * The parameter a binding refers to. It reaches a consumer as an
-	 * unresolved proxy: the flavor travels in the lookup envelope while the
-	 * contract stays behind its catalog URL, so the reference is a
-	 * cross-document one and its fragment is positional
-	 * ({@code …#//@operations.N/@parameters.M}). Resolving it by position
-	 * against the operation the flavor already points at keeps the binding
-	 * readable without fetching the contract — the same positional rule the
-	 * rest of this wire format uses.
-	 */
-	private static Parameter boundParameter(RestOperationFlavor op, RestParameterBinding binding) {
-		Parameter bound = binding.getParameter();
-		if (bound == null || !bound.eIsProxy()) {
-			return bound;
-		}
-		URI proxyURI = ((InternalEObject) bound).eProxyURI();
-		if (proxyURI == null || op.getOperation() == null) {
-			return bound;
-		}
-		int index = positionalIndex(proxyURI.fragment(), "@parameters.");
-		List<Parameter> declared = op.getOperation().getParameters();
-		return index >= 0 && index < declared.size() ? declared.get(index) : bound;
-	}
-
-	/** The {@code N} of a trailing {@code <segment>N} in a URI fragment, or -1. */
-	private static int positionalIndex(String fragment, String segment) {
-		if (fragment == null) {
-			return -1;
-		}
-		int at = fragment.lastIndexOf(segment);
-		if (at < 0) {
-			return -1;
-		}
-		try {
-			return Integer.parseInt(fragment.substring(at + segment.length()));
-		} catch (NumberFormatException notPositional) {
-			return -1;
-		}
-	}
-
-	/** Where each argument of one call travels. */
-	static final class Placement {
-
-		final Map<String, Object> path = new LinkedHashMap<>();
-		final Map<String, Object> query = new LinkedHashMap<>();
-		final Map<String, Object> header = new LinkedHashMap<>();
-		final Map<String, Object> declaredBody = new LinkedHashMap<>();
-		final Map<String, Object> undeclared = new LinkedHashMap<>();
-
-		private boolean bodyTakenFromUndeclared;
-
-		/**
-		 * The request body, or {@code null} for a call without one.
-		 * Undeclared arguments fall back to the older convention: one
-		 * EObject is the body, anything else goes as a query parameter.
-		 */
-		Entity<?> body() {
-			Map<String, Object> candidates = declaredBody.isEmpty() ? undeclared : declaredBody;
-			if (candidates.size() == 1) {
-				Object only = candidates.values().iterator().next();
-				if (only instanceof EObject eObject) {
-					bodyTakenFromUndeclared = declaredBody.isEmpty();
-					return Entity.entity(eObject, MediaType.APPLICATION_XML);
-				}
-			}
-			if (!declaredBody.isEmpty()) {
-				throw new DdsrException("operation declares " + declaredBody.size()
-						+ " BODY parameter(s) that are not a single EObject — there is no wire encoding"
-						+ " for that yet; bind them as QUERY, HEADER or PATH");
-			}
-			return null;
-		}
-
-		/**
-		 * Everything that goes into the query string: what the flavor
-		 * bound there, plus the undeclared arguments that did not become
-		 * the body. Call after {@link #body()}.
-		 */
-		Map<String, Object> queryParameters() {
-			Map<String, Object> all = new LinkedHashMap<>(query);
-			if (!bodyTakenFromUndeclared) {
-				all.putAll(undeclared);
-			}
-			return all;
-		}
-	}
-
 	private static RestOperationFlavor findOperationFlavor(RestFlavor rf, String name) {
 		for (ServiceOperationFlavor of : rf.getOperationFlavors()) {
 			if (of instanceof RestOperationFlavor && name.equals(of.getName())) {

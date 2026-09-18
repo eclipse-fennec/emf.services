@@ -17,6 +17,7 @@ Private-Package: org.eclipse.fennec.services.client.rest.internal
 	org.osgi.service.condition;version=latest,\
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot

@@ -62,6 +62,7 @@ jersey.deps:
 	org.eclipse.osgitech.rest.sse;version='[1.2.3,1.2.4)',\
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
 	org.eclipse.fennec.services.client.rest;version=snapshot,\
+	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 	org.glassfish.hk2.api;version='[3.0.5,3.0.6)',\

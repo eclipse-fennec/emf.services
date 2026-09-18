@@ -37,6 +37,7 @@ Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → OPE
 - `org.eclipse.fennec.services.broker.core` / `broker.rest` / `broker.mqtt` — Broker-API + In-Memory-Impl, JAX-RS/SSE, MQTT-EventSink
 - `org.eclipse.fennec.services.xmi.codec` — XMI-Wire-Codec + `…services.fingerprint` (sd1)
 - `org.eclipse.fennec.services.client.java` / `client.rest` / `client.mqtt` — transport-agnostisches SDK + Transporte
+- `org.eclipse.fennec.services.derive` — Vertrag aus einem Java-Interface ableiten (Reflection, deterministisch: stabiler sd1); Baustein für die RSA-Facade (#24)
 - `org.eclipse.fennec.services.flavor.rest` — die REST-Platzierungsregeln, geteilt von Consumer, Dispatcher und Template (kein JAX-RS)
 - `org.eclipse.fennec.services.provider.rest` — generische REST-Distribution: eine Factory-Konfiguration serviert einen Vertrag aus seinem Modell und meldet ihn optional selbst an (#84)
 - `org.eclipse.fennec.services.examples.payment` / `examples.model` — Demo-Provider + Beispielmodell

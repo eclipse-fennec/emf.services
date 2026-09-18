@@ -16,3 +16,6 @@ itest/work-podman/
 # staging area of :docker:<variant>:prepareDocker
 docker/*/content/
 *.log
+
+# In-process broker snapshots written by launches (#105)
+broker-state.xmi

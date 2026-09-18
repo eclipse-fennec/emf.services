@@ -13,6 +13,8 @@
 
 package org.eclipse.fennec.services.rsa.spi;
 
+import java.util.Map;
+
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 
@@ -40,6 +42,17 @@ public interface ExportedEndpoint extends AutoCloseable {
 	 * reads to build a call.
 	 */
 	ServiceImplementation implementation();
+
+	/**
+	 * What the {@code EndpointDescription} has to carry for this
+	 * configuration type — the specification wants at least one property
+	 * prefixed with the type's name, so that a consumer without our model
+	 * still finds the address. For REST that is {@code fennec.rest.url}.
+	 * Keys are expected to start with a supported configuration type.
+	 */
+	default Map<String, Object> properties() {
+		return Map.of();
+	}
 
 	/** Take the endpoint down. Idempotent. */
 	@Override

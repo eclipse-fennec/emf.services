@@ -143,6 +143,11 @@ final class ConsumerImpl implements DdsrConsumer {
 		listeners.transportAvailable();
 	}
 
+	/** Stop listening; the locators handed out stay valid as objects. */
+	void close() {
+		listeners.close();
+	}
+
 	@Override
 	public List<ServiceLocator> find(String interfaceName, String filter) {
 		ConsumerCapability cap = buildCapability();

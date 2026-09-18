@@ -126,6 +126,25 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 		openIfNeeded();
 	}
 
+	/**
+	 * The client is going away: the stream goes with it. Without this the
+	 * reader thread outlives the component — and the framework — and
+	 * keeps decoding events against a ResourceSet that is no longer
+	 * there, once per instance that ever lived (found by the RSA TCK,
+	 * whose child frameworks come and go).
+	 */
+	synchronized void close() {
+		if (subscription == null) {
+			return;
+		}
+		try {
+			subscription.close();
+		} catch (Exception closeFailure) {
+			LOG.warning("[DDSR-Client] closing the event stream failed: " + closeFailure);
+		}
+		subscription = null;
+	}
+
 	synchronized void remove(DdsrServiceListener listener) {
 		entries.removeIf(e -> e.listener() == listener);
 		closeIfUnused();

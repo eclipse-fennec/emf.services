@@ -24,8 +24,10 @@ import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.remoteserviceadmin.ExportRegistration;
 import org.osgi.service.remoteserviceadmin.RemoteConstants;
 import org.osgi.service.remoteserviceadmin.RemoteServiceAdmin;
@@ -45,7 +47,9 @@ import org.osgi.util.tracker.ServiceTrackerCustomizer;
  * export only what a filter matches, export nothing, export into a
  * particular scope. That is why this is separate and why it is small.
  */
-@Component(immediate = true)
+@Designate(ocd = TopologyPolicy.class)
+@Component(immediate = true, configurationPid = TopologyPolicy.PID,
+		configurationPolicy = ConfigurationPolicy.OPTIONAL)
 public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, Collection<ExportRegistration>> {
 
 	private static final Logger LOG = Logger.getLogger(ExportEverythingAsked.class.getName());
@@ -58,7 +62,11 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	private ServiceTracker<Object, Collection<ExportRegistration>> tracker;
 
 	@Activate
-	void activate(BundleContext context) throws InvalidSyntaxException {
+	void activate(BundleContext context, TopologyPolicy policy) throws InvalidSyntaxException {
+		LOG.info("[DDSR] topology policy is " + policy.policy());
+		if (TopologyPolicy.MANUAL.equals(policy.policy())) {
+			return;
+		}
 		tracker = new ServiceTracker<>(context,
 				context.createFilter("(" + RemoteConstants.SERVICE_EXPORTED_INTERFACES + "=*)"), this);
 		tracker.open();

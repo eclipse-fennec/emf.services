@@ -173,7 +173,12 @@ org.eclipse.fennec.services.rsa                 # OSGi Remote Service Admin auf 
 org.eclipse.fennec.services.rsa.distribution.rest  # fennec.rest: Flavor ableiten,
                                    #   generisch servieren (provider.rest)
 org.eclipse.fennec.services.rsa.discovery.rest     # Broker + SSE als Discovery
-org.eclipse.fennec.services.rsa.topology           # exportiert, was darum bittet
+org.eclipse.fennec.services.rsa.topology           # exportiert, was darum bittet, importiert,
+                                   #   worauf gewartet wird; policy=promiscuous|manual
+                                   #   (manual: der Admin ist da, sonst nichts)
+org.eclipse.fennec.services.rsa.tck                # OSGi-RSA-TCK 8.1.0 (Central) als Launch
+                                   #   gegen die vier Bundles (#99); Broker läuft
+                                   #   außerhalb: itest/run-tck.sh
 
 org.eclipse.fennec.services.examples.rsa     # ein simpler OSGi-Service, exportiert
                                     #   ohne Vertragsdokument, Flavor, Publisher

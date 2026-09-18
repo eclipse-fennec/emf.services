@@ -23,3 +23,8 @@ Private-Package: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
 	org.eclipse.fennec.services.derive;version=snapshot
+
+# What the Remote Service Admin specification asks a distribution provider
+# to say about itself (122.10): which configuration types it exports with.
+Provide-Capability: \
+	osgi.remoteserviceadmin.distribution;configs:List<String>="fennec.rest";version:Version="1.1"

@@ -1,0 +1,21 @@
+{
+  ":configurator:resource-version": 1,
+  "org.eclipse.fennec.services.client.rest": {
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+  },
+  "org.eclipse.fennec.services.client": {
+    "provider.heartbeat.seconds": "30",
+    "session.interval.seconds": "0",
+    "consumer.id": "rsa-example-consumer"
+  },
+  "EObjectRegistry~ddsrContracts": {
+    "name": "ddsr.contracts",
+    "initialProvider.target": "(emf.eobject.provider.name=ddsr.bundle.models)"
+  },
+  "org.eclipse.fennec.services.rsa.registry": {
+    "registry.name": "rsa-example-consumer"
+  },
+  "org.eclipse.fennec.services.rsa.discovery.rest": {
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+  }
+}

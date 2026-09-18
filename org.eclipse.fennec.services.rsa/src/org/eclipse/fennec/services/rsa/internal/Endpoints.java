@@ -19,6 +19,7 @@ import java.util.UUID;
 
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.rsa.spi.RsaProperties;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.remoteserviceadmin.EndpointDescription;
@@ -42,17 +43,18 @@ import org.osgi.service.remoteserviceadmin.RemoteConstants;
  */
 final class Endpoints {
 
-	/** The contract name, so a lookup can be made from the description alone. */
-	static final String CONTRACT = "ddsr.contract";
-
-	/** The implementation id the broker registered. */
-	static final String IMPLEMENTATION = "ddsr.implementation";
-
 	private Endpoints() {
 	}
 
-	static EndpointDescription describe(ServiceReference<?> exported, ServiceInterface contract,
-			ServiceImplementation implementation, String frameworkUuid, String configType) {
+	/**
+	 * @param exportedAs the Java interface the service was exported as.
+	 *        This — not the contract's name — is what goes into
+	 *        {@code objectClass}: an importer loads a class by it, and a
+	 *        contract name is not a class.
+	 */
+	static EndpointDescription describe(ServiceReference<?> exported, Class<?> exportedAs,
+			ServiceInterface contract, ServiceImplementation implementation, String frameworkUuid,
+			String configType) {
 		Map<String, Object> properties = new LinkedHashMap<>();
 
 		// Whatever the exported service itself said, minus the export
@@ -64,15 +66,15 @@ final class Endpoints {
 			}
 		}
 
-		properties.put(Constants.OBJECTCLASS, new String[] { contract.getName() });
+		properties.put(Constants.OBJECTCLASS, new String[] { exportedAs.getName() });
 		properties.put(RemoteConstants.ENDPOINT_ID, endpointId(implementation));
 		properties.put(RemoteConstants.SERVICE_IMPORTED_CONFIGS, new String[] { configType });
 		properties.put(RemoteConstants.ENDPOINT_SERVICE_ID, exported.getProperty(Constants.SERVICE_ID));
 		properties.put(RemoteConstants.ENDPOINT_FRAMEWORK_UUID, frameworkUuid);
 		properties.put(RemoteConstants.SERVICE_IMPORTED, Boolean.TRUE.toString());
 
-		properties.put(CONTRACT, contract.getName());
-		properties.put(IMPLEMENTATION, implementation.getImplementationId());
+		properties.put(RsaProperties.CONTRACT, contract.getName());
+		properties.put(RsaProperties.IMPLEMENTATION, implementation.getImplementationId());
 
 		return new EndpointDescription(properties);
 	}

@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.examples.rsa;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import org.eclipse.fennec.services.examples.rsa.api.Greeter;
 import java.util.logging.Logger;
 
 import org.osgi.service.component.annotations.Component;

@@ -6,12 +6,16 @@ Bundle-Description: \
 Private-Package: \
 	org.eclipse.fennec.services.rsa.topology
 
+-library: enableEMF
+
 -buildpath: \
 	osgi.core;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\
 	org.osgi.service.remoteserviceadmin;version=latest,\
-	org.osgi.util.tracker;version=latest
+	org.osgi.util.tracker;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.rsa;version=snapshot
 
 -testpath: \
 	${junit},\

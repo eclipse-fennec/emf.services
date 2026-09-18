@@ -1,0 +1,16 @@
+Bundle-Name: Fennec Services RSA Example Consumer
+Bundle-Description: \
+	Wants a Greeter and has none. If one turns up as an OSGi service here, \
+	it came from another framework through Remote Service Admin — and the \
+	component that binds it neither knows nor cares.
+
+Private-Package: \
+	org.eclipse.fennec.services.examples.rsa.consumer
+
+-includeresource: \
+	OSGI-INF/configurator/=configs/
+Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.eclipse.fennec.services.examples.rsa.api;version=snapshot

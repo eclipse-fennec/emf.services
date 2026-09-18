@@ -11,7 +11,8 @@ Private-Package: \
 
 -buildpath: \
 	org.osgi.service.component.annotations;version=latest,\
-	org.osgi.service.remoteserviceadmin;version=latest
+	org.osgi.service.remoteserviceadmin;version=latest,\
+	org.eclipse.fennec.services.examples.rsa.api;version=snapshot
 
 -includeresource: \
 	OSGI-INF/configurator/=configs/

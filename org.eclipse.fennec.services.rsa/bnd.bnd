@@ -7,6 +7,7 @@ Bundle-Description: \
 
 -library: enableEMF
 
+
 Export-Package: \
 	org.eclipse.fennec.services.rsa.spi,\
 	org.eclipse.fennec.services.rsa.registry
@@ -22,6 +23,7 @@ Private-Package: \
 	org.osgi.service.remoteserviceadmin;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.derive;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.eclipse.fennec.emf.osgi.eobject.registry;version=latest,\
 	org.osgi.util.tracker;version=latest
 

@@ -16,9 +16,15 @@ package org.eclipse.fennec.services.provider.rest;
 import java.util.Set;
 import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
+import org.eclipse.fennec.services.ServiceProvider;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -65,9 +71,29 @@ public class GenericRestDistribution extends Application {
 
 		@AttributeDefinition(
 				name = "Contract",
-				description = "Name of the contract this configuration serves. Both references are targeted at "
-						+ "it: set model.target and service.target to (ddsr.contract=<name>).")
+				description = "Name of the contract this configuration serves.")
 		String ddsr_contract() default "";
+
+		@AttributeDefinition(
+				name = "Service filter",
+				description = "Which service implements the contract, as an LDAP filter — usually "
+						+ "(ddsr.contract=<name>). A filter rather than a typed reference on purpose: an "
+						+ "implementation registers under whatever interface it has, and a generic transport "
+						+ "must not require it to be one this bundle knows.")
+		String service_filter();
+
+		@AttributeDefinition(
+				name = "Model bundle",
+				description = "Symbolic name of the bundle carrying the implementation document. The model "
+						+ "travels with the provider that serves it, not with this component.")
+		String model_bundle();
+
+		@AttributeDefinition(
+				name = "Model entry",
+				description = "Path of the document inside that bundle, e.g. model/binding-probe-impl.xmi. It "
+						+ "holds the ServiceProvider whose implementation is served; the contract it references "
+						+ "is read along with it.")
+		String model_entry();
 
 		@AttributeDefinition(
 				name = "Application base",
@@ -77,31 +103,52 @@ public class GenericRestDistribution extends Application {
 	}
 
 	/**
-	 * The service that implements the contract. Through
-	 * {@link ComponentServiceObjects} so a PROTOTYPE-scoped implementation
-	 * gets an instance per call rather than one shared across consumers.
+	 * Read through the ResourceSet that carries the services model, so the
+	 * document resolves against the registered package rather than against
+	 * whatever happens to be on a classpath.
 	 */
-	@Reference(name = "service")
-	private ComponentServiceObjects<Object> serviceObjects;
-
-	/**
-	 * The implementation model, as a service rather than as a URI in the
-	 * configuration: it lives in the provider's bundle, and the provider
-	 * already has it in hand — it loads the same document to publish it.
-	 * Handing it over as a service keeps this component free of any idea
-	 * about where a model file might be.
-	 */
-	@Reference(name = "model")
-	private ServiceImplementation implementation;
+	@Reference(target = "(emf.name=services)")
+	private ComponentServiceObjects<ResourceSet> resourceSets;
 
 	private RestDispatcher dispatcher;
 
 	@Activate
-	void activate(Config config) {
-		RestFlavor flavor = restFlavorOf(implementation);
-		this.dispatcher = new RestDispatcher(flavor, serviceObjects);
-		LOG.info("[DDSR] serving " + implementation.getServiceInterfaces().get(0).getName()
-				+ " generically at " + flavor.getBasePath());
+	void activate(BundleContext context, Config config) {
+		ResourceSet resourceSet = resourceSets.getService();
+		try {
+			ServiceImplementation implementation = load(context, config, resourceSet);
+			RestFlavor flavor = restFlavorOf(implementation);
+			this.dispatcher = new RestDispatcher(flavor, context, config.service_filter());
+			LOG.info("[DDSR] serving " + implementation.getServiceInterfaces().get(0).getName()
+					+ " generically at " + flavor.getBasePath());
+		} finally {
+			resourceSets.ungetService(resourceSet);
+		}
+	}
+
+	/**
+	 * The implementation document, from the bundle that owns it. The model
+	 * stays where the provider keeps it — this component only needs to be
+	 * told which bundle and which entry.
+	 */
+	private static ServiceImplementation load(BundleContext context, Config config, ResourceSet resourceSet) {
+		Bundle owner = null;
+		for (Bundle candidate : context.getBundles()) {
+			if (candidate.getSymbolicName().equals(config.model_bundle())) {
+				owner = candidate;
+				break;
+			}
+		}
+		if (owner == null) {
+			throw new IllegalStateException("no bundle " + config.model_bundle() + " to read the model from");
+		}
+		java.net.URL entry = owner.getEntry(config.model_entry());
+		if (entry == null) {
+			throw new IllegalStateException(config.model_bundle() + " carries no entry " + config.model_entry());
+		}
+		Resource document = resourceSet.getResource(URI.createURI(entry.toString()), true);
+		ServiceProvider provider = (ServiceProvider) document.getContents().get(0);
+		return provider.getImplementations().get(0);
 	}
 
 	@Override

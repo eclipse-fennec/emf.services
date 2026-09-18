@@ -29,7 +29,10 @@ import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.flavor.rest.RestRoute;
-import org.osgi.service.component.ComponentServiceObjects;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceObjects;
+import org.osgi.framework.ServiceReference;
 
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -69,11 +72,13 @@ import jakarta.ws.rs.core.UriInfo;
 public class RestDispatcher {
 
 	private final RestFlavor flavor;
-	private final ComponentServiceObjects<Object> serviceObjects;
+	private final BundleContext context;
+	private final String serviceFilter;
 
-	RestDispatcher(RestFlavor flavor, ComponentServiceObjects<Object> serviceObjects) {
+	RestDispatcher(RestFlavor flavor, BundleContext context, String serviceFilter) {
 		this.flavor = flavor;
-		this.serviceObjects = serviceObjects;
+		this.context = context;
+		this.serviceFilter = serviceFilter;
 	}
 
 	@GET
@@ -120,6 +125,12 @@ public class RestDispatcher {
 			return Response.status(400).entity(missing.get() + " is required").build();
 		}
 
+		ServiceObjects<Object> serviceObjects = implementation();
+		if (serviceObjects == null) {
+			return Response.status(503)
+					.entity("no service matching " + serviceFilter + " implements this contract")
+					.build();
+		}
 		Object service = serviceObjects.getService();
 		try {
 			Object result = invoke(service, operation, arguments);
@@ -130,6 +141,25 @@ public class RestDispatcher {
 			return Response.serverError().entity(String.valueOf(failure.getMessage())).build();
 		} finally {
 			serviceObjects.ungetService(service);
+		}
+	}
+
+	/**
+	 * The service implementing this contract, looked up per call so a
+	 * provider that comes and goes is followed without bookkeeping here.
+	 * Through {@link ServiceObjects} so a PROTOTYPE-scoped implementation
+	 * yields an instance per call instead of one shared across consumers.
+	 */
+	@SuppressWarnings("unchecked")
+	private ServiceObjects<Object> implementation() {
+		try {
+			ServiceReference<?>[] candidates = context.getServiceReferences((String) null, serviceFilter);
+			if (candidates == null || candidates.length == 0) {
+				return null;
+			}
+			return (ServiceObjects<Object>) context.getServiceObjects(candidates[0]);
+		} catch (InvalidSyntaxException malformed) {
+			throw new IllegalStateException("service filter is not a filter: " + serviceFilter, malformed);
 		}
 	}
 
@@ -149,8 +179,9 @@ public class RestDispatcher {
 				return method.invoke(service, values.toArray());
 			}
 		}
-		throw new NoSuchMethodException("the service behind this contract has no method '"
-				+ operation.getName() + "' taking " + values.size() + " argument(s)");
+		throw new NoSuchMethodException("the service behind this contract, a "
+				+ service.getClass().getName() + ", has no method '" + operation.getName()
+				+ "' taking " + values.size() + " argument(s)");
 	}
 
 	private static Optional<String> missingRequired(ServiceOperation operation, Map<String, Object> arguments) {

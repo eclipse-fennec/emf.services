@@ -14,17 +14,19 @@
 package org.eclipse.fennec.services.examples.payment.probe;
 
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.propertytypes.ServiceDescription;
 
 /**
  * The one hand-written class of the BindingProbe: it answers with what it
  * received, and says nothing about where the values came from.
  * <p>
  * That is the point of the probe. Path, query and header are decided by the
- * published flavor and carried out by the generated resource; if a consumer
- * placed a value somewhere else, this method would see a null and the answer
- * would say so.
+ * published flavor and carried out by the generic distribution, which finds
+ * this service through {@code ddsr.contract}; if a consumer placed a value
+ * somewhere else, this method would see a null and the answer would say so.
  */
-@Component(service = BindingProbe.class)
+@Component(service = BindingProbe.class, property = "ddsr.contract=BindingProbe")
+@ServiceDescription("BindingProbe implementation, served by the generic REST distribution")
 public class BindingProbeImpl implements BindingProbe {
 
 	@Override

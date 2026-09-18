@@ -1701,6 +1701,9 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Something a ServiceImplementation or ServiceFlavor offers, modelled like an OSGi Provide-Capability: a namespace plus typed attributes. Matched against Requirement entries of a ConsumerCapability at lookup time (docs/WIRE_CHANNELS.md §6): a Requirement is satisfied when a Capability with the same namespace exists whose attributes match the Requirement's LDAP filter. The effective capability set of an implementation is its own capabilities plus those of its flavors. Namespace conventions (proposal, extensible): 'services.transport' with attributes kind (REST|MQTT) and version; 'services.contentType' with type; 'services.encoding' with format (XMI|JSON). Providers may add their own namespaces ('acme.region')."/>
     </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="attributeNamesUnique" value="attributes->isUnique(a | a.name)"/>
+    </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1713,9 +1716,6 @@
         <details key="documentation" value="Typed attributes of the capability (the same Property hierarchy the registry already evaluates LDAP filters against). Property.name is the attribute key; keys are unique within one capability. An empty list means 'present, no further detail' and satisfies any Requirement in the namespace that carries no filter."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
-      <details key="attributeNamesUnique" value="attributes->isUnique(a | a.name)"/>
-    </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Requirement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1729,7 +1729,7 @@
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="filter" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="OSGi/LDAP filter evaluated against the attributes of a Capability in the namespace, e.g. '(&amp;(kind=MQTT)(version&gt;=5))' or '(type=application/*)'. Null = any capability in the namespace satisfies the requirement."/>
+        <details key="documentation" value="OSGi/LDAP filter evaluated against the attributes of a Capability in the namespace, e.g. '(&amp;(kind=MQTT)(version>=5))' or '(type=application/*)'. Null = any capability in the namespace satisfies the requirement."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="optional" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
@@ -1836,7 +1836,6 @@
     <eLiterals name="CONSUMER" value="1"/>
     <eLiterals name="NONE" value="2"/>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="LanguageBinding" abstract="true" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
       <details key="constraints" value="uniqueTypeMappings uniquePackageMappings"/>
@@ -1879,10 +1878,9 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="TypeMapping">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="One language-neutral type name and what it is called in the target language — a Parameter.type, or the symbolic ServiceException.type. Positional under its binding, so it does NOT mix in NamedElement. Without a mapping a generator falls back to the last segment of the symbolic name, in the binding&#39;s targetPackage, and generates nothing: a contract names types symbolically, and only the binding knows what they are called in a language."/>
+      <details key="documentation" value="One language-neutral type name and what it is called in the target language — a Parameter.type, or the symbolic ServiceException.type. Positional under its binding, so it does NOT mix in NamedElement. Without a mapping a generator falls back to the last segment of the symbolic name, in the binding's targetPackage, and generates nothing: a contract names types symbolically, and only the binding knows what they are called in a language."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="neutralType" lowerBound="1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
@@ -1903,13 +1901,11 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="PackageMapping">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="One metamodel and the package/module its generated types live in, in the target language. Positional under its binding."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nsURI" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nsURI" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Namespace URI of the EPackage, as Parameter.eType names it."/>
       </eAnnotations>
@@ -1921,7 +1917,6 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="JavaBinding" eSuperTypes="#//LanguageBinding">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Java rendering: targetPackage is the Java package, and the generated interface is named after the ServiceInterface."/>
@@ -1933,13 +1928,11 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="TypeScriptBinding" eSuperTypes="#//LanguageBinding">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="TypeScript rendering: targetPackage is the module path. Carries no language specifics yet — it exists so a template can dispatch on the binding type, and gains attributes when the TypeScript generator does."/>
     </eAnnotations>
   </eClassifiers>
-
   <eClassifiers xsi:type="ecore:EClass" name="PythonBinding" eSuperTypes="#//LanguageBinding">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Python rendering: targetPackage is the module. Same as TypeScriptBinding — a discriminator today, attributes when its generator arrives."/>

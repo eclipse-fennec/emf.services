@@ -47,6 +47,10 @@ const EXPECTED_LANG = process.env.EXPECT_LANG ?? 'java';
 // over it (A2 Etappe 2) — the value is unused beyond being truthy, the
 // broker address comes from the ANNOUNCED flavor.
 const EXPECT_MQTT = process.env.EXPECT_MQTT === '1';
+// When set, the Java provider also published the BindingEcho contract and
+// the probe checks that its three arguments arrive where the flavor says
+// (#74) — in the path, in the query and in a header.
+const EXPECT_BINDINGS = process.env.EXPECT_BINDINGS === '1';
 const GOLDEN = 'sd1:baafb26e152b76e0e6e713bb86a5e418c2d014d855b24df4d938a517c59807c0';
 
 const failures: string[] = [];
@@ -116,6 +120,22 @@ async function main(): Promise<void> {
   check('invoke-getBalance', Number.isFinite(balance), `${balance}`);
   const remaining = Number(await locator.invoke('charge', { amount: 12.5, currency: 'EUR' }));
   check('invoke-charge', Number.isFinite(remaining), `${remaining}`);
+
+  // 4b. mixed bindings (#74): the provider echoes back where each value
+  // arrived. Nothing here says path, query or header — the consumer reads
+  // that from the published flavor, and the endpoint only answers
+  // correctly if both sides read it the same way.
+  if (EXPECT_BINDINGS) {
+    let echoLocator;
+    for (let attempt = 0; attempt < 40 && !echoLocator; attempt++) {
+      echoLocator = await client.consumer.findOne('BindingEcho').catch(() => undefined);
+      if (!echoLocator) await new Promise(r => setTimeout(r, 500));
+    }
+    if (!echoLocator) fail('no BindingEcho locator within 20s');
+    const echoed = String(await echoLocator.invoke('echo',
+      { id: 'acct-42', currency: 'EUR', tenant: 'acme' }));
+    check('invoke-mixed-bindings', echoed === 'acct-42|EUR|acme', `${echoed}`);
+  }
 
   // 4c. invocation over the announced MQTT flavor (A2 Etappe 2). The
   // plugin connects to the broker the FLAVOR names — the provider says

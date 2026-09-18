@@ -13,12 +13,14 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
-import java.net.URI;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
@@ -85,7 +87,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		if (op == null) {
 			throw new DdsrException("operation '" + operationName + "' has no REST flavor on this service");
 		}
-		URI url = locator.urlFor(operationName).orElseThrow(
+		java.net.URI url = locator.urlFor(operationName).orElseThrow(
 				() -> new DdsrException("cannot build URL for '" + operationName + "' — RestFlavor.host is missing"));
 
 		Map<String, Object> safeArgs = args != null ? args : Map.of();
@@ -170,12 +172,52 @@ public final class RestServiceInvoker implements ServiceInvoker {
 
 	private static RestParameterBinding bindingFor(RestOperationFlavor op, String parameterName) {
 		for (RestParameterBinding binding : op.getParameterBindings()) {
-			Parameter bound = binding.getParameter();
+			Parameter bound = boundParameter(op, binding);
 			if (bound != null && parameterName.equals(bound.getName())) {
 				return binding;
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * The parameter a binding refers to. It reaches a consumer as an
+	 * unresolved proxy: the flavor travels in the lookup envelope while the
+	 * contract stays behind its catalog URL, so the reference is a
+	 * cross-document one and its fragment is positional
+	 * ({@code …#//@operations.N/@parameters.M}). Resolving it by position
+	 * against the operation the flavor already points at keeps the binding
+	 * readable without fetching the contract — the same positional rule the
+	 * rest of this wire format uses.
+	 */
+	private static Parameter boundParameter(RestOperationFlavor op, RestParameterBinding binding) {
+		Parameter bound = binding.getParameter();
+		if (bound == null || !bound.eIsProxy()) {
+			return bound;
+		}
+		URI proxyURI = ((InternalEObject) bound).eProxyURI();
+		if (proxyURI == null || op.getOperation() == null) {
+			return bound;
+		}
+		int index = positionalIndex(proxyURI.fragment(), "@parameters.");
+		List<Parameter> declared = op.getOperation().getParameters();
+		return index >= 0 && index < declared.size() ? declared.get(index) : bound;
+	}
+
+	/** The {@code N} of a trailing {@code <segment>N} in a URI fragment, or -1. */
+	private static int positionalIndex(String fragment, String segment) {
+		if (fragment == null) {
+			return -1;
+		}
+		int at = fragment.lastIndexOf(segment);
+		if (at < 0) {
+			return -1;
+		}
+		try {
+			return Integer.parseInt(fragment.substring(at + segment.length()));
+		} catch (NumberFormatException notPositional) {
+			return -1;
+		}
 	}
 
 	/** Where each argument of one call travels. */

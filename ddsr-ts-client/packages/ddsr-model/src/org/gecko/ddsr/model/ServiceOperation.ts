@@ -5,11 +5,11 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { Parameter } from './Parameter';
-import type { ServiceException } from './ServiceException';
-import type { Invariant } from './Invariant';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { Parameter } from './Parameter.js';
+import type { ServiceException } from './ServiceException.js';
+import type { Invariant } from './Invariant.js';
 
 /**
  * ServiceOperation
@@ -17,10 +17,10 @@ import type { Invariant } from './Invariant';
  */
 export interface ServiceOperation extends NamedElement {
   description?: string;
-  parameters: Parameter[];
+  parameters: EList<Parameter>;
   returnValue?: Parameter;
-  exceptions: ServiceException[];
-  preconditions: Invariant[];
-  postconditions: Invariant[];
+  exceptions: EList<ServiceException>;
+  preconditions: EList<Invariant>;
+  postconditions: EList<Invariant>;
 
 }

@@ -5,11 +5,12 @@
  * @generated
  */
 
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
-import { ParameterConstraintImpl } from './ParameterConstraintImpl';
-import type { EnumerationConstraint } from './EnumerationConstraint';
-import { DDSRPackage } from './DDSRPackage';
+import { createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import { ParameterConstraintImpl } from './ParameterConstraintImpl.js';
+import type { EnumerationConstraint } from './EnumerationConstraint.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of EnumerationConstraint
@@ -20,7 +21,7 @@ export class EnumerationConstraintImpl extends ParameterConstraintImpl implement
   static readonly ALLOWED_VALUES: number = 0;
 
   // Private fields
-  private _allowedValues: string[] = [];
+  private _allowedValues!: EList<string>;
 
   /**
    * Returns the EClass of this object
@@ -30,28 +31,11 @@ export class EnumerationConstraintImpl extends ParameterConstraintImpl implement
   }
 
   // Getters and Setters
-  get allowedValues(): string[] {
-    return this._allowedValues;
-  }
-
-  set allowedValues(value: string[]) {
-    const oldValue = this._allowedValues;
-    this._allowedValues = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(EnumerationConstraintImpl.ALLOWED_VALUES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => EnumerationConstraintImpl.ALLOWED_VALUES,
-        merge: () => false
-      });
+  get allowedValues(): EList<string> {
+    if (!this._allowedValues) {
+      this._allowedValues = createBasicEList<any>(this, this.eClass().getEStructuralFeature('allowedValues')!);
     }
+    return this._allowedValues;
   }
 
   // Reflective API
@@ -76,7 +60,8 @@ export class EnumerationConstraintImpl extends ParameterConstraintImpl implement
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case EnumerationConstraintImpl.ALLOWED_VALUES:
-        this.allowedValues = newValue as string[];
+        this.allowedValues.clear();
+        this.allowedValues.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -91,7 +76,7 @@ export class EnumerationConstraintImpl extends ParameterConstraintImpl implement
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case EnumerationConstraintImpl.ALLOWED_VALUES:
-        return this._allowedValues !== undefined && this._allowedValues.length > 0;
+        return this._allowedValues !== undefined && !this._allowedValues.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -104,7 +89,7 @@ export class EnumerationConstraintImpl extends ParameterConstraintImpl implement
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case EnumerationConstraintImpl.ALLOWED_VALUES:
-        this._allowedValues = [];
+        if (this._allowedValues) this._allowedValues.clear();
         return;
       default:
         super.eUnset(feature);

@@ -6,7 +6,7 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
+import type { Property } from './Property.js';
 
 /**
  * FloatProperty

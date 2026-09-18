@@ -5,8 +5,8 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceFlavor } from './ServiceFlavor';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ServiceFlavor } from './ServiceFlavor.js';
 
 /**
  * RestFlavor
@@ -15,6 +15,6 @@ import type { ServiceFlavor } from './ServiceFlavor';
 export interface RestFlavor extends ServiceFlavor {
   host?: string;
   basePath: string;
-  contentTypes: string[];
+  contentTypes: EList<string>;
 
 }

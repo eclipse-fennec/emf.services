@@ -6,7 +6,7 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { LanguageBinding } from './LanguageBinding';
+import type { LanguageBinding } from './LanguageBinding.js';
 
 /**
  * PythonBinding

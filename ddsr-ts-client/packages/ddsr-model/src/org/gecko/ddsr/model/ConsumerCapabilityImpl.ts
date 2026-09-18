@@ -6,12 +6,13 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { FlavorKind } from './FlavorKind';
-import type { Property } from './Property';
-import type { Requirement } from './Requirement';
-import type { ConsumerCapability } from './ConsumerCapability';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList, createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { FlavorKind } from './FlavorKind.js';
+import type { Property } from './Property.js';
+import type { Requirement } from './Requirement.js';
+import type { ConsumerCapability } from './ConsumerCapability.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ConsumerCapability
@@ -26,9 +27,9 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
 
   // Private fields
   private _consumerId?: string;
-  private _supportedFlavors: FlavorKind[] = [];
-  private _properties: Property[] = [];
-  private _requirements: Requirement[] = [];
+  private _supportedFlavors!: EList<FlavorKind>;
+  private _properties!: EList<Property>;
+  private _requirements!: EList<Requirement>;
 
   /**
    * Returns the EClass of this object
@@ -62,76 +63,25 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
     }
   }
 
-  get supportedFlavors(): FlavorKind[] {
+  get supportedFlavors(): EList<FlavorKind> {
+    if (!this._supportedFlavors) {
+      this._supportedFlavors = createBasicEList<any>(this, this.eClass().getEStructuralFeature('supportedFlavors')!);
+    }
     return this._supportedFlavors;
   }
 
-  set supportedFlavors(value: FlavorKind[]) {
-    const oldValue = this._supportedFlavors;
-    this._supportedFlavors = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ConsumerCapabilityImpl.SUPPORTED_FLAVORS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ConsumerCapabilityImpl.SUPPORTED_FLAVORS,
-        merge: () => false
-      });
+  get properties(): EList<Property> {
+    if (!this._properties) {
+      this._properties = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('properties') as EReference);
     }
-  }
-
-  get properties(): Property[] {
     return this._properties;
   }
 
-  set properties(value: Property[]) {
-    const oldValue = this._properties;
-    this._properties = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ConsumerCapabilityImpl.PROPERTIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ConsumerCapabilityImpl.PROPERTIES,
-        merge: () => false
-      });
+  get requirements(): EList<Requirement> {
+    if (!this._requirements) {
+      this._requirements = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('requirements') as EReference);
     }
-  }
-
-  get requirements(): Requirement[] {
     return this._requirements;
-  }
-
-  set requirements(value: Requirement[]) {
-    const oldValue = this._requirements;
-    this._requirements = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ConsumerCapabilityImpl.REQUIREMENTS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ConsumerCapabilityImpl.REQUIREMENTS,
-        merge: () => false
-      });
-    }
   }
 
   // Reflective API
@@ -166,15 +116,18 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
         super.eSet(feature, newValue);
         break;
       case ConsumerCapabilityImpl.SUPPORTED_FLAVORS:
-        this.supportedFlavors = newValue as FlavorKind[];
+        this.supportedFlavors.clear();
+        this.supportedFlavors.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ConsumerCapabilityImpl.PROPERTIES:
-        this.properties = newValue as Property[];
+        this.properties.clear();
+        this.properties.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ConsumerCapabilityImpl.REQUIREMENTS:
-        this.requirements = newValue as Requirement[];
+        this.requirements.clear();
+        this.requirements.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -191,11 +144,11 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
       case ConsumerCapabilityImpl.CONSUMER_ID:
         return this._consumerId !== undefined;
       case ConsumerCapabilityImpl.SUPPORTED_FLAVORS:
-        return this._supportedFlavors !== undefined && this._supportedFlavors.length > 0;
+        return this._supportedFlavors !== undefined && !this._supportedFlavors.isEmpty();
       case ConsumerCapabilityImpl.PROPERTIES:
-        return this._properties !== undefined && this._properties.length > 0;
+        return this._properties !== undefined && !this._properties.isEmpty();
       case ConsumerCapabilityImpl.REQUIREMENTS:
-        return this._requirements !== undefined && this._requirements.length > 0;
+        return this._requirements !== undefined && !this._requirements.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -211,13 +164,13 @@ export class ConsumerCapabilityImpl extends BasicEObject implements ConsumerCapa
         this._consumerId = undefined;
         return;
       case ConsumerCapabilityImpl.SUPPORTED_FLAVORS:
-        this._supportedFlavors = [];
+        if (this._supportedFlavors) this._supportedFlavors.clear();
         return;
       case ConsumerCapabilityImpl.PROPERTIES:
-        this._properties = [];
+        if (this._properties) this._properties.clear();
         return;
       case ConsumerCapabilityImpl.REQUIREMENTS:
-        this._requirements = [];
+        if (this._requirements) this._requirements.clear();
         return;
       default:
         super.eUnset(feature);

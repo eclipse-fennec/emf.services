@@ -6,7 +6,7 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
+import type { NamedElement } from './NamedElement.js';
 
 /**
  * Property

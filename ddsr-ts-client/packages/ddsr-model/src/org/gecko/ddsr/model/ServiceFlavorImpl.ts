@@ -6,13 +6,14 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { FlavorKind } from './FlavorKind';
-import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
-import type { Capability } from './Capability';
-import type { ServiceFlavor } from './ServiceFlavor';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
+import type { Capability } from './Capability.js';
+import { FlavorKind } from './FlavorKind.js';
+import type { ServiceFlavor } from './ServiceFlavor.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceFlavor
@@ -26,9 +27,9 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
   static readonly NAME: number = 0;
 
   // Private fields
-  private _kind?: FlavorKind;
-  private _operationFlavors: ServiceOperationFlavor[] = [];
-  private _capabilities: Capability[] = [];
+  private _kind: FlavorKind = FlavorKind.REST;
+  private _operationFlavors!: EList<ServiceOperationFlavor>;
+  private _capabilities!: EList<Capability>;
   private _name: string = "";
 
   /**
@@ -63,52 +64,18 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
     }
   }
 
-  get operationFlavors(): ServiceOperationFlavor[] {
+  get operationFlavors(): EList<ServiceOperationFlavor> {
+    if (!this._operationFlavors) {
+      this._operationFlavors = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('operationFlavors') as EReference);
+    }
     return this._operationFlavors;
   }
 
-  set operationFlavors(value: ServiceOperationFlavor[]) {
-    const oldValue = this._operationFlavors;
-    this._operationFlavors = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceFlavorImpl.OPERATION_FLAVORS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceFlavorImpl.OPERATION_FLAVORS,
-        merge: () => false
-      });
+  get capabilities(): EList<Capability> {
+    if (!this._capabilities) {
+      this._capabilities = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('capabilities') as EReference);
     }
-  }
-
-  get capabilities(): Capability[] {
     return this._capabilities;
-  }
-
-  set capabilities(value: Capability[]) {
-    const oldValue = this._capabilities;
-    this._capabilities = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceFlavorImpl.CAPABILITIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceFlavorImpl.CAPABILITIES,
-        merge: () => false
-      });
-    }
   }
 
   get name(): string {
@@ -151,11 +118,13 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
         super.eSet(feature, newValue);
         break;
       case ServiceFlavorImpl.OPERATION_FLAVORS:
-        this.operationFlavors = newValue as ServiceOperationFlavor[];
+        this.operationFlavors.clear();
+        this.operationFlavors.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceFlavorImpl.CAPABILITIES:
-        this.capabilities = newValue as Capability[];
+        this.capabilities.clear();
+        this.capabilities.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceFlavorImpl.NAME:
@@ -174,11 +143,11 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ServiceFlavorImpl.KIND:
-        return this._kind !== undefined;
+        return this._kind !== FlavorKind.REST;
       case ServiceFlavorImpl.OPERATION_FLAVORS:
-        return this._operationFlavors !== undefined && this._operationFlavors.length > 0;
+        return this._operationFlavors !== undefined && !this._operationFlavors.isEmpty();
       case ServiceFlavorImpl.CAPABILITIES:
-        return this._capabilities !== undefined && this._capabilities.length > 0;
+        return this._capabilities !== undefined && !this._capabilities.isEmpty();
       case ServiceFlavorImpl.NAME:
         return this._name !== "";
       default:
@@ -193,13 +162,13 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ServiceFlavorImpl.KIND:
-        this._kind = undefined;
+        this._kind = FlavorKind.REST;
         return;
       case ServiceFlavorImpl.OPERATION_FLAVORS:
-        this._operationFlavors = [];
+        if (this._operationFlavors) this._operationFlavors.clear();
         return;
       case ServiceFlavorImpl.CAPABILITIES:
-        this._capabilities = [];
+        if (this._capabilities) this._capabilities.clear();
         return;
       case ServiceFlavorImpl.NAME:
         this._name = "";

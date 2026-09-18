@@ -5,14 +5,14 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { ServiceOperation } from './ServiceOperation';
-import type { ServiceException } from './ServiceException';
-import type { Invariant } from './Invariant';
-import type { CatalogStatus } from './CatalogStatus';
-import type { UpdatePolicy } from './UpdatePolicy';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { ServiceOperation } from './ServiceOperation.js';
+import type { ServiceException } from './ServiceException.js';
+import type { Invariant } from './Invariant.js';
+import type { CatalogStatus } from './CatalogStatus.js';
+import type { UpdatePolicy } from './UpdatePolicy.js';
 
 /**
  * ServiceInterface
@@ -20,9 +20,9 @@ import type { UpdatePolicy } from './UpdatePolicy';
  */
 export interface ServiceInterface extends NamedElement, VersionedElement {
   description?: string;
-  operations: ServiceOperation[];
-  exceptions: ServiceException[];
-  invariants: Invariant[];
+  operations: EList<ServiceOperation>;
+  exceptions: EList<ServiceException>;
+  invariants: EList<Invariant>;
   status: CatalogStatus;
   deprecationReason?: string;
   replacedBy?: ServiceInterface;

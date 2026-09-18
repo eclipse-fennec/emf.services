@@ -5,12 +5,13 @@
  * @generated
  */
 
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceFlavor } from './ServiceFlavor';
-import { MqttQos } from './MqttQos';
-import { ServiceFlavorImpl } from './ServiceFlavorImpl';
-import type { MqttFlavor } from './MqttFlavor';
-import { DDSRPackage } from './DDSRPackage';
+import { createBasicEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ServiceFlavor } from './ServiceFlavor.js';
+import { MqttQos } from './MqttQos.js';
+import { ServiceFlavorImpl } from './ServiceFlavorImpl.js';
+import type { MqttFlavor } from './MqttFlavor.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of MqttFlavor
@@ -25,7 +26,7 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
   static readonly DEFAULT_RETAINED: number = 8;
 
   // Private fields
-  private _brokers: string[] = [];
+  private _brokers!: EList<string>;
   private _requestTopic: string = "";
   private _responseTopic?: string;
   private _defaultQos: MqttQos = MqttQos.AT_LEAST_ONCE;
@@ -39,28 +40,11 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
   }
 
   // Getters and Setters
-  get brokers(): string[] {
-    return this._brokers;
-  }
-
-  set brokers(value: string[]) {
-    const oldValue = this._brokers;
-    this._brokers = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(MqttFlavorImpl.BROKERS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => MqttFlavorImpl.BROKERS,
-        merge: () => false
-      });
+  get brokers(): EList<string> {
+    if (!this._brokers) {
+      this._brokers = createBasicEList<any>(this, this.eClass().getEStructuralFeature('brokers')!);
     }
+    return this._brokers;
   }
 
   get requestTopic(): string {
@@ -189,7 +173,8 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case MqttFlavorImpl.BROKERS:
-        this.brokers = newValue as string[];
+        this.brokers.clear();
+        this.brokers.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case MqttFlavorImpl.REQUEST_TOPIC:
@@ -220,7 +205,7 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case MqttFlavorImpl.BROKERS:
-        return this._brokers !== undefined && this._brokers.length > 0;
+        return this._brokers !== undefined && !this._brokers.isEmpty();
       case MqttFlavorImpl.REQUEST_TOPIC:
         return this._requestTopic !== "";
       case MqttFlavorImpl.RESPONSE_TOPIC:
@@ -241,7 +226,7 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case MqttFlavorImpl.BROKERS:
-        this._brokers = [];
+        if (this._brokers) this._brokers.clear();
         return;
       case MqttFlavorImpl.REQUEST_TOPIC:
         this._requestTopic = "";

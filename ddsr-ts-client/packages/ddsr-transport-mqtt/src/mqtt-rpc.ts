@@ -80,8 +80,24 @@ export function replyBaseFor(flavor: FlavorLike, opFlavor: OperationFlavorLike):
   ).replace(/\/+$/, '');
 }
 
+/**
+ * The QoS of one operation: its own, or the flavor's default.
+ *
+ * An operation that says nothing reads back as `AT_MOST_ONCE`, because
+ * that is the first literal of the enum and the model gives
+ * `MqttOperationFlavor.qos` no default of its own — EMF reports it on
+ * both sides of the wire, so there is no value that means "unset". This
+ * function therefore treats `AT_MOST_ONCE` from an operation as silence
+ * and lets `defaultQos` apply, which is the precedence the model
+ * documents.
+ *
+ * The price: an operation cannot deliberately step DOWN to at-most-once
+ * under a higher flavor default. Removing that limitation needs the
+ * model to be able to express "unset" — see issue #81.
+ */
 export function qosFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): 0 | 1 | 2 {
-  const literal = opFlavor.qos ?? flavor.defaultQos ?? 'AT_LEAST_ONCE';
+  const stated = opFlavor.qos === 'AT_MOST_ONCE' ? undefined : opFlavor.qos;
+  const literal = stated ?? flavor.defaultQos ?? 'AT_LEAST_ONCE';
   switch (literal) {
     case 'AT_MOST_ONCE': return 0;
     case 'EXACTLY_ONCE': return 2;

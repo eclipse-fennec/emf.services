@@ -5,31 +5,31 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceRegistry } from './ServiceRegistry';
-import type { ServiceReference } from './ServiceReference';
-import type { ServiceRegistration } from './ServiceRegistration';
-import type { ConsumerSession } from './ConsumerSession';
-import type { ComponentConfiguration } from './ComponentConfiguration';
-import type { ServiceProvider } from './ServiceProvider';
-import type { ServiceListener } from './ServiceListener';
-import type { RemoteServiceRegistry } from './RemoteServiceRegistry';
-import type { ConnectionState } from './ConnectionState';
-import type { ServiceImplementation } from './ServiceImplementation';
-import type { Property } from './Property';
-import type { ServiceEvent } from './ServiceEvent';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ServiceRegistry } from './ServiceRegistry.js';
+import type { ServiceReference } from './ServiceReference.js';
+import type { ServiceRegistration } from './ServiceRegistration.js';
+import type { ConsumerSession } from './ConsumerSession.js';
+import type { ComponentConfiguration } from './ComponentConfiguration.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { ServiceListener } from './ServiceListener.js';
+import type { RemoteServiceRegistry } from './RemoteServiceRegistry.js';
+import type { ConnectionState } from './ConnectionState.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import type { Property } from './Property.js';
+import type { ServiceEvent } from './ServiceEvent.js';
 
 /**
  * LocalServiceRegistry
  * @generated
  */
 export interface LocalServiceRegistry extends ServiceRegistry {
-  references: ServiceReference[];
-  registrations: ServiceRegistration[];
-  sessions: ConsumerSession[];
-  configurations: ComponentConfiguration[];
-  providers: ServiceProvider[];
-  listeners: ServiceListener[];
+  references: EList<ServiceReference>;
+  registrations: EList<ServiceRegistration>;
+  sessions: EList<ConsumerSession>;
+  configurations: EList<ComponentConfiguration>;
+  providers: EList<ServiceProvider>;
+  listeners: EList<ServiceListener>;
   remote?: RemoteServiceRegistry;
   connectionState: ConnectionState;
 

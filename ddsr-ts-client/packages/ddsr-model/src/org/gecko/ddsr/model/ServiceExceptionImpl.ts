@@ -6,12 +6,13 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { Property } from './Property';
-import type { ServiceException } from './ServiceException';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { Property } from './Property.js';
+import type { ServiceException } from './ServiceException.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceException
@@ -28,7 +29,7 @@ export class ServiceExceptionImpl extends BasicEObject implements ServiceExcepti
   // Private fields
   private _description?: string;
   private _type: string = "";
-  private _properties: Property[] = [];
+  private _properties!: EList<Property>;
   private _name: string = "";
   private _version?: string;
 
@@ -88,28 +89,11 @@ export class ServiceExceptionImpl extends BasicEObject implements ServiceExcepti
     }
   }
 
-  get properties(): Property[] {
-    return this._properties;
-  }
-
-  set properties(value: Property[]) {
-    const oldValue = this._properties;
-    this._properties = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceExceptionImpl.PROPERTIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceExceptionImpl.PROPERTIES,
-        merge: () => false
-      });
+  get properties(): EList<Property> {
+    if (!this._properties) {
+      this._properties = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('properties') as EReference);
     }
+    return this._properties;
   }
 
   get name(): string {
@@ -166,7 +150,8 @@ export class ServiceExceptionImpl extends BasicEObject implements ServiceExcepti
         super.eSet(feature, newValue);
         break;
       case ServiceExceptionImpl.PROPERTIES:
-        this.properties = newValue as Property[];
+        this.properties.clear();
+        this.properties.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceExceptionImpl.NAME:
@@ -193,7 +178,7 @@ export class ServiceExceptionImpl extends BasicEObject implements ServiceExcepti
       case ServiceExceptionImpl.TYPE:
         return this._type !== "";
       case ServiceExceptionImpl.PROPERTIES:
-        return this._properties !== undefined && this._properties.length > 0;
+        return this._properties !== undefined && !this._properties.isEmpty();
       case ServiceExceptionImpl.NAME:
         return this._name !== "";
       case ServiceExceptionImpl.VERSION:
@@ -216,7 +201,7 @@ export class ServiceExceptionImpl extends BasicEObject implements ServiceExcepti
         this._type = "";
         return;
       case ServiceExceptionImpl.PROPERTIES:
-        this._properties = [];
+        if (this._properties) this._properties.clear();
         return;
       case ServiceExceptionImpl.NAME:
         this._name = "";

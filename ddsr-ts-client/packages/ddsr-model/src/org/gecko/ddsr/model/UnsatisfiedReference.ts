@@ -5,8 +5,8 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceReference } from './ServiceReference';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ServiceReference } from './ServiceReference.js';
 
 /**
  * UnsatisfiedReference
@@ -15,6 +15,6 @@ import type { ServiceReference } from './ServiceReference';
 export interface UnsatisfiedReference extends EObject {
   name: string;
   target?: string;
-  targetServices: ServiceReference[];
+  targetServices: EList<ServiceReference>;
 
 }

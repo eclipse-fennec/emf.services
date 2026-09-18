@@ -6,16 +6,17 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { CollectionType } from './CollectionType';
-import type { ReferenceBinding } from './ReferenceBinding';
-import { ReferenceCardinality } from './ReferenceCardinality';
-import { ReferencePolicy } from './ReferencePolicy';
-import { ReferencePolicyOption } from './ReferencePolicyOption';
-import { ServiceScope } from './ServiceScope';
-import type { ComponentReference } from './ComponentReference';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ReferenceBinding } from './ReferenceBinding.js';
+import { ReferenceCardinality } from './ReferenceCardinality.js';
+import { ReferencePolicy } from './ReferencePolicy.js';
+import { ReferencePolicyOption } from './ReferencePolicyOption.js';
+import { ServiceScope } from './ServiceScope.js';
+import { CollectionType } from './CollectionType.js';
+import type { ComponentReference } from './ComponentReference.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ComponentReference
@@ -41,9 +42,9 @@ export class ComponentReferenceImpl extends BasicEObject implements ComponentRef
   private _policyOption: ReferencePolicyOption = ReferencePolicyOption.RELUCTANT;
   private _target?: string;
   private _scope: ServiceScope = ServiceScope.BUNDLE;
-  private _collectionType?: CollectionType;
+  private _collectionType: CollectionType = CollectionType.SERVICE;
   private _parameter?: number;
-  private _bindings: ReferenceBinding[] = [];
+  private _bindings!: EList<ReferenceBinding>;
   private _name: string = "";
 
   /**
@@ -246,28 +247,11 @@ export class ComponentReferenceImpl extends BasicEObject implements ComponentRef
     }
   }
 
-  get bindings(): ReferenceBinding[] {
-    return this._bindings;
-  }
-
-  set bindings(value: ReferenceBinding[]) {
-    const oldValue = this._bindings;
-    this._bindings = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentReferenceImpl.BINDINGS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentReferenceImpl.BINDINGS,
-        merge: () => false
-      });
+  get bindings(): EList<ReferenceBinding> {
+    if (!this._bindings) {
+      this._bindings = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('bindings') as EReference);
     }
+    return this._bindings;
   }
 
   get name(): string {
@@ -350,7 +334,8 @@ export class ComponentReferenceImpl extends BasicEObject implements ComponentRef
         super.eSet(feature, newValue);
         break;
       case ComponentReferenceImpl.BINDINGS:
-        this.bindings = newValue as ReferenceBinding[];
+        this.bindings.clear();
+        this.bindings.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentReferenceImpl.NAME:
@@ -381,11 +366,11 @@ export class ComponentReferenceImpl extends BasicEObject implements ComponentRef
       case ComponentReferenceImpl.SCOPE:
         return this._scope !== ServiceScope.BUNDLE;
       case ComponentReferenceImpl.COLLECTION_TYPE:
-        return this._collectionType !== undefined;
+        return this._collectionType !== CollectionType.SERVICE;
       case ComponentReferenceImpl.PARAMETER:
         return this._parameter !== undefined;
       case ComponentReferenceImpl.BINDINGS:
-        return this._bindings !== undefined && this._bindings.length > 0;
+        return this._bindings !== undefined && !this._bindings.isEmpty();
       case ComponentReferenceImpl.NAME:
         return this._name !== "";
       default:
@@ -418,13 +403,13 @@ export class ComponentReferenceImpl extends BasicEObject implements ComponentRef
         this._scope = ServiceScope.BUNDLE;
         return;
       case ComponentReferenceImpl.COLLECTION_TYPE:
-        this._collectionType = undefined;
+        this._collectionType = CollectionType.SERVICE;
         return;
       case ComponentReferenceImpl.PARAMETER:
         this._parameter = undefined;
         return;
       case ComponentReferenceImpl.BINDINGS:
-        this._bindings = [];
+        if (this._bindings) this._bindings.clear();
         return;
       case ComponentReferenceImpl.NAME:
         this._name = "";

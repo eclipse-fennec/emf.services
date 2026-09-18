@@ -5,14 +5,14 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { Property } from './Property.js';
 
 /**
  * StringListProperty
  * @generated
  */
 export interface StringListProperty extends Property {
-  value: string[];
+  value: EList<string>;
 
 }

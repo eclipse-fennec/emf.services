@@ -5,14 +5,14 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ReferenceCardinality } from './ReferenceCardinality';
-import type { ReferencePolicy } from './ReferencePolicy';
-import type { ReferencePolicyOption } from './ReferencePolicyOption';
-import type { ServiceScope } from './ServiceScope';
-import type { CollectionType } from './CollectionType';
-import type { ReferenceBinding } from './ReferenceBinding';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ReferenceCardinality } from './ReferenceCardinality.js';
+import type { ReferencePolicy } from './ReferencePolicy.js';
+import type { ReferencePolicyOption } from './ReferencePolicyOption.js';
+import type { ServiceScope } from './ServiceScope.js';
+import type { CollectionType } from './CollectionType.js';
+import type { ReferenceBinding } from './ReferenceBinding.js';
 
 /**
  * ComponentReference
@@ -27,6 +27,6 @@ export interface ComponentReference extends NamedElement {
   scope: ServiceScope;
   collectionType?: CollectionType;
   parameter?: number;
-  bindings: ReferenceBinding[];
+  bindings: EList<ReferenceBinding>;
 
 }

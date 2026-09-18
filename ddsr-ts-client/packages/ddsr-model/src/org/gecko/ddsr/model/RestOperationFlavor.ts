@@ -5,11 +5,11 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
-import type { HttpMethod } from './HttpMethod';
-import type { RestParameterBinding } from './RestParameterBinding';
-import type { RestExceptionBinding } from './RestExceptionBinding';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
+import type { HttpMethod } from './HttpMethod.js';
+import type { RestParameterBinding } from './RestParameterBinding.js';
+import type { RestExceptionBinding } from './RestExceptionBinding.js';
 
 /**
  * RestOperationFlavor
@@ -18,8 +18,8 @@ import type { RestExceptionBinding } from './RestExceptionBinding';
 export interface RestOperationFlavor extends ServiceOperationFlavor {
   method: HttpMethod;
   path?: string;
-  returnCodes: number[];
-  parameterBindings: RestParameterBinding[];
-  exceptionBindings: RestExceptionBinding[];
+  returnCodes: EList<number>;
+  parameterBindings: EList<RestParameterBinding>;
+  exceptionBindings: EList<RestExceptionBinding>;
 
 }

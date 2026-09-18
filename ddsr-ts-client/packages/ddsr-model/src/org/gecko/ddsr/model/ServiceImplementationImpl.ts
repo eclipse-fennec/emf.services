@@ -6,17 +6,18 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { VersionedElement } from './VersionedElement';
-import type { ServiceInterface } from './ServiceInterface';
-import type { ServiceFlavor } from './ServiceFlavor';
-import type { Property } from './Property';
-import type { ComponentDescription } from './ComponentDescription';
-import type { UpdatePolicy } from './UpdatePolicy';
-import type { Capability } from './Capability';
-import type { ServiceImplementation } from './ServiceImplementation';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList, createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { VersionedElement } from './VersionedElement.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import type { ServiceFlavor } from './ServiceFlavor.js';
+import type { Property } from './Property.js';
+import type { ComponentDescription } from './ComponentDescription.js';
+import type { Capability } from './Capability.js';
+import { UpdatePolicy } from './UpdatePolicy.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceImplementation
@@ -40,14 +41,14 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
   // Private fields
   private _description?: string;
   private _implementationId: string = "";
-  private _serviceInterfaces: ServiceInterface[] = [];
-  private _flavors: ServiceFlavor[] = [];
-  private _properties: Property[] = [];
+  private _serviceInterfaces!: EList<ServiceInterface>;
+  private _flavors!: EList<ServiceFlavor>;
+  private _properties!: EList<Property>;
   private _componentDescription?: ComponentDescription;
-  private _updatePolicy?: UpdatePolicy;
+  private _updatePolicy: UpdatePolicy = UpdatePolicy.UNSPECIFIED;
   private _replaces?: ServiceImplementation;
   private _cutoverGraceMillis?: number;
-  private _capabilities: Capability[] = [];
+  private _capabilities!: EList<Capability>;
   private _name: string = "";
   private _version?: string;
 
@@ -107,76 +108,25 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
     }
   }
 
-  get serviceInterfaces(): ServiceInterface[] {
+  get serviceInterfaces(): EList<ServiceInterface> {
+    if (!this._serviceInterfaces) {
+      this._serviceInterfaces = createEObjectEList(this, this.eClass().getEStructuralFeature('serviceInterfaces') as EReference) as unknown as EList<ServiceInterface>;
+    }
     return this._serviceInterfaces;
   }
 
-  set serviceInterfaces(value: ServiceInterface[]) {
-    const oldValue = this._serviceInterfaces;
-    this._serviceInterfaces = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.SERVICE_INTERFACES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceImplementationImpl.SERVICE_INTERFACES,
-        merge: () => false
-      });
+  get flavors(): EList<ServiceFlavor> {
+    if (!this._flavors) {
+      this._flavors = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('flavors') as EReference);
     }
-  }
-
-  get flavors(): ServiceFlavor[] {
     return this._flavors;
   }
 
-  set flavors(value: ServiceFlavor[]) {
-    const oldValue = this._flavors;
-    this._flavors = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.FLAVORS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceImplementationImpl.FLAVORS,
-        merge: () => false
-      });
+  get properties(): EList<Property> {
+    if (!this._properties) {
+      this._properties = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('properties') as EReference);
     }
-  }
-
-  get properties(): Property[] {
     return this._properties;
-  }
-
-  set properties(value: Property[]) {
-    const oldValue = this._properties;
-    this._properties = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.PROPERTIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceImplementationImpl.PROPERTIES,
-        merge: () => false
-      });
-    }
   }
 
   get componentDescription(): ComponentDescription {
@@ -275,28 +225,11 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
     }
   }
 
-  get capabilities(): Capability[] {
-    return this._capabilities;
-  }
-
-  set capabilities(value: Capability[]) {
-    const oldValue = this._capabilities;
-    this._capabilities = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceImplementationImpl.CAPABILITIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceImplementationImpl.CAPABILITIES,
-        merge: () => false
-      });
+  get capabilities(): EList<Capability> {
+    if (!this._capabilities) {
+      this._capabilities = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('capabilities') as EReference);
     }
+    return this._capabilities;
   }
 
   get name(): string {
@@ -367,15 +300,18 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         super.eSet(feature, newValue);
         break;
       case ServiceImplementationImpl.SERVICE_INTERFACES:
-        this.serviceInterfaces = newValue as ServiceInterface[];
+        this.serviceInterfaces.clear();
+        this.serviceInterfaces.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceImplementationImpl.FLAVORS:
-        this.flavors = newValue as ServiceFlavor[];
+        this.flavors.clear();
+        this.flavors.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceImplementationImpl.PROPERTIES:
-        this.properties = newValue as Property[];
+        this.properties.clear();
+        this.properties.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceImplementationImpl.COMPONENT_DESCRIPTION:
@@ -395,7 +331,8 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         super.eSet(feature, newValue);
         break;
       case ServiceImplementationImpl.CAPABILITIES:
-        this.capabilities = newValue as Capability[];
+        this.capabilities.clear();
+        this.capabilities.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceImplementationImpl.NAME:
@@ -422,21 +359,21 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
       case ServiceImplementationImpl.IMPLEMENTATION_ID:
         return this._implementationId !== "";
       case ServiceImplementationImpl.SERVICE_INTERFACES:
-        return this._serviceInterfaces !== undefined && this._serviceInterfaces.length > 0;
+        return this._serviceInterfaces !== undefined && !this._serviceInterfaces.isEmpty();
       case ServiceImplementationImpl.FLAVORS:
-        return this._flavors !== undefined && this._flavors.length > 0;
+        return this._flavors !== undefined && !this._flavors.isEmpty();
       case ServiceImplementationImpl.PROPERTIES:
-        return this._properties !== undefined && this._properties.length > 0;
+        return this._properties !== undefined && !this._properties.isEmpty();
       case ServiceImplementationImpl.COMPONENT_DESCRIPTION:
         return this._componentDescription !== undefined;
       case ServiceImplementationImpl.UPDATE_POLICY:
-        return this._updatePolicy !== undefined;
+        return this._updatePolicy !== UpdatePolicy.UNSPECIFIED;
       case ServiceImplementationImpl.REPLACES:
         return this._replaces !== undefined;
       case ServiceImplementationImpl.CUTOVER_GRACE_MILLIS:
         return this._cutoverGraceMillis !== undefined;
       case ServiceImplementationImpl.CAPABILITIES:
-        return this._capabilities !== undefined && this._capabilities.length > 0;
+        return this._capabilities !== undefined && !this._capabilities.isEmpty();
       case ServiceImplementationImpl.NAME:
         return this._name !== "";
       case ServiceImplementationImpl.VERSION:
@@ -459,19 +396,19 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         this._implementationId = "";
         return;
       case ServiceImplementationImpl.SERVICE_INTERFACES:
-        this._serviceInterfaces = [];
+        if (this._serviceInterfaces) this._serviceInterfaces.clear();
         return;
       case ServiceImplementationImpl.FLAVORS:
-        this._flavors = [];
+        if (this._flavors) this._flavors.clear();
         return;
       case ServiceImplementationImpl.PROPERTIES:
-        this._properties = [];
+        if (this._properties) this._properties.clear();
         return;
       case ServiceImplementationImpl.COMPONENT_DESCRIPTION:
         this._componentDescription = undefined;
         return;
       case ServiceImplementationImpl.UPDATE_POLICY:
-        this._updatePolicy = undefined;
+        this._updatePolicy = UpdatePolicy.UNSPECIFIED;
         return;
       case ServiceImplementationImpl.REPLACES:
         this._replaces = undefined;
@@ -480,7 +417,7 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         this._cutoverGraceMillis = undefined;
         return;
       case ServiceImplementationImpl.CAPABILITIES:
-        this._capabilities = [];
+        if (this._capabilities) this._capabilities.clear();
         return;
       case ServiceImplementationImpl.NAME:
         this._name = "";

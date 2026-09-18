@@ -5,15 +5,15 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { RegistryKind } from './RegistryKind';
-import type { PublishHook } from './PublishHook';
-import type { DiscoveryHook } from './DiscoveryHook';
-import type { DistributionHook } from './DistributionHook';
-import type { ServiceReference } from './ServiceReference';
-import type { ConsumerCapability } from './ConsumerCapability';
-import type { ServiceListener } from './ServiceListener';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { RegistryKind } from './RegistryKind.js';
+import type { PublishHook } from './PublishHook.js';
+import type { DiscoveryHook } from './DiscoveryHook.js';
+import type { DistributionHook } from './DistributionHook.js';
+import type { ServiceReference } from './ServiceReference.js';
+import type { ConsumerCapability } from './ConsumerCapability.js';
+import type { ServiceListener } from './ServiceListener.js';
 
 /**
  * ServiceRegistry
@@ -21,9 +21,9 @@ import type { ServiceListener } from './ServiceListener';
  */
 export interface ServiceRegistry extends NamedElement {
   kind: RegistryKind;
-  publishHooks: PublishHook[];
-  discoveryHooks: DiscoveryHook[];
-  distributionHooks: DistributionHook[];
+  publishHooks: EList<PublishHook>;
+  discoveryHooks: EList<DiscoveryHook>;
+  distributionHooks: EList<DistributionHook>;
 
   getServiceReference(interfaceName: string): ServiceReference;
   getServiceReferences(interfaceName: string, filter: string, capability: ConsumerCapability): ServiceReference;

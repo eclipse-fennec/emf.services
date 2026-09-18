@@ -6,8 +6,8 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
-import type { MqttQos } from './MqttQos';
+import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
+import type { MqttQos } from './MqttQos.js';
 
 /**
  * MqttOperationFlavor

@@ -7,8 +7,8 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { TypeMapping } from './TypeMapping';
-import { DDSRPackage } from './DDSRPackage';
+import type { TypeMapping } from './TypeMapping.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of TypeMapping

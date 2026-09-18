@@ -6,14 +6,15 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceReference } from './ServiceReference';
-import type { ServiceProvider } from './ServiceProvider';
-import type { ServiceImplementation } from './ServiceImplementation';
-import type { ConsumerSession } from './ConsumerSession';
-import type { Property } from './Property';
-import type { ServiceRegistration } from './ServiceRegistration';
-import { DDSRPackage } from './DDSRPackage';
+import { createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ServiceReference } from './ServiceReference.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import type { ConsumerSession } from './ConsumerSession.js';
+import type { Property } from './Property.js';
+import type { ServiceRegistration } from './ServiceRegistration.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceRegistration
@@ -33,7 +34,7 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
   private _unregistered: boolean = false;
   private _provider?: ServiceProvider;
   private _implementation?: ServiceImplementation;
-  private _usingSessions: ConsumerSession[] = [];
+  private _usingSessions!: EList<ConsumerSession>;
   private _consumerCount?: number;
 
   /**
@@ -140,28 +141,11 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
     }
   }
 
-  get usingSessions(): ConsumerSession[] {
-    return this._usingSessions;
-  }
-
-  set usingSessions(value: ConsumerSession[]) {
-    const oldValue = this._usingSessions;
-    this._usingSessions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistrationImpl.USING_SESSIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ServiceRegistrationImpl.USING_SESSIONS,
-        merge: () => false
-      });
+  get usingSessions(): EList<ConsumerSession> {
+    if (!this._usingSessions) {
+      this._usingSessions = createEObjectEList(this, this.eClass().getEStructuralFeature('usingSessions') as EReference) as unknown as EList<ConsumerSession>;
     }
+    return this._usingSessions;
   }
 
   get consumerCount(): number {
@@ -236,7 +220,8 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         super.eSet(feature, newValue);
         break;
       case ServiceRegistrationImpl.USING_SESSIONS:
-        this.usingSessions = newValue as ConsumerSession[];
+        this.usingSessions.clear();
+        this.usingSessions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
@@ -263,7 +248,7 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
       case ServiceRegistrationImpl.IMPLEMENTATION:
         return this._implementation !== undefined;
       case ServiceRegistrationImpl.USING_SESSIONS:
-        return this._usingSessions !== undefined && this._usingSessions.length > 0;
+        return this._usingSessions !== undefined && !this._usingSessions.isEmpty();
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         return this._consumerCount !== undefined;
       default:
@@ -290,7 +275,7 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         this._implementation = undefined;
         return;
       case ServiceRegistrationImpl.USING_SESSIONS:
-        this._usingSessions = [];
+        if (this._usingSessions) this._usingSessions.clear();
         return;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         this._consumerCount = undefined;

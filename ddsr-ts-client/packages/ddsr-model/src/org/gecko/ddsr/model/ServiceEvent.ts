@@ -6,8 +6,8 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceEventType } from './ServiceEventType';
-import type { ServiceReference } from './ServiceReference';
+import type { ServiceEventType } from './ServiceEventType.js';
+import type { ServiceReference } from './ServiceReference.js';
 
 /**
  * ServiceEvent

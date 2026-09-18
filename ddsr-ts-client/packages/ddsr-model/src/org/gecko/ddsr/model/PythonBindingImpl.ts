@@ -6,10 +6,10 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { LanguageBinding } from './LanguageBinding';
-import { LanguageBindingImpl } from './LanguageBindingImpl';
-import type { PythonBinding } from './PythonBinding';
-import { DDSRPackage } from './DDSRPackage';
+import type { LanguageBinding } from './LanguageBinding.js';
+import { LanguageBindingImpl } from './LanguageBindingImpl.js';
+import type { PythonBinding } from './PythonBinding.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of PythonBinding

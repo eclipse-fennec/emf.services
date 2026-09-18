@@ -5,8 +5,9 @@
  * @generated
  */
 
-import { BasicEPackage, BasicEClass, BasicEAttribute, BasicEReference, getEcorePackage } from '@emfts/core';
+import { BasicEPackage, BasicEClass, BasicEAttribute, BasicEReference, EPackageRegistry, getEcorePackage } from '@emfts/core';
 import type { EClass, EAttribute, EReference, EEnum } from '@emfts/core';
+import { DDSRFactory } from './DDSRFactory.js';
 
 /**
  * DDSR Package
@@ -302,6 +303,13 @@ export class DDSRPackage extends BasicEPackage {
    * Initialize package contents
    */
   private init(): void {
+    // Register this package under its nsURI so other generated packages can
+    // resolve their cross-package references from the registry (#36).
+    // eINSTANCE is already assigned at this point
+    EPackageRegistry.INSTANCE.set(DDSRPackage.eNS_URI, this);
+    // Wire the generated factory so loaded/created instances are typed Impls.
+    this.setEFactoryInstance(DDSRFactory.eINSTANCE);
+
     // Create NamedElement class
     const namedElementClass = new BasicEClass();
     namedElementClass.setName('NamedElement');
@@ -2542,61 +2550,147 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.PYTHON_BINDING as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.LANGUAGE_BINDING);
 
     // ============================================
-    // Set ETypes for EReferences (must be done after all classes are created)
+    // Set ETypes for all features (must be done after all classes are created).
+    // An EAttribute without eType leaves the XMI reader no EDataType to
+    // convert against - every value would arrive as a raw string (#37)
     // ============================================
+    (DDSRPackage.Literals.NAMED_ELEMENT__NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.VERSIONED_ELEMENT__VERSION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.STRING_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.INT_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.LONG_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('ELong')!);
+    (DDSRPackage.Literals.DOUBLE_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EDouble')!);
+    (DDSRPackage.Literals.FLOAT_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EFloat')!);
+    (DDSRPackage.Literals.SHORT_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EShort')!);
+    (DDSRPackage.Literals.BOOL_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.STRING_LIST_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_OPERATION__DESCRIPTION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_OPERATION__PARAMETERS as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
     (DDSRPackage.Literals.SERVICE_OPERATION__RETURN_VALUE as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
     (DDSRPackage.Literals.SERVICE_OPERATION__EXCEPTIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
     (DDSRPackage.Literals.SERVICE_OPERATION__PRECONDITIONS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
     (DDSRPackage.Literals.SERVICE_OPERATION__POSTCONDITIONS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
+    (DDSRPackage.Literals.PARAMETER__INDEX as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.PARAMETER__TYPE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.PARAMETER__E_TYPE as BasicEReference).setEType(getEcorePackage().getEClassifier('EClassifier')!);
+    (DDSRPackage.Literals.PARAMETER__LOWER_BOUND as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.PARAMETER__UPPER_BOUND as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.PARAMETER__OPTIONAL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.PARAMETER__DEFAULT_VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.PARAMETER__DESCRIPTION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.PARAMETER__CONSTRAINTS as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER_CONSTRAINT);
+    (DDSRPackage.Literals.NUMERIC_RANGE_CONSTRAINT__MIN as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EDoubleObject')!);
+    (DDSRPackage.Literals.NUMERIC_RANGE_CONSTRAINT__MAX as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EDoubleObject')!);
+    (DDSRPackage.Literals.NUMERIC_RANGE_CONSTRAINT__INCLUSIVE_MIN as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.NUMERIC_RANGE_CONSTRAINT__INCLUSIVE_MAX as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.STRING_PATTERN_CONSTRAINT__PATTERN as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.STRING_PATTERN_CONSTRAINT__MIN_LENGTH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EIntegerObject')!);
+    (DDSRPackage.Literals.STRING_PATTERN_CONSTRAINT__MAX_LENGTH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EIntegerObject')!);
+    (DDSRPackage.Literals.ENUMERATION_CONSTRAINT__ALLOWED_VALUES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.EXPRESSION_CONSTRAINT__EXPRESSION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.EXPRESSION_CONSTRAINT__MESSAGE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.INVARIANT__EXPRESSION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.INVARIANT__MESSAGE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.COLLECTION_SIZE_CONSTRAINT__MIN_SIZE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EIntegerObject')!);
+    (DDSRPackage.Literals.COLLECTION_SIZE_CONSTRAINT__MAX_SIZE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EIntegerObject')!);
+    (DDSRPackage.Literals.SERVICE_EXCEPTION__DESCRIPTION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_EXCEPTION__TYPE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_EXCEPTION__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
+    (DDSRPackage.Literals.SERVICE_INTERFACE__DESCRIPTION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_INTERFACE__OPERATIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION);
     (DDSRPackage.Literals.SERVICE_INTERFACE__EXCEPTIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
     (DDSRPackage.Literals.SERVICE_INTERFACE__INVARIANTS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
+    (DDSRPackage.Literals.SERVICE_INTERFACE__DEPRECATION_REASON as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_INTERFACE__REPLACED_BY as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
+    (DDSRPackage.Literals.LIFECYCLE_HOOK__PARAMETER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.COMPONENT_REFERENCE__INTERFACE_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.COMPONENT_REFERENCE__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.COMPONENT_REFERENCE__PARAMETER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.COMPONENT_REFERENCE__BINDINGS as BasicEReference).setEType(DDSRPackage.Literals.REFERENCE_BINDING);
+    (DDSRPackage.Literals.COMPONENT_DESCRIPTION__FACTORY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.COMPONENT_DESCRIPTION__IMPLEMENTATION_ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.COMPONENT_DESCRIPTION__DEFAULT_ENABLED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.COMPONENT_DESCRIPTION__IMMEDIATE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.COMPONENT_DESCRIPTION__CONFIGURATION_PID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.COMPONENT_DESCRIPTION__SERVICE_INTERFACES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
     (DDSRPackage.Literals.COMPONENT_DESCRIPTION__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.COMPONENT_DESCRIPTION__FACTORY_PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.COMPONENT_DESCRIPTION__REFERENCES as BasicEReference).setEType(DDSRPackage.Literals.COMPONENT_REFERENCE);
     (DDSRPackage.Literals.COMPONENT_DESCRIPTION__LIFECYCLE_HOOKS as BasicEReference).setEType(DDSRPackage.Literals.LIFECYCLE_HOOK);
     (DDSRPackage.Literals.COMPONENT_DESCRIPTION__PROVIDER as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
+    (DDSRPackage.Literals.SERVICE_PROVIDER__SYMBOLIC_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_PROVIDER__DESCRIPTIONS as BasicEReference).setEType(DDSRPackage.Literals.COMPONENT_DESCRIPTION);
     (DDSRPackage.Literals.SERVICE_PROVIDER__IMPLEMENTATIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
+    (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__DESCRIPTION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__IMPLEMENTATION_ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__SERVICE_INTERFACES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__FLAVORS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_FLAVOR);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__COMPONENT_DESCRIPTION as BasicEReference).setEType(DDSRPackage.Literals.COMPONENT_DESCRIPTION);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__REPLACES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
+    (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('ELong')!);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
     (DDSRPackage.Literals.SERVICE_FLAVOR__OPERATION_FLAVORS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
     (DDSRPackage.Literals.SERVICE_FLAVOR__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
+    (DDSRPackage.Literals.REST_FLAVOR__HOST as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.REST_FLAVOR__BASE_PATH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.REST_FLAVOR__CONTENT_TYPES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MQTT_FLAVOR__BROKERS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MQTT_FLAVOR__REQUEST_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MQTT_FLAVOR__RESPONSE_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MQTT_FLAVOR__DEFAULT_RETAINED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__OPERATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION);
+    (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__CONSUMES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__PRODUCES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.REST_OPERATION_FLAVOR__PATH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.REST_OPERATION_FLAVOR__RETURN_CODES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS as BasicEReference).setEType(DDSRPackage.Literals.REST_PARAMETER_BINDING);
     (DDSRPackage.Literals.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS as BasicEReference).setEType(DDSRPackage.Literals.REST_EXCEPTION_BINDING);
     (DDSRPackage.Literals.REST_PARAMETER_BINDING__PARAMETER as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
+    (DDSRPackage.Literals.REST_PARAMETER_BINDING__WIRE_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.REST_EXCEPTION_BINDING__EXCEPTION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
+    (DDSRPackage.Literals.REST_EXCEPTION_BINDING__STATUS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__REQUEST_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETAINED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__CORRELATION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETURN_PATH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_REFERENCE__ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROVIDER as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
     (DDSRPackage.Literals.SERVICE_REFERENCE__REGISTRATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REGISTRATION);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__REFERENCE as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REFERENCE);
+    (DDSRPackage.Literals.SERVICE_REGISTRATION__UNREGISTERED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__PROVIDER as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__IMPLEMENTATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__USING_SESSIONS as BasicEReference).setEType(DDSRPackage.Literals.CONSUMER_SESSION);
+    (DDSRPackage.Literals.SERVICE_REGISTRATION__CONSUMER_COUNT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.CONSUMER_SESSION__CONSUMER_ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.CONSUMER_SESSION__LAST_RENEWAL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EDate')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CONSUMER_CAPABILITY);
     (DDSRPackage.Literals.CONSUMER_SESSION__ACQUISITIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REGISTRATION);
+    (DDSRPackage.Literals.COMPONENT_CONFIGURATION__ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION__DESCRIPTION as BasicEReference).setEType(DDSRPackage.Literals.COMPONENT_DESCRIPTION);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION__SATISFIED_REFERENCES as BasicEReference).setEType(DDSRPackage.Literals.SATISFIED_REFERENCE);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION__UNSATISFIED_REFERENCES as BasicEReference).setEType(DDSRPackage.Literals.UNSATISFIED_REFERENCE);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION__FAILURE as BasicEReference).setEType(DDSRPackage.Literals.DIAGNOSTIC);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION__SERVICE as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REFERENCE);
+    (DDSRPackage.Literals.SATISFIED_REFERENCE__NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SATISFIED_REFERENCE__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SATISFIED_REFERENCE__BOUND_SERVICES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REFERENCE);
+    (DDSRPackage.Literals.UNSATISFIED_REFERENCE__NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.UNSATISFIED_REFERENCE__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.UNSATISFIED_REFERENCE__TARGET_SERVICES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REFERENCE);
+    (DDSRPackage.Literals.DIAGNOSTIC__MESSAGE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.DIAGNOSTIC__SOURCE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.DIAGNOSTIC__CODE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
+    (DDSRPackage.Literals.DIAGNOSTIC__DATA as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.DIAGNOSTIC__CHILDREN as BasicEReference).setEType(DDSRPackage.Literals.DIAGNOSTIC);
     (DDSRPackage.Literals.SERVICE_EVENT__REFERENCE as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REFERENCE);
+    (DDSRPackage.Literals.SERVICE_EVENT__TIMESTAMP as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EDate')!);
+    (DDSRPackage.Literals.SERVICE_EVENT__REASON_CODE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_LISTENER__FILTER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_REGISTRY__PUBLISH_HOOKS as BasicEReference).setEType(DDSRPackage.Literals.PUBLISH_HOOK);
     (DDSRPackage.Literals.SERVICE_REGISTRY__DISCOVERY_HOOKS as BasicEReference).setEType(DDSRPackage.Literals.DISCOVERY_HOOK);
     (DDSRPackage.Literals.SERVICE_REGISTRY__DISTRIBUTION_HOOKS as BasicEReference).setEType(DDSRPackage.Literals.DISTRIBUTION_HOOK);
@@ -2607,15 +2701,28 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.LOCAL_SERVICE_REGISTRY__PROVIDERS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
     (DDSRPackage.Literals.LOCAL_SERVICE_REGISTRY__LISTENERS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_LISTENER);
     (DDSRPackage.Literals.LOCAL_SERVICE_REGISTRY__REMOTE as BasicEReference).setEType(DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY);
+    (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__ENDPOINT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__CATALOG as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
     (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__IMPLEMENTATIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
     (DDSRPackage.Literals.REMOTE_SERVICE_REGISTRY__PROVIDERS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
+    (DDSRPackage.Literals.CAPABILITY__NAMESPACE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.CAPABILITY__ATTRIBUTES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
+    (DDSRPackage.Literals.REQUIREMENT__NAMESPACE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.REQUIREMENT__FILTER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.REQUIREMENT__OPTIONAL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.CONSUMER_CAPABILITY__CONSUMER_ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.CONSUMER_CAPABILITY__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.CONSUMER_CAPABILITY__REQUIREMENTS as BasicEReference).setEType(DDSRPackage.Literals.REQUIREMENT);
     (DDSRPackage.Literals.LANGUAGE_BINDING__SERVICE_INTERFACES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
+    (DDSRPackage.Literals.LANGUAGE_BINDING__TARGET_PACKAGE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.LANGUAGE_BINDING__FILE_HEADER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.LANGUAGE_BINDING__TYPE_MAPPINGS as BasicEReference).setEType(DDSRPackage.Literals.TYPE_MAPPING);
     (DDSRPackage.Literals.LANGUAGE_BINDING__PACKAGE_MAPPINGS as BasicEReference).setEType(DDSRPackage.Literals.PACKAGE_MAPPING);
+    (DDSRPackage.Literals.TYPE_MAPPING__NEUTRAL_TYPE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.TYPE_MAPPING__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.TYPE_MAPPING__GENERATED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.PACKAGE_MAPPING__NS_U_R_I as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.PACKAGE_MAPPING__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
 
     // ============================================
     // Register XML name mappings from ExtendedMetaData annotations

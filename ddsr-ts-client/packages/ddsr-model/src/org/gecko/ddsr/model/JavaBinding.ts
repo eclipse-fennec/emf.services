@@ -6,8 +6,8 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { LanguageBinding } from './LanguageBinding';
-import type { ApiType } from './ApiType';
+import type { LanguageBinding } from './LanguageBinding.js';
+import type { ApiType } from './ApiType.js';
 
 /**
  * JavaBinding

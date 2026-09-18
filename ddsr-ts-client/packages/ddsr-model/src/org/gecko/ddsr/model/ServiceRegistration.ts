@@ -5,12 +5,12 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceReference } from './ServiceReference';
-import type { ServiceProvider } from './ServiceProvider';
-import type { ServiceImplementation } from './ServiceImplementation';
-import type { ConsumerSession } from './ConsumerSession';
-import type { Property } from './Property';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ServiceReference } from './ServiceReference.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import type { ConsumerSession } from './ConsumerSession.js';
+import type { Property } from './Property.js';
 
 /**
  * ServiceRegistration
@@ -21,7 +21,7 @@ export interface ServiceRegistration extends EObject {
   unregistered: boolean;
   provider: ServiceProvider;
   implementation: ServiceImplementation;
-  usingSessions: ConsumerSession[];
+  usingSessions: EList<ConsumerSession>;
   consumerCount?: number;
 
   unregister(): void;

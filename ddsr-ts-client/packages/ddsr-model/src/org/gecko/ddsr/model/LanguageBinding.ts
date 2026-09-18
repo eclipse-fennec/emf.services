@@ -5,21 +5,21 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ServiceInterface } from './ServiceInterface';
-import type { TypeMapping } from './TypeMapping';
-import type { PackageMapping } from './PackageMapping';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import type { TypeMapping } from './TypeMapping.js';
+import type { PackageMapping } from './PackageMapping.js';
 
 /**
  * LanguageBinding
  * @generated
  */
 export interface LanguageBinding extends NamedElement {
-  serviceInterfaces: ServiceInterface[];
+  serviceInterfaces: EList<ServiceInterface>;
   targetPackage: string;
-  fileHeader: string[];
-  typeMappings: TypeMapping[];
-  packageMappings: PackageMapping[];
+  fileHeader: EList<string>;
+  typeMappings: EList<TypeMapping>;
+  packageMappings: EList<PackageMapping>;
 
 }

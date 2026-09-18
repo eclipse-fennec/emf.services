@@ -5,8 +5,8 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { Property } from './Property.js';
 
 /**
  * Capability
@@ -14,6 +14,6 @@ import type { Property } from './Property';
  */
 export interface Capability extends EObject {
   namespace: string;
-  attributes: Property[];
+  attributes: EList<Property>;
 
 }

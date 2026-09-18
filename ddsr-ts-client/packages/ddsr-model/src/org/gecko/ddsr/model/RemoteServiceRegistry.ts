@@ -5,12 +5,12 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceRegistry } from './ServiceRegistry';
-import type { ServiceInterface } from './ServiceInterface';
-import type { ServiceImplementation } from './ServiceImplementation';
-import type { ServiceProvider } from './ServiceProvider';
-import type { Diagnostic } from './Diagnostic';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ServiceRegistry } from './ServiceRegistry.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { Diagnostic } from './Diagnostic.js';
 
 /**
  * RemoteServiceRegistry
@@ -18,9 +18,9 @@ import type { Diagnostic } from './Diagnostic';
  */
 export interface RemoteServiceRegistry extends ServiceRegistry {
   endpoint?: string;
-  catalog: ServiceInterface[];
-  implementations: ServiceImplementation[];
-  providers: ServiceProvider[];
+  catalog: EList<ServiceInterface>;
+  implementations: EList<ServiceImplementation>;
+  providers: EList<ServiceProvider>;
 
   publishImplementation(provider: ServiceProvider, implementation: ServiceImplementation): Diagnostic;
   withdrawImplementation(provider: ServiceProvider, implementation: ServiceImplementation): Diagnostic;

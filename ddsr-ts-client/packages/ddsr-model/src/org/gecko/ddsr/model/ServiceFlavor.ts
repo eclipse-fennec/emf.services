@@ -5,11 +5,11 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { FlavorKind } from './FlavorKind';
-import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
-import type { Capability } from './Capability';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { FlavorKind } from './FlavorKind.js';
+import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
+import type { Capability } from './Capability.js';
 
 /**
  * ServiceFlavor
@@ -17,7 +17,7 @@ import type { Capability } from './Capability';
  */
 export interface ServiceFlavor extends NamedElement {
   kind: FlavorKind;
-  operationFlavors: ServiceOperationFlavor[];
-  capabilities: Capability[];
+  operationFlavors: EList<ServiceOperationFlavor>;
+  capabilities: EList<Capability>;
 
 }

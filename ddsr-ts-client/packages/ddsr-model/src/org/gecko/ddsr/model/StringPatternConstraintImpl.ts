@@ -6,10 +6,10 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ParameterConstraint } from './ParameterConstraint';
-import { ParameterConstraintImpl } from './ParameterConstraintImpl';
-import type { StringPatternConstraint } from './StringPatternConstraint';
-import { DDSRPackage } from './DDSRPackage';
+import type { ParameterConstraint } from './ParameterConstraint.js';
+import { ParameterConstraintImpl } from './ParameterConstraintImpl.js';
+import type { StringPatternConstraint } from './StringPatternConstraint.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of StringPatternConstraint

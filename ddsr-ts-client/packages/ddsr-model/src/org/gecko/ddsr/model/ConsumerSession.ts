@@ -5,9 +5,9 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ConsumerCapability } from './ConsumerCapability';
-import type { ServiceRegistration } from './ServiceRegistration';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { ConsumerCapability } from './ConsumerCapability.js';
+import type { ServiceRegistration } from './ServiceRegistration.js';
 
 /**
  * ConsumerSession
@@ -17,6 +17,6 @@ export interface ConsumerSession extends EObject {
   consumerId: string;
   lastRenewal?: Date;
   capabilities?: ConsumerCapability;
-  acquisitions: ServiceRegistration[];
+  acquisitions: EList<ServiceRegistration>;
 
 }

@@ -6,7 +6,7 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceException } from './ServiceException';
+import type { ServiceException } from './ServiceException.js';
 
 /**
  * RestExceptionBinding

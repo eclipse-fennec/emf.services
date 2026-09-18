@@ -5,15 +5,16 @@
  * @generated
  */
 
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceRegistry } from './ServiceRegistry';
-import type { ServiceInterface } from './ServiceInterface';
-import type { ServiceImplementation } from './ServiceImplementation';
-import type { ServiceProvider } from './ServiceProvider';
-import type { Diagnostic } from './Diagnostic';
-import { ServiceRegistryImpl } from './ServiceRegistryImpl';
-import type { RemoteServiceRegistry } from './RemoteServiceRegistry';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList, createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ServiceRegistry } from './ServiceRegistry.js';
+import type { ServiceInterface } from './ServiceInterface.js';
+import type { ServiceImplementation } from './ServiceImplementation.js';
+import type { ServiceProvider } from './ServiceProvider.js';
+import type { Diagnostic } from './Diagnostic.js';
+import { ServiceRegistryImpl } from './ServiceRegistryImpl.js';
+import type { RemoteServiceRegistry } from './RemoteServiceRegistry.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of RemoteServiceRegistry
@@ -28,9 +29,9 @@ export class RemoteServiceRegistryImpl extends ServiceRegistryImpl implements Re
 
   // Private fields
   private _endpoint?: string;
-  private _catalog: ServiceInterface[] = [];
-  private _implementations: ServiceImplementation[] = [];
-  private _providers: ServiceProvider[] = [];
+  private _catalog!: EList<ServiceInterface>;
+  private _implementations!: EList<ServiceImplementation>;
+  private _providers!: EList<ServiceProvider>;
 
   /**
    * Returns the EClass of this object
@@ -64,76 +65,25 @@ export class RemoteServiceRegistryImpl extends ServiceRegistryImpl implements Re
     }
   }
 
-  get catalog(): ServiceInterface[] {
+  get catalog(): EList<ServiceInterface> {
+    if (!this._catalog) {
+      this._catalog = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('catalog') as EReference);
+    }
     return this._catalog;
   }
 
-  set catalog(value: ServiceInterface[]) {
-    const oldValue = this._catalog;
-    this._catalog = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RemoteServiceRegistryImpl.CATALOG),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => RemoteServiceRegistryImpl.CATALOG,
-        merge: () => false
-      });
+  get implementations(): EList<ServiceImplementation> {
+    if (!this._implementations) {
+      this._implementations = createEObjectEList(this, this.eClass().getEStructuralFeature('implementations') as EReference) as unknown as EList<ServiceImplementation>;
     }
-  }
-
-  get implementations(): ServiceImplementation[] {
     return this._implementations;
   }
 
-  set implementations(value: ServiceImplementation[]) {
-    const oldValue = this._implementations;
-    this._implementations = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RemoteServiceRegistryImpl.IMPLEMENTATIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => RemoteServiceRegistryImpl.IMPLEMENTATIONS,
-        merge: () => false
-      });
+  get providers(): EList<ServiceProvider> {
+    if (!this._providers) {
+      this._providers = createEObjectEList(this, this.eClass().getEStructuralFeature('providers') as EReference) as unknown as EList<ServiceProvider>;
     }
-  }
-
-  get providers(): ServiceProvider[] {
     return this._providers;
-  }
-
-  set providers(value: ServiceProvider[]) {
-    const oldValue = this._providers;
-    this._providers = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(RemoteServiceRegistryImpl.PROVIDERS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => RemoteServiceRegistryImpl.PROVIDERS,
-        merge: () => false
-      });
-    }
   }
 
   // Reflective API
@@ -168,15 +118,18 @@ export class RemoteServiceRegistryImpl extends ServiceRegistryImpl implements Re
         super.eSet(feature, newValue);
         break;
       case RemoteServiceRegistryImpl.CATALOG:
-        this.catalog = newValue as ServiceInterface[];
+        this.catalog.clear();
+        this.catalog.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case RemoteServiceRegistryImpl.IMPLEMENTATIONS:
-        this.implementations = newValue as ServiceImplementation[];
+        this.implementations.clear();
+        this.implementations.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case RemoteServiceRegistryImpl.PROVIDERS:
-        this.providers = newValue as ServiceProvider[];
+        this.providers.clear();
+        this.providers.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -193,11 +146,11 @@ export class RemoteServiceRegistryImpl extends ServiceRegistryImpl implements Re
       case RemoteServiceRegistryImpl.ENDPOINT:
         return this._endpoint !== undefined;
       case RemoteServiceRegistryImpl.CATALOG:
-        return this._catalog !== undefined && this._catalog.length > 0;
+        return this._catalog !== undefined && !this._catalog.isEmpty();
       case RemoteServiceRegistryImpl.IMPLEMENTATIONS:
-        return this._implementations !== undefined && this._implementations.length > 0;
+        return this._implementations !== undefined && !this._implementations.isEmpty();
       case RemoteServiceRegistryImpl.PROVIDERS:
-        return this._providers !== undefined && this._providers.length > 0;
+        return this._providers !== undefined && !this._providers.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -213,13 +166,13 @@ export class RemoteServiceRegistryImpl extends ServiceRegistryImpl implements Re
         this._endpoint = undefined;
         return;
       case RemoteServiceRegistryImpl.CATALOG:
-        this._catalog = [];
+        if (this._catalog) this._catalog.clear();
         return;
       case RemoteServiceRegistryImpl.IMPLEMENTATIONS:
-        this._implementations = [];
+        if (this._implementations) this._implementations.clear();
         return;
       case RemoteServiceRegistryImpl.PROVIDERS:
-        this._providers = [];
+        if (this._providers) this._providers.clear();
         return;
       default:
         super.eUnset(feature);

@@ -7,10 +7,10 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { Parameter } from './Parameter';
-import type { ParameterBinding } from './ParameterBinding';
-import type { RestParameterBinding } from './RestParameterBinding';
-import { DDSRPackage } from './DDSRPackage';
+import type { Parameter } from './Parameter.js';
+import { ParameterBinding } from './ParameterBinding.js';
+import type { RestParameterBinding } from './RestParameterBinding.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of RestParameterBinding
@@ -24,7 +24,7 @@ export class RestParameterBindingImpl extends BasicEObject implements RestParame
 
   // Private fields
   private _parameter?: Parameter;
-  private _binding?: ParameterBinding;
+  private _binding: ParameterBinding = ParameterBinding.BODY;
   private _wireName?: string;
 
   /**
@@ -158,7 +158,7 @@ export class RestParameterBindingImpl extends BasicEObject implements RestParame
       case RestParameterBindingImpl.PARAMETER:
         return this._parameter !== undefined;
       case RestParameterBindingImpl.BINDING:
-        return this._binding !== undefined;
+        return this._binding !== ParameterBinding.BODY;
       case RestParameterBindingImpl.WIRE_NAME:
         return this._wireName !== undefined;
       default:
@@ -176,7 +176,7 @@ export class RestParameterBindingImpl extends BasicEObject implements RestParame
         this._parameter = undefined;
         return;
       case RestParameterBindingImpl.BINDING:
-        this._binding = undefined;
+        this._binding = ParameterBinding.BODY;
         return;
       case RestParameterBindingImpl.WIRE_NAME:
         this._wireName = undefined;

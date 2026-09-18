@@ -5,10 +5,10 @@
  * @generated
  */
 
-import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { FlavorKind } from './FlavorKind';
-import type { Property } from './Property';
-import type { Requirement } from './Requirement';
+import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { FlavorKind } from './FlavorKind.js';
+import type { Property } from './Property.js';
+import type { Requirement } from './Requirement.js';
 
 /**
  * ConsumerCapability
@@ -16,8 +16,8 @@ import type { Requirement } from './Requirement';
  */
 export interface ConsumerCapability extends EObject {
   consumerId?: string;
-  supportedFlavors: FlavorKind[];
-  properties: Property[];
-  requirements: Requirement[];
+  supportedFlavors: EList<FlavorKind>;
+  properties: EList<Property>;
+  requirements: EList<Requirement>;
 
 }

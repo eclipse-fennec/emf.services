@@ -6,11 +6,12 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ConsumerCapability } from './ConsumerCapability';
-import type { ServiceRegistration } from './ServiceRegistration';
-import type { ConsumerSession } from './ConsumerSession';
-import { DDSRPackage } from './DDSRPackage';
+import { createEObjectEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { ConsumerCapability } from './ConsumerCapability.js';
+import type { ServiceRegistration } from './ServiceRegistration.js';
+import type { ConsumerSession } from './ConsumerSession.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ConsumerSession
@@ -27,7 +28,7 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
   private _consumerId: string = "";
   private _lastRenewal?: Date;
   private _capabilities?: ConsumerCapability;
-  private _acquisitions: ServiceRegistration[] = [];
+  private _acquisitions!: EList<ServiceRegistration>;
 
   /**
    * Returns the EClass of this object
@@ -109,28 +110,11 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
     }
   }
 
-  get acquisitions(): ServiceRegistration[] {
-    return this._acquisitions;
-  }
-
-  set acquisitions(value: ServiceRegistration[]) {
-    const oldValue = this._acquisitions;
-    this._acquisitions = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ConsumerSessionImpl.ACQUISITIONS),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ConsumerSessionImpl.ACQUISITIONS,
-        merge: () => false
-      });
+  get acquisitions(): EList<ServiceRegistration> {
+    if (!this._acquisitions) {
+      this._acquisitions = createEObjectEList(this, this.eClass().getEStructuralFeature('acquisitions') as EReference) as unknown as EList<ServiceRegistration>;
     }
+    return this._acquisitions;
   }
 
   // Reflective API
@@ -173,7 +157,8 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         super.eSet(feature, newValue);
         break;
       case ConsumerSessionImpl.ACQUISITIONS:
-        this.acquisitions = newValue as ServiceRegistration[];
+        this.acquisitions.clear();
+        this.acquisitions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       default:
@@ -194,7 +179,7 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
       case ConsumerSessionImpl.CAPABILITIES:
         return this._capabilities !== undefined;
       case ConsumerSessionImpl.ACQUISITIONS:
-        return this._acquisitions !== undefined && this._acquisitions.length > 0;
+        return this._acquisitions !== undefined && !this._acquisitions.isEmpty();
       default:
         return super.eIsSet(feature);
     }
@@ -216,7 +201,7 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         this._capabilities = undefined;
         return;
       case ConsumerSessionImpl.ACQUISITIONS:
-        this._acquisitions = [];
+        if (this._acquisitions) this._acquisitions.clear();
         return;
       default:
         super.eUnset(feature);

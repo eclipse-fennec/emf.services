@@ -6,8 +6,8 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ExpressionLanguage } from './ExpressionLanguage';
+import type { NamedElement } from './NamedElement.js';
+import type { ExpressionLanguage } from './ExpressionLanguage.js';
 
 /**
  * Invariant

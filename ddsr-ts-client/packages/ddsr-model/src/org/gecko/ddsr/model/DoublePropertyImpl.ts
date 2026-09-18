@@ -6,10 +6,10 @@
  */
 
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { Property } from './Property';
-import { PropertyImpl } from './PropertyImpl';
-import type { DoubleProperty } from './DoubleProperty';
-import { DDSRPackage } from './DDSRPackage';
+import type { Property } from './Property.js';
+import { PropertyImpl } from './PropertyImpl.js';
+import type { DoubleProperty } from './DoubleProperty.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of DoubleProperty

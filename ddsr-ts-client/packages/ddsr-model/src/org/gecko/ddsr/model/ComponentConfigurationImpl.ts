@@ -6,17 +6,18 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { ComponentDescription } from './ComponentDescription';
-import type { ComponentState } from './ComponentState';
-import type { Property } from './Property';
-import type { SatisfiedReference } from './SatisfiedReference';
-import type { UnsatisfiedReference } from './UnsatisfiedReference';
-import type { Diagnostic } from './Diagnostic';
-import type { ServiceReference } from './ServiceReference';
-import type { ComponentConfiguration } from './ComponentConfiguration';
-import { DDSRPackage } from './DDSRPackage';
+import { createContainmentEList } from '@emfts/core';
+import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { NamedElement } from './NamedElement.js';
+import type { ComponentDescription } from './ComponentDescription.js';
+import type { Property } from './Property.js';
+import type { SatisfiedReference } from './SatisfiedReference.js';
+import type { UnsatisfiedReference } from './UnsatisfiedReference.js';
+import type { Diagnostic } from './Diagnostic.js';
+import type { ServiceReference } from './ServiceReference.js';
+import { ComponentState } from './ComponentState.js';
+import type { ComponentConfiguration } from './ComponentConfiguration.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ComponentConfiguration
@@ -37,10 +38,10 @@ export class ComponentConfigurationImpl extends BasicEObject implements Componen
   // Private fields
   private _id: string = "";
   private _description?: ComponentDescription;
-  private _state?: ComponentState;
-  private _properties: Property[] = [];
-  private _satisfiedReferences: SatisfiedReference[] = [];
-  private _unsatisfiedReferences: UnsatisfiedReference[] = [];
+  private _state: ComponentState = ComponentState.UNSATISFIED_CONFIGURATION;
+  private _properties!: EList<Property>;
+  private _satisfiedReferences!: EList<SatisfiedReference>;
+  private _unsatisfiedReferences!: EList<UnsatisfiedReference>;
   private _failure?: Diagnostic;
   private _service?: ServiceReference;
   private _name: string = "";
@@ -125,76 +126,25 @@ export class ComponentConfigurationImpl extends BasicEObject implements Componen
     }
   }
 
-  get properties(): Property[] {
+  get properties(): EList<Property> {
+    if (!this._properties) {
+      this._properties = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('properties') as EReference);
+    }
     return this._properties;
   }
 
-  set properties(value: Property[]) {
-    const oldValue = this._properties;
-    this._properties = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentConfigurationImpl.PROPERTIES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentConfigurationImpl.PROPERTIES,
-        merge: () => false
-      });
+  get satisfiedReferences(): EList<SatisfiedReference> {
+    if (!this._satisfiedReferences) {
+      this._satisfiedReferences = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('satisfiedReferences') as EReference);
     }
-  }
-
-  get satisfiedReferences(): SatisfiedReference[] {
     return this._satisfiedReferences;
   }
 
-  set satisfiedReferences(value: SatisfiedReference[]) {
-    const oldValue = this._satisfiedReferences;
-    this._satisfiedReferences = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentConfigurationImpl.SATISFIED_REFERENCES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentConfigurationImpl.SATISFIED_REFERENCES,
-        merge: () => false
-      });
+  get unsatisfiedReferences(): EList<UnsatisfiedReference> {
+    if (!this._unsatisfiedReferences) {
+      this._unsatisfiedReferences = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('unsatisfiedReferences') as EReference);
     }
-  }
-
-  get unsatisfiedReferences(): UnsatisfiedReference[] {
     return this._unsatisfiedReferences;
-  }
-
-  set unsatisfiedReferences(value: UnsatisfiedReference[]) {
-    const oldValue = this._unsatisfiedReferences;
-    this._unsatisfiedReferences = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(ComponentConfigurationImpl.UNSATISFIED_REFERENCES),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => ComponentConfigurationImpl.UNSATISFIED_REFERENCES,
-        merge: () => false
-      });
-    }
   }
 
   get failure(): Diagnostic {
@@ -303,15 +253,18 @@ export class ComponentConfigurationImpl extends BasicEObject implements Componen
         super.eSet(feature, newValue);
         break;
       case ComponentConfigurationImpl.PROPERTIES:
-        this.properties = newValue as Property[];
+        this.properties.clear();
+        this.properties.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentConfigurationImpl.SATISFIED_REFERENCES:
-        this.satisfiedReferences = newValue as SatisfiedReference[];
+        this.satisfiedReferences.clear();
+        this.satisfiedReferences.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentConfigurationImpl.UNSATISFIED_REFERENCES:
-        this.unsatisfiedReferences = newValue as UnsatisfiedReference[];
+        this.unsatisfiedReferences.clear();
+        this.unsatisfiedReferences.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
       case ComponentConfigurationImpl.FAILURE:
@@ -342,13 +295,13 @@ export class ComponentConfigurationImpl extends BasicEObject implements Componen
       case ComponentConfigurationImpl.DESCRIPTION:
         return this._description !== undefined;
       case ComponentConfigurationImpl.STATE:
-        return this._state !== undefined;
+        return this._state !== ComponentState.UNSATISFIED_CONFIGURATION;
       case ComponentConfigurationImpl.PROPERTIES:
-        return this._properties !== undefined && this._properties.length > 0;
+        return this._properties !== undefined && !this._properties.isEmpty();
       case ComponentConfigurationImpl.SATISFIED_REFERENCES:
-        return this._satisfiedReferences !== undefined && this._satisfiedReferences.length > 0;
+        return this._satisfiedReferences !== undefined && !this._satisfiedReferences.isEmpty();
       case ComponentConfigurationImpl.UNSATISFIED_REFERENCES:
-        return this._unsatisfiedReferences !== undefined && this._unsatisfiedReferences.length > 0;
+        return this._unsatisfiedReferences !== undefined && !this._unsatisfiedReferences.isEmpty();
       case ComponentConfigurationImpl.FAILURE:
         return this._failure !== undefined;
       case ComponentConfigurationImpl.SERVICE:
@@ -373,16 +326,16 @@ export class ComponentConfigurationImpl extends BasicEObject implements Componen
         this._description = undefined;
         return;
       case ComponentConfigurationImpl.STATE:
-        this._state = undefined;
+        this._state = ComponentState.UNSATISFIED_CONFIGURATION;
         return;
       case ComponentConfigurationImpl.PROPERTIES:
-        this._properties = [];
+        if (this._properties) this._properties.clear();
         return;
       case ComponentConfigurationImpl.SATISFIED_REFERENCES:
-        this._satisfiedReferences = [];
+        if (this._satisfiedReferences) this._satisfiedReferences.clear();
         return;
       case ComponentConfigurationImpl.UNSATISFIED_REFERENCES:
-        this._unsatisfiedReferences = [];
+        if (this._unsatisfiedReferences) this._unsatisfiedReferences.clear();
         return;
       case ComponentConfigurationImpl.FAILURE:
         this._failure = undefined;

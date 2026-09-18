@@ -6,8 +6,8 @@
  */
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
-import type { NamedElement } from './NamedElement';
-import type { LifecycleHookKind } from './LifecycleHookKind';
+import type { NamedElement } from './NamedElement.js';
+import type { LifecycleHookKind } from './LifecycleHookKind.js';
 
 /**
  * LifecycleHook

@@ -7,10 +7,10 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceEventType } from './ServiceEventType';
-import type { ServiceReference } from './ServiceReference';
-import type { ServiceEvent } from './ServiceEvent';
-import { DDSRPackage } from './DDSRPackage';
+import type { ServiceReference } from './ServiceReference.js';
+import { ServiceEventType } from './ServiceEventType.js';
+import type { ServiceEvent } from './ServiceEvent.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of ServiceEvent
@@ -24,7 +24,7 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
   static readonly REASON_CODE: number = 3;
 
   // Private fields
-  private _type?: ServiceEventType;
+  private _type: ServiceEventType = ServiceEventType.UNSPECIFIED;
   private _reference?: ServiceReference;
   private _timestamp?: Date;
   private _reasonCode?: string;
@@ -188,7 +188,7 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ServiceEventImpl.TYPE:
-        return this._type !== undefined;
+        return this._type !== ServiceEventType.UNSPECIFIED;
       case ServiceEventImpl.REFERENCE:
         return this._reference !== undefined;
       case ServiceEventImpl.TIMESTAMP:
@@ -207,7 +207,7 @@ export class ServiceEventImpl extends BasicEObject implements ServiceEvent {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
       case ServiceEventImpl.TYPE:
-        this._type = undefined;
+        this._type = ServiceEventType.UNSPECIFIED;
         return;
       case ServiceEventImpl.REFERENCE:
         this._reference = undefined;

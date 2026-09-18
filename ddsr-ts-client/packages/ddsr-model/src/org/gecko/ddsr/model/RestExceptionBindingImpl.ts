@@ -7,9 +7,9 @@
 
 import { BasicEObject } from '@emfts/core';
 import type { EClass, EStructuralFeature } from '@emfts/core';
-import type { ServiceException } from './ServiceException';
-import type { RestExceptionBinding } from './RestExceptionBinding';
-import { DDSRPackage } from './DDSRPackage';
+import type { ServiceException } from './ServiceException.js';
+import type { RestExceptionBinding } from './RestExceptionBinding.js';
+import { DDSRPackage } from './DDSRPackage.js';
 
 /**
  * Implementation of RestExceptionBinding

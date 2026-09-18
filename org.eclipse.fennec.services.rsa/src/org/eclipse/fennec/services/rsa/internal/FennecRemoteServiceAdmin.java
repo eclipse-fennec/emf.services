@@ -23,12 +23,21 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import java.util.Optional;
+
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.client.DdsrClient;
+import org.eclipse.fennec.services.client.ServiceLocator;
+import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.rsa.registry.ServiceModels;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
 import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
+import org.eclipse.fennec.services.rsa.spi.RsaProperties;
+import java.io.IOException;
+
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.BundleException;
 import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
@@ -71,6 +80,14 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 
 	@Reference
 	private ServiceModels models;
+
+	@Reference
+	private DdsrClient client;
+
+	@Reference
+	private ServiceProxyFactory proxies;
+
+	private final List<ImportedService> imports = new CopyOnWriteArrayList<>();
 
 	private final List<ExportedService> exported = new CopyOnWriteArrayList<>();
 
@@ -126,7 +143,7 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 			endpoint = distribution.export(service, contract, effective);
 			inRegistry = models.add(endpoint.implementation());
 			announcement = discovery.announce(endpoint);
-			EndpointDescription description = Endpoints.describe(reference, endpoint.contract(),
+			EndpointDescription description = Endpoints.describe(reference, exportedAs, endpoint.contract(),
 					endpoint.implementation(), context.getProperty(Constants.FRAMEWORK_UUID), configType);
 
 			AutoCloseable registryEntry = inRegistry;
@@ -254,19 +271,53 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		return List.copyOf(exported.stream().map(ExportRegistration::getExportReference).toList());
 	}
 
+	/**
+	 * Import an endpoint: find it in the broker, wrap it in a proxy,
+	 * register the proxy here.
+	 *
+	 * <p>No per-flavor SPI on this side, and that is not an omission.
+	 * The consumer half of the SDK already abstracts the transport — a
+	 * {@link ServiceLocator} knows the flavor it was found with and the
+	 * {@link ServiceProxyFactory} builds a proxy over whichever it is. The
+	 * export needed a seam because serving is transport work; importing
+	 * is finding and calling, and both exist.
+	 *
+	 * <p>{@code null} when the endpoint is not one this admin can import:
+	 * not ours, or not (yet) in the broker. That is what the
+	 * specification says to answer, and a topology manager treats it as
+	 * "ask someone else".
+	 */
 	@Override
 	public ImportRegistration importService(EndpointDescription endpoint) {
-		// The consumer side is the next step of #24: a discovery that
-		// watches, and a proxy built from the contract the way the SDK
-		// already builds one. Returning null is what the specification
-		// says for an endpoint this admin cannot import, and it is the
-		// truthful answer rather than a broken registration.
-		LOG.info("[DDSR] importService is not implemented yet: " + endpoint.getId());
-		return null;
+		Object contract = endpoint.getProperties().get(RsaProperties.CONTRACT);
+		if (contract == null) {
+			LOG.fine(() -> "[DDSR] not importing " + endpoint.getId() + ": it names no contract of ours");
+			return null;
+		}
+		Object implementationId = endpoint.getProperties().get(RsaProperties.IMPLEMENTATION);
+		Optional<ServiceLocator> found = client.consumer().find(contract.toString(), null).stream()
+				.filter(locator -> implementationId == null || locator.implementation() == null
+						|| implementationId.equals(locator.implementation().getImplementationId()))
+				.findFirst();
+		if (found.isEmpty()) {
+			LOG.info("[DDSR] not importing " + endpoint.getId() + ": the broker holds no such registration");
+			return null;
+		}
+
+		ImportedService imported = new ImportedService(endpoint, found.get(), proxies, imports::remove);
+		try {
+			imported.register(ProxyHost.in(context).getBundleContext());
+		} catch (BundleException | IOException noHost) {
+			LOG.log(Level.WARNING, "[DDSR] no proxy host bundle — cannot import " + endpoint.getId(), noHost);
+			return null;
+		}
+		imports.add(imported);
+		LOG.info("[DDSR] imported " + endpoint.getId() + " as " + endpoint.getInterfaces());
+		return imported;
 	}
 
 	@Override
 	public Collection<ImportReference> getImportedEndpoints() {
-		return List.of();
+		return List.copyOf(imports);
 	}
 }

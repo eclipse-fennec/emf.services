@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.examples.rsa;
+package org.eclipse.fennec.services.examples.rsa.api;
 
 /**
  * An ordinary Java interface.

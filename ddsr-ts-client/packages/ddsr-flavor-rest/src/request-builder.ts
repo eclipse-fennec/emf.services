@@ -105,8 +105,12 @@ function place(params: Record<string, unknown>, opFlavor: RestOperationFlavor): 
   const placed: Placed = { path: {}, query: {}, header: {}, body: {}, rest: {} };
   const bindings = toArray<RestParameterBinding>(opFlavor.parameterBindings);
 
+  const operationParameters = toArray<{ name?: string }>(
+    (opFlavor.operation as { parameters?: unknown } | undefined)?.parameters
+  );
+
   for (const [name, value] of Object.entries(params)) {
-    const binding = bindings.find(b => b.parameter?.name === name);
+    const binding = bindings.find(b => boundParameterName(b, operationParameters) === name);
     if (!binding) {
       placed.rest[name] = value;
       continue;
@@ -120,6 +124,31 @@ function place(params: Record<string, unknown>, opFlavor: RestOperationFlavor): 
     }
   }
   return placed;
+}
+
+/**
+ * The name of the parameter a binding refers to. It reaches a consumer as
+ * an unresolved proxy: the flavor travels in the lookup envelope while the
+ * contract stays behind its catalog URL, so the reference is a
+ * cross-document one and its fragment is positional
+ * (`…#//@operations.N/@parameters.M`). Resolving it by position against
+ * the operation the flavor already points at keeps the binding readable
+ * without fetching the contract — the same positional rule the rest of
+ * this wire format uses, and the mirror of the Java side.
+ */
+function boundParameterName(
+  binding: RestParameterBinding,
+  operationParameters: { name?: string }[]
+): string | undefined {
+  const bound = binding.parameter as
+    { name?: string; eProxyURI?: () => { toString(): string } | null } | undefined;
+  if (bound?.name) return bound.name;
+
+  const proxyURI = bound?.eProxyURI?.();
+  if (!proxyURI) return undefined;
+  const match = /@parameters\.(\d+)$/.exec(proxyURI.toString());
+  if (!match) return undefined;
+  return operationParameters[Number(match[1])]?.name;
 }
 
 /** Convert an EList or array-like to a plain array. */

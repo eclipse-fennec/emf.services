@@ -28,6 +28,7 @@
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
     "provider.name": "$[env:PAYMENTS_PROVIDER_NAME;default=payments-java]",
+    "publish.binding.echo": "$[env:PAYMENTS_PUBLISH_BINDING_ECHO;default=false]",
     "impl.version": "$[env:PAYMENTS_IMPL_VERSION;default=1.0.0]",
     "update.policy": "$[env:PAYMENTS_UPDATE_POLICY;default=UNSPECIFIED]",
     "replaces.version": "$[env:PAYMENTS_REPLACES_VERSION;default=]"

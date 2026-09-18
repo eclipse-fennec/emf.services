@@ -116,12 +116,17 @@ echo "broker up (pid $BROKER_PID)"
 
 # ============================================================ Scenario A
 log "Scenario A: Java provider -> TS consumer"
+# Only this scenario's provider also publishes BindingEcho: its one
+# operation carries three arguments in three different places, and the
+# probe checks that the consumer put them where the flavor says (#74).
+export PAYMENTS_PUBLISH_BINDING_ECHO=true
 start_jar payment-java "$PROVIDER_JAR" "$WORK/payment-java"
+unset PAYMENTS_PUBLISH_BINDING_ECHO
 PROVIDER_PID=$LAST_PID
 wait_for_line "$WORK/payment-java.log" "published payments-java" 60
 
 (cd "$TS/examples/payment" \
-  && BROKER_URL="$BROKER_URL" EXPECT_LANG=java corepack pnpm exec tsx harness-probe.ts) \
+  && BROKER_URL="$BROKER_URL" EXPECT_LANG=java EXPECT_BINDINGS=1 corepack pnpm exec tsx harness-probe.ts) \
   >"$WORK/probe-a.log" 2>&1 &
 PROBE_PID=$!
 PIDS+=("$PROBE_PID")

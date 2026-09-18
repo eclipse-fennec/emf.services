@@ -1,0 +1,24 @@
+Bundle-Name: Fennec Services Generic REST Distribution
+Bundle-Description: \
+	Serves a contract over REST without generated code: one Jakarta REST \
+	application per configured implementation, whose dispatcher routes a \
+	request to an operation through the flavor and invokes the service \
+	behind it. The model is the only source — nothing here is written per \
+	contract.
+
+-library: enableJakartaREST, enableEMF
+
+Private-Package: \
+	org.eclipse.fennec.services.provider.rest
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.service.jakartars;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.flavor.rest;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

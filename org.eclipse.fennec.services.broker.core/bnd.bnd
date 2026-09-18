@@ -6,7 +6,8 @@ Bundle-Description: \
 -library: enableEMF
 
 Export-Package: \
-	org.eclipse.fennec.services.broker.core
+	org.eclipse.fennec.services.broker.core,\
+	org.eclipse.fennec.services.broker.core.exception
 
 Private-Package: \
 	org.eclipse.fennec.services.broker.core.internal

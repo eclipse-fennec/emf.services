@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -63,6 +64,8 @@ import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.broker.core.DdsrBroker;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
+import org.eclipse.fennec.services.broker.core.exception.CatalogEntryAmbiguous;
+import org.eclipse.fennec.services.broker.core.exception.CatalogEntryNotFound;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
@@ -1764,6 +1767,104 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 					+ " — a reference of the published implementation is dropped");
 		}
 		return counterpart;
+	}
+
+
+	// ============================================================
+	// The catalog as the wire states it (broker-catalog-api.xmi, #76)
+	//
+	// The contract describes what goes over HTTP, and these are the
+	// operations it names. They were the REST resource's methods until
+	// the generic distribution started serving that contract — and what
+	// they do is broker behaviour, not transport: which entry a name and
+	// a fingerprint address, and what "not found" or "ambiguous" means
+	// is the catalog's business.
+	// ============================================================
+
+	/** The registry as it stands, catalog included. */
+	public RemoteServiceRegistry listCatalog() {
+		return getRegistry();
+	}
+
+	/**
+	 * One contract by name.
+	 *
+	 * <p>Several contracts may share a name — they are told apart by
+	 * content fingerprint (ACQUISITION.md §11.2) — so a bare name is
+	 * only answered while it addresses one.
+	 */
+	public ServiceInterface getCatalogEntry(String name, String fingerprint) {
+		lock.readLock().lock();
+		try {
+			List<ServiceInterface> named = entriesNamed(name);
+			if (fingerprint != null && !fingerprint.isBlank()) {
+				for (ServiceInterface candidate : named) {
+					if (ContractAddressing.matches(candidate, fingerprint)) {
+						return candidate;
+					}
+				}
+				throw new CatalogEntryNotFound(
+						"no catalog entry named '" + name + "' with fingerprint " + fingerprint);
+			}
+			if (named.isEmpty()) {
+				throw new CatalogEntryNotFound("no catalog entry named '" + name + "'");
+			}
+			if (named.size() > 1) {
+				throw new CatalogEntryAmbiguous("interface name '" + name + "' names " + named.size()
+						+ " coexisting contracts — address one via its fingerprint; available: "
+						+ named.stream().map(ContractAddressing::fingerprint).collect(Collectors.joining(", ")));
+			}
+			return named.get(0);
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	/** Soft-deprecate the contract a name and fingerprint address. */
+	public Diagnostic deprecateCatalogEntry(String name, String fingerprint, ServiceInterface governance,
+			String requestor) {
+		ServiceInterface target = governanceTarget(name, fingerprint);
+		if (governance != null) {
+			// Carry the caller's governance fields onto the resolved
+			// target; nothing else about what they sent is taken.
+			if (governance.getDeprecationReason() != null) {
+				target.setDeprecationReason(governance.getDeprecationReason());
+			}
+			if (governance.getReplacedBy() != null) {
+				target.setReplacedBy(governance.getReplacedBy());
+			}
+		}
+		return deprecateCatalogEntry(target, requestor);
+	}
+
+	/** Remove the contract a name and fingerprint address. */
+	public Diagnostic removeCatalogEntry(String name, String fingerprint, String requestor) {
+		return removeCatalogEntry(governanceTarget(name, fingerprint), requestor);
+	}
+
+	/**
+	 * What a governance call acts on: with a fingerprint the entry
+	 * itself, so content addressing hits it even where several contracts
+	 * share the name; without one a name-only stub, which leaves the
+	 * unambiguity rule to the operation that is about to run.
+	 */
+	private ServiceInterface governanceTarget(String name, String fingerprint) {
+		if (fingerprint == null || fingerprint.isBlank()) {
+			ServiceInterface stub = ServicesFactory.eINSTANCE.createServiceInterface();
+			stub.setName(name);
+			return stub;
+		}
+		return getCatalogEntry(name, fingerprint);
+	}
+
+	private List<ServiceInterface> entriesNamed(String name) {
+		List<ServiceInterface> named = new ArrayList<>();
+		for (ServiceInterface entry : registry.getCatalog()) {
+			if (entry.getName() != null && entry.getName().equals(name)) {
+				named.add(entry);
+			}
+		}
+		return named;
 	}
 
 	// ============================================================

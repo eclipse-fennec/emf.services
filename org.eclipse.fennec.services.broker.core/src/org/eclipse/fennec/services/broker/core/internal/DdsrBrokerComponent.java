@@ -37,6 +37,7 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
+import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.BrokerSessions;
@@ -68,6 +69,14 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 @Component(
 		service = { DdsrBroker.class, BrokerCatalog.class, BrokerImplementations.class, BrokerLookup.class,
 				BrokerSessions.class },
+		// The broker is the provider of its own three contracts, so it
+		// says so the way every provider does. This is what the generic
+		// REST distribution looks it up by (#76) — one service, three
+		// contracts, because that is what it is.
+		property = {
+				"ddsr.contract=BrokerCatalog",
+				"ddsr.contract=BrokerImplementations",
+				"ddsr.contract=BrokerLookup" },
 		configurationPid = "org.eclipse.fennec.services.broker.core",
 		immediate = true)
 @Designate(ocd = DdsrBrokerComponent.Config.class)
@@ -355,6 +364,69 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	@Override
 	public RemoteServiceRegistry getRegistry() {
 		return required().getRegistry();
+	}
+
+	// ------------------------------------------------------------
+	// The operations the broker's own contracts name (#76). Not on the
+	// role interfaces: those are the in-process API and a REST proxy
+	// implements them too, while these are this deployment's answer to
+	// what its published contracts describe.
+	// ------------------------------------------------------------
+
+	public RemoteServiceRegistry listCatalog() {
+		return required().listCatalog();
+	}
+
+	public ServiceInterface getCatalogEntry(String name, String fingerprint) {
+		return required().getCatalogEntry(name, fingerprint);
+	}
+
+	public Diagnostic deprecateCatalogEntry(String name, String fingerprint, ServiceInterface governance,
+			String requestor) {
+		return required().deprecateCatalogEntry(name, fingerprint, governance, requestor);
+	}
+
+	public Diagnostic removeCatalogEntry(String name, String fingerprint, String requestor) {
+		return required().removeCatalogEntry(name, fingerprint, requestor);
+	}
+
+	/**
+	 * The publish operations take the provider document, because that is
+	 * what travels: the broker accepts exactly one implementation per
+	 * call, so which one is not a second argument but a rule about the
+	 * document.
+	 */
+	public Diagnostic publishImplementation(ServiceProvider provider) {
+		ServiceImplementation sole = soleImplementation(provider);
+		return sole == null ? notExactlyOne(provider) : publishImplementation(provider, sole);
+	}
+
+	public Diagnostic modifyImplementation(ServiceProvider provider) {
+		ServiceImplementation sole = soleImplementation(provider);
+		return sole == null ? notExactlyOne(provider) : modifyImplementation(provider, sole);
+	}
+
+	public Diagnostic withdrawImplementation(ServiceProvider provider) {
+		ServiceImplementation sole = soleImplementation(provider);
+		return sole == null ? notExactlyOne(provider) : withdrawImplementation(provider, sole);
+	}
+
+	private static ServiceImplementation soleImplementation(ServiceProvider provider) {
+		return provider == null || provider.getImplementations().size() != 1
+				? null
+				: provider.getImplementations().get(0);
+	}
+
+	/**
+	 * Refused as a Diagnostic rather than thrown: the caller sent
+	 * something this broker will not act on, and that is an answer, not
+	 * an accident. No contract declares a code for it, so it travels as
+	 * the transport's word for "not a request I can carry out".
+	 */
+	private static Diagnostic notExactlyOne(ServiceProvider provider) {
+		return DdsrDiagnostics.error(DdsrDiagnostics.CODE_MALFORMED_REQUEST,
+				"the broker takes exactly one implementation per call, got "
+						+ (provider == null ? "no provider" : provider.getImplementations().size()));
 	}
 
 	@Override

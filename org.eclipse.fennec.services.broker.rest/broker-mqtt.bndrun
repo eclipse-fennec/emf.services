@@ -34,7 +34,10 @@ jersey.deps:
 -runbundles.project: \
 	org.eclipse.osgitech.rest.servlet.whiteboard;version=latest,\
 	org.eclipse.parsson.jakarta.json;version=latest,\
-	org.eclipse.fennec.services.broker.rest;version=snapshot
+	org.eclipse.fennec.services.broker.rest;version=snapshot,\
+	org.eclipse.fennec.services.provider.rest;version=snapshot,\
+	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot
 
 -runblacklist: \
 	bnd.identity;id='org.osgi.service.cm'

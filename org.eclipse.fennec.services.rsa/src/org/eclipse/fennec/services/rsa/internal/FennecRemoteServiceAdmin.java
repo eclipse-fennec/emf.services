@@ -23,8 +23,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.rsa.registry.ServiceModels;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
-import org.eclipse.fennec.services.rsa.spi.FlavorDiscovery;
+import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
 import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -47,7 +49,7 @@ import org.osgi.service.remoteserviceadmin.RemoteServiceAdmin;
  *
  * <p>It owns no transport. Exporting is two steps that belong to other
  * people: a {@link FlavorDistribution} makes the service reachable over
- * one flavor, and a {@link FlavorDiscovery} tells the world. Which ones
+ * one flavor, and a {@link ServiceDiscovery} tells the world. Which ones
  * run is chosen the way the specification says — by configuration type.
  * That is what lets an MQTT export be a new bundle rather than a change
  * here.
@@ -65,7 +67,10 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 	private volatile List<FlavorDistribution> distributions = new CopyOnWriteArrayList<>();
 
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
-	private volatile List<FlavorDiscovery> discoveries = new CopyOnWriteArrayList<>();
+	private volatile List<ServiceDiscovery> discoveries = new CopyOnWriteArrayList<>();
+
+	@Reference
+	private ServiceModels models;
 
 	private final List<ExportedService> exported = new CopyOnWriteArrayList<>();
 
@@ -89,7 +94,7 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		}
 		String configType = configTypeOf(effective);
 		FlavorDistribution distribution = distributionFor(configType);
-		FlavorDiscovery discovery = discoveryFor(configType);
+		ServiceDiscovery discovery = discoveryFor(configType);
 		if (distribution == null || discovery == null) {
 			LOG.info("[DDSR] no " + (distribution == null ? "distribution" : "discovery")
 					+ " for configuration type '" + configType + "' — not exporting "
@@ -106,26 +111,37 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		return registrations;
 	}
 
-	private ExportRegistration export(ServiceReference<?> reference, Class<?> contract,
+	private ExportRegistration export(ServiceReference<?> reference, Class<?> exportedAs,
 			Map<String, Object> effective, String configType, FlavorDistribution distribution,
-			FlavorDiscovery discovery) {
+			ServiceDiscovery discovery) {
 		Object service = context.getService(reference);
 		ExportedEndpoint endpoint = null;
 		AutoCloseable announcement = null;
+		AutoCloseable inRegistry = null;
 		try {
-			endpoint = distribution.export(service, new Class<?>[] { contract }, effective);
+			// The registry answers with the provider's own model when
+			// there is one, and derives only otherwise. From here on
+			// nothing can tell which it was.
+			ServiceInterface contract = models.contractFor(exportedAs, effective);
+			endpoint = distribution.export(service, contract, effective);
+			inRegistry = models.add(endpoint.implementation());
 			announcement = discovery.announce(endpoint);
 			EndpointDescription description = Endpoints.describe(reference, endpoint.contract(),
 					endpoint.implementation(), context.getProperty(Constants.FRAMEWORK_UUID), configType);
 
+			AutoCloseable registryEntry = inRegistry;
 			ExportedService live = new ExportedService(reference, description, endpoint, announcement,
-					this::forget, () -> context.ungetService(reference));
+					this::forget, () -> {
+						close(registryEntry);
+						context.ungetService(reference);
+					});
 			exported.add(live);
 			return live;
 		} catch (RuntimeException failure) {
 			// Undo in the opposite order of doing, so nothing is left
 			// announced that is no longer served.
 			close(announcement);
+			close(inRegistry);
 			if (endpoint != null) {
 				endpoint.close();
 			}
@@ -224,8 +240,8 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		return null;
 	}
 
-	private FlavorDiscovery discoveryFor(String configType) {
-		for (FlavorDiscovery candidate : discoveries) {
+	private ServiceDiscovery discoveryFor(String configType) {
+		for (ServiceDiscovery candidate : discoveries) {
 			if (List.of(candidate.supportedConfigs()).contains(configType)) {
 				return candidate;
 			}

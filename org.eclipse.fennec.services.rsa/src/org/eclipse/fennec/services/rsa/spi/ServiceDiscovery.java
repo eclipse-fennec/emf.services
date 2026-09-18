@@ -18,17 +18,20 @@ import org.eclipse.fennec.services.ServiceImplementation;
 /**
  * Tells others about an exported service, and hears about theirs.
  *
- * <p>Both halves already exist in this registry and neither is invented
- * here: announcing is publishing the implementation to the broker, and
- * hearing is the broker's event stream plus a lookup. What varies is the
- * transport those two run over — REST with SSE today, MQTT next — which
- * is why this is an interface and not a class.
+ * <p>Deliberately not named after a flavor. This registry's own
+ * discovery — publish to the broker, listen on its event stream — is one
+ * implementation of it, and it has to be replaceable: a deployment may
+ * find its services by cluster gossip, from a file, by something that
+ * does not exist yet. None of that is a reason to give up the model.
+ * What travels through here is a {@code ServiceImplementation} either
+ * way, so another discovery changes where the knowledge comes from and
+ * nothing about what is known.
  *
- * <p>Separate from {@link FlavorDistribution} on purpose: how a service
- * is reached and how one learns it exists are different questions, and a
- * deployment may well answer them over different transports.
+ * <p>Separate from {@link FlavorDistribution} for the same reason: how a
+ * service is reached and how one learns it exists are different
+ * questions, and a deployment may answer them differently.
  */
-public interface FlavorDiscovery {
+public interface ServiceDiscovery {
 
 	/**
 	 * The RSA configuration types this provider answers to. A

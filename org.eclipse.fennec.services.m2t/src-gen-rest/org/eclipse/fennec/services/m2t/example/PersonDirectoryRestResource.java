@@ -13,6 +13,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import java.util.List;
 import org.eclipse.fennec.services.examples.model.ddsrexample.Person;
@@ -42,6 +43,7 @@ public class PersonDirectoryRestResource {
 
 	@GET
 	@Path("/persons/{id}")
+	@Produces("application/json")
 	public Response get(@PathParam("id") String id) {
 		if (id == null) {
 			return Response.status(400).entity("id is required").build();
@@ -66,14 +68,15 @@ public class PersonDirectoryRestResource {
 
 	@GET
 	@Path("/persons")
-	public Response list(@QueryParam("offset") @DefaultValue("0") int offset, @QueryParam("max") @DefaultValue("50") int limit) {
-		if (offset < 0) {
+	@Produces({"application/json", "application/xml"})
+	public Response list(@QueryParam("offset") @DefaultValue("0") Integer offset, @QueryParam("max") @DefaultValue("50") Integer limit) {
+		if (offset != null && offset < 0) {
 			return Response.status(400).entity("offset is below 0").build();
 		}
-		if (limit < 1) {
+		if (limit != null && limit < 1) {
 			return Response.status(400).entity("limit is below 1").build();
 		}
-		if (limit > 200) {
+		if (limit != null && limit > 200) {
 			return Response.status(400).entity("limit is above 200").build();
 		}
 		try {

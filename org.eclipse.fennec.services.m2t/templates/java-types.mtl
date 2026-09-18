@@ -89,10 +89,28 @@ one, otherwise the last segment of the symbolic name in the target package.
 	if operation.returnValue.oclIsUndefined() then 'void'
 	else slotType(binding, operation.returnValue) endif /]
 
-[comment]A slot renders as its element type, or as a List of it when multi-valued.[/comment]
+[comment]
+A slot renders as its element type, or as a List of it when multi-valued.
+An OPTIONAL slot is one that may be absent, so its Java type has to be able
+to say so: a primitive cannot be null, and the boxed type takes its place.
+[/comment]
 [query public slotType(binding : JavaBinding, slot : Parameter) : String =
-	if slot.upperBound = 1 then elementType(binding, slot)
-	else 'List<'.concat(boxed(elementType(binding, slot))).concat('>') endif /]
+	if slot.upperBound <> 1 then 'List<'.concat(boxed(elementType(binding, slot))).concat('>')
+	else if slot.optional then boxed(elementType(binding, slot))
+	else elementType(binding, slot) endif endif /]
+
+[comment]
+The same slot as a transport layer has to read it: always able to be absent,
+because "the caller left it out" is a thing an endpoint must be able to tell
+before it decides between 400 and a call.
+[/comment]
+[query public nullableSlotType(binding : JavaBinding, slot : Parameter) : String =
+	if slot.upperBound <> 1 then slotType(binding, slot)
+	else boxed(elementType(binding, slot)) endif /]
+
+[query public isPrimitive(javaType : String) : Boolean =
+	Sequence{'int', 'long', 'short', 'byte', 'char', 'float', 'double', 'boolean'}
+		->includes(javaType) /]
 
 [comment]
 eType wins where it is set: an EClass renders as its name (imported through the

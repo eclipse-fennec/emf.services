@@ -36,5 +36,5 @@ public interface PersonDirectory {
 	 * @param limit Maximum number of persons to return. Optional, defaults to {@code 50}.
 	 * @return The requested page; empty when the offset is past the end.
 	 */
-	List<Person> list(int offset, int limit);
+	List<Person> list(Integer offset, Integer limit);
 }

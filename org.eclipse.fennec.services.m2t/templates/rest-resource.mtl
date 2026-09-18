@@ -64,10 +64,10 @@ public class [resourceName(implementation)/] {
 [for (operationFlavor : RestOperationFlavor | flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor)))]
 
 	@[httpMethod(operationFlavor)/]
-[if (operationFlavor.path <> null)]
-	@Path("[operationFlavor.path/]")
-[/if]
-	public Response [operationFlavor.operation.name/]([for (parameter : Parameter | operationFlavor.operation.parameters->sortedBy(p | p.index)) separator(', ')][parameterAnnotation(operationFlavor, parameter)/][slotType(binding, parameter)/] [parameter.name/][/for]) {
+[for (line : String | methodAnnotations(operationFlavor))]
+	[line/]
+[/for]
+	public Response [operationFlavor.operation.name/]([for (parameter : Parameter | operationFlavor.operation.parameters->sortedBy(p | p.index)) separator(', ')][parameterAnnotation(operationFlavor, parameter)/][nullableSlotType(binding, parameter)/] [parameter.name/][/for]) {
 [for (line : String | methodBody(binding, operationFlavor))]
 [line/]
 [/for]
@@ -178,9 +178,27 @@ none. A primitive result cannot be absent, so it is answered directly.
 	then 'Response.ok'
 	else 'Response.status('.concat(operationFlavor.returnCodes->first()).concat(').entity') endif /]
 
-[query public isPrimitive(javaType : String) : Boolean =
-	Sequence{'int', 'long', 'short', 'byte', 'char', 'float', 'double', 'boolean'}
-		->includes(javaType) /]
+[comment]
+Path and media types, each only where the flavor states one. One loop over
+finished lines: a multi-line block that takes no branch still contributes the
+newline after its tail, and an operation served at the base path would get a
+blank line where its @Path would have been.
+[/comment]
+[query public methodAnnotations(operationFlavor : RestOperationFlavor) : Sequence(String) =
+	(if operationFlavor.path.oclIsUndefined() then Sequence{}
+	else Sequence{'@Path("'.concat(operationFlavor.path).concat('")')} endif)
+	->union(mediaAnnotation('Consumes', operationFlavor.consumes))
+	->union(mediaAnnotation('Produces', operationFlavor.produces)) /]
+
+[query public mediaAnnotation(annotation : String, mediaTypes : Sequence(String)) : Sequence(String) =
+	if mediaTypes->isEmpty() then Sequence{}
+	else if mediaTypes->size() = 1
+	then Sequence{'@'.concat(annotation).concat('("').concat(mediaTypes->first()).concat('")')}
+	else Sequence{'@'.concat(annotation).concat('({')
+		.concat(mediaTypes->iterate(mediaType : String; joined : String = '' |
+			if joined.size() = 0 then '"'.concat(mediaType).concat('"')
+			else joined.concat(', "').concat(mediaType).concat('"') endif))
+		.concat('})')} endif endif /]
 
 [comment]===================== argument validity =====================[/comment]
 
@@ -195,8 +213,7 @@ runtime, not a generated if.
 		->collect(parameter | checksFor(parameter))->flatten() /]
 
 [query public checksFor(parameter : Parameter) : Sequence(String) =
-	(if parameter.optional or isPrimitive(javaType(parameter.type))
-	then Sequence{}
+	(if parameter.optional then Sequence{}
 	else reject(parameter, parameter.name.concat(' is required'), parameter.name.concat(' == null'))
 	endif)
 	->union(parameter.constraints->collect(c | constraintCheck(parameter, c))->flatten()) /]
@@ -221,12 +238,12 @@ runtime, not a generated if.
 [query public rangeCheck(parameter : Parameter, constraint : NumericRangeConstraint) : Sequence(String) =
 	(if constraint.min.oclIsUndefined() then Sequence{}
 	else reject(parameter, parameter.name.concat(' is below ').concat(bound(parameter, constraint.min)),
-		parameter.name.concat(if constraint.inclusiveMin then ' < ' else ' <= ' endif)
-			.concat(bound(parameter, constraint.min))) endif)
+		guarded(parameter, parameter.name.concat(if constraint.inclusiveMin then ' < ' else ' <= ' endif)
+			.concat(bound(parameter, constraint.min)))) endif)
 	->union(if constraint.max.oclIsUndefined() then Sequence{}
 	else reject(parameter, parameter.name.concat(' is above ').concat(bound(parameter, constraint.max)),
-		parameter.name.concat(if constraint.inclusiveMax then ' > ' else ' >= ' endif)
-			.concat(bound(parameter, constraint.max))) endif) /]
+		guarded(parameter, parameter.name.concat(if constraint.inclusiveMax then ' > ' else ' >= ' endif)
+			.concat(bound(parameter, constraint.max)))) endif) /]
 
 [comment]
 A bound as the parameter's own type writes it: a whole number against an
@@ -260,7 +277,7 @@ argument is only checked when it is there. A required one was rejected a few
 lines above if it was missing, so it needs no second guard.
 [/comment]
 [query public guarded(parameter : Parameter, test : String) : String =
-	if isPrimitive(javaType(parameter.type)) or not parameter.optional then test
+	if not parameter.optional then test
 	else parameter.name.concat(' != null && ').concat(test) endif /]
 
 [query public reject(parameter : Parameter, reason : String, test : String) : Sequence(String) =
@@ -291,6 +308,10 @@ error is still the error it is, it just has no status of its own.
 	restOperations(flavor)->collect(o | 'jakarta.ws.rs.'.concat(httpMethod(o)))
 		->union(restOperations(flavor)->collect(o | o.parameterBindings)->flatten()
 			->collect(b | bindingImport(b)))
+		->union(if restOperations(flavor)->exists(o | o.produces->notEmpty())
+			then Sequence{'jakarta.ws.rs.Produces'} else Sequence{} endif)
+		->union(if restOperations(flavor)->exists(o | o.consumes->notEmpty())
+			then Sequence{'jakarta.ws.rs.Consumes'} else Sequence{} endif)
 		->union(if restOperations(flavor)->exists(o | o.parameterBindings
 				->exists(b | not b.wireName.oclIsUndefined()) or o.operation.parameters
 				->exists(p | not p.defaultValue.oclIsUndefined()))

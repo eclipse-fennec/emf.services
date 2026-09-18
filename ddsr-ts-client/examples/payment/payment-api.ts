@@ -11,8 +11,8 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { ServiceImplementation, ServiceInterface, ServiceOperation, ServiceProvider } from '@ddsr/model';
-import { DDSRFactory } from '@ddsr/model';
+import type { Parameter, RestOperationFlavor, ServiceImplementation, ServiceInterface, ServiceOperation, ServiceProvider } from '@ddsr/model';
+import { DDSRFactory, ParameterBinding } from '@ddsr/model';
 import { props, toArray } from '@ddsr/client';
 
 const factory = DDSRFactory.eINSTANCE;
@@ -45,6 +45,21 @@ export function buildPaymentInterface(): ServiceInterface {
   payment.operations.push(getBalance);
 
   return payment;
+}
+
+/**
+ * This demo serves every argument as a query parameter. Saying so binds
+ * the endpoint to the catalog instead of to a convention: a consumer
+ * reads where each value goes instead of guessing from its type (#74).
+ * The Java PaymentPublisher declares the same.
+ */
+function bindEveryArgumentToTheQuery(opFlavor: RestOperationFlavor): void {
+  for (const parameter of toArray<Parameter>(opFlavor.operation!.parameters)) {
+    const binding = factory.createRestParameterBinding();
+    binding.parameter = parameter;
+    binding.binding = ParameterBinding.QUERY;
+    opFlavor.parameterBindings.push(binding);
+  }
 }
 
 function parameter(
@@ -119,6 +134,7 @@ export function buildPaymentProvider(
   chargeFlavor.method = 'POST';
   chargeFlavor.path = '/charge';
   chargeFlavor.operation = operations.find(o => o.name === 'charge')!;
+  bindEveryArgumentToTheQuery(chargeFlavor);
   flavor.operationFlavors.push(chargeFlavor);
 
   const balanceFlavor = factory.createRestOperationFlavor();
@@ -126,6 +142,7 @@ export function buildPaymentProvider(
   balanceFlavor.method = 'GET';
   balanceFlavor.path = '/balance';
   balanceFlavor.operation = operations.find(o => o.name === 'getBalance')!;
+  bindEveryArgumentToTheQuery(balanceFlavor);
   flavor.operationFlavors.push(balanceFlavor);
 
   implementation.flavors.push(flavor);

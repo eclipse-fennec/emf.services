@@ -35,6 +35,7 @@ import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.LongProperty;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -42,6 +43,7 @@ import org.eclipse.fennec.services.ShortProperty;
 import org.eclipse.fennec.services.StringListProperty;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -410,6 +412,16 @@ public final class PaymentPublisher {
 		of.setPath(path);
 		of.setOperation(operation);
 		of.getProduces().add("application/json");
+		// This demo serves every argument as a query parameter. Saying so
+		// binds the endpoint to the catalog instead of to a convention: a
+		// consumer reads where each value goes instead of guessing from its
+		// type (#74).
+		for (Parameter parameter : operation.getParameters()) {
+			RestParameterBinding binding = ServicesFactory.eINSTANCE.createRestParameterBinding();
+			binding.setParameter(parameter);
+			binding.setBinding(ParameterBinding.QUERY);
+			of.getParameterBindings().add(binding);
+		}
 		return of;
 	}
 

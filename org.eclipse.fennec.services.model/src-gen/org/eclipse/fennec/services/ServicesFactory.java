@@ -286,6 +286,15 @@ public interface ServicesFactory extends EFactory {
 	RestParameterBinding createRestParameterBinding();
 
 	/**
+	 * Returns a new object of class '<em>Rest Exception Binding</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Rest Exception Binding</em>'.
+	 * @generated
+	 */
+	RestExceptionBinding createRestExceptionBinding();
+
+	/**
 	 * Returns a new object of class '<em>Mqtt Operation Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

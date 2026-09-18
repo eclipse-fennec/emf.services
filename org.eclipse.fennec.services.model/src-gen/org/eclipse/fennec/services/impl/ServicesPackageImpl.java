@@ -67,6 +67,7 @@ import org.eclipse.fennec.services.RegistryKind;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.RequiredConstraint;
 import org.eclipse.fennec.services.Requirement;
+import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.RestParameterBinding;
@@ -350,6 +351,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass restParameterBindingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass restExceptionBindingEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -2186,6 +2194,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EReference getRestOperationFlavor_ExceptionBindings() {
+		return (EReference)restOperationFlavorEClass.getEStructuralFeatures().get(4);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getRestParameterBinding() {
 		return restParameterBindingEClass;
 	}
@@ -2218,6 +2236,36 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EAttribute getRestParameterBinding_WireName() {
 		return (EAttribute)restParameterBindingEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getRestExceptionBinding() {
+		return restExceptionBindingEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getRestExceptionBinding_Exception() {
+		return (EReference)restExceptionBindingEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getRestExceptionBinding_Status() {
+		return (EAttribute)restExceptionBindingEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -3945,11 +3993,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(restOperationFlavorEClass, REST_OPERATION_FLAVOR__PATH);
 		createEAttribute(restOperationFlavorEClass, REST_OPERATION_FLAVOR__RETURN_CODES);
 		createEReference(restOperationFlavorEClass, REST_OPERATION_FLAVOR__PARAMETER_BINDINGS);
+		createEReference(restOperationFlavorEClass, REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS);
 
 		restParameterBindingEClass = createEClass(REST_PARAMETER_BINDING);
 		createEReference(restParameterBindingEClass, REST_PARAMETER_BINDING__PARAMETER);
 		createEAttribute(restParameterBindingEClass, REST_PARAMETER_BINDING__BINDING);
 		createEAttribute(restParameterBindingEClass, REST_PARAMETER_BINDING__WIRE_NAME);
+
+		restExceptionBindingEClass = createEClass(REST_EXCEPTION_BINDING);
+		createEReference(restExceptionBindingEClass, REST_EXCEPTION_BINDING__EXCEPTION);
+		createEAttribute(restExceptionBindingEClass, REST_EXCEPTION_BINDING__STATUS);
 
 		mqttOperationFlavorEClass = createEClass(MQTT_OPERATION_FLAVOR);
 		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__REQUEST_TOPIC);
@@ -4382,11 +4435,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getRestOperationFlavor_Path(), ecorePackage.getEString(), "path", null, 0, 1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestOperationFlavor_ReturnCodes(), ecorePackage.getEInt(), "returnCodes", null, 1, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getRestOperationFlavor_ParameterBindings(), this.getRestParameterBinding(), null, "parameterBindings", null, 0, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getRestOperationFlavor_ExceptionBindings(), this.getRestExceptionBinding(), null, "exceptionBindings", null, 0, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(restParameterBindingEClass, RestParameterBinding.class, "RestParameterBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getRestParameterBinding_Parameter(), this.getParameter(), null, "parameter", null, 1, 1, RestParameterBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestParameterBinding_Binding(), this.getParameterBinding(), "binding", null, 1, 1, RestParameterBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestParameterBinding_WireName(), ecorePackage.getEString(), "wireName", null, 0, 1, RestParameterBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(restExceptionBindingEClass, RestExceptionBinding.class, "RestExceptionBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getRestExceptionBinding_Exception(), this.getServiceException(), null, "exception", null, 1, 1, RestExceptionBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getRestExceptionBinding_Status(), ecorePackage.getEInt(), "status", "500", 1, 1, RestExceptionBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(mqttOperationFlavorEClass, MqttOperationFlavor.class, "MqttOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getMqttOperationFlavor_RequestTopic(), ecorePackage.getEString(), "requestTopic", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5247,7 +5305,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getServiceException_Properties(),
 		   source,
 		   new String[] {
-			   "documentation", "Typed payload fields (e.g. errorCode: int, retryable: bool, accountId: string). Empty = no structured payload, only a message."
+			   "documentation", "Constant metadata of this error, e.g. code=202 or retryable=false. A Property carries a name AND a value, and sd1 hashes that value \u2014 so what stands here is part of the contract and the same for every occurrence of the error, not per-instance data. Per-instance payload is deliberately not modelled: a value that differs per occurrence could never be part of a contract fingerprint. Empty = the error carries nothing but its identity."
 		   });
 		addAnnotation
 		  (serviceInterfaceEClass,
@@ -5685,7 +5743,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings)."
+			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings)."
 		   });
 		addAnnotation
 		  (getRestOperationFlavor_Method(),
@@ -5709,7 +5767,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getRestOperationFlavor_ParameterBindings(),
 		   source,
 		   new String[] {
-			   "documentation", "Where each Parameter of the operation travels on the wire. Parameters without an entry are BODY (today\'s behaviour: all arguments in the XMI payload, several of them as the multi-arg bundle). Lets a REST binding express GET /payments/{id}?currency=EUR with a tenant header instead of forcing everything into the body (OPEN_ISSUES W3)."
+			   "documentation", "Where each Parameter of the operation travels on the wire. Lets a REST binding express GET /payments/{id}?currency=EUR with a tenant header instead of forcing everything into the body (OPEN_ISSUES W3). A parameter without an entry keeps the convention the SDKs used before the bindings were driven: a single EObject is the payload, anything else a query parameter. The model names BODY as the default, but there is no encoding for several primitive arguments in one payload, so an undeclared parameter travels the older way until that wire shape exists."
+		   });
+		addAnnotation
+		  (getRestOperationFlavor_ExceptionBindings(),
+		   source,
+		   new String[] {
+			   "documentation", "Which HTTP status each declared error of the operation travels as. returnCodes says which statuses mean success; this says what the others mean. An exception without an entry is a 500 \u2014 it is still the exception it is, just without a status of its own. Transport-specific by design, like ParameterBinding: it lives in the flavor layer, so a status change never moves a contract address, and an MQTT flavor answers with a reason code instead."
 		   });
 		addAnnotation
 		  (restParameterBindingEClass,
@@ -5734,6 +5798,24 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Name used on the wire when it differs from the Parameter name: query key, header name (\'X-Tenant\') or path template variable. Null = the Parameter name."
+		   });
+		addAnnotation
+		  (restExceptionBindingEClass,
+		   source,
+		   new String[] {
+			   "documentation", "The HTTP status one declared ServiceException of an operation travels as. Owned by the flavor, so it is implementation-specific (im1 layer) and never touches the catalog contract (sd1) \u2014 the same layering as RestParameterBinding. Without such a binding an error is a 500."
+		   });
+		addAnnotation
+		  (getRestExceptionBinding_Exception(),
+		   source,
+		   new String[] {
+			   "documentation", "The declared error of the bound ServiceOperation. Non-containment: exceptions are owned by the catalog ServiceInterface, same resolution rule as RestParameterBinding.parameter."
+		   });
+		addAnnotation
+		  (getRestExceptionBinding_Status(),
+		   source,
+		   new String[] {
+			   "documentation", "HTTP status this error is answered with, e.g. 409 for a conflict or 404 for something not found. A plain int rather than an enum: the set of codes in use is not ours to close, and a provider that answers with 418 is stating a fact, not asking permission."
 		   });
 		addAnnotation
 		  (mqttOperationFlavorEClass,
@@ -6740,7 +6822,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath"
+			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException"
 		   });
 		addAnnotation
 		  (serviceRegistrationEClass,
@@ -6839,7 +6921,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   new String[] {
 			   "bindingsReferenceOperationParameters", "parameterBindings->forAll(b | operation.parameters->includes(b.parameter))",
 			   "oneBindingPerParameter", "parameterBindings->isUnique(b | b.parameter)",
-			   "pathBindingsNeedPath", "parameterBindings->forAll(b | b.binding.toString() <> \'PATH\' or path <> null)"
+			   "pathBindingsNeedPath", "parameterBindings->forAll(b | b.binding.toString() <> \'PATH\' or path <> null)",
+			   "exceptionBindingsReferenceOperationExceptions", "exceptionBindings->forAll(b | operation.exceptions->includes(b.exception))",
+			   "oneBindingPerException", "exceptionBindings->isUnique(b | b.exception)"
 		   });
 		addAnnotation
 		  (serviceRegistrationEClass,

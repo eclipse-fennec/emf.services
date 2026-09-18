@@ -155,6 +155,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateRestOperationFlavor((RestOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.REST_PARAMETER_BINDING:
 				return validateRestParameterBinding((RestParameterBinding)value, diagnostics, context);
+			case ServicesPackage.REST_EXCEPTION_BINDING:
+				return validateRestExceptionBinding((RestExceptionBinding)value, diagnostics, context);
 			case ServicesPackage.MQTT_OPERATION_FLAVOR:
 				return validateMqttOperationFlavor((MqttOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.SERVICE_REFERENCE:
@@ -1104,6 +1106,8 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_bindingsReferenceOperationParameters(restOperationFlavor, diagnostics, context);
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_oneBindingPerParameter(restOperationFlavor, diagnostics, context);
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_pathBindingsNeedPath(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validateRestOperationFlavor_exceptionBindingsReferenceOperationExceptions(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validateRestOperationFlavor_oneBindingPerException(restOperationFlavor, diagnostics, context);
 		return result;
 	}
 
@@ -1195,12 +1199,79 @@ public class ServicesValidator extends EObjectValidator {
 	}
 
 	/**
+	 * The cached validation expression for the exceptionBindingsReferenceOperationExceptions constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS_REFERENCE_OPERATION_EXCEPTIONS__EEXPRESSION = "exceptionBindings->forAll(b | operation.exceptions->includes(b.exception))";
+
+	/**
+	 * Validates the exceptionBindingsReferenceOperationExceptions constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestOperationFlavor_exceptionBindingsReferenceOperationExceptions(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.REST_OPERATION_FLAVOR,
+				 restOperationFlavor,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "exceptionBindingsReferenceOperationExceptions",
+				 REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS_REFERENCE_OPERATION_EXCEPTIONS__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the oneBindingPerException constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String REST_OPERATION_FLAVOR__ONE_BINDING_PER_EXCEPTION__EEXPRESSION = "exceptionBindings->isUnique(b | b.exception)";
+
+	/**
+	 * Validates the oneBindingPerException constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestOperationFlavor_oneBindingPerException(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.REST_OPERATION_FLAVOR,
+				 restOperationFlavor,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "oneBindingPerException",
+				 REST_OPERATION_FLAVOR__ONE_BINDING_PER_EXCEPTION__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
 	public boolean validateRestParameterBinding(RestParameterBinding restParameterBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(restParameterBinding, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestExceptionBinding(RestExceptionBinding restExceptionBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(restExceptionBinding, diagnostics, context);
 	}
 
 	/**

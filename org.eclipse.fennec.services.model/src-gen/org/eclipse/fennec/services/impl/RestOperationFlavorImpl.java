@@ -19,6 +19,7 @@ import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.HttpMethod;
+import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServicesPackage;
@@ -35,6 +36,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getPath <em>Path</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getReturnCodes <em>Return Codes</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getParameterBindings <em>Parameter Bindings</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.RestOperationFlavorImpl#getExceptionBindings <em>Exception Bindings</em>}</li>
  * </ul>
  *
  * @generated
@@ -99,6 +101,16 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	 * @ordered
 	 */
 	protected EList<RestParameterBinding> parameterBindings;
+
+	/**
+	 * The cached value of the '{@link #getExceptionBindings() <em>Exception Bindings</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getExceptionBindings()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<RestExceptionBinding> exceptionBindings;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -197,10 +209,25 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	 * @generated
 	 */
 	@Override
+	public EList<RestExceptionBinding> getExceptionBindings() {
+		if (exceptionBindings == null) {
+			exceptionBindings = new EObjectContainmentEList<RestExceptionBinding>(RestExceptionBinding.class, this, ServicesPackage.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS);
+		}
+		return exceptionBindings;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
 				return ((InternalEList<?>)getParameterBindings()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS:
+				return ((InternalEList<?>)getExceptionBindings()).basicRemove(otherEnd, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -221,6 +248,8 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 				return getReturnCodes();
 			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
 				return getParameterBindings();
+			case ServicesPackage.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS:
+				return getExceptionBindings();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -248,6 +277,10 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 				getParameterBindings().clear();
 				getParameterBindings().addAll((Collection<? extends RestParameterBinding>)newValue);
 				return;
+			case ServicesPackage.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS:
+				getExceptionBindings().clear();
+				getExceptionBindings().addAll((Collection<? extends RestExceptionBinding>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -272,6 +305,9 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
 				getParameterBindings().clear();
 				return;
+			case ServicesPackage.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS:
+				getExceptionBindings().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -292,6 +328,8 @@ public class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 				return returnCodes != null && !returnCodes.isEmpty();
 			case ServicesPackage.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS:
 				return parameterBindings != null && !parameterBindings.isEmpty();
+			case ServicesPackage.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS:
+				return exceptionBindings != null && !exceptionBindings.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}

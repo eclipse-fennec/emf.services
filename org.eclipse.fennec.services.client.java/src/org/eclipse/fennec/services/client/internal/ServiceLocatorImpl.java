@@ -209,6 +209,14 @@ final class ServiceLocatorImpl implements TrackedServiceLocator {
 
 	@Override
 	public Optional<URI> urlFor(String operationName) {
+		// A templated endpoint is not an address, and URI cannot even
+		// hold one. Saying "no URL" is the truthful answer; a caller that
+		// wants to make a request asks endpointFor instead.
+		return endpointFor(operationName).filter(url -> url.indexOf('{') < 0).map(URI::create);
+	}
+
+	@Override
+	public Optional<String> endpointFor(String operationName) {
 		RestFlavor rf = restFlavor().orElse(null);
 		if (rf == null || operationName == null) {
 			return Optional.empty();
@@ -226,7 +234,7 @@ final class ServiceLocatorImpl implements TrackedServiceLocator {
 		}
 		String basePath = nullToEmpty(rf.getBasePath());
 		String opPath = nullToEmpty(opFlavor.getPath());
-		return Optional.of(URI.create(stripTrailingSlash(host) + ensureLeadingSlash(basePath) + ensureLeadingSlash(opPath)));
+		return Optional.of(stripTrailingSlash(host) + ensureLeadingSlash(basePath) + ensureLeadingSlash(opPath));
 	}
 
 	// ----------------------------------------------------------------

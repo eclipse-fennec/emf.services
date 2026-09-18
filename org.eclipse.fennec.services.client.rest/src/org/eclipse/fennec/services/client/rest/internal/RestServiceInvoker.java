@@ -87,7 +87,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		if (op == null) {
 			throw new DdsrException("operation '" + operationName + "' has no REST flavor on this service");
 		}
-		java.net.URI url = locator.urlFor(operationName).orElseThrow(
+		String url = locator.endpointFor(operationName).orElseThrow(
 				() -> new DdsrException("cannot build URL for '" + operationName + "' — RestFlavor.host is missing"));
 
 		Map<String, Object> safeArgs = args != null ? args : Map.of();

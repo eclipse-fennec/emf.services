@@ -99,19 +99,41 @@ class RestResourceTemplateTest {
 				.contains("if (id.length() < 3) {");
 		assertThat(source)
 				.as("NumericRangeConstraint, written the way the argument's type reads")
-				.contains("if (offset < 0) {")
-				.contains("if (limit < 1) {")
-				.contains("if (limit > 200) {");
+				.contains("if (offset != null && offset < 0) {")
+				.contains("if (limit != null && limit < 1) {")
+				.contains("if (limit != null && limit > 200) {");
 		assertThat(source)
 				.as("offset declares no upper bound, so nothing checks one")
 				.doesNotContain("if (offset > ");
 	}
 
 	@Test
+	void theFlavorsMediaTypesBecomeAnnotations() throws Exception {
+		assertThat(resource())
+				.as("one media type, and several")
+				.contains("@Produces(\"application/json\")")
+				.contains("@Produces({\"application/json\", \"application/xml\"})")
+				.as("neither operation consumes anything, so nothing says it does")
+				.doesNotContain("@Consumes");
+	}
+
+	@Test
+	void anOptionalArgumentIsNullableSoItsAbsenceIsReadable() throws Exception {
+		// An optional argument is one that may be null; a primitive cannot be,
+		// so the boxed type takes its place. Without that an absent int would
+		// arrive as 0 and no endpoint could tell the difference.
+		assertThat(resource())
+				.contains("Integer offset")
+				.contains("Integer limit")
+				.as("a constraint on a value that may be absent has to survive its absence")
+				.contains("if (offset != null && offset < 0) {");
+	}
+
+	@Test
 	void anOptionalArgumentCarriesTheContractsDefault() throws Exception {
 		assertThat(resource())
-				.contains("@QueryParam(\"offset\") @DefaultValue(\"0\") int offset")
-				.contains("@QueryParam(\"max\") @DefaultValue(\"50\") int limit");
+				.contains("@QueryParam(\"offset\") @DefaultValue(\"0\") Integer offset")
+				.contains("@QueryParam(\"max\") @DefaultValue(\"50\") Integer limit");
 	}
 
 	@Test
@@ -123,7 +145,7 @@ class RestResourceTemplateTest {
 				.contains("public Response get(@PathParam(\"id\") String id)");
 		assertThat(source)
 				.as("a wireName renames the argument on the wire, not in the contract")
-				.contains("@QueryParam(\"max\") @DefaultValue(\"50\") int limit");
+				.contains("@QueryParam(\"max\") @DefaultValue(\"50\") Integer limit");
 		assertThat(source)
 				.as("only the annotations the flavor actually uses are imported")
 				.contains("import jakarta.ws.rs.PathParam;")

@@ -84,7 +84,7 @@ class ServiceInterfaceTemplateTest {
 
 		assertThat(source)
 				.as("upperBound = -1 is what separates list() from get()")
-				.contains("List<Person> list(int offset, int limit);")
+				.contains("List<Person> list(Integer offset, Integer limit);")
 				.contains("import java.util.List;");
 	}
 

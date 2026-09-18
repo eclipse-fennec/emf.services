@@ -10,12 +10,12 @@
     <flavors xsi:type="services:RestFlavor" name="directory-rest" kind="REST"
         host="http://localhost:9095" basePath="/directory">
       <operationFlavors xsi:type="services:RestOperationFlavor" name="get"
-          method="GET" path="/persons/{id}" returnCodes="200" operation="persons.xmi#//@operations.0">
+          method="GET" path="/persons/{id}" returnCodes="200" produces="application/json" operation="persons.xmi#//@operations.0">
         <parameterBindings parameter="persons.xmi#//@operations.0/@parameters.0" binding="PATH"/>
         <exceptionBindings exception="persons.xmi#//@exceptions.0" status="404"/>
       </operationFlavors>
       <operationFlavors xsi:type="services:RestOperationFlavor" name="list"
-          method="GET" path="/persons" returnCodes="200 204" operation="persons.xmi#//@operations.1">
+          method="GET" path="/persons" returnCodes="200 204" produces="application/json application/xml" operation="persons.xmi#//@operations.1">
         <parameterBindings parameter="persons.xmi#//@operations.1/@parameters.0" binding="QUERY"/>
         <parameterBindings parameter="persons.xmi#//@operations.1/@parameters.1" binding="QUERY" wireName="max"/>
       </operationFlavors>

@@ -12,6 +12,7 @@ Private-Package: \
 	osgi.core;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
 	org.osgi.service.remoteserviceadmin;version=latest,\
 	org.osgi.util.tracker;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
@@ -20,3 +21,10 @@ Private-Package: \
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest
+
+# What the specification asks a topology manager to say about itself
+# (122.10): the policies it can run. promiscuous exports everything that
+# asks and imports everything anyone waits for; manual does neither and
+# leaves both to whoever calls the admin — the TCK, for one.
+Provide-Capability: \
+	osgi.remoteserviceadmin.topology;policy:List<String>="promiscuous,manual";version:Version="1.1"

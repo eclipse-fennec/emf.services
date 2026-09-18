@@ -23,3 +23,11 @@ Private-Package: \
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest
+
+# What the specification asks a discovery provider to say about itself
+# (122.10): which protocols it discovers over. Deliberately NOT the
+# osgi.extender=osgi.remoteserviceadmin.localdiscovery capability — that
+# one promises to read Remote-Service endpoint descriptions out of bundles,
+# and this provider does not do that.
+Provide-Capability: \
+	osgi.remoteserviceadmin.discovery;protocols:List<String>="fennec.rest";version:Version="1.1"

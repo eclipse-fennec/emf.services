@@ -16,10 +16,7 @@ package org.eclipse.fennec.services.rsa.internal;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.remoteserviceadmin.EndpointDescription;
 import org.osgi.service.remoteserviceadmin.ExportReference;
@@ -32,85 +29,102 @@ import org.osgi.service.remoteserviceadmin.ExportRegistration;
  * anyone else reads, because the two describe the same thing from two
  * sides and keeping them apart would only mean a second object to keep
  * in step.
+ *
+ * <p>A registration is one hand on a {@link LiveExport}; several may hold
+ * the same one. Closing lets go, and the export comes down with the last
+ * hand. A registration can also stand for an export that failed: then it
+ * carries the exception and nothing else, which is how the specification
+ * wants a failure reported when it is not the caller's fault.
  */
 final class ExportedService implements ExportRegistration, ExportReference {
 
-	private static final Logger LOG = Logger.getLogger(ExportedService.class.getName());
-
 	private final ServiceReference<?> exported;
-	private final EndpointDescription description;
-	private final ExportedEndpoint endpoint;
-	private final AutoCloseable announcement;
-	private final Consumer<ExportedService> forget;
-	private final Runnable release;
+	private final LiveExport live;
+	private final Throwable failure;
+	private final Consumer<ExportedService> onUpdate;
+	private final Consumer<ExportedService> onClose;
 	private final AtomicBoolean open = new AtomicBoolean(true);
 
-	ExportedService(ServiceReference<?> exported, EndpointDescription description, ExportedEndpoint endpoint,
-			AutoCloseable announcement, Consumer<ExportedService> forget, Runnable release) {
+	private ExportedService(ServiceReference<?> exported, LiveExport live, Throwable failure,
+			Consumer<ExportedService> onUpdate, Consumer<ExportedService> onClose) {
 		this.exported = exported;
-		this.description = description;
-		this.endpoint = endpoint;
-		this.announcement = announcement;
-		this.forget = forget;
-		this.release = release;
+		this.live = live;
+		this.failure = failure;
+		this.onUpdate = onUpdate;
+		this.onClose = onClose;
+	}
+
+	static ExportedService of(ServiceReference<?> exported, LiveExport live, Consumer<ExportedService> onUpdate,
+			Consumer<ExportedService> onClose) {
+		return new ExportedService(exported, live, null, onUpdate, onClose);
+	}
+
+	/** An export that did not happen, with the reason. */
+	static ExportedService failed(Throwable failure) {
+		return new ExportedService(null, null, failure, ignored -> {
+		}, ignored -> {
+		});
+	}
+
+	/** The description, whether or not the registration is still open. */
+	EndpointDescription description() {
+		return live == null ? null : live.description();
 	}
 
 	@Override
 	public ExportReference getExportReference() {
+		if (failure != null) {
+			throw new IllegalStateException("this export failed", failure);
+		}
 		return open.get() ? this : null;
 	}
 
 	@Override
 	public ServiceReference<?> getExportedService() {
-		return open.get() ? exported : null;
+		return open.get() && live != null ? exported : null;
 	}
 
 	@Override
 	public EndpointDescription getExportedEndpoint() {
-		return open.get() ? description : null;
-	}
-
-	@Override
-	public EndpointDescription update(Map<String, ?> properties) {
-		// An update would re-announce the endpoint under changed
-		// properties. Nothing here can do that half-way: saying so is
-		// better than returning a description that does not match what
-		// the broker holds.
-		throw new UnsupportedOperationException(
-				"updating an export is not implemented yet — close it and export again");
+		return open.get() && live != null ? live.description() : null;
 	}
 
 	/**
-	 * Withdraw first, then stop serving.
-	 *
-	 * <p>That order is the whole of FR-P3: a consumer that has not heard
-	 * about the withdrawal yet must still find something answering at
-	 * the endpoint. The other way round is a request that fails for no
-	 * reason anyone can see.
+	 * Say the endpoint anew, from the service's current properties and
+	 * these overrides. The transport is untouched — the address and the
+	 * contract are the endpoint's, and they did not change. Shared with
+	 * every registration on the same export, because it is the same
+	 * endpoint.
 	 */
+	@Override
+	public EndpointDescription update(Map<String, ?> properties) {
+		if (failure != null) {
+			throw new IllegalStateException("this export failed", failure);
+		}
+		if (!open.get()) {
+			throw new IllegalStateException("this export is closed");
+		}
+		EndpointDescription updated = live.update(properties);
+		onUpdate.accept(this);
+		return updated;
+	}
+
 	@Override
 	public void close() {
 		if (!open.compareAndSet(true, false)) {
 			return;
 		}
 		try {
-			announcement.close();
-		} catch (Exception failure) {
-			LOG.log(Level.WARNING, "[DDSR] withdrawing " + description.getId() + " failed", failure);
-		}
-		try {
-			endpoint.close();
+			if (live != null) {
+				live.leave();
+			}
 		} finally {
-			forget.accept(this);
-			release.run();
+			onClose.accept(this);
 		}
 	}
 
 	@Override
 	public Throwable getException() {
-		// An export that failed never becomes a registration here: the
-		// failure is thrown at the caller instead. So there is never one
-		// to report.
-		return null;
+		return failure;
 	}
 }

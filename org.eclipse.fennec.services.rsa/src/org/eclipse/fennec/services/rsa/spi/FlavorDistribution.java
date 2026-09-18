@@ -43,6 +43,17 @@ public interface FlavorDistribution {
 	FlavorKind flavor();
 
 	/**
+	 * The intents this provider can promise — {@code osgi.basic} for a
+	 * synchronous call with arguments and results carried across and
+	 * exceptions coming back. A service that asks for an intent nobody
+	 * here offers is not exported, which is what the specification wants
+	 * and what a consumer relying on that intent would want too.
+	 */
+	default String[] supportedIntents() {
+		return new String[] { "osgi.basic" };
+	}
+
+	/**
 	 * Make {@code service} reachable, and say in the model what a
 	 * consumer has to do to reach it.
 	 *

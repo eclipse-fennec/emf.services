@@ -28,7 +28,9 @@ import org.eclipse.fennec.services.rsa.spi.RsaProperties;
 import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
 import org.osgi.framework.Constants;
 import org.osgi.framework.hooks.service.ListenerHook;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.remoteserviceadmin.EndpointDescription;
@@ -51,7 +53,8 @@ import org.osgi.service.remoteserviceadmin.RemoteServiceAdmin;
  * export side derives it from a service: the simple name, unless the
  * listener's filter also names {@code ddsr.contract}.
  */
-@Component(service = ListenerHook.class, immediate = true)
+@Component(service = ListenerHook.class, immediate = true, configurationPid = TopologyPolicy.PID,
+		configurationPolicy = ConfigurationPolicy.OPTIONAL)
 public class ImportWhatIsAskedFor implements ListenerHook {
 
 	private static final Logger LOG = Logger.getLogger(ImportWhatIsAskedFor.class.getName());
@@ -93,8 +96,21 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 	/** One watch per interface asked for, however many listeners ask. */
 	private final Map<String, Watch> watches = new ConcurrentHashMap<>();
 
+	private volatile boolean manual;
+
+	@Activate
+	void activate(TopologyPolicy policy) {
+		manual = TopologyPolicy.MANUAL.equals(policy.policy());
+		if (manual) {
+			LOG.info("[DDSR] topology policy is manual — nothing is imported on its own");
+		}
+	}
+
 	@Override
 	public void added(Collection<ListenerInfo> listeners) {
+		if (manual) {
+			return;
+		}
 		for (ListenerInfo listener : listeners) {
 			if (listener.isRemoved() || listener.getFilter() == null) {
 				continue;

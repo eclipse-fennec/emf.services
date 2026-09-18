@@ -21,6 +21,7 @@ Private-Package: \
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\
 	org.osgi.service.remoteserviceadmin;version=latest,\
+	org.osgi.service.event;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.derive;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\

@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.rsa.distribution.rest;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -26,6 +27,8 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.provider.rest.RestDistribution;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -57,6 +60,14 @@ public class RestDistributionProvider implements FlavorDistribution {
 	/** The RSA configuration type a service asks for to be exported this way. */
 	public static final String CONFIG_TYPE = "fennec.rest";
 
+	/**
+	 * The one configuration-type property on the endpoint description:
+	 * where the exported contract answers. An exporter may set it to say
+	 * a different public address for this one service; it has to be a
+	 * URL then, and anything else is refused as the garbage it is.
+	 */
+	public static final String URL_PROPERTY = CONFIG_TYPE + ".url";
+
 	private static final Logger LOG = Logger.getLogger(RestDistributionProvider.class.getName());
 
 	@ObjectClassDefinition(name = "Fennec Services RSA REST Distribution",
@@ -75,9 +86,15 @@ public class RestDistributionProvider implements FlavorDistribution {
 
 	private Config config;
 
+	/** This framework's short name in identities nobody named themselves. */
+	private String frameworkTag;
+
 	@Activate
-	void activate(Config config) {
+	void activate(BundleContext context, Config config) {
 		this.config = config;
+		String uuid = context.getProperty(Constants.FRAMEWORK_UUID);
+		this.frameworkTag = uuid == null || uuid.length() < 8 ? "local" : uuid.substring(0, 8);
+		LOG.info("[DDSR] REST distribution ready — exports are reachable under " + config.public_url());
 	}
 
 	@Override
@@ -95,31 +112,73 @@ public class RestDistributionProvider implements FlavorDistribution {
 		if (contract == null) {
 			throw new IllegalArgumentException("a REST export needs the contract to serve");
 		}
-		String mountPath = RestFlavors.basePathFor(contract);
+		URI publicUrl = publicUrlFor(properties);
+		String provider = providerNameFor(properties);
+		// Mounted under the provider, not the contract alone: two services
+		// exporting the same interface in one framework are two endpoints,
+		// and two applications on one path would be one of them answering
+		// for both.
+		String mountPath = "/" + provider + RestFlavors.basePathFor(contract);
 		RestFlavor flavor = RestFlavors.flavorFor(contract, mountPath);
 
-		RestDistribution.Served served = distribution.serve(flavor, service, contract.getName());
+		RestDistribution.Served served = distribution.serve(flavor, service, provider + ":" + contract.getName());
 
 		// Only now does the flavor say where it is: what was mounted is
 		// this deployment's business, what a consumer dials is the
 		// deployment's address plus that path.
-		URI publicUrl = URI.create(config.public_url());
 		flavor.setHost(publicUrl.getScheme() + "://" + publicUrl.getAuthority());
 		flavor.setBasePath((publicUrl.getPath() == null ? "" : publicUrl.getPath()) + mountPath);
 
-		ServiceImplementation implementation = implementationOf(contract, flavor, properties);
+		ServiceImplementation implementation = implementationOf(contract, flavor, provider);
 		LOG.info("[DDSR] exported " + contract.getName() + " over REST at "
 				+ flavor.getHost() + flavor.getBasePath());
 		return new RestEndpoint(contract, implementation, served);
 	}
 
-	private static ServiceImplementation implementationOf(ServiceInterface contract, RestFlavor flavor,
-			Map<String, ?> properties) {
-		Object providerName = properties == null ? null : properties.get("ddsr.provider.name");
-		String provider = providerName == null || providerName.toString().isBlank()
-				? "rsa-export"
-				: providerName.toString();
+	/**
+	 * The configured public URL, unless the exporter said one for this
+	 * service. Validated before anything is mounted, so that a refusal
+	 * leaves nothing behind.
+	 */
+	private URI publicUrlFor(Map<String, ?> properties) {
+		Object asked = properties == null ? null : properties.get(URL_PROPERTY);
+		if (asked == null) {
+			return URI.create(config.public_url());
+		}
+		if (!(asked instanceof String url) || url.isBlank()) {
+			throw new IllegalArgumentException(URL_PROPERTY + " has to be a URL, got "
+					+ asked.getClass().getName());
+		}
+		try {
+			URI parsed = new URI(url);
+			if (parsed.getScheme() == null || parsed.getAuthority() == null) {
+				throw new IllegalArgumentException(URL_PROPERTY + " has to be an absolute URL, got '" + url + "'");
+			}
+			return parsed;
+		} catch (URISyntaxException malformed) {
+			throw new IllegalArgumentException(URL_PROPERTY + " is not a URL: '" + url + "'", malformed);
+		}
+	}
 
+	/**
+	 * Who the endpoint says it is. An exporter that names itself with
+	 * {@code ddsr.provider.name} is taken at its word. One that does not
+	 * gets a name from this framework and the service's id — the
+	 * implementation id is provider, contract and version, and two
+	 * frameworks exporting the same interface must not look to the broker
+	 * like one provider restarting.
+	 */
+	private String providerNameFor(Map<String, ?> properties) {
+		Object named = properties == null ? null : properties.get("ddsr.provider.name");
+		if (named != null && !named.toString().isBlank()) {
+			return named.toString();
+		}
+		Object serviceId = properties == null ? null : properties.get(Constants.SERVICE_ID);
+		return "rsa-" + frameworkTag + (serviceId == null ? "" : "-" + serviceId);
+	}
+
+	private static ServiceImplementation implementationOf(ServiceInterface contract, RestFlavor flavor,
+			String provider) {
 		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
 		implementation.setName(provider + "-" + contract.getName());
 		implementation.setVersion(contract.getVersion());
@@ -151,6 +210,12 @@ public class RestDistributionProvider implements FlavorDistribution {
 		@Override
 		public ServiceImplementation implementation() {
 			return implementation;
+		}
+
+		@Override
+		public Map<String, Object> properties() {
+			RestFlavor flavor = (RestFlavor) implementation.getFlavors().get(0);
+			return Map.of(URL_PROPERTY, flavor.getHost() + flavor.getBasePath());
 		}
 
 		@Override

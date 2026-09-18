@@ -1,7 +1,7 @@
 {
   ":configurator:resource-version": 1,
   "org.apache.felix.http~tckHttp": {
-    "org.osgi.service.http.port": "$[env:RSA_TCK_HTTP_PORT;default=9096]",
+    "org.osgi.service.http.port": "$[prop:rsa.tck.http.port;default=9096]",
     "org.osgi.service.http.host": "0.0.0.0",
     "org.apache.felix.http.context_path": "services",
     "org.apache.felix.http.name": "RSA TCK HTTP",
@@ -12,7 +12,7 @@
     "osgi.http.whiteboard.target": "(id=tckHttp)"
   },
   "org.eclipse.fennec.services.client.rest": {
-    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+    "broker.url": "$[prop:rsa.tck.broker.url;default=http://localhost:8887/ddsr/rest]"
   },
   "org.eclipse.fennec.services.client": {
     "provider.heartbeat.seconds": "30",
@@ -26,9 +26,12 @@
     "registry.name": "rsa-tck"
   },
   "org.eclipse.fennec.services.rsa.distribution.rest": {
-    "public.url": "$[env:RSA_TCK_PUBLIC_URL;default=http://localhost:9096/services]"
+    "public.url": "http://localhost:$[prop:rsa.tck.http.port;default=9096]/services"
   },
   "org.eclipse.fennec.services.rsa.discovery.rest": {
-    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+    "broker.url": "$[prop:rsa.tck.broker.url;default=http://localhost:8887/ddsr/rest]"
+  },
+  "org.eclipse.fennec.services.rsa.topology": {
+    "policy": "manual"
   }
 }

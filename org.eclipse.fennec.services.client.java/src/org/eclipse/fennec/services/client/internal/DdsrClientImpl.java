@@ -66,9 +66,10 @@ public final class DdsrClientImpl implements DdsrClient {
 
 	@Override
 	public void close() {
-		// no SDK-owned resources — the transport (BrokerCatalog /
-		// BrokerImplementations / BrokerLookup) is managed by whichever
-		// flavor bundle is wired in.
+		// The transport (BrokerCatalog / BrokerImplementations /
+		// BrokerLookup) belongs to whichever flavor bundle is wired in;
+		// the event stream the consumer opened on it is ours to close.
+		consumer.close();
 	}
 
 	/** Lets the component tell the consumer that a transport showed up. */

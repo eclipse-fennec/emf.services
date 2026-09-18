@@ -1,4 +1,11 @@
--runfw: org.apache.felix.framework
+# Equinox, the reference framework the OSGi workspace runs this TCK on. The
+# TCK bootstraps its child framework from bundle 0's own entries
+# (getBundle(0).getEntry("/META-INF/services/…FrameworkFactory")), which
+# Felix's system bundle does not serve; six tests failed before testing
+# anything. The RSA implementation is framework-neutral, so nothing else
+# changes — except that class-space checks may judge differently than
+# Felix did (see ProxyHost).
+-runfw: org.eclipse.osgi
 
 -runee: JavaSE-21
 
@@ -41,46 +48,64 @@ jersey.deps:
 -runblacklist: \
 	bnd.identity;id='org.osgi.service.cm'
 
-# What the TCK reads (TCK_README.txt). p is its property prefix.
+# What the TCK reads (TCK_README.txt). p is its property prefix. The child
+# framework shares the JVM and the configuration; its HTTP port must differ
+# from the parent's, and the configuration reads it from the framework
+# property handed over in framework.properties. rsa.tck.timeout is how long
+# the test bundles wait for the admin before exporting — the child takes a
+# while to bring its transports up. (No comments inside the continuation:
+# bnd reads them as part of the value.)
 p: org.osgi.test.cases.remoteserviceadmin
 -runproperties: \
 	org.osgi.service.http.port=-1,\
 	felix.cm.config.plugins=org.apache.felix.configadmin.plugin.interpolation,\
-	rsa.tck.timeout=30000,\
+	rsa.tck.timeout=60000,\
 	rsa.tck.timeout.factor=3,\
-	${p}.framework.properties="",\
+	${p}.framework.properties="rsa.tck.http.port=9097",\
 	${p}.system.packages.extra="",\
 	${p}.serverconfig="service.exported.configs,service.exported.intents",\
 	service.exported.configs="fennec.rest",\
 	service.exported.intents="osgi.basic",\
 	${p}.bundles="${runbundles.files}"
 
-# Every bundle of this launch except the test machinery also goes into the
-# child framework: the TCK installs them from file paths, then adds its own
-# test bundles. Generated from -runbundles; regenerate when that changes.
+# Every bundle of this launch also goes into the child framework: the TCK
+# installs them from file paths, then adds its own test bundles — which
+# import from the TCK bundle, JUnit 4 and AssertJ, so those go too; the
+# tester itself is runpath, not a bundle, and the engines sit idle there.
+# Generated from -runbundles; regenerate when that changes. Repository
+# bundles carry the resolved range — 'latest' would hand the child the
+# index's highest version, not the one the parent runs.
 runbundles.files: ${uniq;\
-	${repo;jakarta.activation-api;latest},\
-	${repo;jakarta.annotation-api;latest},\
-	${repo;jakarta.inject.jakarta.inject-api;latest},\
-	${repo;jakarta.validation.jakarta.validation-api;latest},\
-	${repo;jakarta.ws.rs-api;latest},\
-	${repo;jakarta.xml.bind-api;latest},\
-	${repo;javassist;latest},\
-	${repo;net.bytebuddy.byte-buddy;latest},\
-	${repo;org.apache.aries.spifly.dynamic.bundle;latest},\
-	${repo;org.apache.commons.commons-fileupload;latest},\
-	${repo;org.apache.commons.commons-io;latest},\
-	${repo;org.apache.felix.configadmin;latest},\
-	${repo;org.apache.felix.configadmin.plugin.interpolation;latest},\
-	${repo;org.apache.felix.eventadmin;latest},\
-	${repo;org.apache.felix.http.jetty12;latest},\
-	${repo;org.apache.felix.http.servlet-api;latest},\
-	${repo;org.apache.felix.scr;latest},\
-	${repo;org.eclipse.emf.common;latest},\
-	${repo;org.eclipse.emf.ecore;latest},\
-	${repo;org.eclipse.emf.ecore.xmi;latest},\
-	${repo;org.eclipse.fennec.emf.osgi.component.minimal;latest},\
-	${repo;org.eclipse.fennec.emf.osgi.eobject.registry;latest},\
+	${repo;assertj-core;[3.27.7,3.27.8)},\
+	${repo;jakarta.activation-api;[2.1.3,2.1.4)},\
+	${repo;jakarta.annotation-api;[2.1.1,2.1.2)},\
+	${repo;jakarta.inject.jakarta.inject-api;[2.0.1,2.0.2)},\
+	${repo;jakarta.validation.jakarta.validation-api;[3.0.2,3.0.3)},\
+	${repo;jakarta.ws.rs-api;[3.1.0,3.1.1)},\
+	${repo;jakarta.xml.bind-api;[4.0.2,4.0.3)},\
+	${repo;javassist;[3.29.2,3.29.3)},\
+	${repo;junit-platform-commons;[1.14.2,1.14.3)},\
+	${repo;junit-platform-engine;[1.14.2,1.14.3)},\
+	${repo;junit-platform-launcher;[1.14.2,1.14.3)},\
+	${repo;junit-vintage-engine;[5.14.2,5.14.3)},\
+	${repo;net.bytebuddy.byte-buddy;[1.18.4,1.18.5)},\
+	${repo;org.apache.aries.spifly.dynamic.bundle;[1.3.7,1.3.8)},\
+	${repo;org.apache.commons.commons-fileupload;[1.6.0,1.6.1)},\
+	${repo;org.apache.commons.commons-io;[2.22.0,2.22.1)},\
+	${repo;org.apache.felix.cm.json;[2.0.6,2.0.7)},\
+	${repo;org.apache.felix.configadmin;[1.9.26,1.9.27)},\
+	${repo;org.apache.felix.configadmin.plugin.interpolation;[1.2.8,1.2.9)},\
+	${repo;org.apache.felix.configurator;[1.0.18,1.0.19)},\
+	${repo;org.apache.felix.eventadmin;[1.6.4,1.6.5)},\
+	${repo;org.apache.felix.http.jetty12;[1.1.0,1.1.1)},\
+	${repo;org.apache.felix.http.servlet-api;[6.1.0,6.1.1)},\
+	${repo;org.apache.felix.scr;[2.2.12,2.2.13)},\
+	${repo;org.apache.servicemix.bundles.junit;[4.13.2,4.13.3)},\
+	${repo;org.eclipse.emf.common;[2.44.0,2.44.1)},\
+	${repo;org.eclipse.emf.ecore;[2.41.0,2.41.1)},\
+	${repo;org.eclipse.emf.ecore.xmi;[2.39.0,2.39.1)},\
+	${repo;org.eclipse.fennec.emf.osgi.component.minimal;[1.1.0,1.1.1)},\
+	${repo;org.eclipse.fennec.emf.osgi.eobject.registry;[1.1.0,1.1.1)},\
 	${repo;org.eclipse.fennec.services.broker.core;latest},\
 	${repo;org.eclipse.fennec.services.client.java;latest},\
 	${repo;org.eclipse.fennec.services.client.rest;latest},\
@@ -94,39 +119,39 @@ runbundles.files: ${uniq;\
 	${repo;org.eclipse.fennec.services.rsa.tck;latest},\
 	${repo;org.eclipse.fennec.services.rsa.topology;latest},\
 	${repo;org.eclipse.fennec.services.xmi.codec;latest},\
-	${repo;org.eclipse.osgitech.rest;latest},\
-	${repo;org.eclipse.osgitech.rest.servlet.whiteboard;latest},\
-	${repo;org.eclipse.osgitech.rest.sse;latest},\
-	${repo;org.glassfish.hk2.api;latest},\
-	${repo;org.glassfish.hk2.external.aopalliance-repackaged;latest},\
-	${repo;org.glassfish.hk2.locator;latest},\
-	${repo;org.glassfish.hk2.osgi-resource-locator;latest},\
-	${repo;org.glassfish.hk2.utils;latest},\
-	${repo;org.glassfish.jersey.containers.jersey-container-servlet;latest},\
-	${repo;org.glassfish.jersey.containers.jersey-container-servlet-core;latest},\
-	${repo;org.glassfish.jersey.core.jersey-client;latest},\
-	${repo;org.glassfish.jersey.core.jersey-common;latest},\
-	${repo;org.glassfish.jersey.core.jersey-server;latest},\
-	${repo;org.glassfish.jersey.inject.jersey-hk2;latest},\
-	${repo;org.glassfish.jersey.media.jersey-media-jaxb;latest},\
-	${repo;org.glassfish.jersey.media.jersey-media-sse;latest},\
-	${repo;org.objectweb.asm;latest},\
-	${repo;org.objectweb.asm.commons;latest},\
-	${repo;org.objectweb.asm.tree;latest},\
-	${repo;org.objectweb.asm.tree.analysis;latest},\
-	${repo;org.objectweb.asm.util;latest},\
-	${repo;org.osgi.service.component;latest},\
-	${repo;org.osgi.service.jakartars;latest},\
-	${repo;org.osgi.service.remoteserviceadmin;latest},\
-	${repo;org.osgi.service.servlet;latest},\
-	${repo;org.osgi.util.converter;latest},\
-	${repo;org.osgi.util.function;latest},\
-	${repo;org.osgi.util.promise;latest},\
-	${repo;slf4j.api;latest},\
-	${repo;slf4j.simple;latest},\
-	${repo;org.apache.felix.cm.json;latest},\
-	${repo;org.apache.felix.configurator;latest},\
-	${repo;org.eclipse.parsson.jakarta.json;latest}}
+	${repo;org.eclipse.osgitech.rest;[1.2.3,1.2.4)},\
+	${repo;org.eclipse.osgitech.rest.servlet.whiteboard;[1.2.3,1.2.4)},\
+	${repo;org.eclipse.osgitech.rest.sse;[1.2.3,1.2.4)},\
+	${repo;org.eclipse.parsson.jakarta.json;[1.1.7,1.1.8)},\
+	${repo;org.glassfish.hk2.api;[3.0.5,3.0.6)},\
+	${repo;org.glassfish.hk2.external.aopalliance-repackaged;[3.0.5,3.0.6)},\
+	${repo;org.glassfish.hk2.locator;[3.0.5,3.0.6)},\
+	${repo;org.glassfish.hk2.osgi-resource-locator;[1.0.3,1.0.4)},\
+	${repo;org.glassfish.hk2.utils;[3.0.5,3.0.6)},\
+	${repo;org.glassfish.jersey.containers.jersey-container-servlet;[3.1.3,3.1.4)},\
+	${repo;org.glassfish.jersey.containers.jersey-container-servlet-core;[3.1.3,3.1.4)},\
+	${repo;org.glassfish.jersey.core.jersey-client;[3.1.3,3.1.4)},\
+	${repo;org.glassfish.jersey.core.jersey-common;[3.1.3,3.1.4)},\
+	${repo;org.glassfish.jersey.core.jersey-server;[3.1.3,3.1.4)},\
+	${repo;org.glassfish.jersey.inject.jersey-hk2;[3.1.3,3.1.4)},\
+	${repo;org.glassfish.jersey.media.jersey-media-jaxb;[3.1.3,3.1.4)},\
+	${repo;org.glassfish.jersey.media.jersey-media-sse;[3.1.3,3.1.4)},\
+	${repo;org.objectweb.asm;[9.10.1,9.10.2)},\
+	${repo;org.objectweb.asm.commons;[9.10.1,9.10.2)},\
+	${repo;org.objectweb.asm.tree;[9.10.1,9.10.2)},\
+	${repo;org.objectweb.asm.tree.analysis;[9.10.1,9.10.2)},\
+	${repo;org.objectweb.asm.util;[9.10.1,9.10.2)},\
+	${repo;org.opentest4j;[1.3.0,1.3.1)},\
+	${repo;org.osgi.service.component;[1.5.1,1.5.2)},\
+	${repo;org.osgi.service.jakartars;[2.0.0,2.0.1)},\
+	${repo;org.osgi.service.remoteserviceadmin;[1.1.0,1.1.1)},\
+	${repo;org.osgi.service.servlet;[2.0.0,2.0.1)},\
+	${repo;org.osgi.test.cases.remoteserviceadmin;[8.1.0,8.1.1)},\
+	${repo;org.osgi.util.converter;[1.0.9,1.0.10)},\
+	${repo;org.osgi.util.function;[1.2.0,1.2.1)},\
+	${repo;org.osgi.util.promise;[1.3.0,1.3.1)},\
+	${repo;slf4j.api;[2.0.17,2.0.18)},\
+	${repo;slf4j.simple;[2.0.17,2.0.18)}}
 
 -runbundles: \
 	assertj-core;version='[3.27.7,3.27.8)',\
@@ -145,8 +170,10 @@ runbundles.files: ${uniq;\
 	org.apache.aries.spifly.dynamic.bundle;version='[1.3.7,1.3.8)',\
 	org.apache.commons.commons-fileupload;version='[1.6.0,1.6.1)',\
 	org.apache.commons.commons-io;version='[2.22.0,2.22.1)',\
+	org.apache.felix.cm.json;version='[2.0.6,2.0.7)',\
 	org.apache.felix.configadmin;version='[1.9.26,1.9.27)',\
 	org.apache.felix.configadmin.plugin.interpolation;version='[1.2.8,1.2.9)',\
+	org.apache.felix.configurator;version='[1.0.18,1.0.19)',\
 	org.apache.felix.eventadmin;version='[1.6.4,1.6.5)',\
 	org.apache.felix.http.jetty12;version='[1.1.0,1.1.1)',\
 	org.apache.felix.http.servlet-api;version='[6.1.0,6.1.1)',\
@@ -173,6 +200,7 @@ runbundles.files: ${uniq;\
 	org.eclipse.osgitech.rest;version='[1.2.3,1.2.4)',\
 	org.eclipse.osgitech.rest.servlet.whiteboard;version='[1.2.3,1.2.4)',\
 	org.eclipse.osgitech.rest.sse;version='[1.2.3,1.2.4)',\
+	org.eclipse.parsson.jakarta.json;version='[1.1.7,1.1.8)',\
 	org.glassfish.hk2.api;version='[3.0.5,3.0.6)',\
 	org.glassfish.hk2.external.aopalliance-repackaged;version='[3.0.5,3.0.6)',\
 	org.glassfish.hk2.locator;version='[3.0.5,3.0.6)',\
@@ -201,7 +229,4 @@ runbundles.files: ${uniq;\
 	org.osgi.util.function;version='[1.2.0,1.2.1)',\
 	org.osgi.util.promise;version='[1.3.0,1.3.1)',\
 	slf4j.api;version='[2.0.17,2.0.18)',\
-	slf4j.simple;version='[2.0.17,2.0.18)',\
-	org.apache.felix.cm.json;version='[2.0.6,2.0.7)',\
-	org.apache.felix.configurator;version='[1.0.18,1.0.19)',\
-	org.eclipse.parsson.jakarta.json;version='[1.1.7,1.1.8)'
+	slf4j.simple;version='[2.0.17,2.0.18)'

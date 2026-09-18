@@ -53,19 +53,21 @@ final class ImportedService implements ImportRegistration, ImportReference, Serv
 
 	private static final Logger LOG = Logger.getLogger(ImportedService.class.getName());
 
-	private final EndpointDescription endpoint;
 	private final ServiceLocator locator;
 	private final ServiceProxyFactory proxies;
+	private final Consumer<ImportedService> onUpdate;
 	private final Consumer<ImportedService> forget;
 	private final AtomicBoolean open = new AtomicBoolean(true);
 
+	private volatile EndpointDescription endpoint;
 	private volatile ServiceRegistration<?> registration;
 
 	ImportedService(EndpointDescription endpoint, ServiceLocator locator, ServiceProxyFactory proxies,
-			Consumer<ImportedService> forget) {
+			Consumer<ImportedService> onUpdate, Consumer<ImportedService> forget) {
 		this.endpoint = endpoint;
 		this.locator = locator;
 		this.proxies = proxies;
+		this.onUpdate = onUpdate;
 		this.forget = forget;
 	}
 
@@ -77,6 +79,11 @@ final class ImportedService implements ImportRegistration, ImportReference, Serv
 	 * service from a local one when it cares.
 	 */
 	void register(BundleContext context) {
+		List<String> interfaces = endpoint.getInterfaces();
+		registration = context.registerService(interfaces.toArray(String[]::new), this, propertiesOf(endpoint));
+	}
+
+	private static Dictionary<String, Object> propertiesOf(EndpointDescription endpoint) {
 		Dictionary<String, Object> properties = new Hashtable<>();
 		for (Map.Entry<String, Object> property : endpoint.getProperties().entrySet()) {
 			if (!property.getKey().startsWith("service.exported.")
@@ -86,8 +93,12 @@ final class ImportedService implements ImportRegistration, ImportReference, Serv
 			}
 		}
 		properties.put(RemoteConstants.SERVICE_IMPORTED, Boolean.TRUE);
-		List<String> interfaces = endpoint.getInterfaces();
-		registration = context.registerService(interfaces.toArray(String[]::new), this, properties);
+		return properties;
+	}
+
+	/** The description, whether or not the registration is still open. */
+	EndpointDescription description() {
+		return endpoint;
 	}
 
 	@Override
@@ -145,13 +156,31 @@ final class ImportedService implements ImportRegistration, ImportReference, Serv
 		return open.get() ? endpoint : null;
 	}
 
+	/**
+	 * The endpoint said something new about itself: the proxy's
+	 * properties follow. Only for the same endpoint — a description of a
+	 * different one is not an update but a mistake, and {@code false} is
+	 * the specification's word for "did not happen".
+	 */
 	@Override
 	public boolean update(EndpointDescription changed) {
-		// A changed endpoint would mean re-registering under changed
-		// properties. Not done yet; false is the specification's word
-		// for "the update did not happen", and it is true here.
-		LOG.info("[DDSR] update of imported " + endpoint.getId() + " is not implemented yet");
-		return false;
+		ServiceRegistration<?> live = registration;
+		if (!open.get() || live == null) {
+			return false;
+		}
+		if (!endpoint.isSameService(changed)) {
+			LOG.warning("[DDSR] " + changed.getId() + " is not an update of " + endpoint.getId() + " — ignored");
+			return false;
+		}
+		endpoint = changed;
+		try {
+			live.setProperties(propertiesOf(changed));
+		} catch (IllegalStateException alreadyGone) {
+			LOG.log(Level.FINE, "[DDSR] " + endpoint.getId() + " was unregistered while being updated", alreadyGone);
+			return false;
+		}
+		onUpdate.accept(this);
+		return true;
 	}
 
 	@Override

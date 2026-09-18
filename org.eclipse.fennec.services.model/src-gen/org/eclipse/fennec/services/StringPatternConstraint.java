@@ -62,12 +62,12 @@ public interface StringPatternConstraint extends ParameterConstraint {
 	 * Minimum string length, inclusive. Unset = 0.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Min Length</em>' attribute.
-	 * @see #setMinLength(int)
+	 * @see #setMinLength(Integer)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getStringPatternConstraint_MinLength()
 	 * @model
 	 * @generated
 	 */
-	int getMinLength();
+	Integer getMinLength();
 
 	/**
 	 * Sets the value of the '{@link org.eclipse.fennec.services.StringPatternConstraint#getMinLength <em>Min Length</em>}' attribute.
@@ -77,7 +77,7 @@ public interface StringPatternConstraint extends ParameterConstraint {
 	 * @see #getMinLength()
 	 * @generated
 	 */
-	void setMinLength(int value);
+	void setMinLength(Integer value);
 
 	/**
 	 * Returns the value of the '<em><b>Max Length</b></em>' attribute.
@@ -87,12 +87,12 @@ public interface StringPatternConstraint extends ParameterConstraint {
 	 * Maximum string length, inclusive. Unset = unbounded.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Max Length</em>' attribute.
-	 * @see #setMaxLength(int)
+	 * @see #setMaxLength(Integer)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getStringPatternConstraint_MaxLength()
 	 * @model
 	 * @generated
 	 */
-	int getMaxLength();
+	Integer getMaxLength();
 
 	/**
 	 * Sets the value of the '{@link org.eclipse.fennec.services.StringPatternConstraint#getMaxLength <em>Max Length</em>}' attribute.
@@ -102,6 +102,6 @@ public interface StringPatternConstraint extends ParameterConstraint {
 	 * @see #getMaxLength()
 	 * @generated
 	 */
-	void setMaxLength(int value);
+	void setMaxLength(Integer value);
 
 } // StringPatternConstraint

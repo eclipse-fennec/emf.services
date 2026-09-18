@@ -34,7 +34,7 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 * @ordered
 	 */
-	protected static final int MIN_SIZE_EDEFAULT = 0;
+	protected static final Integer MIN_SIZE_EDEFAULT = null;
 
 	/**
 	 * The cached value of the '{@link #getMinSize() <em>Min Size</em>}' attribute.
@@ -44,7 +44,7 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 * @ordered
 	 */
-	protected int minSize = MIN_SIZE_EDEFAULT;
+	protected Integer minSize = MIN_SIZE_EDEFAULT;
 
 	/**
 	 * The default value of the '{@link #getMaxSize() <em>Max Size</em>}' attribute.
@@ -54,7 +54,7 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 * @ordered
 	 */
-	protected static final int MAX_SIZE_EDEFAULT = 0;
+	protected static final Integer MAX_SIZE_EDEFAULT = null;
 
 	/**
 	 * The cached value of the '{@link #getMaxSize() <em>Max Size</em>}' attribute.
@@ -64,7 +64,7 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 * @ordered
 	 */
-	protected int maxSize = MAX_SIZE_EDEFAULT;
+	protected Integer maxSize = MAX_SIZE_EDEFAULT;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -91,7 +91,7 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 */
 	@Override
-	public int getMinSize() {
+	public Integer getMinSize() {
 		return minSize;
 	}
 
@@ -101,8 +101,8 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 */
 	@Override
-	public void setMinSize(int newMinSize) {
-		int oldMinSize = minSize;
+	public void setMinSize(Integer newMinSize) {
+		Integer oldMinSize = minSize;
 		minSize = newMinSize;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.COLLECTION_SIZE_CONSTRAINT__MIN_SIZE, oldMinSize, minSize));
@@ -114,7 +114,7 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 */
 	@Override
-	public int getMaxSize() {
+	public Integer getMaxSize() {
 		return maxSize;
 	}
 
@@ -124,8 +124,8 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	 * @generated
 	 */
 	@Override
-	public void setMaxSize(int newMaxSize) {
-		int oldMaxSize = maxSize;
+	public void setMaxSize(Integer newMaxSize) {
+		Integer oldMaxSize = maxSize;
 		maxSize = newMaxSize;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.COLLECTION_SIZE_CONSTRAINT__MAX_SIZE, oldMaxSize, maxSize));
@@ -192,9 +192,9 @@ public class CollectionSizeConstraintImpl extends ParameterConstraintImpl implem
 	public boolean eIsSet(int featureID) {
 		switch (featureID) {
 			case ServicesPackage.COLLECTION_SIZE_CONSTRAINT__MIN_SIZE:
-				return minSize != MIN_SIZE_EDEFAULT;
+				return MIN_SIZE_EDEFAULT == null ? minSize != null : !MIN_SIZE_EDEFAULT.equals(minSize);
 			case ServicesPackage.COLLECTION_SIZE_CONSTRAINT__MAX_SIZE:
-				return maxSize != MAX_SIZE_EDEFAULT;
+				return MAX_SIZE_EDEFAULT == null ? maxSize != null : !MAX_SIZE_EDEFAULT.equals(maxSize);
 		}
 		return super.eIsSet(featureID);
 	}

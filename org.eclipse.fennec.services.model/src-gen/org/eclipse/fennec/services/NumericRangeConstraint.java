@@ -35,15 +35,15 @@ public interface NumericRangeConstraint extends ParameterConstraint {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Lower bound. Unset = -∞.
+	 * Lower bound. Unset = -∞ — an object type on purpose: this class compares its bounds against null in its own constraints, and a primitive EDouble could never be null. A generator has to be able to tell "no bound" from "the bound zero".
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Min</em>' attribute.
-	 * @see #setMin(double)
+	 * @see #setMin(Double)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getNumericRangeConstraint_Min()
 	 * @model
 	 * @generated
 	 */
-	double getMin();
+	Double getMin();
 
 	/**
 	 * Sets the value of the '{@link org.eclipse.fennec.services.NumericRangeConstraint#getMin <em>Min</em>}' attribute.
@@ -53,7 +53,7 @@ public interface NumericRangeConstraint extends ParameterConstraint {
 	 * @see #getMin()
 	 * @generated
 	 */
-	void setMin(double value);
+	void setMin(Double value);
 
 	/**
 	 * Returns the value of the '<em><b>Max</b></em>' attribute.
@@ -63,12 +63,12 @@ public interface NumericRangeConstraint extends ParameterConstraint {
 	 * Upper bound. Unset = +∞.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Max</em>' attribute.
-	 * @see #setMax(double)
+	 * @see #setMax(Double)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getNumericRangeConstraint_Max()
 	 * @model
 	 * @generated
 	 */
-	double getMax();
+	Double getMax();
 
 	/**
 	 * Sets the value of the '{@link org.eclipse.fennec.services.NumericRangeConstraint#getMax <em>Max</em>}' attribute.
@@ -78,7 +78,7 @@ public interface NumericRangeConstraint extends ParameterConstraint {
 	 * @see #getMax()
 	 * @generated
 	 */
-	void setMax(double value);
+	void setMax(Double value);
 
 	/**
 	 * Returns the value of the '<em><b>Inclusive Min</b></em>' attribute.

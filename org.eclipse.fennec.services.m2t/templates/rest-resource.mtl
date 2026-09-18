@@ -35,7 +35,7 @@ document says what is served where.
 [/for]
 
 import jakarta.ws.rs.Path;
-[for (imported : String | restImports(flavor))]
+[for (imported : String | restImports(binding, flavor))]
 import [imported/];
 [/for]
 import jakarta.ws.rs.core.Response;
@@ -100,9 +100,11 @@ carries no annotation and is therefore the request entity — JAX-RS's own
 default, and the model's.
 [/comment]
 [query public parameterAnnotation(operationFlavor : RestOperationFlavor, parameter : Parameter) : String =
-	if not operationFlavor.parameterBindings->exists(b | b.parameter = parameter) then ''
+	(if not operationFlavor.parameterBindings->exists(b | b.parameter = parameter) then ''
 	else annotationFor(operationFlavor.parameterBindings->select(b | b.parameter = parameter)->first(), parameter)
-	endif /]
+	endif)
+	.concat(if parameter.defaultValue.oclIsUndefined() then ''
+		else '@DefaultValue("'.concat(parameter.defaultValue).concat('") ') endif) /]
 
 [query public annotationFor(binding : RestParameterBinding, parameter : Parameter) : String =
 	if binding.binding = ParameterBinding::PATH then '@PathParam("'.concat(wireName(binding, parameter)).concat('") ')
@@ -115,31 +117,157 @@ default, and the model's.
 	else binding.wireName endif /]
 
 [comment]
-The body as finished lines: one delegation, wrapped in a try/catch when the
-operation declares errors. Built as a sequence so an operation without errors
-cannot leave an empty block behind.
+The body as finished lines. Every method carries the same HTTP behaviour,
+whether the contract mentions it or not — that part is convention, not
+something anybody should have to model:
+
+  a missing or invalid argument      400, naming what was wrong
+  no result, or an empty collection  204
+  a declared error                   the status its binding names (500 without one)
+  anything else                      500
+
+so the delegation is the only line that differs between operations.
 [/comment]
 [query public methodBody(binding : JavaBinding, operationFlavor : RestOperationFlavor) : Sequence(String) =
-	if operationFlavor.operation.exceptions->isEmpty()
-	then Sequence{'		'.concat(answer(operationFlavor))}
-	else Sequence{'		try {', '	'.concat('		').concat(answer(operationFlavor))}
+	validationLines(operationFlavor)
+		->union(Sequence{'		try {'})
+		->union(answerLines(binding, operationFlavor))
 		->union(operationFlavor.operation.exceptions->sortedBy(e | e.name)
 			->collect(raised | catchBlock(binding, operationFlavor, raised))->flatten())
-		->append('		}')
-	endif /]
+		->union(Sequence{
+			'		} catch (RuntimeException failure) {',
+			'			return Response.serverError().entity(failure.getMessage()).build();',
+			'		}'}) /]
 
 [query public catchBlock(binding : JavaBinding, operationFlavor : RestOperationFlavor, raised : ServiceException) : Sequence(String) =
 	Sequence{
 		'		} catch ('.concat(simpleName(exceptionType(binding, raised))).concat(' failure) {'),
-		'			return Response.status('.concat(statusFor(operationFlavor, raised).toString()).concat(').entity(failure.getMessage()).build();')
+		'			return Response.status('.concat(statusFor(operationFlavor, raised)).concat(').entity(failure.getMessage()).build();')
 	} /]
 
-[query public answer(operationFlavor : RestOperationFlavor) : String =
+[comment]
+The call and what becomes of its result. A void operation answers 204, a
+result that is absent or empty answers 204, anything else is the success
+code the flavor declares — the first of its returnCodes, 200 where it names
+none. A primitive result cannot be absent, so it is answered directly.
+[/comment]
+[query public answerLines(binding : JavaBinding, operationFlavor : RestOperationFlavor) : Sequence(String) =
 	if operationFlavor.operation.returnValue.oclIsUndefined()
-	then 'service.'.concat(call(operationFlavor)).concat(';')
-		.concat(' return Response.noContent().build();')
-	else 'return Response.ok(service.'.concat(call(operationFlavor)).concat(').build();')
-	endif /]
+	then Sequence{
+		'			service.'.concat(call(operationFlavor)).concat(';'),
+		'			return Response.noContent().build();'}
+	else if isPrimitive(slotType(binding, operationFlavor.operation.returnValue))
+	then Sequence{
+		'			return '.concat(success(operationFlavor)).concat('(service.')
+			.concat(call(operationFlavor)).concat(').build();')}
+	else Sequence{
+		'			'.concat(slotType(binding, operationFlavor.operation.returnValue))
+			.concat(' result = service.').concat(call(operationFlavor)).concat(';'),
+		'			return '.concat(emptinessTest(binding, operationFlavor)),
+		'					? Response.noContent().build()',
+		'					: '.concat(success(operationFlavor)).concat('(result).build();')}
+	endif endif /]
+
+[query public emptinessTest(binding : JavaBinding, operationFlavor : RestOperationFlavor) : String =
+	if operationFlavor.operation.returnValue.upperBound = 1 then 'result == null'
+	else 'result == null || result.isEmpty()' endif /]
+
+[comment]The success answer: the first declared return code, 200 where none is declared.[/comment]
+[query public success(operationFlavor : RestOperationFlavor) : String =
+	if operationFlavor.returnCodes->isEmpty() or operationFlavor.returnCodes->first() = 200
+	then 'Response.ok'
+	else 'Response.status('.concat(operationFlavor.returnCodes->first()).concat(').entity') endif /]
+
+[query public isPrimitive(javaType : String) : Boolean =
+	Sequence{'int', 'long', 'short', 'byte', 'char', 'float', 'double', 'boolean'}
+		->includes(javaType) /]
+
+[comment]===================== argument validity =====================[/comment]
+
+[comment]
+What the contract says about an argument, checked before the service sees
+it: a required argument must be there, and every typed constraint it carries
+must hold. An ExpressionConstraint is not rendered — it needs an evaluator at
+runtime, not a generated if.
+[/comment]
+[query public validationLines(operationFlavor : RestOperationFlavor) : Sequence(String) =
+	operationFlavor.operation.parameters->sortedBy(p | p.index)
+		->collect(parameter | checksFor(parameter))->flatten() /]
+
+[query public checksFor(parameter : Parameter) : Sequence(String) =
+	(if parameter.optional or isPrimitive(javaType(parameter.type))
+	then Sequence{}
+	else reject(parameter, parameter.name.concat(' is required'), parameter.name.concat(' == null'))
+	endif)
+	->union(parameter.constraints->collect(c | constraintCheck(parameter, c))->flatten()) /]
+
+[query public constraintCheck(parameter : Parameter, constraint : ParameterConstraint) : Sequence(String) =
+	if constraint.oclIsKindOf(StringPatternConstraint) then patternCheck(parameter, constraint.oclAsType(StringPatternConstraint))
+	else if constraint.oclIsKindOf(NumericRangeConstraint) then rangeCheck(parameter, constraint.oclAsType(NumericRangeConstraint))
+	else if constraint.oclIsKindOf(EnumerationConstraint) then enumerationCheck(parameter, constraint.oclAsType(EnumerationConstraint))
+	else if constraint.oclIsKindOf(CollectionSizeConstraint) then sizeCheck(parameter, constraint.oclAsType(CollectionSizeConstraint))
+	else Sequence{} endif endif endif endif /]
+
+[query public patternCheck(parameter : Parameter, constraint : StringPatternConstraint) : Sequence(String) =
+	reject(parameter, parameter.name.concat(' does not match ').concat(constraint.pattern),
+			guarded(parameter, '!'.concat(parameter.name).concat('.matches("').concat(constraint.pattern).concat('")')))
+	->union(if constraint.minLength.oclIsUndefined() then Sequence{}
+		else reject(parameter, parameter.name.concat(' is shorter than ').concat(constraint.minLength),
+			guarded(parameter, parameter.name.concat('.length() < ').concat(constraint.minLength))) endif)
+	->union(if constraint.maxLength.oclIsUndefined() then Sequence{}
+		else reject(parameter, parameter.name.concat(' is longer than ').concat(constraint.maxLength),
+			guarded(parameter, parameter.name.concat('.length() > ').concat(constraint.maxLength))) endif) /]
+
+[query public rangeCheck(parameter : Parameter, constraint : NumericRangeConstraint) : Sequence(String) =
+	(if constraint.min.oclIsUndefined() then Sequence{}
+	else reject(parameter, parameter.name.concat(' is below ').concat(bound(parameter, constraint.min)),
+		parameter.name.concat(if constraint.inclusiveMin then ' < ' else ' <= ' endif)
+			.concat(bound(parameter, constraint.min))) endif)
+	->union(if constraint.max.oclIsUndefined() then Sequence{}
+	else reject(parameter, parameter.name.concat(' is above ').concat(bound(parameter, constraint.max)),
+		parameter.name.concat(if constraint.inclusiveMax then ' > ' else ' >= ' endif)
+			.concat(bound(parameter, constraint.max))) endif) /]
+
+[comment]
+A bound as the parameter's own type writes it: a whole number against an
+integral argument reads as 200, not as 200.0.
+[/comment]
+[query public bound(parameter : Parameter, value : Real) : String =
+	if Sequence{'int', 'long', 'short', 'byte'}->includes(javaType(parameter.type))
+		and value.floor() = value
+	then value.floor().toString()
+	else value.toString() endif /]
+
+[query public enumerationCheck(parameter : Parameter, constraint : EnumerationConstraint) : Sequence(String) =
+	reject(parameter, parameter.name.concat(' is not one of the allowed values'),
+		guarded(parameter, '!List.of('
+			.concat(constraint.allowedValues->iterate(value : String; joined : String = '' |
+				if joined.size() = 0 then '"'.concat(value).concat('"')
+				else joined.concat(', "').concat(value).concat('"') endif))
+			.concat(').contains(').concat(parameter.name).concat(')'))) /]
+
+[query public sizeCheck(parameter : Parameter, constraint : CollectionSizeConstraint) : Sequence(String) =
+	(if constraint.minSize.oclIsUndefined() then Sequence{}
+	else reject(parameter, parameter.name.concat(' has fewer than ').concat(constraint.minSize).concat(' entries'),
+		guarded(parameter, parameter.name.concat('.size() < ').concat(constraint.minSize))) endif)
+	->union(if constraint.maxSize.oclIsUndefined() then Sequence{}
+	else reject(parameter, parameter.name.concat(' has more than ').concat(constraint.maxSize).concat(' entries'),
+		guarded(parameter, parameter.name.concat('.size() > ').concat(constraint.maxSize))) endif) /]
+
+[comment]
+A check on a value that may be absent has to survive its absence: an optional
+argument is only checked when it is there. A required one was rejected a few
+lines above if it was missing, so it needs no second guard.
+[/comment]
+[query public guarded(parameter : Parameter, test : String) : String =
+	if isPrimitive(javaType(parameter.type)) or not parameter.optional then test
+	else parameter.name.concat(' != null && ').concat(test) endif /]
+
+[query public reject(parameter : Parameter, reason : String, test : String) : Sequence(String) =
+	Sequence{
+		'		if ('.concat(test).concat(') {'),
+		'			return Response.status(400).entity("'.concat(reason).concat('").build();'),
+		'		}'} /]
 
 [query public call(operationFlavor : RestOperationFlavor) : String =
 	operationFlavor.operation.name.concat('(')
@@ -159,13 +287,29 @@ error is still the error it is, it just has no status of its own.
 
 [comment]===================== imports =====================[/comment]
 
-[query public restImports(flavor : RestFlavor) : Sequence(String) =
-	flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor))
-		->collect(o | 'jakarta.ws.rs.'.concat(httpMethod(o.oclAsType(RestOperationFlavor))))
-		->union(flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor))
-			->collect(o | o.oclAsType(RestOperationFlavor).parameterBindings)->flatten()
+[query public restImports(binding : JavaBinding, flavor : RestFlavor) : Sequence(String) =
+	restOperations(flavor)->collect(o | 'jakarta.ws.rs.'.concat(httpMethod(o)))
+		->union(restOperations(flavor)->collect(o | o.parameterBindings)->flatten()
 			->collect(b | bindingImport(b)))
+		->union(if restOperations(flavor)->exists(o | o.parameterBindings
+				->exists(b | not b.wireName.oclIsUndefined()) or o.operation.parameters
+				->exists(p | not p.defaultValue.oclIsUndefined()))
+			then Sequence{'jakarta.ws.rs.DefaultValue'} else Sequence{} endif)
+		->union(flavorSlots(flavor)->collect(slot | qualifiedType(binding, slot)))
+		->union(if flavorSlots(flavor)->exists(slot | slot.upperBound <> 1)
+			then Sequence{'java.util.List'} else Sequence{} endif)
 		->select(i | i <> '')->asSet()->sortedBy(i | i) /]
+
+[query public restOperations(flavor : RestFlavor) : Sequence(RestOperationFlavor) =
+	flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor))
+		->collect(o | o.oclAsType(RestOperationFlavor))->asSequence() /]
+
+[comment]Every typed slot this resource names: the arguments it takes and the results it answers with.[/comment]
+[query public flavorSlots(flavor : RestFlavor) : Sequence(Parameter) =
+	restOperations(flavor)->collect(o | o.operation.parameters)
+		->union(restOperations(flavor)->collect(o | o.operation.returnValue)
+			->reject(slot | slot.oclIsUndefined()))
+		->asSequence() /]
 
 [query public bindingImport(binding : RestParameterBinding) : String =
 	if binding.binding = ParameterBinding::PATH then 'jakarta.ws.rs.PathParam'

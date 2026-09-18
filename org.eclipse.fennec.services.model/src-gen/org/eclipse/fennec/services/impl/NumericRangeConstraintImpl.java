@@ -36,7 +36,7 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 * @ordered
 	 */
-	protected static final double MIN_EDEFAULT = 0.0;
+	protected static final Double MIN_EDEFAULT = null;
 
 	/**
 	 * The cached value of the '{@link #getMin() <em>Min</em>}' attribute.
@@ -46,7 +46,7 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 * @ordered
 	 */
-	protected double min = MIN_EDEFAULT;
+	protected Double min = MIN_EDEFAULT;
 
 	/**
 	 * The default value of the '{@link #getMax() <em>Max</em>}' attribute.
@@ -56,7 +56,7 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 * @ordered
 	 */
-	protected static final double MAX_EDEFAULT = 0.0;
+	protected static final Double MAX_EDEFAULT = null;
 
 	/**
 	 * The cached value of the '{@link #getMax() <em>Max</em>}' attribute.
@@ -66,7 +66,7 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 * @ordered
 	 */
-	protected double max = MAX_EDEFAULT;
+	protected Double max = MAX_EDEFAULT;
 
 	/**
 	 * The default value of the '{@link #isInclusiveMin() <em>Inclusive Min</em>}' attribute.
@@ -133,7 +133,7 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 */
 	@Override
-	public double getMin() {
+	public Double getMin() {
 		return min;
 	}
 
@@ -143,8 +143,8 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 */
 	@Override
-	public void setMin(double newMin) {
-		double oldMin = min;
+	public void setMin(Double newMin) {
+		Double oldMin = min;
 		min = newMin;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.NUMERIC_RANGE_CONSTRAINT__MIN, oldMin, min));
@@ -156,7 +156,7 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 */
 	@Override
-	public double getMax() {
+	public Double getMax() {
 		return max;
 	}
 
@@ -166,8 +166,8 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	 * @generated
 	 */
 	@Override
-	public void setMax(double newMax) {
-		double oldMax = max;
+	public void setMax(Double newMax) {
+		Double oldMax = max;
 		max = newMax;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.NUMERIC_RANGE_CONSTRAINT__MAX, oldMax, max));
@@ -296,9 +296,9 @@ public class NumericRangeConstraintImpl extends ParameterConstraintImpl implemen
 	public boolean eIsSet(int featureID) {
 		switch (featureID) {
 			case ServicesPackage.NUMERIC_RANGE_CONSTRAINT__MIN:
-				return min != MIN_EDEFAULT;
+				return MIN_EDEFAULT == null ? min != null : !MIN_EDEFAULT.equals(min);
 			case ServicesPackage.NUMERIC_RANGE_CONSTRAINT__MAX:
-				return max != MAX_EDEFAULT;
+				return MAX_EDEFAULT == null ? max != null : !MAX_EDEFAULT.equals(max);
 			case ServicesPackage.NUMERIC_RANGE_CONSTRAINT__INCLUSIVE_MIN:
 				return inclusiveMin != INCLUSIVE_MIN_EDEFAULT;
 			case ServicesPackage.NUMERIC_RANGE_CONSTRAINT__INCLUSIVE_MAX:

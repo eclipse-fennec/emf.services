@@ -63,8 +63,8 @@ final class FakeSse implements Sse {
 		@Override public OutboundSseEvent.Builder reconnectDelay(long milliseconds) { return this; }
 		@Override public OutboundSseEvent.Builder mediaType(MediaType type) { this.mediaType = type; return this; }
 		@Override public OutboundSseEvent.Builder comment(String c) { this.comment = c; return this; }
-		@Override public OutboundSseEvent.Builder data(Class type, Object d) { this.data = d; return this; }
-		@Override public OutboundSseEvent.Builder data(GenericType type, Object d) { this.data = d; return this; }
+		@Override public OutboundSseEvent.Builder data(@SuppressWarnings("rawtypes") Class type, Object d) { this.data = d; return this; }
+		@Override public OutboundSseEvent.Builder data(@SuppressWarnings("rawtypes") GenericType type, Object d) { this.data = d; return this; }
 		@Override public OutboundSseEvent.Builder data(Object d) { this.data = d; return this; }
 		@Override public OutboundSseEvent build() { return new Frame(name, comment, mediaType, data); }
 	}

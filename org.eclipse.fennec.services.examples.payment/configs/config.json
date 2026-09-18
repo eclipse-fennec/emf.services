@@ -23,6 +23,14 @@
     "provider.heartbeat.seconds": "$[env:DDSR_PROVIDER_HEARTBEAT_SECONDS;default=30]",
     "session.interval.seconds": "$[env:DDSR_SESSION_INTERVAL_SECONDS;default=0]"
   },
+  "org.eclipse.fennec.services.provider.rest~bindingProbe":
+  {
+    "ddsr.contract": "BindingProbe",
+    "service.filter": "(ddsr.contract=BindingProbe)",
+    "model.bundle": "org.eclipse.fennec.services.examples.payment",
+    "model.entry": "model/binding-probe.xmi",
+    "osgi.jakartars.application.base": "/probe"
+  },
   "org.eclipse.fennec.services.examples.payment":
   {
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",

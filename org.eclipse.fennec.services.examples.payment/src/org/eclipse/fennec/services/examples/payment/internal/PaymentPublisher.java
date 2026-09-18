@@ -217,10 +217,12 @@ public final class PaymentPublisher {
 
 	/**
 	 * Publish the BindingProbe contract by LOADING it: contract, flavor and
-	 * every parameter binding live in {@code model/} of this bundle, and the
-	 * same two documents are what the m2t templates generate the interface and
-	 * the endpoint from (#75). Nothing here restates them, so what this
-	 * provider serves and what it announces cannot drift apart.
+	 * every parameter binding live in one document in {@code model/} of this
+	 * bundle — one document on purpose, so every reference between flavor and
+	 * contract is intra-document and resolves wherever the file is read. The
+	 * same document is what the interface is generated from (#75) and what the
+	 * generic distribution serves it by (#84). Nothing here restates it, so
+	 * what this provider serves and what it announces cannot drift apart.
 	 *
 	 * <p>Only the deployment facts are filled in here: where this instance is
 	 * reachable is configuration, not contract.
@@ -228,7 +230,7 @@ public final class PaymentPublisher {
 	private Registration publishBindingProbe(Config config, URI url) {
 		Bundle bundle = FrameworkUtil.getBundle(PaymentPublisher.class);
 		org.eclipse.emf.common.util.URI modelUri = org.eclipse.emf.common.util.URI
-				.createURI(bundle.getEntry("model/binding-probe-impl.xmi").toString());
+				.createURI(bundle.getEntry("model/binding-probe.xmi").toString());
 		Resource loaded = catalogEntryResourceSet.getResource(modelUri, true);
 		ServiceProvider provider = (ServiceProvider) loaded.getContents().get(0);
 		ServiceImplementation impl = provider.getImplementations().get(0);

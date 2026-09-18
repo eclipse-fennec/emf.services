@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<services:ServiceInterface xmi:version="2.0"
+<xmi:XMI xmi:version="2.0"
     xmlns:xmi="http://www.omg.org/XMI"
-    xmlns:services="http://eclipse.org/fennec/services/1.0"
-    name="BindingProbe"
-    version="1.0.0"
-    description="Answers with where each of its arguments arrived. Exists to prove that a consumer places every value where the published flavor says — and nowhere else.">
-  <operations name="echo" description="Returns '&lt;id&gt;|&lt;currency&gt;|&lt;tenant&gt;' from wherever the three values arrived.">
-    <parameters name="id" type="string" description="Travels in the path template."/>
-    <parameters name="currency" index="1" type="string" description="Travels as a query parameter."/>
-    <parameters name="tenant" index="2" type="string" description="Travels as the X-Tenant header."/>
-    <returnValue name="result" type="string" description="The three values, separated by a pipe, in the order the contract declares them."/>
-  </operations>
-</services:ServiceInterface>
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="binding-probe-java">
+    <implementations name="binding-probe-java" version="1.0.0"
+        implementationId="binding-probe:java:1.0.0"
+        serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="binding-probe-rest" kind="REST" basePath="/probe">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="echo"
+            method="GET" path="/echo/{id}" returnCodes="200" produces="text/plain"
+            operation="/1/@operations.0">
+          <parameterBindings parameter="/1/@operations.0/@parameters.0" binding="PATH"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.2" binding="HEADER" wireName="X-Tenant"/>
+        </operationFlavors>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceInterface name="BindingProbe" version="1.0.0"
+      description="Answers with where each of its arguments arrived. Exists to prove that a consumer places every value where the published flavor says — and nowhere else.">
+    <operations name="echo" description="Returns '&lt;id&gt;|&lt;currency&gt;|&lt;tenant&gt;' from wherever the three values arrived.">
+      <parameters name="id" type="string" description="Travels in the path template."/>
+      <parameters name="currency" index="1" type="string" description="Travels as a query parameter."/>
+      <parameters name="tenant" index="2" type="string" description="Travels as the X-Tenant header."/>
+      <returnValue name="result" type="string" description="The three values, separated by a pipe, in the order the contract declares them."/>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

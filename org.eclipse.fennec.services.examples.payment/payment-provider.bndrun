@@ -22,6 +22,7 @@ jersey.deps:
 	bnd.identity;id='org.eclipse.fennec.services.examples.payment',\
 	bnd.identity;id='org.eclipse.fennec.services.client.java',\
 	bnd.identity;id='org.eclipse.fennec.services.client.rest',\
+	bnd.identity;id='org.eclipse.fennec.services.provider.rest',\
 	bnd.identity;id='org.apache.felix.gogo.command',\
 	bnd.identity;id='org.apache.felix.gogo.shell',\
 	bnd.identity;id='biz.aQute.gogo.commands.provider',\
@@ -69,6 +70,7 @@ jersey.deps:
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.eclipse.fennec.services.client.rest;version=snapshot,\
 	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
+	org.eclipse.fennec.services.provider.rest;version=snapshot,\
 	org.eclipse.fennec.services.examples.payment;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\

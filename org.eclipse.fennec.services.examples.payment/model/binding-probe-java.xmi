@@ -12,5 +12,5 @@
   <fileHeader>which is available at https://www.eclipse.org/legal/epl-2.0/</fileHeader>
   <fileHeader/>
   <fileHeader>SPDX-License-Identifier: EPL-2.0</fileHeader>
-  <serviceInterfaces href="binding-probe.xmi#/"/>
+  <serviceInterfaces href="binding-probe.xmi#/1"/>
 </services:JavaBinding>

@@ -17,8 +17,14 @@ Private-Package: \
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.osgi.service.jakartars;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
-	org.eclipse.fennec.services.flavor.rest;version=snapshot
+	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
 
+# Plain JUnit 5, no OSGi runtime: the dispatcher decides in model terms
+# and takes its service lookup as a supplier, so nothing here needs a
+# framework. jersey-common supplies the JAX-RS RuntimeDelegate that
+# building a Response needs.
 -testpath: \
 	${junit},\
-	junit-platform-launcher;version=latest
+	junit-platform-launcher;version=latest,\
+	org.glassfish.jersey.core.jersey-common;version=latest

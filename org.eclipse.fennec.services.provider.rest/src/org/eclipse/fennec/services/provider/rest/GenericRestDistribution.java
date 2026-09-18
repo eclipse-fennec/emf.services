@@ -13,6 +13,7 @@
 
 package org.eclipse.fennec.services.provider.rest;
 
+import java.net.URL;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -23,8 +24,13 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
+import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
+import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.InvalidSyntaxException;
+import org.osgi.framework.ServiceObjects;
+import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -118,11 +124,38 @@ public class GenericRestDistribution extends Application {
 		try {
 			ServiceImplementation implementation = load(context, config, resourceSet);
 			RestFlavor flavor = restFlavorOf(implementation);
-			this.dispatcher = new RestDispatcher(flavor, context, config.service_filter());
+			this.dispatcher = new RestDispatcher(flavor,
+					() -> implementation(context, config.service_filter()),
+					implementation.getServiceInterfaces().get(0).getName(),
+					resourceSets);
 			LOG.info("[DDSR] serving " + implementation.getServiceInterfaces().get(0).getName()
 					+ " generically at " + flavor.getBasePath());
 		} finally {
 			resourceSets.ungetService(resourceSet);
+		}
+	}
+
+
+	/**
+	 * The service implementing this contract, looked up per call so a
+	 * provider that comes and goes is followed without bookkeeping.
+	 * Through {@link ServiceObjects} so a PROTOTYPE-scoped implementation
+	 * yields an instance per call instead of one shared across consumers.
+	 *
+	 * <p>By filter rather than by a typed reference on purpose: an
+	 * implementation registers under whatever interface it has, and a
+	 * generic transport must not require it to be one this bundle knows.
+	 */
+	@SuppressWarnings("unchecked")
+	private static ServiceObjects<Object> implementation(BundleContext context, String serviceFilter) {
+		try {
+			ServiceReference<?>[] candidates = context.getServiceReferences((String) null, serviceFilter);
+			if (candidates == null || candidates.length == 0) {
+				return null;
+			}
+			return (ServiceObjects<Object>) context.getServiceObjects(candidates[0]);
+		} catch (InvalidSyntaxException malformed) {
+			throw new IllegalStateException("service filter is not a filter: " + serviceFilter, malformed);
 		}
 	}
 
@@ -142,7 +175,7 @@ public class GenericRestDistribution extends Application {
 		if (owner == null) {
 			throw new IllegalStateException("no bundle " + config.model_bundle() + " to read the model from");
 		}
-		java.net.URL entry = owner.getEntry(config.model_entry());
+		URL entry = owner.getEntry(config.model_entry());
 		if (entry == null) {
 			throw new IllegalStateException(config.model_bundle() + " carries no entry " + config.model_entry());
 		}
@@ -151,9 +184,23 @@ public class GenericRestDistribution extends Application {
 		return provider.getImplementations().get(0);
 	}
 
+	/**
+	 * The dispatcher, and the XMI codec it needs.
+	 *
+	 * <p>The codec's providers are registered as whiteboard extensions
+	 * elsewhere, which attaches them to the default application — not to
+	 * this one. An application carries its own, so a contract whose
+	 * operations take or return a model is served here the same way the
+	 * hand-written broker endpoints serve theirs.
+	 */
 	@Override
 	public Set<Object> getSingletons() {
-		return dispatcher != null ? Set.of(dispatcher) : Set.of();
+		if (dispatcher == null) {
+			return Set.of();
+		}
+		return Set.of(dispatcher,
+				new XmiMessageBodyReader(resourceSets),
+				new XmiMessageBodyWriter(resourceSets));
 	}
 
 	private static RestFlavor restFlavorOf(ServiceImplementation implementation) {

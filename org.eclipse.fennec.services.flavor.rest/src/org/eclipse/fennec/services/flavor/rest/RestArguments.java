@@ -53,7 +53,9 @@ public final class RestArguments {
 	 * @param pathVariables what the path template captured
 	 * @param queryValues   all values of a query parameter, by wire name
 	 * @param headerValue   a request header, by wire name
-	 * @param body          the decoded payload, or {@code null}
+	 * @param body          the payload: an object the contract's type
+	 *                      already, or its text, which is converted like
+	 *                      any other value
 	 */
 	public static Map<String, Object> of(RestOperationFlavor operationFlavor,
 			Map<String, String> pathVariables,
@@ -77,11 +79,34 @@ public final class RestArguments {
 			arguments.put(parameter.getName(), switch (where) {
 				case PATH -> single(parameter, pathVariables.get(wireName));
 				case HEADER -> single(parameter, headerValue.apply(wireName));
-				case BODY -> body;
+				case BODY -> body instanceof String text ? single(parameter, text) : body;
 				case QUERY -> fromQuery(parameter, queryValues.apply(wireName));
 			});
 		}
 		return arguments;
+	}
+
+	/**
+	 * The parameter a request carries in its body, or {@code null} when the
+	 * operation has none.
+	 *
+	 * <p>A transport needs to know this before it reads the request: a body
+	 * is a stream that can be consumed once, and what it has to be decoded
+	 * into is the parameter's declared type. At most one parameter can be
+	 * bound this way — a request has one body — and the first one declared
+	 * wins if a model says otherwise.
+	 */
+	public static Parameter bodyParameter(RestOperationFlavor operationFlavor) {
+		if (operationFlavor == null || operationFlavor.getOperation() == null) {
+			return null;
+		}
+		for (Parameter parameter : operationFlavor.getOperation().getParameters()) {
+			RestParameterBinding binding = RestPlacement.bindingFor(operationFlavor, parameter.getName());
+			if (binding != null && binding.getBinding() == ParameterBinding.BODY) {
+				return parameter;
+			}
+		}
+		return null;
 	}
 
 	/**

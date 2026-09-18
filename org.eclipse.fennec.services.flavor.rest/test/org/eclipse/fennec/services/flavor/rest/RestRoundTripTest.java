@@ -138,4 +138,51 @@ class RestRoundTripTest {
 	void theMethodIsPartOfTheRoute() {
 		assertThat(RestRoute.match(directory(), "POST", "/persons/42")).isEmpty();
 	}
+
+	@Test
+	void anOperationWithoutABodyBindingHasNoBodyParameter() {
+		assertThat(RestArguments.bodyParameter((RestOperationFlavor) directory().getOperationFlavors().get(0)))
+				.as("every argument of this one travels in the path, query or a header")
+				.isNull();
+	}
+
+	@Test
+	void theBodyParameterIsTheOneBoundToIt() {
+		RestFlavor flavor = directory();
+		RestOperationFlavor operationFlavor = (RestOperationFlavor) flavor.getOperationFlavors().get(0);
+		Parameter note = parameter(operationFlavor.getOperation(), "note", "string");
+		bind(operationFlavor, note, ParameterBinding.BODY, null);
+
+		assertThat(RestArguments.bodyParameter(operationFlavor)).isSameAs(note);
+	}
+
+	@Test
+	void aBodyThatArrivesAsTextIsConvertedLikeAnyOtherValue() {
+		// A transport that read the payload as text hands it over as
+		// such; what it becomes is the contract's business, the same
+		// rule that applies to a query parameter.
+		RestFlavor flavor = directory();
+		RestOperationFlavor operationFlavor = (RestOperationFlavor) flavor.getOperationFlavors().get(0);
+		bind(operationFlavor, parameter(operationFlavor.getOperation(), "count", "int"),
+				ParameterBinding.BODY, null);
+
+		Map<String, Object> read = RestArguments.of(operationFlavor, Map.of("id", "acct-42"),
+				name -> List.of(), name -> null, "17");
+
+		assertThat(read).containsEntry("count", 17);
+	}
+
+	@Test
+	void aBodyThatIsAlreadyAnObjectIsPassedThrough() {
+		RestFlavor flavor = directory();
+		RestOperationFlavor operationFlavor = (RestOperationFlavor) flavor.getOperationFlavors().get(0);
+		bind(operationFlavor, parameter(operationFlavor.getOperation(), "contract", "object"),
+				ParameterBinding.BODY, null);
+		ServiceOperation payload = F.createServiceOperation();
+
+		Map<String, Object> read = RestArguments.of(operationFlavor, Map.of("id", "acct-42"),
+				name -> List.of(), name -> null, payload);
+
+		assertThat(read).containsEntry("contract", payload);
+	}
 }

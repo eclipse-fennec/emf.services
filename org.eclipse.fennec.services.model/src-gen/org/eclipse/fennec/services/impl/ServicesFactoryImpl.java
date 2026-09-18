@@ -65,6 +65,7 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.SHORT_PROPERTY: return createShortProperty();
 			case ServicesPackage.BOOL_PROPERTY: return createBoolProperty();
 			case ServicesPackage.STRING_LIST_PROPERTY: return createStringListProperty();
+			case ServicesPackage.EOBJECT_PROPERTY: return createEObjectProperty();
 			case ServicesPackage.SERVICE_OPERATION: return createServiceOperation();
 			case ServicesPackage.PARAMETER: return createParameter();
 			case ServicesPackage.REQUIRED_CONSTRAINT: return createRequiredConstraint();
@@ -106,6 +107,9 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.JAVA_BINDING: return createJavaBinding();
 			case ServicesPackage.TYPE_SCRIPT_BINDING: return createTypeScriptBinding();
 			case ServicesPackage.PYTHON_BINDING: return createPythonBinding();
+			case ServicesPackage.ARGUMENT: return createArgument();
+			case ServicesPackage.SERVICE_INVOCATION: return createServiceInvocation();
+			case ServicesPackage.SERVICE_INVOCATION_RESULT: return createServiceInvocationResult();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -311,6 +315,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public StringListProperty createStringListProperty() {
 		StringListPropertyImpl stringListProperty = new StringListPropertyImpl();
 		return stringListProperty;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EObjectProperty createEObjectProperty() {
+		EObjectPropertyImpl eObjectProperty = new EObjectPropertyImpl();
+		return eObjectProperty;
 	}
 
 	/**
@@ -762,6 +777,39 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public PythonBinding createPythonBinding() {
 		PythonBindingImpl pythonBinding = new PythonBindingImpl();
 		return pythonBinding;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Argument createArgument() {
+		ArgumentImpl argument = new ArgumentImpl();
+		return argument;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ServiceInvocation createServiceInvocation() {
+		ServiceInvocationImpl serviceInvocation = new ServiceInvocationImpl();
+		return serviceInvocation;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ServiceInvocationResult createServiceInvocationResult() {
+		ServiceInvocationResultImpl serviceInvocationResult = new ServiceInvocationResultImpl();
+		return serviceInvocationResult;
 	}
 
 	/**

@@ -21,6 +21,7 @@ export type { FloatProperty } from './FloatProperty.js';
 export type { ShortProperty } from './ShortProperty.js';
 export type { BoolProperty } from './BoolProperty.js';
 export type { StringListProperty } from './StringListProperty.js';
+export type { EObjectProperty } from './EObjectProperty.js';
 export type { ServiceOperation } from './ServiceOperation.js';
 export type { Parameter } from './Parameter.js';
 export type { ParameterConstraint } from './ParameterConstraint.js';
@@ -71,6 +72,9 @@ export type { PackageMapping } from './PackageMapping.js';
 export type { JavaBinding } from './JavaBinding.js';
 export type { TypeScriptBinding } from './TypeScriptBinding.js';
 export type { PythonBinding } from './PythonBinding.js';
+export type { Argument } from './Argument.js';
+export type { ServiceInvocation } from './ServiceInvocation.js';
+export type { ServiceInvocationResult } from './ServiceInvocationResult.js';
 
 // Implementations (including abstract classes, as they're extended by subclasses)
 export { PropertyImpl } from './PropertyImpl.js';
@@ -82,6 +86,7 @@ export { FloatPropertyImpl } from './FloatPropertyImpl.js';
 export { ShortPropertyImpl } from './ShortPropertyImpl.js';
 export { BoolPropertyImpl } from './BoolPropertyImpl.js';
 export { StringListPropertyImpl } from './StringListPropertyImpl.js';
+export { EObjectPropertyImpl } from './EObjectPropertyImpl.js';
 export { ServiceOperationImpl } from './ServiceOperationImpl.js';
 export { ParameterImpl } from './ParameterImpl.js';
 export { ParameterConstraintImpl } from './ParameterConstraintImpl.js';
@@ -128,6 +133,9 @@ export { PackageMappingImpl } from './PackageMappingImpl.js';
 export { JavaBindingImpl } from './JavaBindingImpl.js';
 export { TypeScriptBindingImpl } from './TypeScriptBindingImpl.js';
 export { PythonBindingImpl } from './PythonBindingImpl.js';
+export { ArgumentImpl } from './ArgumentImpl.js';
+export { ServiceInvocationImpl } from './ServiceInvocationImpl.js';
+export { ServiceInvocationResultImpl } from './ServiceInvocationResultImpl.js';
 
 // Enums
 export { ServiceScope, getServiceScope, getServiceScopeByLiteral } from './ServiceScope.js';

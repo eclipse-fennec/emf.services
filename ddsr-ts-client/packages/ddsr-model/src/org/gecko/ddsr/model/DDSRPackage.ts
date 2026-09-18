@@ -54,6 +54,8 @@ export class DDSRPackage extends BasicEPackage {
     BOOL_PROPERTY__VALUE: null as unknown as EAttribute | EReference,
     STRING_LIST_PROPERTY: null as unknown as EClass,
     STRING_LIST_PROPERTY__VALUE: null as unknown as EAttribute | EReference,
+    E_OBJECT_PROPERTY: null as unknown as EClass,
+    E_OBJECT_PROPERTY__VALUE: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION: null as unknown as EClass,
     SERVICE_OPERATION__DESCRIPTION: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__PARAMETERS: null as unknown as EAttribute | EReference,
@@ -290,6 +292,15 @@ export class DDSRPackage extends BasicEPackage {
     JAVA_BINDING__API_TYPE: null as unknown as EAttribute | EReference,
     TYPE_SCRIPT_BINDING: null as unknown as EClass,
     PYTHON_BINDING: null as unknown as EClass,
+    ARGUMENT: null as unknown as EClass,
+    ARGUMENT__PARAMETER: null as unknown as EAttribute | EReference,
+    ARGUMENT__VALUE: null as unknown as EAttribute | EReference,
+    SERVICE_INVOCATION: null as unknown as EClass,
+    SERVICE_INVOCATION__OPERATION: null as unknown as EAttribute | EReference,
+    SERVICE_INVOCATION__ARGUMENTS: null as unknown as EAttribute | EReference,
+    SERVICE_INVOCATION_RESULT: null as unknown as EClass,
+    SERVICE_INVOCATION_RESULT__VALUE: null as unknown as EAttribute | EReference,
+    SERVICE_INVOCATION_RESULT__DIAGNOSTIC: null as unknown as EAttribute | EReference,
   };
 
   private constructor() {
@@ -488,6 +499,24 @@ export class DDSRPackage extends BasicEPackage {
     stringListProperty_value.setUpperBound(-1);
     stringListPropertyClass.getEStructuralFeatures().push(stringListProperty_value);
     DDSRPackage.Literals.STRING_LIST_PROPERTY__VALUE = stringListProperty_value;
+
+    // Create EObjectProperty class
+    const eObjectPropertyClass = new BasicEClass();
+    eObjectPropertyClass.setName('EObjectProperty');
+    eObjectPropertyClass.setAbstract(false);
+    eObjectPropertyClass.setInterface(false);
+    this.getEClassifiers().push(eObjectPropertyClass);
+    eObjectPropertyClass.setEPackage(this);
+    DDSRPackage.Literals.E_OBJECT_PROPERTY = eObjectPropertyClass;
+
+    // Create value feature
+    const eObjectProperty_value = new BasicEReference();
+    eObjectProperty_value.setContainment(true);
+    eObjectProperty_value.setName('value');
+    eObjectProperty_value.setLowerBound(0);
+    eObjectProperty_value.setUpperBound(1);
+    eObjectPropertyClass.getEStructuralFeatures().push(eObjectProperty_value);
+    DDSRPackage.Literals.E_OBJECT_PROPERTY__VALUE = eObjectProperty_value;
 
     // Create ServiceOperation class
     const serviceOperationClass = new BasicEClass();
@@ -2499,6 +2528,87 @@ export class DDSRPackage extends BasicEPackage {
     pythonBindingClass.setEPackage(this);
     DDSRPackage.Literals.PYTHON_BINDING = pythonBindingClass;
 
+    // Create Argument class
+    const argumentClass = new BasicEClass();
+    argumentClass.setName('Argument');
+    argumentClass.setAbstract(false);
+    argumentClass.setInterface(false);
+    this.getEClassifiers().push(argumentClass);
+    argumentClass.setEPackage(this);
+    DDSRPackage.Literals.ARGUMENT = argumentClass;
+
+    // Create parameter feature
+    const argument_parameter = new BasicEReference();
+    argument_parameter.setContainment(false);
+    argument_parameter.setName('parameter');
+    argument_parameter.setLowerBound(1);
+    argument_parameter.setUpperBound(1);
+    argumentClass.getEStructuralFeatures().push(argument_parameter);
+    DDSRPackage.Literals.ARGUMENT__PARAMETER = argument_parameter;
+
+    // Create value feature
+    const argument_value = new BasicEReference();
+    argument_value.setContainment(true);
+    argument_value.setName('value');
+    argument_value.setLowerBound(0);
+    argument_value.setUpperBound(1);
+    argumentClass.getEStructuralFeatures().push(argument_value);
+    DDSRPackage.Literals.ARGUMENT__VALUE = argument_value;
+
+    // Create ServiceInvocation class
+    const serviceInvocationClass = new BasicEClass();
+    serviceInvocationClass.setName('ServiceInvocation');
+    serviceInvocationClass.setAbstract(false);
+    serviceInvocationClass.setInterface(false);
+    this.getEClassifiers().push(serviceInvocationClass);
+    serviceInvocationClass.setEPackage(this);
+    DDSRPackage.Literals.SERVICE_INVOCATION = serviceInvocationClass;
+
+    // Create operation feature
+    const serviceInvocation_operation = new BasicEReference();
+    serviceInvocation_operation.setContainment(false);
+    serviceInvocation_operation.setName('operation');
+    serviceInvocation_operation.setLowerBound(1);
+    serviceInvocation_operation.setUpperBound(1);
+    serviceInvocationClass.getEStructuralFeatures().push(serviceInvocation_operation);
+    DDSRPackage.Literals.SERVICE_INVOCATION__OPERATION = serviceInvocation_operation;
+
+    // Create arguments feature
+    const serviceInvocation_arguments = new BasicEReference();
+    serviceInvocation_arguments.setContainment(true);
+    serviceInvocation_arguments.setName('arguments');
+    serviceInvocation_arguments.setLowerBound(0);
+    serviceInvocation_arguments.setUpperBound(-1);
+    serviceInvocationClass.getEStructuralFeatures().push(serviceInvocation_arguments);
+    DDSRPackage.Literals.SERVICE_INVOCATION__ARGUMENTS = serviceInvocation_arguments;
+
+    // Create ServiceInvocationResult class
+    const serviceInvocationResultClass = new BasicEClass();
+    serviceInvocationResultClass.setName('ServiceInvocationResult');
+    serviceInvocationResultClass.setAbstract(false);
+    serviceInvocationResultClass.setInterface(false);
+    this.getEClassifiers().push(serviceInvocationResultClass);
+    serviceInvocationResultClass.setEPackage(this);
+    DDSRPackage.Literals.SERVICE_INVOCATION_RESULT = serviceInvocationResultClass;
+
+    // Create value feature
+    const serviceInvocationResult_value = new BasicEReference();
+    serviceInvocationResult_value.setContainment(true);
+    serviceInvocationResult_value.setName('value');
+    serviceInvocationResult_value.setLowerBound(0);
+    serviceInvocationResult_value.setUpperBound(1);
+    serviceInvocationResultClass.getEStructuralFeatures().push(serviceInvocationResult_value);
+    DDSRPackage.Literals.SERVICE_INVOCATION_RESULT__VALUE = serviceInvocationResult_value;
+
+    // Create diagnostic feature
+    const serviceInvocationResult_diagnostic = new BasicEReference();
+    serviceInvocationResult_diagnostic.setContainment(true);
+    serviceInvocationResult_diagnostic.setName('diagnostic');
+    serviceInvocationResult_diagnostic.setLowerBound(0);
+    serviceInvocationResult_diagnostic.setUpperBound(1);
+    serviceInvocationResultClass.getEStructuralFeatures().push(serviceInvocationResult_diagnostic);
+    DDSRPackage.Literals.SERVICE_INVOCATION_RESULT__DIAGNOSTIC = serviceInvocationResult_diagnostic;
+
 
     // ============================================
     // Set ESuperTypes (must be done after all classes are created)
@@ -2512,6 +2622,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SHORT_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.BOOL_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.STRING_LIST_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
+    (DDSRPackage.Literals.E_OBJECT_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_OPERATION as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.PARAMETER as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.REQUIRED_CONSTRAINT as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PARAMETER_CONSTRAINT);
@@ -2564,6 +2675,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SHORT_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EShort')!);
     (DDSRPackage.Literals.BOOL_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.STRING_LIST_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.E_OBJECT_PROPERTY__VALUE as BasicEReference).setEType(getEcorePackage().getEClassifier('EObject')!);
     (DDSRPackage.Literals.SERVICE_OPERATION__DESCRIPTION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_OPERATION__PARAMETERS as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
     (DDSRPackage.Literals.SERVICE_OPERATION__RETURN_VALUE as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
@@ -2723,6 +2835,12 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.TYPE_MAPPING__GENERATED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.PACKAGE_MAPPING__NS_U_R_I as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.PACKAGE_MAPPING__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.ARGUMENT__PARAMETER as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
+    (DDSRPackage.Literals.ARGUMENT__VALUE as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
+    (DDSRPackage.Literals.SERVICE_INVOCATION__OPERATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION);
+    (DDSRPackage.Literals.SERVICE_INVOCATION__ARGUMENTS as BasicEReference).setEType(DDSRPackage.Literals.ARGUMENT);
+    (DDSRPackage.Literals.SERVICE_INVOCATION_RESULT__VALUE as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
+    (DDSRPackage.Literals.SERVICE_INVOCATION_RESULT__DIAGNOSTIC as BasicEReference).setEType(DDSRPackage.Literals.DIAGNOSTIC);
 
     // ============================================
     // Register XML name mappings from ExtendedMetaData annotations

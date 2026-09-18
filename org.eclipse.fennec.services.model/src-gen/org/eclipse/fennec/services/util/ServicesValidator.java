@@ -107,6 +107,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateBoolProperty((BoolProperty)value, diagnostics, context);
 			case ServicesPackage.STRING_LIST_PROPERTY:
 				return validateStringListProperty((StringListProperty)value, diagnostics, context);
+			case ServicesPackage.EOBJECT_PROPERTY:
+				return validateEObjectProperty((EObjectProperty)value, diagnostics, context);
 			case ServicesPackage.SERVICE_OPERATION:
 				return validateServiceOperation((ServiceOperation)value, diagnostics, context);
 			case ServicesPackage.PARAMETER:
@@ -207,6 +209,12 @@ public class ServicesValidator extends EObjectValidator {
 				return validateTypeScriptBinding((TypeScriptBinding)value, diagnostics, context);
 			case ServicesPackage.PYTHON_BINDING:
 				return validatePythonBinding((PythonBinding)value, diagnostics, context);
+			case ServicesPackage.ARGUMENT:
+				return validateArgument((Argument)value, diagnostics, context);
+			case ServicesPackage.SERVICE_INVOCATION:
+				return validateServiceInvocation((ServiceInvocation)value, diagnostics, context);
+			case ServicesPackage.SERVICE_INVOCATION_RESULT:
+				return validateServiceInvocationResult((ServiceInvocationResult)value, diagnostics, context);
 			case ServicesPackage.SERVICE_SCOPE:
 				return validateServiceScope((ServiceScope)value, diagnostics, context);
 			case ServicesPackage.REFERENCE_CARDINALITY:
@@ -392,6 +400,15 @@ public class ServicesValidator extends EObjectValidator {
 	 */
 	public boolean validateStringListProperty(StringListProperty stringListProperty, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(stringListProperty, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateEObjectProperty(EObjectProperty eObjectProperty, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(eObjectProperty, diagnostics, context);
 	}
 
 	/**
@@ -1815,6 +1832,33 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateLanguageBinding_uniqueTypeMappings(pythonBinding, diagnostics, context);
 		if (result || diagnostics != null) result &= validateLanguageBinding_uniquePackageMappings(pythonBinding, diagnostics, context);
 		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateArgument(Argument argument, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(argument, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceInvocation(ServiceInvocation serviceInvocation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(serviceInvocation, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceInvocationResult(ServiceInvocationResult serviceInvocationResult, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(serviceInvocationResult, diagnostics, context);
 	}
 
 	/**

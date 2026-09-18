@@ -96,6 +96,10 @@ org.eclipse.fennec.services.broker.core         # API + In-Memory-Impl
                                    #   DdsrBrokerImpl: state + XMI-Persistenz
 
 org.eclipse.fennec.services.broker.rest         # JAX-RS-Endpoints
+                                   #   /catalog und /implementations werden NICHT
+                                   #     mehr von Hand bedient: zwei Konfigurationen
+                                   #     der generischen Distribution servieren sie
+                                   #     aus resources/broker-*-api.xmi (#76)
                                    #   vollständige Endpoint-Tabelle: WIRE_FORMAT.md
                                    #   /catalog, /catalog/{name}[?fingerprint=],
                                    #     /catalog/{name}/deprecate
@@ -106,8 +110,13 @@ org.eclipse.fennec.services.broker.rest         # JAX-RS-Endpoints
                                    #   /events (SSE; Heartbeat-PID
                                    #     org.eclipse.fennec.services.broker.rest.sse)
                                    #   /registry
-                                   #   BrokerSelfPublisher: legt die drei Broker-APIs
-                                   #     in den Katalog und published sich selbst
+                                   #   BrokerSelfPublisher: liest die drei
+                                   #     API-Dokumente, legt jeden Vertrag in den
+                                   #     Katalog und meldet die Implementierung an —
+                                   #     kein Flavor mehr im Code
+                                   #   LookupResource + EventsResource bleiben
+                                   #     handgeschrieben: die Lookup-Antwort ist
+                                   #     mehrwurzelig (#88), SSE ist kein Aufruf
 
 org.eclipse.fennec.services.xmi.codec           # geteilt: Server- + Client-Seite
                                    #   XmiCodec (CSO<ResourceSet>)

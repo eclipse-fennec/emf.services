@@ -97,6 +97,15 @@ public interface ServicesFactory extends EFactory {
 	StringListProperty createStringListProperty();
 
 	/**
+	 * Returns a new object of class '<em>EObject Property</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>EObject Property</em>'.
+	 * @generated
+	 */
+	EObjectProperty createEObjectProperty();
+
+	/**
 	 * Returns a new object of class '<em>Service Operation</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -464,6 +473,33 @@ public interface ServicesFactory extends EFactory {
 	 * @generated
 	 */
 	PythonBinding createPythonBinding();
+
+	/**
+	 * Returns a new object of class '<em>Argument</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Argument</em>'.
+	 * @generated
+	 */
+	Argument createArgument();
+
+	/**
+	 * Returns a new object of class '<em>Service Invocation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Service Invocation</em>'.
+	 * @generated
+	 */
+	ServiceInvocation createServiceInvocation();
+
+	/**
+	 * Returns a new object of class '<em>Service Invocation Result</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Service Invocation Result</em>'.
+	 * @generated
+	 */
+	ServiceInvocationResult createServiceInvocationResult();
 
 	/**
 	 * Returns the package supported by this factory.

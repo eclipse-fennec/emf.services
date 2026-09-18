@@ -112,6 +112,10 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createStringListPropertyAdapter();
 			}
 			@Override
+			public Adapter caseEObjectProperty(EObjectProperty object) {
+				return createEObjectPropertyAdapter();
+			}
+			@Override
 			public Adapter caseServiceOperation(ServiceOperation object) {
 				return createServiceOperationAdapter();
 			}
@@ -312,6 +316,18 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createPythonBindingAdapter();
 			}
 			@Override
+			public Adapter caseArgument(Argument object) {
+				return createArgumentAdapter();
+			}
+			@Override
+			public Adapter caseServiceInvocation(ServiceInvocation object) {
+				return createServiceInvocationAdapter();
+			}
+			@Override
+			public Adapter caseServiceInvocationResult(ServiceInvocationResult object) {
+				return createServiceInvocationResultAdapter();
+			}
+			@Override
 			public Adapter defaultCase(EObject object) {
 				return createEObjectAdapter();
 			}
@@ -482,6 +498,20 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createStringListPropertyAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.EObjectProperty <em>EObject Property</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.EObjectProperty
+	 * @generated
+	 */
+	public Adapter createEObjectPropertyAdapter() {
 		return null;
 	}
 
@@ -1182,6 +1212,48 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createPythonBindingAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.Argument <em>Argument</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.Argument
+	 * @generated
+	 */
+	public Adapter createArgumentAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.ServiceInvocation <em>Service Invocation</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.ServiceInvocation
+	 * @generated
+	 */
+	public Adapter createServiceInvocationAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.ServiceInvocationResult <em>Service Invocation Result</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.ServiceInvocationResult
+	 * @generated
+	 */
+	public Adapter createServiceInvocationResultAdapter() {
 		return null;
 	}
 

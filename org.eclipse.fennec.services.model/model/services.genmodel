@@ -159,6 +159,9 @@
     <genClasses ecoreClass="services.ecore#//StringListProperty">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//StringListProperty/value"/>
     </genClasses>
+    <genClasses ecoreClass="services.ecore#//EObjectProperty">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//EObjectProperty/value"/>
+    </genClasses>
     <genClasses ecoreClass="services.ecore#//ServiceOperation">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceOperation/description"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/parameters"/>
@@ -525,5 +528,17 @@
     </genClasses>
     <genClasses ecoreClass="services.ecore#//TypeScriptBinding"/>
     <genClasses ecoreClass="services.ecore#//PythonBinding"/>
+    <genClasses ecoreClass="services.ecore#//Argument">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//Argument/parameter"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//Argument/value"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//ServiceInvocation">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInvocation/operation"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInvocation/arguments"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//ServiceInvocationResult">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInvocationResult/value"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInvocationResult/diagnostic"/>
+    </genClasses>
   </genPackages>
 </genmodel:GenModel>

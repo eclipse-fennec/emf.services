@@ -13,6 +13,7 @@ import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
 import org.eclipse.fennec.services.ApiType;
+import org.eclipse.fennec.services.Argument;
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.CatalogStatus;
@@ -31,6 +32,7 @@ import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.DiscoveryHook;
 import org.eclipse.fennec.services.DistributionHook;
 import org.eclipse.fennec.services.DoubleProperty;
+import org.eclipse.fennec.services.EObjectProperty;
 import org.eclipse.fennec.services.EnumerationConstraint;
 import org.eclipse.fennec.services.ExpressionConstraint;
 import org.eclipse.fennec.services.ExpressionLanguage;
@@ -78,6 +80,8 @@ import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServiceInvocation;
+import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.ServiceListener;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
@@ -183,6 +187,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass stringListPropertyEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass eObjectPropertyEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -533,6 +544,27 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass pythonBindingEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass argumentEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass serviceInvocationEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass serviceInvocationResultEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -966,6 +998,26 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EAttribute getStringListProperty_Value() {
 		return (EAttribute)stringListPropertyEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getEObjectProperty() {
+		return eObjectPropertyEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getEObjectProperty_Value() {
+		return (EReference)eObjectPropertyEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -3574,6 +3626,96 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EClass getArgument() {
+		return argumentEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getArgument_Parameter() {
+		return (EReference)argumentEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getArgument_Value() {
+		return (EReference)argumentEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getServiceInvocation() {
+		return serviceInvocationEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceInvocation_Operation() {
+		return (EReference)serviceInvocationEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceInvocation_Arguments() {
+		return (EReference)serviceInvocationEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getServiceInvocationResult() {
+		return serviceInvocationResultEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceInvocationResult_Value() {
+		return (EReference)serviceInvocationResultEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceInvocationResult_Diagnostic() {
+		return (EReference)serviceInvocationResultEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getServiceScope() {
 		return serviceScopeEEnum;
 	}
@@ -3848,6 +3990,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 
 		stringListPropertyEClass = createEClass(STRING_LIST_PROPERTY);
 		createEAttribute(stringListPropertyEClass, STRING_LIST_PROPERTY__VALUE);
+
+		eObjectPropertyEClass = createEClass(EOBJECT_PROPERTY);
+		createEReference(eObjectPropertyEClass, EOBJECT_PROPERTY__VALUE);
 
 		serviceOperationEClass = createEClass(SERVICE_OPERATION);
 		createEAttribute(serviceOperationEClass, SERVICE_OPERATION__DESCRIPTION);
@@ -4159,6 +4304,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 
 		pythonBindingEClass = createEClass(PYTHON_BINDING);
 
+		argumentEClass = createEClass(ARGUMENT);
+		createEReference(argumentEClass, ARGUMENT__PARAMETER);
+		createEReference(argumentEClass, ARGUMENT__VALUE);
+
+		serviceInvocationEClass = createEClass(SERVICE_INVOCATION);
+		createEReference(serviceInvocationEClass, SERVICE_INVOCATION__OPERATION);
+		createEReference(serviceInvocationEClass, SERVICE_INVOCATION__ARGUMENTS);
+
+		serviceInvocationResultEClass = createEClass(SERVICE_INVOCATION_RESULT);
+		createEReference(serviceInvocationResultEClass, SERVICE_INVOCATION_RESULT__VALUE);
+		createEReference(serviceInvocationResultEClass, SERVICE_INVOCATION_RESULT__DIAGNOSTIC);
+
 		// Create enums
 		serviceScopeEEnum = createEEnum(SERVICE_SCOPE);
 		referenceCardinalityEEnum = createEEnum(REFERENCE_CARDINALITY);
@@ -4221,6 +4378,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		shortPropertyEClass.getESuperTypes().add(this.getProperty());
 		boolPropertyEClass.getESuperTypes().add(this.getProperty());
 		stringListPropertyEClass.getESuperTypes().add(this.getProperty());
+		eObjectPropertyEClass.getESuperTypes().add(this.getProperty());
 		serviceOperationEClass.getESuperTypes().add(this.getNamedElement());
 		parameterEClass.getESuperTypes().add(this.getNamedElement());
 		requiredConstraintEClass.getESuperTypes().add(this.getParameterConstraint());
@@ -4290,6 +4448,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 
 		initEClass(stringListPropertyEClass, StringListProperty.class, "StringListProperty", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getStringListProperty_Value(), ecorePackage.getEString(), "value", null, 0, -1, StringListProperty.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(eObjectPropertyEClass, EObjectProperty.class, "EObjectProperty", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getEObjectProperty_Value(), ecorePackage.getEObject(), null, "value", null, 0, 1, EObjectProperty.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(serviceOperationEClass, ServiceOperation.class, "ServiceOperation", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceOperation_Description(), ecorePackage.getEString(), "description", null, 0, 1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -4662,6 +4823,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(typeScriptBindingEClass, TypeScriptBinding.class, "TypeScriptBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		initEClass(pythonBindingEClass, PythonBinding.class, "PythonBinding", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(argumentEClass, Argument.class, "Argument", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getArgument_Parameter(), this.getParameter(), null, "parameter", null, 1, 1, Argument.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getArgument_Value(), this.getProperty(), null, "value", null, 0, 1, Argument.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(serviceInvocationEClass, ServiceInvocation.class, "ServiceInvocation", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getServiceInvocation_Operation(), this.getServiceOperation(), null, "operation", null, 1, 1, ServiceInvocation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceInvocation_Arguments(), this.getArgument(), null, "arguments", null, 0, -1, ServiceInvocation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(serviceInvocationResultEClass, ServiceInvocationResult.class, "ServiceInvocationResult", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getServiceInvocationResult_Value(), this.getProperty(), null, "value", null, 0, 1, ServiceInvocationResult.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceInvocationResult_Diagnostic(), this.getDiagnostic(), null, "diagnostic", null, 0, 1, ServiceInvocationResult.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		// Initialize enums and add enum literals
 		initEEnum(serviceScopeEEnum, ServiceScope.class, "ServiceScope");
@@ -5036,6 +5209,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Property carrying an ordered list of strings. Used where OSGi would use String[] (e.g. configuration PIDs, accepted content types). Empty list = no values; null = no value at all."
+		   });
+		addAnnotation
+		  (eObjectPropertyEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Property carrying a model as its value, for an argument or a result that is itself an EObject rather than a scalar. Containment, because the value travels with the message: a reference would point at something the receiver does not have."
+		   });
+		addAnnotation
+		  (getEObjectProperty_Value(),
+		   source,
+		   new String[] {
+			   "documentation", "The model this property carries. What it is allowed to be is stated by the slot it fills - the Parameter\'s eType."
 		   });
 		addAnnotation
 		  (serviceOperationEClass,
@@ -6758,6 +6943,60 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Python rendering: targetPackage is the module. Same as TypeScriptBinding \u2014 a discriminator today, attributes when its generator arrives."
+		   });
+		addAnnotation
+		  (argumentEClass,
+		   source,
+		   new String[] {
+			   "documentation", "One value of a call, and the parameter it fills. By reference and not by name: a name would be a convention the two ends could read differently, which is exactly what the parameter bindings stopped doing for the REST wire. The contract has to be resolvable for this to be readable - the message says which one through its envelope."
+		   });
+		addAnnotation
+		  (getArgument_Parameter(),
+		   source,
+		   new String[] {
+			   "documentation", "The parameter this value is for."
+		   });
+		addAnnotation
+		  (getArgument_Value(),
+		   source,
+		   new String[] {
+			   "documentation", "The value itself, in the Property that fits its type. Absent means the argument was not given - which is only allowed where the parameter is optional."
+		   });
+		addAnnotation
+		  (serviceInvocationEClass,
+		   source,
+		   new String[] {
+			   "documentation", "A call, as a message. What the REST flavor spreads over path, query, header and body has to have one form where a transport carries nothing but messages - MQTT, AMQP - and this is it. It says which operation and the values, and nothing about how it travels: correlation and reply address belong to the envelope, not here."
+		   });
+		addAnnotation
+		  (getServiceInvocation_Operation(),
+		   source,
+		   new String[] {
+			   "documentation", "The operation being called. A reference rather than a name and a signature: a contract cannot have two operations of one name, so nothing else is needed to tell them apart."
+		   });
+		addAnnotation
+		  (getServiceInvocation_Arguments(),
+		   source,
+		   new String[] {
+			   "documentation", "The values, one per parameter that is given. Order does not matter - each one names the parameter it fills."
+		   });
+		addAnnotation
+		  (serviceInvocationResultEClass,
+		   source,
+		   new String[] {
+			   "documentation", "What a call answered. Either a value or a failure, and an operation that returns nothing answers with neither. The failure is a Diagnostic because that is how this registry reports failures everywhere - a transport turns it into a status where it has one."
+		   });
+		addAnnotation
+		  (getServiceInvocationResult_Value(),
+		   source,
+		   new String[] {
+			   "documentation", "The result, in the Property that fits the operation\'s return type. Absent for an operation that returns nothing, and for a failure."
+		   });
+		addAnnotation
+		  (getServiceInvocationResult_Diagnostic(),
+		   source,
+		   new String[] {
+			   "documentation", "Why the call did not produce a value. Absent on success. Its code is what a declared error of the contract is recognised by."
 		   });
 	}
 

@@ -24,6 +24,8 @@ import type { BoolProperty } from './BoolProperty.js';
 import { BoolPropertyImpl } from './BoolPropertyImpl.js';
 import type { StringListProperty } from './StringListProperty.js';
 import { StringListPropertyImpl } from './StringListPropertyImpl.js';
+import type { EObjectProperty } from './EObjectProperty.js';
+import { EObjectPropertyImpl } from './EObjectPropertyImpl.js';
 import type { ServiceOperation } from './ServiceOperation.js';
 import { ServiceOperationImpl } from './ServiceOperationImpl.js';
 import type { Parameter } from './Parameter.js';
@@ -106,6 +108,12 @@ import type { TypeScriptBinding } from './TypeScriptBinding.js';
 import { TypeScriptBindingImpl } from './TypeScriptBindingImpl.js';
 import type { PythonBinding } from './PythonBinding.js';
 import { PythonBindingImpl } from './PythonBindingImpl.js';
+import type { Argument } from './Argument.js';
+import { ArgumentImpl } from './ArgumentImpl.js';
+import type { ServiceInvocation } from './ServiceInvocation.js';
+import { ServiceInvocationImpl } from './ServiceInvocationImpl.js';
+import type { ServiceInvocationResult } from './ServiceInvocationResult.js';
+import { ServiceInvocationResultImpl } from './ServiceInvocationResultImpl.js';
 
 /**
  * Factory for creating DDSR model objects
@@ -181,6 +189,13 @@ export class DDSRFactory extends BasicEFactory {
    */
   createStringListProperty(): StringListProperty {
     return new StringListPropertyImpl();
+  }
+
+  /**
+   * Create a new EObjectProperty instance
+   */
+  createEObjectProperty(): EObjectProperty {
+    return new EObjectPropertyImpl();
   }
 
   /**
@@ -471,6 +486,27 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new Argument instance
+   */
+  createArgument(): Argument {
+    return new ArgumentImpl();
+  }
+
+  /**
+   * Create a new ServiceInvocation instance
+   */
+  createServiceInvocation(): ServiceInvocation {
+    return new ServiceInvocationImpl();
+  }
+
+  /**
+   * Create a new ServiceInvocationResult instance
+   */
+  createServiceInvocationResult(): ServiceInvocationResult {
+    return new ServiceInvocationResultImpl();
+  }
+
+  /**
    * Create an instance of the given class
    */
   override create(eClass: EClass): EObject {
@@ -491,6 +527,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createBoolProperty();
       case 'StringListProperty':
         return this.createStringListProperty();
+      case 'EObjectProperty':
+        return this.createEObjectProperty();
       case 'ServiceOperation':
         return this.createServiceOperation();
       case 'Parameter':
@@ -573,6 +611,12 @@ export class DDSRFactory extends BasicEFactory {
         return this.createTypeScriptBinding();
       case 'PythonBinding':
         return this.createPythonBinding();
+      case 'Argument':
+        return this.createArgument();
+      case 'ServiceInvocation':
+        return this.createServiceInvocation();
+      case 'ServiceInvocationResult':
+        return this.createServiceInvocationResult();
       default:
         throw new Error(`Unknown class: ${eClass.getName()}`);
     }

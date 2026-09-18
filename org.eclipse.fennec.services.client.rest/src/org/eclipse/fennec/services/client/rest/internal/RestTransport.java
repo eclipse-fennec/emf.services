@@ -124,6 +124,15 @@ public final class RestTransport {
 		return client.target(absoluteUrl);
 	}
 
+	/**
+	 * A target from the endpoint as the flavor states it — path templates
+	 * included, which {@link URI} could not carry. The caller closes them
+	 * with {@code resolveTemplate}.
+	 */
+	WebTarget targetFor(String absoluteUrl) {
+		return client.target(absoluteUrl);
+	}
+
 	URI baseUrl() {
 		return baseUrl;
 	}

@@ -49,7 +49,24 @@ public interface ServiceLocator {
 	 * locator's REST flavor, computed as
 	 * {@code brokerHost + restFlavor.basePath + operationFlavor.path}.
 	 * Empty if the locator has no REST flavor or no operation flavor
-	 * with that name.
+	 * with that name — or if the endpoint is not a complete URL because
+	 * the flavor leaves a path template open, for which
+	 * {@link #endpointFor(String)} is the answer.
 	 */
 	Optional<URI> urlFor(String operationName);
+
+	/**
+	 * The same endpoint as text, with any path template left standing
+	 * ({@code …/charge/{amount}}).
+	 *
+	 * <p>A {@code PATH} binding puts an argument into the path, so the
+	 * endpoint of such an operation is not a URL until a call closes the
+	 * template. {@link URI} cannot carry one — it rejects the braces —
+	 * so the two views are separate: this one is what a transport builds
+	 * its request from, {@link #urlFor(String)} is what is safe to treat
+	 * as an address.
+	 */
+	default Optional<String> endpointFor(String operationName) {
+		return urlFor(operationName).map(URI::toString);
+	}
 }

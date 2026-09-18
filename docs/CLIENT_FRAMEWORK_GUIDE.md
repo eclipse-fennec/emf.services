@@ -282,10 +282,17 @@ public interface ServiceLocator {
     ServiceImplementation implementation();
     /** First RestFlavor in implementation.flavors, or null. */
     RestFlavor restFlavor();
-    /** Convenience: full URL for a named operation. */
-    URI urlFor(String operationName);
+    /** Convenience: full URL for a named operation — empty if it is templated. */
+    Optional<URI> urlFor(String operationName);
+    /** The same endpoint as text, path template included. */
+    Optional<String> endpointFor(String operationName);
 }
 ```
+
+A `PATH` binding puts an argument into the path, so such an operation's
+endpoint reads `…/charge/{amount}` and is not a URL until a call closes
+the template — `java.net.URI` rejects the braces outright. Build requests
+from `endpointFor`; treat `urlFor` as "is this a fixed address?".
 
 `subscribe(...)` is a no-op stub until Increment 3 lands SSE — implementation can return a `Subscription` whose `cancel()` is a no-op, and document the gap.
 

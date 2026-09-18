@@ -10,9 +10,12 @@
 package org.eclipse.fennec.services.m2t.example;
 
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
+import java.util.List;
+import org.eclipse.fennec.services.examples.model.ddsrexample.Person;
 import jakarta.ws.rs.core.Response;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -40,16 +43,46 @@ public class PersonDirectoryRestResource {
 	@GET
 	@Path("/persons/{id}")
 	public Response get(@PathParam("id") String id) {
+		if (id == null) {
+			return Response.status(400).entity("id is required").build();
+		}
+		if (!id.matches("[A-Za-z0-9-]+")) {
+			return Response.status(400).entity("id does not match [A-Za-z0-9-]+").build();
+		}
+		if (id.length() < 3) {
+			return Response.status(400).entity("id is shorter than 3").build();
+		}
 		try {
-			return Response.ok(service.get(id)).build();
+			Person result = service.get(id);
+			return result == null
+					? Response.noContent().build()
+					: Response.ok(result).build();
 		} catch (PersonNotFoundException failure) {
 			return Response.status(404).entity(failure.getMessage()).build();
+		} catch (RuntimeException failure) {
+			return Response.serverError().entity(failure.getMessage()).build();
 		}
 	}
 
 	@GET
 	@Path("/persons")
-	public Response list(@QueryParam("offset") int offset, @QueryParam("max") int limit) {
-		return Response.ok(service.list(offset, limit)).build();
+	public Response list(@QueryParam("offset") @DefaultValue("0") int offset, @QueryParam("max") @DefaultValue("50") int limit) {
+		if (offset < 0) {
+			return Response.status(400).entity("offset is below 0").build();
+		}
+		if (limit < 1) {
+			return Response.status(400).entity("limit is below 1").build();
+		}
+		if (limit > 200) {
+			return Response.status(400).entity("limit is above 200").build();
+		}
+		try {
+			List<Person> result = service.list(offset, limit);
+			return result == null || result.isEmpty()
+					? Response.noContent().build()
+					: Response.ok(result).build();
+		} catch (RuntimeException failure) {
+			return Response.serverError().entity(failure.getMessage()).build();
+		}
 	}
 }

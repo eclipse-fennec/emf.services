@@ -4315,15 +4315,15 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(requiredConstraintEClass, RequiredConstraint.class, "RequiredConstraint", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 
 		initEClass(numericRangeConstraintEClass, NumericRangeConstraint.class, "NumericRangeConstraint", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getNumericRangeConstraint_Min(), ecorePackage.getEDouble(), "min", null, 0, 1, NumericRangeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getNumericRangeConstraint_Max(), ecorePackage.getEDouble(), "max", null, 0, 1, NumericRangeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getNumericRangeConstraint_Min(), ecorePackage.getEDoubleObject(), "min", null, 0, 1, NumericRangeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getNumericRangeConstraint_Max(), ecorePackage.getEDoubleObject(), "max", null, 0, 1, NumericRangeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getNumericRangeConstraint_InclusiveMin(), ecorePackage.getEBoolean(), "inclusiveMin", "true", 1, 1, NumericRangeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getNumericRangeConstraint_InclusiveMax(), ecorePackage.getEBoolean(), "inclusiveMax", "true", 1, 1, NumericRangeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(stringPatternConstraintEClass, StringPatternConstraint.class, "StringPatternConstraint", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getStringPatternConstraint_Pattern(), ecorePackage.getEString(), "pattern", null, 1, 1, StringPatternConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getStringPatternConstraint_MinLength(), ecorePackage.getEInt(), "minLength", null, 0, 1, StringPatternConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getStringPatternConstraint_MaxLength(), ecorePackage.getEInt(), "maxLength", null, 0, 1, StringPatternConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getStringPatternConstraint_MinLength(), ecorePackage.getEIntegerObject(), "minLength", null, 0, 1, StringPatternConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getStringPatternConstraint_MaxLength(), ecorePackage.getEIntegerObject(), "maxLength", null, 0, 1, StringPatternConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(enumerationConstraintEClass, EnumerationConstraint.class, "EnumerationConstraint", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getEnumerationConstraint_AllowedValues(), ecorePackage.getEString(), "allowedValues", null, 1, -1, EnumerationConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -4339,8 +4339,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getInvariant_Message(), ecorePackage.getEString(), "message", null, 0, 1, Invariant.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(collectionSizeConstraintEClass, CollectionSizeConstraint.class, "CollectionSizeConstraint", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getCollectionSizeConstraint_MinSize(), ecorePackage.getEInt(), "minSize", null, 0, 1, CollectionSizeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getCollectionSizeConstraint_MaxSize(), ecorePackage.getEInt(), "maxSize", null, 0, 1, CollectionSizeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getCollectionSizeConstraint_MinSize(), ecorePackage.getEIntegerObject(), "minSize", null, 0, 1, CollectionSizeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getCollectionSizeConstraint_MaxSize(), ecorePackage.getEIntegerObject(), "maxSize", null, 0, 1, CollectionSizeConstraint.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(serviceExceptionEClass, ServiceException.class, "ServiceException", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceException_Description(), ecorePackage.getEString(), "description", null, 0, 1, ServiceException.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5161,7 +5161,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getNumericRangeConstraint_Min(),
 		   source,
 		   new String[] {
-			   "documentation", "Lower bound. Unset = -\u221e."
+			   "documentation", "Lower bound. Unset = -\u221e \u2014 an object type on purpose: this class compares its bounds against null in its own constraints, and a primitive EDouble could never be null. A generator has to be able to tell \"no bound\" from \"the bound zero\"."
 		   });
 		addAnnotation
 		  (getNumericRangeConstraint_Max(),

@@ -57,8 +57,61 @@ class RestResourceTemplateTest {
 		// hand-written and the endpoint cannot drift from the contract.
 		assertThat(resource())
 				.contains("@Reference\n\tprivate PersonDirectory service;")
-				.contains("return Response.ok(service.get(id)).build();")
-				.contains("return Response.ok(service.list(offset, limit)).build();");
+				.contains("Person result = service.get(id);")
+				.contains("List<Person> result = service.list(offset, limit);");
+	}
+
+	@Test
+	void anAbsentOrEmptyResultAnswers204() throws Exception {
+		// Convention, not something anybody should have to model.
+		assertThat(resource())
+				.contains("return result == null\n\t\t\t\t\t? Response.noContent().build()")
+				.contains("return result == null || result.isEmpty()\n\t\t\t\t\t? Response.noContent().build()");
+	}
+
+	@Test
+	void anUnexpectedFailureAnswers500() throws Exception {
+		String source = resource();
+
+		assertThat(source)
+				.as("every method, whether the contract declares errors or not")
+				.contains("} catch (RuntimeException failure) {\n"
+						+ "\t\t\treturn Response.serverError().entity(failure.getMessage()).build();");
+		assertThat(source.split("catch \\(RuntimeException").length - 1)
+				.as("one catch-all per operation")
+				.isEqualTo(2);
+	}
+
+	@Test
+	void aMissingRequiredArgumentAnswers400() throws Exception {
+		assertThat(resource())
+				.contains("if (id == null) {\n"
+						+ "\t\t\treturn Response.status(400).entity(\"id is required\").build();");
+	}
+
+	@Test
+	void aViolatedConstraintAnswers400() throws Exception {
+		String source = resource();
+
+		assertThat(source)
+				.as("StringPatternConstraint on the id")
+				.contains("if (!id.matches(\"[A-Za-z0-9-]+\")) {")
+				.contains("if (id.length() < 3) {");
+		assertThat(source)
+				.as("NumericRangeConstraint, written the way the argument's type reads")
+				.contains("if (offset < 0) {")
+				.contains("if (limit < 1) {")
+				.contains("if (limit > 200) {");
+		assertThat(source)
+				.as("offset declares no upper bound, so nothing checks one")
+				.doesNotContain("if (offset > ");
+	}
+
+	@Test
+	void anOptionalArgumentCarriesTheContractsDefault() throws Exception {
+		assertThat(resource())
+				.contains("@QueryParam(\"offset\") @DefaultValue(\"0\") int offset")
+				.contains("@QueryParam(\"max\") @DefaultValue(\"50\") int limit");
 	}
 
 	@Test
@@ -70,7 +123,7 @@ class RestResourceTemplateTest {
 				.contains("public Response get(@PathParam(\"id\") String id)");
 		assertThat(source)
 				.as("a wireName renames the argument on the wire, not in the contract")
-				.contains("@QueryParam(\"max\") int limit");
+				.contains("@QueryParam(\"max\") @DefaultValue(\"50\") int limit");
 		assertThat(source)
 				.as("only the annotations the flavor actually uses are imported")
 				.contains("import jakarta.ws.rs.PathParam;")
@@ -95,11 +148,12 @@ class RestResourceTemplateTest {
 	}
 
 	@Test
-	void anOperationWithoutDeclaredErrorsNeedsNoTryBlock() throws Exception {
+	void anOperationWithoutDeclaredErrorsStillGuardsAgainstFailure() throws Exception {
 		String list = resource().substring(resource().indexOf("public Response list("));
 
 		assertThat(list)
-				.as("list declares no exceptions, so its body is the delegation alone")
-				.doesNotContain("try {");
+				.as("list declares no exceptions of its own, but a failure is still a 500")
+				.doesNotContain("catch (PersonNotFoundException")
+				.contains("catch (RuntimeException failure)");
 	}
 }

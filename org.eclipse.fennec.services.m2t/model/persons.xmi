@@ -8,14 +8,20 @@
     version="1.0.0"
     description="Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result and a declared exception.">
   <operations name="get" description="One person by identifier." exceptions="//@exceptions.0">
-    <parameters name="id" type="string" description="Identifier of the person."/>
+    <parameters name="id" type="string" description="Identifier of the person.">
+      <constraints xsi:type="services:StringPatternConstraint" pattern="[A-Za-z0-9-]+" minLength="3"/>
+    </parameters>
     <returnValue name="result" description="The person with that identifier.">
       <eType xsi:type="ecore:EClass" href="http://geckoprojects.org/ddsr/example#//Person"/>
     </returnValue>
   </operations>
   <operations name="list" description="A page of the directory, in directory order.">
-    <parameters name="offset" type="int" optional="true" defaultValue="0" description="Index of the first person to return."/>
-    <parameters name="limit" index="1" type="int" optional="true" defaultValue="50" description="Maximum number of persons to return."/>
+    <parameters name="offset" type="int" optional="true" defaultValue="0" description="Index of the first person to return.">
+      <constraints xsi:type="services:NumericRangeConstraint" min="0" inclusiveMin="true"/>
+    </parameters>
+    <parameters name="limit" index="1" type="int" optional="true" defaultValue="50" description="Maximum number of persons to return.">
+      <constraints xsi:type="services:NumericRangeConstraint" min="1" max="200" inclusiveMin="true" inclusiveMax="true"/>
+    </parameters>
     <returnValue name="result" upperBound="-1" description="The requested page; empty when the offset is past the end.">
       <eType xsi:type="ecore:EClass" href="http://geckoprojects.org/ddsr/example#//Person"/>
     </returnValue>

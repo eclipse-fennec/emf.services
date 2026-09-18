@@ -55,7 +55,7 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 * @ordered
 	 */
-	protected static final int MIN_LENGTH_EDEFAULT = 0;
+	protected static final Integer MIN_LENGTH_EDEFAULT = null;
 
 	/**
 	 * The cached value of the '{@link #getMinLength() <em>Min Length</em>}' attribute.
@@ -65,7 +65,7 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 * @ordered
 	 */
-	protected int minLength = MIN_LENGTH_EDEFAULT;
+	protected Integer minLength = MIN_LENGTH_EDEFAULT;
 
 	/**
 	 * The default value of the '{@link #getMaxLength() <em>Max Length</em>}' attribute.
@@ -75,7 +75,7 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 * @ordered
 	 */
-	protected static final int MAX_LENGTH_EDEFAULT = 0;
+	protected static final Integer MAX_LENGTH_EDEFAULT = null;
 
 	/**
 	 * The cached value of the '{@link #getMaxLength() <em>Max Length</em>}' attribute.
@@ -85,7 +85,7 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 * @ordered
 	 */
-	protected int maxLength = MAX_LENGTH_EDEFAULT;
+	protected Integer maxLength = MAX_LENGTH_EDEFAULT;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -135,7 +135,7 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 */
 	@Override
-	public int getMinLength() {
+	public Integer getMinLength() {
 		return minLength;
 	}
 
@@ -145,8 +145,8 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 */
 	@Override
-	public void setMinLength(int newMinLength) {
-		int oldMinLength = minLength;
+	public void setMinLength(Integer newMinLength) {
+		Integer oldMinLength = minLength;
 		minLength = newMinLength;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.STRING_PATTERN_CONSTRAINT__MIN_LENGTH, oldMinLength, minLength));
@@ -158,7 +158,7 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 */
 	@Override
-	public int getMaxLength() {
+	public Integer getMaxLength() {
 		return maxLength;
 	}
 
@@ -168,8 +168,8 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 	 * @generated
 	 */
 	@Override
-	public void setMaxLength(int newMaxLength) {
-		int oldMaxLength = maxLength;
+	public void setMaxLength(Integer newMaxLength) {
+		Integer oldMaxLength = maxLength;
 		maxLength = newMaxLength;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.STRING_PATTERN_CONSTRAINT__MAX_LENGTH, oldMaxLength, maxLength));
@@ -246,9 +246,9 @@ public class StringPatternConstraintImpl extends ParameterConstraintImpl impleme
 			case ServicesPackage.STRING_PATTERN_CONSTRAINT__PATTERN:
 				return PATTERN_EDEFAULT == null ? pattern != null : !PATTERN_EDEFAULT.equals(pattern);
 			case ServicesPackage.STRING_PATTERN_CONSTRAINT__MIN_LENGTH:
-				return minLength != MIN_LENGTH_EDEFAULT;
+				return MIN_LENGTH_EDEFAULT == null ? minLength != null : !MIN_LENGTH_EDEFAULT.equals(minLength);
 			case ServicesPackage.STRING_PATTERN_CONSTRAINT__MAX_LENGTH:
-				return maxLength != MAX_LENGTH_EDEFAULT;
+				return MAX_LENGTH_EDEFAULT == null ? maxLength != null : !MAX_LENGTH_EDEFAULT.equals(maxLength);
 		}
 		return super.eIsSet(featureID);
 	}

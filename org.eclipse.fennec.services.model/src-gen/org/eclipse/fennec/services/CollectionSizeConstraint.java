@@ -36,12 +36,12 @@ public interface CollectionSizeConstraint extends ParameterConstraint {
 	 * Minimum element count, inclusive. Unset = 0.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Min Size</em>' attribute.
-	 * @see #setMinSize(int)
+	 * @see #setMinSize(Integer)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getCollectionSizeConstraint_MinSize()
 	 * @model
 	 * @generated
 	 */
-	int getMinSize();
+	Integer getMinSize();
 
 	/**
 	 * Sets the value of the '{@link org.eclipse.fennec.services.CollectionSizeConstraint#getMinSize <em>Min Size</em>}' attribute.
@@ -51,7 +51,7 @@ public interface CollectionSizeConstraint extends ParameterConstraint {
 	 * @see #getMinSize()
 	 * @generated
 	 */
-	void setMinSize(int value);
+	void setMinSize(Integer value);
 
 	/**
 	 * Returns the value of the '<em><b>Max Size</b></em>' attribute.
@@ -61,12 +61,12 @@ public interface CollectionSizeConstraint extends ParameterConstraint {
 	 * Maximum element count, inclusive. Unset = unbounded.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Max Size</em>' attribute.
-	 * @see #setMaxSize(int)
+	 * @see #setMaxSize(Integer)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getCollectionSizeConstraint_MaxSize()
 	 * @model
 	 * @generated
 	 */
-	int getMaxSize();
+	Integer getMaxSize();
 
 	/**
 	 * Sets the value of the '{@link org.eclipse.fennec.services.CollectionSizeConstraint#getMaxSize <em>Max Size</em>}' attribute.
@@ -76,6 +76,6 @@ public interface CollectionSizeConstraint extends ParameterConstraint {
 	 * @see #getMaxSize()
 	 * @generated
 	 */
-	void setMaxSize(int value);
+	void setMaxSize(Integer value);
 
 } // CollectionSizeConstraint

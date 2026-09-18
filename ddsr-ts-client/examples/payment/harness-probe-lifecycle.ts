@@ -74,6 +74,32 @@ async function waitFor(what: string, condition: () => boolean, timeoutMs: number
   return false;
 }
 
+/**
+ * Call until it answers, for a bounded while.
+ *
+ * A provider announces itself and mounts its endpoint independently, so
+ * right after a registration event there is a window in which the
+ * broker already names an endpoint that is not answering yet. A
+ * consumer meets that window in the wild too — this probe only makes it
+ * stop deciding whether the harness passes.
+ */
+async function invokeWhenServed(
+  invoke: () => Promise<unknown>,
+  timeoutMs: number
+): Promise<unknown> {
+  const started = Date.now();
+  let last: unknown;
+  for (;;) {
+    try {
+      return await invoke();
+    } catch (failure) {
+      last = failure;
+      if (Date.now() - started >= timeoutMs) throw last;
+      await new Promise(r => setTimeout(r, 250));
+    }
+  }
+}
+
 const has = (type: string, id: string | undefined, reason?: string) =>
   events.some(e => e.type === type && e.id === id && (reason === undefined || e.reason === reason));
 
@@ -125,7 +151,8 @@ async function main(): Promise<void> {
     const hostAfterEvent = locator.restFlavor()?.host ?? '';
     check('endpoint-followed-the-event', hostAfterEvent.includes(`:${NEW_PORT}`), `${hostAfterEvent}`);
 
-    const after = Number(await locator.invoke('getBalance', { accountId: 'lifecycle' }));
+    const after = Number(await invokeWhenServed(
+      () => locator.invoke('getBalance', { accountId: 'lifecycle' }), 10_000));
     check('invoke-against-new-instance', Number.isFinite(after), `${after} via ${locator.restFlavor()?.host}`);
 
     await client.renewSession();

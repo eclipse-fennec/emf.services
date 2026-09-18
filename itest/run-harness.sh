@@ -116,9 +116,13 @@ echo "broker up (pid $BROKER_PID)"
 
 # ============================================================ Scenario A
 log "Scenario A: Java provider -> TS consumer"
-# Only this scenario's provider also publishes BindingProbe: its one
+# Only this scenario's provider also announces BindingProbe: its one
 # operation carries three arguments in three different places, and the
 # probe checks that the consumer put them where the flavor says (#74).
+# Nothing in the provider bundle publishes it — the variable reaches a
+# factory configuration of the generic distribution, which serves the
+# contract AND announces it from the same document (#84). A provider
+# that is a configuration and a service, with no code of its own.
 export PAYMENTS_PUBLISH_BINDING_PROBE=true
 start_jar payment-java "$PROVIDER_JAR" "$WORK/payment-java"
 unset PAYMENTS_PUBLISH_BINDING_PROBE

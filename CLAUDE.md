@@ -61,6 +61,8 @@ cd ddsr-ts-client && corepack pnpm install && corepack pnpm -r build && corepack
 podman build -t emf.services/broker:local docker/broker/
 ```
 
+IP-Prüfung (Eclipse Dash): `tools/dash-licenses.sh` erzeugt `DEPENDENCIES` aus den Maven-Koordinaten des Workspace; `--review` öffnet IP-Anträge (braucht `DASH_IPLAB_TOKEN` und `DASH_PROJECT_ID`). Die Liste ist noch der Repository-Index, nicht der Auflösungs-Closure — siehe Issue #90.
+
 License-Header-Check wie die `license.yml`-Action: `docker run -it --rm -v $(pwd):/github/workspace ghcr.io/apache/skywalking-eyes/license-eye header check` — Header im Eclipse-Foundation-Stil (siehe `.licenserc.yaml`); `itest/fixtures/**` ist ausgenommen (Golden-Dateien sind byte-genau hash-gepinnt — nie editieren ohne die sd1-Spezifikation zu bedenken).
 
 ## Konventionen

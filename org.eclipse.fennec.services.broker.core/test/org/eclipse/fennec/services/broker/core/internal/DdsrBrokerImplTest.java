@@ -30,10 +30,13 @@ import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.FloatProperty;
 import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.LongProperty;
+import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
@@ -241,6 +244,93 @@ class DdsrBrokerImplTest {
 				.extracting(of -> ((RestOperationFlavor) of).getOperation())
 				.as("operation refs must point at the live catalog operations, not the stub copies")
 				.containsExactly(live.getOperations().get(0), live.getOperations().get(1));
+	}
+
+	@Test
+	void rewiresParameterBindingsIntoTheLiveCatalogEntry() {
+		ServiceInterface live = serviceInterface("Payment", "charge");
+		live.getOperations().get(0).getParameters().add(parameter("amount"));
+		broker.addCatalogEntry(live, "test");
+
+		ServiceInterface stub = serviceInterface("Payment", "charge");
+		stub.getOperations().get(0).getParameters().add(parameter("amount"));
+		ServiceProvider p = provider("payments-ts", "impl", stub);
+		bindFirstParameterToThePath(p, stub);
+
+		broker.publishImplementation(p, soleImpl(p));
+
+		RestOperationFlavor of = (RestOperationFlavor) ((RestFlavor) soleImpl(p).getFlavors().get(0))
+				.getOperationFlavors().get(0);
+		assertThat(of.getParameterBindings().get(0).getParameter())
+				.as("a binding must name the catalog's parameter, not the published copy of it")
+				.isSameAs(live.getOperations().get(0).getParameters().get(0));
+	}
+
+	@Test
+	void aPublishedBindingDoesNotBreakTheSnapshot() throws IOException {
+		// The regression this pins: a binding left pointing into the
+		// published copy of a contract keeps a reference to an object
+		// that belongs to no resource once the copy is dropped, and
+		// every save from then on fails with "not contained in a
+		// resource" — the registry stops persisting at all (#82).
+		ServiceInterface live = serviceInterface("Payment", "charge");
+		live.getOperations().get(0).getParameters().add(parameter("amount"));
+		broker.addCatalogEntry(live, "test");
+
+		ServiceInterface stub = serviceInterface("Payment", "charge");
+		stub.getOperations().get(0).getParameters().add(parameter("amount"));
+		ServiceProvider p = provider("payments-ts", "impl", stub);
+		bindFirstParameterToThePath(p, stub);
+
+		Diagnostic published = broker.publishImplementation(p, soleImpl(p));
+
+		assertThat(published.getSeverity()).isNotEqualTo(DiagnosticSeverity.ERROR);
+		assertThat(broker.snapshot().getSeverity()).isNotEqualTo(DiagnosticSeverity.ERROR);
+		assertThat(Files.readString(snapshot))
+				.as("the binding must survive the round trip as a reference into the catalog entry")
+				.contains("binding=\"PATH\"")
+				.contains("parameter=");
+	}
+
+	@Test
+	void aFlavorThatNamesNoOperationIsBoundByItsOwnName() {
+		// Documented tolerance, not an oversight: a flavor whose name
+		// matches the operation is understood without a reference. Both
+		// self-publishers rely on it, and a hand-written body may. What
+		// a CONSUMER can do with such a flavor is another matter — it
+		// sees no parameters, so bindings would be unreadable.
+		ServiceInterface live = serviceInterface("Payment", "charge");
+		broker.addCatalogEntry(live, "test");
+
+		ServiceInterface stub = serviceInterface("Payment", "charge");
+		ServiceProvider p = provider("payments-ts", "impl", stub);
+		RestOperationFlavor of = (RestOperationFlavor) ((RestFlavor) soleImpl(p).getFlavors().get(0))
+				.getOperationFlavors().get(0);
+		of.setOperation(null);
+
+		broker.publishImplementation(p, soleImpl(p));
+
+		assertThat(of.getOperation())
+				.as("the flavor's own name carries it to the operation")
+				.isSameAs(live.getOperations().get(0));
+	}
+
+	private static Parameter parameter(String name) {
+		Parameter parameter = ServicesFactory.eINSTANCE.createParameter();
+		parameter.setName(name);
+		parameter.setType("double");
+		return parameter;
+	}
+
+	/** What a provider declaring a PATH binding puts in its publish body. */
+	private static void bindFirstParameterToThePath(ServiceProvider p, ServiceInterface published) {
+		RestOperationFlavor of = (RestOperationFlavor) ((RestFlavor) soleImpl(p).getFlavors().get(0))
+				.getOperationFlavors().get(0);
+		of.setPath("/charge/{amount}");
+		RestParameterBinding binding = ServicesFactory.eINSTANCE.createRestParameterBinding();
+		binding.setParameter(published.getOperations().get(0).getParameters().get(0));
+		binding.setBinding(ParameterBinding.PATH);
+		of.getParameterBindings().add(binding);
 	}
 
 	// ------------------------------------------------------------------

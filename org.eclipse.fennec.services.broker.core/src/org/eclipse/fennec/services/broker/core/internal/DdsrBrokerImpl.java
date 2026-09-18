@@ -33,6 +33,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -1685,9 +1686,84 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			if (inCatalog != si) {
 				sis.set(i, inCatalog);
+				rewireContractReferences(implementation, si, inCatalog);
 			}
 		}
 		return new ContractResolution(null, deprecationNote.length() == 0 ? null : deprecationNote.toString());
+	}
+
+
+	/**
+	 * Re-point everything in the implementation that referenced the
+	 * published copy of a contract at the catalog entry that replaced it.
+	 *
+	 * <p>A publish body carries the contract along, so the broker sees two
+	 * objects for one contract: the copy in the payload and the entry in
+	 * its catalog. {@link #resolveContracts} keeps the catalog entry —
+	 * anything else would let a publisher redefine a contract by
+	 * announcing an implementation of it. But a flavor does not only
+	 * reference the contract, it references single parameters and
+	 * exceptions <em>inside</em> it, and those references would still
+	 * point into the payload copy, which is now attached to nothing.
+	 * Saving the registry then fails with "not contained in a resource".
+	 *
+	 * <p>The correspondence is the containment path: the two contracts are
+	 * the same contract, and a catalog entry is only accepted when its
+	 * fingerprint says so, which makes the path from the contract to a
+	 * parameter the same on both sides.
+	 *
+	 * <p>This stayed invisible while the TypeScript client omitted
+	 * single-valued cross-references from what it published (#79) — there
+	 * simply was no reference into the contract to rewire.
+	 */
+	private static void rewireContractReferences(ServiceImplementation implementation,
+			ServiceInterface published, ServiceInterface inCatalog) {
+		List<EObject> elements = new ArrayList<>();
+		elements.add(implementation);
+		implementation.eAllContents().forEachRemaining(elements::add);
+		for (EObject element : elements) {
+			for (EReference reference : element.eClass().getEAllReferences()) {
+				if (reference.isContainment() || reference.isDerived() || !element.eIsSet(reference)) {
+					continue;
+				}
+				if (reference.isMany()) {
+					@SuppressWarnings("unchecked")
+					List<EObject> values = (List<EObject>) element.eGet(reference);
+					for (int i = 0; i < values.size(); i++) {
+						EObject replacement = counterpart(values.get(i), published, inCatalog);
+						if (replacement != null) {
+							values.set(i, replacement);
+						}
+					}
+				} else {
+					EObject replacement = counterpart((EObject) element.eGet(reference), published, inCatalog);
+					if (replacement != null) {
+						element.eSet(reference, replacement);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * The object at the same place inside the catalog entry, or
+	 * {@code null} when the reference does not point into the published
+	 * copy at all and is to be left alone.
+	 */
+	private static EObject counterpart(EObject target, ServiceInterface published, ServiceInterface inCatalog) {
+		if (target == null || target.eIsProxy() || !EcoreUtil.isAncestor(published, target)) {
+			return null;
+		}
+		if (target == published) {
+			return inCatalog;
+		}
+		String path = EcoreUtil.getRelativeURIFragmentPath(published, target);
+		EObject counterpart = EcoreUtil.getEObject(inCatalog, path);
+		if (counterpart == null) {
+			LOG.warning("[DDSR] catalog entry " + inCatalog.getName() + " has nothing at " + path
+					+ " — a reference of the published implementation is dropped");
+		}
+		return counterpart;
 	}
 
 	// ============================================================

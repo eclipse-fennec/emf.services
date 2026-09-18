@@ -86,7 +86,7 @@ public interface ServiceException extends NamedElement, VersionedElement {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Typed payload fields (e.g. errorCode: int, retryable: bool, accountId: string). Empty = no structured payload, only a message.
+	 * Constant metadata of this error, e.g. code=202 or retryable=false. A Property carries a name AND a value, and sd1 hashes that value — so what stands here is part of the contract and the same for every occurrence of the error, not per-instance data. Per-instance payload is deliberately not modelled: a value that differs per occurrence could never be part of a contract fingerprint. Empty = the error carries nothing but its identity.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Properties</em>' containment reference list.
 	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceException_Properties()

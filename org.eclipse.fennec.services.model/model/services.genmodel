@@ -301,11 +301,16 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestOperationFlavor/path"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestOperationFlavor/returnCodes"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//RestOperationFlavor/parameterBindings"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//RestOperationFlavor/exceptionBindings"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//RestParameterBinding">
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//RestParameterBinding/parameter"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestParameterBinding/binding"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestParameterBinding/wireName"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//RestExceptionBinding">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//RestExceptionBinding/exception"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestExceptionBinding/status"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//MqttOperationFlavor">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/requestTopic"/>

@@ -208,6 +208,10 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createRestParameterBindingAdapter();
 			}
 			@Override
+			public Adapter caseRestExceptionBinding(RestExceptionBinding object) {
+				return createRestExceptionBindingAdapter();
+			}
+			@Override
 			public Adapter caseMqttOperationFlavor(MqttOperationFlavor object) {
 				return createMqttOperationFlavorAdapter();
 			}
@@ -814,6 +818,20 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createRestParameterBindingAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.RestExceptionBinding <em>Rest Exception Binding</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.RestExceptionBinding
+	 * @generated
+	 */
+	public Adapter createRestExceptionBindingAdapter() {
 		return null;
 	}
 

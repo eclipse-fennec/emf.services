@@ -86,6 +86,7 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.MQTT_FLAVOR: return createMqttFlavor();
 			case ServicesPackage.REST_OPERATION_FLAVOR: return createRestOperationFlavor();
 			case ServicesPackage.REST_PARAMETER_BINDING: return createRestParameterBinding();
+			case ServicesPackage.REST_EXCEPTION_BINDING: return createRestExceptionBinding();
 			case ServicesPackage.MQTT_OPERATION_FLAVOR: return createMqttOperationFlavor();
 			case ServicesPackage.SERVICE_REFERENCE: return createServiceReference();
 			case ServicesPackage.SERVICE_REGISTRATION: return createServiceRegistration();
@@ -541,6 +542,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public RestParameterBinding createRestParameterBinding() {
 		RestParameterBindingImpl restParameterBinding = new RestParameterBindingImpl();
 		return restParameterBinding;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public RestExceptionBinding createRestExceptionBinding() {
+		RestExceptionBindingImpl restExceptionBinding = new RestExceptionBindingImpl();
+		return restExceptionBinding;
 	}
 
 	/**

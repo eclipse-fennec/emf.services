@@ -46,6 +46,8 @@ import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.osgi.service.component.ComponentServiceObjects;
+import org.osgi.framework.Bundle;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -99,11 +101,11 @@ public final class PaymentPublisher {
 		String public_url() default "http://192.168.1.6:9091/payments";
 
 		@AttributeDefinition(
-				name = "Publish the BindingEcho contract",
-				description = "Additionally publish the tiny BindingEcho contract whose one operation "
+				name = "Publish the BindingProbe contract",
+				description = "Additionally publish the tiny BindingProbe contract whose one operation "
 						+ "carries its three arguments in path, query and header. Off by default: it is "
 						+ "a second registration, and the demo should not grow one for everybody.")
-		boolean publish_binding_echo() default false;
+		boolean publish_binding_probe() default false;
 
 		@AttributeDefinition(
 				name = "Broker URL",
@@ -157,12 +159,12 @@ public final class PaymentPublisher {
 	private Registration registration;
 
 	/**
-	 * The BindingEcho registration (#74). A second, tiny contract whose one
+	 * The BindingProbe registration (#74). A second, tiny contract whose one
 	 * operation carries its three arguments in three different places, so
 	 * the harness can prove that a consumer places them where the published
 	 * flavor says — and not where the type of the value would suggest.
 	 */
-	private Registration echoRegistration;
+	private Registration probeRegistration;
 	/**
 	 * Held for the life of the registration, not just the publish call:
 	 * emf.osgi clears every Resource of a prototype ResourceSet on
@@ -202,8 +204,8 @@ public final class PaymentPublisher {
 			ServiceImplementation impl = provider.getImplementations().get(0);
 
 			this.registration = client.provider().publish(provider, impl);
-			if (config.publish_binding_echo()) {
-				this.echoRegistration = publishBindingEcho(config, url);
+			if (config.publish_binding_probe()) {
+				this.probeRegistration = publishBindingProbe(config, url);
 			}
 			LOG.info("[DDSR-Payment-Java] published " + config.provider_name()
 					+ " at " + url + " (SI ref → " + entryUrl
@@ -214,93 +216,59 @@ public final class PaymentPublisher {
 	}
 
 	/**
-	 * Publish the BindingEcho contract: one operation, three arguments,
-	 * three different places on the wire. Deliberately its own contract
-	 * and its own registration — the Payment contract is published by the
-	 * TypeScript side as well, and its sd1 is pinned by the harness, so it
-	 * must not grow an operation for a test.
+	 * Publish the BindingProbe contract by LOADING it: contract, flavor and
+	 * every parameter binding live in {@code model/} of this bundle, and the
+	 * same two documents are what the m2t templates generate the interface and
+	 * the endpoint from (#75). Nothing here restates them, so what this
+	 * provider serves and what it announces cannot drift apart.
+	 *
+	 * <p>Only the deployment facts are filled in here: where this instance is
+	 * reachable is configuration, not contract.
 	 */
-	private Registration publishBindingEcho(Config config, URI url) {
-		ServiceInterface echoApi = ServicesFactory.eINSTANCE.createServiceInterface();
-		echoApi.setName("BindingEcho");
-		echoApi.setVersion("1.0.0");
-		echoApi.setDescription("Echoes back where each argument arrived — the demonstration that a"
-				+ " REST flavor decides the placement of every value.");
+	private Registration publishBindingProbe(Config config, URI url) {
+		Bundle bundle = FrameworkUtil.getBundle(PaymentPublisher.class);
+		org.eclipse.emf.common.util.URI modelUri = org.eclipse.emf.common.util.URI
+				.createURI(bundle.getEntry("model/binding-probe-impl.xmi").toString());
+		Resource loaded = catalogEntryResourceSet.getResource(modelUri, true);
+		ServiceProvider provider = (ServiceProvider) loaded.getContents().get(0);
+		ServiceImplementation impl = provider.getImplementations().get(0);
+		ServiceInterface probeApi = impl.getServiceInterfaces().get(0);
 
-		ServiceOperation echo = ServicesFactory.eINSTANCE.createServiceOperation();
-		echo.setName("echo");
-		echo.setDescription("Returns '<id>|<currency>|<tenant>' from wherever the three values arrived.");
-		Parameter id = parameter("id", 0, "string", false, null, "Travels in the path template.");
-		Parameter currency = parameter("currency", 1, "string", false, null, "Travels as a query parameter.");
-		Parameter tenant = parameter("tenant", 2, "string", false, null, "Travels as the X-Tenant header.");
-		echo.getParameters().add(id);
-		echo.getParameters().add(currency);
-		echo.getParameters().add(tenant);
-		echo.setReturnValue(returnValue("string"));
-		echoApi.getOperations().add(echo);
-
-		Diagnostic added = catalog.addCatalogEntry(echoApi, "payments-java-publisher");
+		Diagnostic added = catalog.addCatalogEntry(probeApi, "payments-java-publisher");
 		if (added.getSeverity() == DiagnosticSeverity.ERROR && added.getCode() != 202) {
-			throw new IllegalStateException("could not add BindingEcho to catalog: " + added.getMessage());
+			throw new IllegalStateException("could not add BindingProbe to catalog: " + added.getMessage());
 		}
 
-		// Same parking as the Payment entry: an interface referenced by a
-		// publish body has to live in a resource, and giving that resource
-		// the canonical catalog URL is what turns the cross-references into
-		// an href instead of a second copy of the contract.
-		String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + echoApi.getName();
+		// Same parking as the Payment entry: the contract moves out of the
+		// bundle document into one named by its canonical catalog URL, so the
+		// publish body references it instead of carrying a second copy.
+		String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + probeApi.getName();
 		Resource entryResource = catalogEntryResourceSet.createResource(
 				org.eclipse.emf.common.util.URI.createURI(entryUrl));
-		entryResource.getContents().add(echoApi);
+		entryResource.getContents().add(probeApi);
 
-		ServiceProvider provider = ServicesFactory.eINSTANCE.createServiceProvider();
-		provider.setName(config.provider_name() + "-bindings");
-		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
-		impl.setName("binding-echo-java");
-		impl.setVersion("1.0.0");
-		impl.setImplementationId("binding-echo:java:1.0.0");
-		impl.getServiceInterfaces().add(echoApi);
-		provider.getImplementations().add(impl);
-
-		RestFlavor flavor = ServicesFactory.eINSTANCE.createRestFlavor();
-		flavor.setName("binding-echo-rest");
-		flavor.setKind(FlavorKind.REST);
+		// The flavor's basePath in the model is where this provider mounts the
+		// endpoint inside itself — the generated resource carries it as its
+		// @Path, and it is what keeps two contracts of one provider apart.
+		// What a CONSUMER sees is that path behind the deployment's own, so
+		// the published value is the configured path plus the modelled one.
+		RestFlavor flavor = (RestFlavor) impl.getFlavors().get(0);
+		String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
 		flavor.setHost(url.getScheme() + "://" + url.getAuthority());
-		flavor.setBasePath(url.getPath() != null ? url.getPath() : "");
-		RestOperationFlavor of = ServicesFactory.eINSTANCE.createRestOperationFlavor();
-		of.setName("echo");
-		of.setMethod(HttpMethod.GET);
-		of.setPath("/echo/{id}");
-		of.setOperation(echo);
-		of.getProduces().add("text/plain");
-		of.getParameterBindings().add(binding(id, ParameterBinding.PATH, null));
-		of.getParameterBindings().add(binding(currency, ParameterBinding.QUERY, null));
-		of.getParameterBindings().add(binding(tenant, ParameterBinding.HEADER, "X-Tenant"));
-		flavor.getOperationFlavors().add(of);
-		impl.getFlavors().add(flavor);
+		flavor.setBasePath((url.getPath() != null ? url.getPath() : "") + mountPath);
 
 		return client.provider().publish(provider, impl);
 	}
 
-	private static RestParameterBinding binding(Parameter parameter, ParameterBinding where, String wireName) {
-		RestParameterBinding binding = ServicesFactory.eINSTANCE.createRestParameterBinding();
-		binding.setParameter(parameter);
-		binding.setBinding(where);
-		if (wireName != null) {
-			binding.setWireName(wireName);
-		}
-		return binding;
-	}
-
 	@Deactivate
 	void deactivate() {
-		if (echoRegistration != null) {
+		if (probeRegistration != null) {
 			try {
-				echoRegistration.withdraw();
+				probeRegistration.withdraw();
 			} catch (Exception withdrawFailed) {
-				LOG.log(Level.WARNING, "[DDSR-Payment-Java] BindingEcho withdraw failed", withdrawFailed);
+				LOG.log(Level.WARNING, "[DDSR-Payment-Java] BindingProbe withdraw failed", withdrawFailed);
 			}
-			echoRegistration = null;
+			probeRegistration = null;
 		}
 		if (registration != null) {
 			try {

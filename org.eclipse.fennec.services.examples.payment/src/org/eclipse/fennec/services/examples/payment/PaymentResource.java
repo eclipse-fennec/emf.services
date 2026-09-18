@@ -25,10 +25,8 @@ import org.osgi.service.servlet.whiteboard.annotations.RequireHttpWhiteboard;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
@@ -92,22 +90,5 @@ public class PaymentResource {
 		double remaining = previous - amount;
 		balances.put(accountId, remaining);
 		return Response.ok(Double.toString(remaining)).build();
-	}
-
-	/**
-	 * Echoes back where each value arrived. The three arguments of the
-	 * {@code BindingEcho} contract travel in three different places —
-	 * {@code id} in the path, {@code currency} in the query, {@code tenant}
-	 * in a header — because the published flavor says so and for no other
-	 * reason (#74). A consumer that placed them differently gets a
-	 * different answer, which is exactly what the harness asserts.
-	 */
-	@GET
-	@Path("/echo/{id}")
-	@Produces(MediaType.TEXT_PLAIN)
-	public Response echo(@PathParam("id") String id,
-			@QueryParam("currency") String currency,
-			@HeaderParam("X-Tenant") String tenant) {
-		return Response.ok(id + "|" + currency + "|" + tenant).build();
 	}
 }

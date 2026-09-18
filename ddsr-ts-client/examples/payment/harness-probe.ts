@@ -47,7 +47,7 @@ const EXPECTED_LANG = process.env.EXPECT_LANG ?? 'java';
 // over it (A2 Etappe 2) — the value is unused beyond being truthy, the
 // broker address comes from the ANNOUNCED flavor.
 const EXPECT_MQTT = process.env.EXPECT_MQTT === '1';
-// When set, the Java provider also published the BindingEcho contract and
+// When set, the Java provider also published the BindingProbe contract and
 // the probe checks that its three arguments arrive where the flavor says
 // (#74) — in the path, in the query and in a header.
 const EXPECT_BINDINGS = process.env.EXPECT_BINDINGS === '1';
@@ -128,10 +128,10 @@ async function main(): Promise<void> {
   if (EXPECT_BINDINGS) {
     let echoLocator;
     for (let attempt = 0; attempt < 40 && !echoLocator; attempt++) {
-      echoLocator = await client.consumer.findOne('BindingEcho').catch(() => undefined);
+      echoLocator = await client.consumer.findOne('BindingProbe').catch(() => undefined);
       if (!echoLocator) await new Promise(r => setTimeout(r, 500));
     }
-    if (!echoLocator) fail('no BindingEcho locator within 20s');
+    if (!echoLocator) fail('no BindingProbe locator within 20s');
     const echoed = String(await echoLocator.invoke('echo',
       { id: 'acct-42', currency: 'EUR', tenant: 'acme' }));
     check('invoke-mixed-bindings', echoed === 'acct-42|EUR|acme', `${echoed}`);

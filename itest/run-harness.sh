@@ -116,12 +116,12 @@ echo "broker up (pid $BROKER_PID)"
 
 # ============================================================ Scenario A
 log "Scenario A: Java provider -> TS consumer"
-# Only this scenario's provider also publishes BindingEcho: its one
+# Only this scenario's provider also publishes BindingProbe: its one
 # operation carries three arguments in three different places, and the
 # probe checks that the consumer put them where the flavor says (#74).
-export PAYMENTS_PUBLISH_BINDING_ECHO=true
+export PAYMENTS_PUBLISH_BINDING_PROBE=true
 start_jar payment-java "$PROVIDER_JAR" "$WORK/payment-java"
-unset PAYMENTS_PUBLISH_BINDING_ECHO
+unset PAYMENTS_PUBLISH_BINDING_PROBE
 PROVIDER_PID=$LAST_PID
 wait_for_line "$WORK/payment-java.log" "published payments-java" 60
 

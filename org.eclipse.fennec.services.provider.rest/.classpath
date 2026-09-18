@@ -12,6 +12,5 @@
 			<attribute name="test" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="src" path="src-gen-rest"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

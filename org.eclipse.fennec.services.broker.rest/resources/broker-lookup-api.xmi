@@ -50,7 +50,7 @@
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//LocalServiceRegistry"/>
       </returnValue>
     </operations>
-    <operations name="heartbeat"
+    <operations name="heartbeat" exceptions="/1/@exceptions.0 /1/@exceptions.1"
         description="A provider says it is still there. Missing two intervals is what makes the broker declare it lost, so consumers hear about a provider that died without withdrawing.">
       <parameters name="referenceId" index="0" type="string"
           description="The registration this heartbeat is for."/>

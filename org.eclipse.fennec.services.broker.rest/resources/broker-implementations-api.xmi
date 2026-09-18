@@ -55,7 +55,7 @@
 
   <services:ServiceInterface name="BrokerImplementations" version="1.0.0"
       description="What a provider does with the broker: announce an implementation, change it in place, take it back. Every one of them carries the provider document itself — the broker reads the single implementation inside it.">
-    <operations name="publishImplementation"
+    <operations name="publishImplementation" exceptions="/1/@exceptions.0 /1/@exceptions.1 /1/@exceptions.3 /1/@exceptions.4"
         description="Announce one implementation of a contract that is in the catalog. Announcing the identical implementation again is the same registration, not a second one.">
       <parameters name="provider" index="0"
           description="The provider document, carrying exactly one implementation. Contracts it references may travel as sibling roots.">
@@ -65,7 +65,7 @@
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
     </operations>
-    <operations name="modifyImplementation"
+    <operations name="modifyImplementation" exceptions="/1/@exceptions.1 /1/@exceptions.2 /1/@exceptions.3 /1/@exceptions.4"
         description="Change a live implementation in place — same identity, drifted endpoint. Consumers see MODIFIED under the reference id they already hold, instead of losing and rebinding it.">
       <parameters name="provider" index="0"
           description="The provider document, carrying the changed implementation under its existing identity.">
@@ -75,7 +75,7 @@
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
     </operations>
-    <operations name="withdrawImplementation"
+    <operations name="withdrawImplementation" exceptions="/1/@exceptions.1 /1/@exceptions.2 /1/@exceptions.4"
         description="Take an implementation back. Answers only once consumers have been told, so a provider can stop serving afterwards and no one calls a dead endpoint.">
       <parameters name="provider" index="0"
           description="The provider document naming the implementation to withdraw.">

@@ -61,7 +61,7 @@
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//RemoteServiceRegistry"/>
       </returnValue>
     </operations>
-    <operations name="getCatalogEntry"
+    <operations name="getCatalogEntry" exceptions="/1/@exceptions.0 /1/@exceptions.3"
         description="One contract by name. Several contracts may share a name — they are told apart by content fingerprint — so a bare name is only answered while it is unambiguous.">
       <parameters name="name" index="0" type="string"
           description="Name of the contract."/>
@@ -71,7 +71,7 @@
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//ServiceInterface"/>
       </returnValue>
     </operations>
-    <operations name="addCatalogEntry"
+    <operations name="addCatalogEntry" exceptions="/1/@exceptions.1"
         description="Add a contract. Adding the identical contract again is accepted; a different one under a name already taken is not.">
       <parameters name="serviceInterface" index="0"
           description="The contract to add, fully populated.">
@@ -83,7 +83,7 @@
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
     </operations>
-    <operations name="deprecateCatalogEntry"
+    <operations name="deprecateCatalogEntry" exceptions="/1/@exceptions.0 /1/@exceptions.3"
         description="Soft-deprecate a contract. Existing implementations keep working; new publishes against it are answered with a WARNING.">
       <parameters name="name" index="0" type="string"
           description="Name of the contract to deprecate."/>
@@ -99,7 +99,7 @@
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
     </operations>
-    <operations name="removeCatalogEntry"
+    <operations name="removeCatalogEntry" exceptions="/1/@exceptions.0 /1/@exceptions.2 /1/@exceptions.3"
         description="Remove a contract. Refused while any live implementation still references it.">
       <parameters name="name" index="0" type="string"
           description="Name of the contract to remove."/>

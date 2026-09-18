@@ -162,6 +162,33 @@ class BrokerApiDocumentsTest {
 		}
 	}
 
+	@ParameterizedTest
+	@MethodSource("documents")
+	void everyOperationThatCanFailSaysSo(String document) throws IOException {
+		// The contract's own statement, independent of any transport: an
+		// operation names the errors it raises. It is easy to lose —
+		// these are positional references into a sibling root, and a
+		// contract that simply stops declaring its errors still loads,
+		// still serves and still answers. It just promises less, and the
+		// fingerprint that identifies it changes.
+		List<EObject> roots = roots(document);
+		ServiceInterface contract = (ServiceInterface) roots.get(1);
+
+		for (RestOperationFlavor operationFlavor : operationFlavors(roots)) {
+			ServiceOperation operation = operationFlavor.getOperation();
+			for (RestExceptionBinding binding : operationFlavor.getExceptionBindings()) {
+				assertThat(operation.getExceptions())
+						.as("%s: '%s' binds %s to %d, but does not declare that it raises it",
+								document, operation.getName(), binding.getException().getName(),
+								binding.getStatus())
+						.contains(binding.getException());
+			}
+			assertThat(contract.getExceptions())
+					.as("%s: '%s' raises an error of another contract", document, operation.getName())
+					.containsAll(operation.getExceptions());
+		}
+	}
+
 	@Test
 	void theThreeContractsMountUnderDifferentPaths() throws IOException {
 		// They are three applications in one deployment; a shared base

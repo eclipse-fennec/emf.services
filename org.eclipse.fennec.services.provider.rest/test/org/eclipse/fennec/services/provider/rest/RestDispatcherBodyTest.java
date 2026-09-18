@@ -24,12 +24,17 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.Diagnostic;
+import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.HttpMethod;
+import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestParameterBinding;
+import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
@@ -207,6 +212,46 @@ class RestDispatcherBodyTest {
 		assertThat(response.getStatus()).isEqualTo(400);
 		assertThat(String.valueOf(response.getEntity())).contains("payload is required");
 		assertThat(probe.received).as("nothing may reach the service").isNull();
+	}
+
+	@Test
+	void a_failure_that_came_back_as_a_value_still_gets_its_status() {
+		// The probe returns whatever it is given; here that is a failing
+		// Diagnostic, and the flavor binds the error carrying code 201 to
+		// a 404. The body stays the Diagnostic — this project answers
+		// with one rather than with an HTTP exception.
+		RestOperationFlavor opFlavor = (RestOperationFlavor) contract(false).getOperationFlavors().get(0);
+		ServiceException declared = F.createServiceException();
+		declared.setName("NotFound");
+		declared.setType("NotFound");
+		IntProperty code = F.createIntProperty();
+		code.setName("code");
+		code.setValue(201);
+		declared.getProperties().add(code);
+		RestExceptionBinding binding = F.createRestExceptionBinding();
+		binding.setException(declared);
+		binding.setStatus(404);
+		opFlavor.getExceptionBindings().add(binding);
+
+		Diagnostic failure = F.createDiagnostic();
+		failure.setSeverity(DiagnosticSeverity.ERROR);
+		failure.setCode(201);
+
+		RestFlavor flavor = F.createRestFlavor();
+		flavor.getOperationFlavors().add(opFlavor);
+		RestDispatcher dispatcher = new RestDispatcher(flavor,
+				() -> new OneService(new Object() {
+					@SuppressWarnings("unused")
+					public Object store(Object payload) {
+						return failure;
+					}
+				}), "Store", new ResourceSetObjects());
+
+		Response response = dispatcher.dispatch("POST", "/store", name -> List.of(), name -> null,
+				new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
+
+		assertThat(response.getStatus()).isEqualTo(404);
+		assertThat(response.getEntity()).isSameAs(failure);
 	}
 
 	@Test

@@ -30,6 +30,14 @@ public final class DdsrDiagnostics {
 	// Diagnostic codes used by the broker. Stable numeric values; documented
 	// here so REST and event-stream consumers can branch on them.
 	public static final int CODE_OK                          = 0;
+	/**
+	 * The request itself is not one the broker can carry out — a publish
+	 * body that names no single implementation, say. Deliberately not a
+	 * code any contract declares: an error no contract names answers 400,
+	 * which is exactly what this is.
+	 */
+	public static final int CODE_MALFORMED_REQUEST           = 1;
+
 	public static final int CODE_NETWORK_PARTITION           = 100;
 	public static final int CODE_CATALOG_HAS_LIVE_IMPLS      = 200;
 	public static final int CODE_CATALOG_ENTRY_NOT_FOUND     = 201;

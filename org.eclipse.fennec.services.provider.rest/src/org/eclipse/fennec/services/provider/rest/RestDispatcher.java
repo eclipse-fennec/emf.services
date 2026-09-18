@@ -13,6 +13,7 @@
 
 package org.eclipse.fennec.services.provider.rest;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -40,7 +41,10 @@ import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestRoute;
+import org.eclipse.fennec.services.xmi.codec.WireBody;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
+import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
+import org.eclipse.fennec.services.xmi.codec.XmiHttpErrors;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.service.component.ComponentServiceObjects;
 
@@ -235,15 +239,39 @@ public class RestDispatcher {
 		if (bound == null || entity == null) {
 			return null;
 		}
-		if (bound.getEType() instanceof EClass) {
+		if (bound.getEType() instanceof EClass expected) {
+			// Bounded read before anything is parsed: a body is attacker
+			// input, and how much of it will be held is not the sender's
+			// decision. The codec owns that limit and the mapping of its
+			// refusals to HTTP — 413 for too big, 400 for unreadable —
+			// so both come from there rather than being decided again.
+			byte[] body;
+			try {
+				body = WireBody.readFully(entity);
+			} catch (XmiCodecException refusal) {
+				throw XmiHttpErrors.toHttp(refusal);
+			}
 			// Through readBundle, not read: a model on this wire may
 			// arrive with sibling roots beside the one meant as the
 			// argument — a publish body carries its contract stubs that
 			// way so the references out of the provider resolve. The
 			// first root is the argument, the rest is what it needs to
 			// be readable.
-			List<EObject> roots = XmiCodec.readBundle(entity, resourceSets).roots();
-			return roots.isEmpty() ? null : roots.get(0);
+			List<EObject> roots;
+			try {
+				roots = XmiCodec.readBundle(new ByteArrayInputStream(body), resourceSets).roots();
+			} catch (XmiCodecException refusal) {
+				throw XmiHttpErrors.toHttp(refusal);
+			}
+			if (roots.isEmpty()) {
+				return null;
+			}
+			EObject root = roots.get(0);
+			if (!expected.isInstance(root)) {
+				throw new IllegalArgumentException("the body carries a " + root.eClass().getName()
+						+ " where the contract declares a " + expected.getName());
+			}
+			return root;
 		}
 		String text = new String(entity.readAllBytes(), UTF_8);
 		return text.isEmpty() ? null : text;

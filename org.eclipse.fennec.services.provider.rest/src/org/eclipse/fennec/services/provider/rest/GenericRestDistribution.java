@@ -38,6 +38,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
+import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -224,7 +225,8 @@ public class GenericRestDistribution extends Application {
 	}
 
 	@Activate
-	void activate(BundleContext context, Config config) {
+	void activate(ComponentContext componentContext, BundleContext context, Config config) {
+		Object self = componentContext.getProperties().get("component.id");
 		// The ResourceSet is held for as long as the model is: releasing
 		// it while still reading the documents it loaded would pull the
 		// ground out from under the dispatcher.
@@ -234,11 +236,15 @@ public class GenericRestDistribution extends Application {
 		String contract = implementation.getServiceInterfaces().get(0).getName();
 
 		this.dispatcher = new RestDispatcher(flavor,
-				() -> implementation(context, config.service_filter()), contract, resourceSets);
+				() -> implementation(context, config.service_filter(), self), contract, resourceSets);
 		LOG.info("[DDSR] serving " + contract + " generically at " + flavor.getBasePath());
 
-		this.config = config;
-		this.implementation = implementation;
+		// Under the same monitor announceIfReady takes: a binding on
+		// another thread must either see both of these or neither.
+		synchronized (this) {
+			this.config = config;
+			this.implementation = implementation;
+		}
 		announceIfReady();
 	}
 
@@ -338,16 +344,41 @@ public class GenericRestDistribution extends Application {
 	 * generic transport must not require it to be one this bundle knows.
 	 */
 	@SuppressWarnings("unchecked")
-	private static ServiceObjects<Object> implementation(BundleContext context, String serviceFilter) {
+	private static ServiceObjects<Object> implementation(BundleContext context, String serviceFilter, Object self) {
 		try {
 			ServiceReference<?>[] candidates = context.getServiceReferences((String) null, serviceFilter);
-			if (candidates == null || candidates.length == 0) {
+			if (candidates == null) {
 				return null;
 			}
-			return (ServiceObjects<Object>) context.getServiceObjects(candidates[0]);
+			ServiceReference<?> chosen = someoneElse(candidates, self);
+			return chosen == null ? null : (ServiceObjects<Object>) context.getServiceObjects(chosen);
 		} catch (InvalidSyntaxException malformed) {
 			throw new IllegalStateException("service filter is not a filter: " + serviceFilter, malformed);
 		}
+	}
+
+
+	/**
+	 * The first candidate that is not this component itself.
+	 *
+	 * <p>Declarative Services propagates configuration properties onto
+	 * the service it registers, so a configuration that names the
+	 * contract makes this component match the very filter it uses to
+	 * look for an implementation of that contract. Left alone it would
+	 * find itself and try to invoke the contract's operations on this
+	 * class — which fails with a message about a missing method and
+	 * tells nobody what actually went wrong.
+	 */
+	static ServiceReference<?> someoneElse(ServiceReference<?>[] candidates, Object self) {
+		if (candidates == null) {
+			return null;
+		}
+		for (ServiceReference<?> candidate : candidates) {
+			if (self == null || !self.equals(candidate.getProperty("component.id"))) {
+				return candidate;
+			}
+		}
+		return null;
 	}
 
 	/**

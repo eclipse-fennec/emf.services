@@ -37,6 +37,8 @@ Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → OPE
 - `org.eclipse.fennec.services.broker.core` / `broker.rest` / `broker.mqtt` — Broker-API + In-Memory-Impl, JAX-RS/SSE, MQTT-EventSink
 - `org.eclipse.fennec.services.xmi.codec` — XMI-Wire-Codec + `…services.fingerprint` (sd1)
 - `org.eclipse.fennec.services.client.java` / `client.rest` / `client.mqtt` — transport-agnostisches SDK + Transporte
+- `org.eclipse.fennec.services.flavor.rest` — die REST-Platzierungsregeln, geteilt von Consumer, Dispatcher und Template (kein JAX-RS)
+- `org.eclipse.fennec.services.provider.rest` — generische REST-Distribution: eine Factory-Konfiguration serviert einen Vertrag aus seinem Modell und meldet ihn optional selbst an (#84)
 - `org.eclipse.fennec.services.examples.payment` / `examples.model` — Demo-Provider + Beispielmodell
 - `ddsr-ts-client/` — TypeScript-Track (pnpm-Workspace; in `gradle.properties` via `bnd_exclude` vom bnd-Build ausgenommen, ebenso `itest`)
 - `itest/` — Harness: `run-harness.sh` (Host) und `run-harness-podman.sh` (Container inkl. Mosquitto für den MQTT-Drahtnachweis)

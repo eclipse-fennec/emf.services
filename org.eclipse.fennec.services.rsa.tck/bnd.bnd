@@ -1,0 +1,19 @@
+Bundle-Name: Fennec Services RSA TCK Run
+Bundle-Description: \
+	Runs the OSGi Remote Service Admin TCK against this implementation. \
+	No code of its own: the project exists to hold the launch, and the \
+	launch exists to let the TCK say what is missing. Expected to run red \
+	before it runs green (#99).
+
+-library: enableEMF
+
+-buildpath: \
+	org.osgi.test.cases.remoteserviceadmin;version=latest
+
+# The configuration the RI needs, in both frameworks: the TCK installs this
+# bundle into the child too. Both share the JVM's environment, so both
+# would bind the same HTTP port — the reason the public URL has to come
+# from the HTTP runtime rather than from configuration (#99 will say so).
+-includeresource: \
+	OSGI-INF/configurator/=configs/
+Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'

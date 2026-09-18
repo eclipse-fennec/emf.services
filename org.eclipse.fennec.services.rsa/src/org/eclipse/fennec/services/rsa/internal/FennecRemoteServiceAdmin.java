@@ -67,7 +67,14 @@ import org.osgi.service.remoteserviceadmin.RemoteServiceAdmin;
  * else: serve before announcing, withdraw before stopping to serve. A
  * consumer must never be sent to an address that has already gone quiet.
  */
-@Component(service = RemoteServiceAdmin.class)
+// remote.configs.supported is what the specification says an admin
+// advertises, and what a topology manager — and the TCK — reads to learn
+// which configuration types it can export with. Static for now, which is
+// wrong the moment a second distribution is installed (#98): the honest
+// value is the union of what the bound FlavorDistributions support, and
+// that has to become a dynamic service property.
+@Component(service = RemoteServiceAdmin.class,
+		property = RemoteConstants.REMOTE_CONFIGS_SUPPORTED + "=fennec.rest")
 public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 
 	private static final Logger LOG = Logger.getLogger(FennecRemoteServiceAdmin.class.getName());

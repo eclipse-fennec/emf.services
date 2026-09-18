@@ -131,6 +131,10 @@ org.osgi:org.osgi.service.jdbc:1.1.0
 org.osgi:org.osgi.service.log:1.5.0
 org.osgi:org.osgi.service.packageadmin:1.2.1
 org.osgi:org.osgi.service.remoteserviceadmin:1.1.0
+org.osgi:org.osgi.test.cases.remoteserviceadmin:8.1.0
+org.osgi:org.osgi.test.cases.remoteservices:8.1.0
+org.apache.servicemix.bundles:org.apache.servicemix.bundles.junit:4.13.2_1
+org.junit.vintage:junit-vintage-engine:5.14.2
 org.osgi:org.osgi.service.repository:1.1.0
 org.osgi:org.osgi.service.resolver:1.1.1
 org.osgi:org.osgi.service.serviceloader:1.0.0

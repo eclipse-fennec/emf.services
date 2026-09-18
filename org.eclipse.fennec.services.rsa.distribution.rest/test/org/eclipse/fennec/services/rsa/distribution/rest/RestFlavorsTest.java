@@ -98,6 +98,20 @@ class RestFlavorsTest {
 	}
 
 	@Test
+	void whatComesBackDecidesTheMediaType() {
+		// Found by running it: an int answered under application/xml has
+		// no writer, and the call fails with a 500 that says nothing.
+		RestFlavor flavor = flavorOf(Payment.class);
+
+		assertThat(operation(flavor, "charge").getProduces()).containsExactly("text/plain");
+		assertThat(operation(flavor, "record").getProduces()).as("void produces nothing").isEmpty();
+		assertThat(operation(flavor, "record").getConsumes())
+				.as("a modelled body is XMI, and the flavor says so")
+				.containsExactly("application/xml");
+		assertThat(operation(flavor, "charge").getConsumes()).as("scalars need no body type").isEmpty();
+	}
+
+	@Test
 	void twoModelledArgumentsAreRefusedRatherThanSqueezedIntoAQueryString() {
 		assertThatThrownBy(() -> flavorOf(TwoDocuments.class))
 				.isInstanceOf(IllegalArgumentException.class)

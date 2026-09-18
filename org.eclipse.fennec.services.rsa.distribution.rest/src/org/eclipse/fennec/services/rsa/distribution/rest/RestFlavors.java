@@ -52,7 +52,18 @@ import org.eclipse.fennec.services.ServicesFactory;
  */
 final class RestFlavors {
 
+	/** What a modelled value travels as. */
+	private static final String XMI = "application/xml";
+
+	/** What everything else travels as. */
+	private static final String TEXT = "text/plain";
+
 	private RestFlavors() {
+	}
+
+	/** Whether a slot carries a model rather than a scalar. */
+	private static boolean isModel(Parameter slot) {
+		return slot.getEType() != null;
 	}
 
 	/** A flavor for {@code contract}, mounted under {@code basePath}. */
@@ -78,16 +89,23 @@ final class RestFlavors {
 		operationFlavor.setOperation(operation);
 		operationFlavor.setMethod(HttpMethod.POST);
 		operationFlavor.setPath("/" + operation.getName());
-		operationFlavor.getProduces().add("application/xml");
+		// What comes back decides the media type. A model is XMI; a
+		// scalar is text, and saying XML about an integer is not a
+		// harmless inaccuracy — there is no writer for it, so the call
+		// fails with a 500 that says nothing.
+		if (operation.getReturnValue() != null) {
+			operationFlavor.getProduces().add(isModel(operation.getReturnValue()) ? XMI : TEXT);
+		}
 
 		boolean bodyTaken = false;
 		for (Parameter parameter : operation.getParameters()) {
 			RestParameterBinding binding = ServicesFactory.eINSTANCE.createRestParameterBinding();
 			binding.setParameter(parameter);
-			if (parameter.getEType() == null) {
+			if (!isModel(parameter)) {
 				binding.setBinding(ParameterBinding.QUERY);
 			} else if (!bodyTaken) {
 				binding.setBinding(ParameterBinding.BODY);
+				operationFlavor.getConsumes().add(XMI);
 				bodyTaken = true;
 			} else {
 				// A request has one body. Saying so is better than

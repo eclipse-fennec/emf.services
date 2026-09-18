@@ -1,0 +1,22 @@
+Bundle-Name: Fennec Services RSA Example
+Bundle-Description: \
+	A plain OSGi service with nothing about this registry in it, exported \
+	through Remote Service Admin. If it needs no contract document, no \
+	resource class and no publisher, the export path works.
+
+-library: enableEMF
+
+Private-Package: \
+	org.eclipse.fennec.services.examples.rsa
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.remoteserviceadmin;version=latest
+
+-includeresource: \
+	OSGI-INF/configurator/=configs/
+Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

@@ -16,7 +16,6 @@ package org.eclipse.fennec.services.broker.rest.internal;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,16 +25,12 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
-import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
-import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
-import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -51,17 +46,23 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * implementation index. Eat-your-own-dogfood: the broker becomes the
  * first entry in the registry it provides.
  *
- * <p>At {@code @Activate} this component:
- * <ol>
- * <li>Loads the three API descriptions (BrokerCatalog,
- *     BrokerImplementations, BrokerLookup) from the bundle resources
- *     and calls {@code addCatalogEntry} for each. Idempotent against
- *     prior state: an {@code ALREADY_EXISTS} diagnostic is swallowed.</li>
- * <li>Builds a ServiceProvider {@code ddsr-broker} programmatically,
- *     wraps a ServiceImplementation with a RestFlavor and per-operation
- *     RestOperationFlavors that point at the actual REST endpoints,
- *     and calls {@code publishImplementation}.</li>
- * </ol>
+ * <p>At {@code @Activate} it reads the three API documents from the
+ * bundle — BrokerCatalog, BrokerImplementations, BrokerLookup — puts each
+ * contract in the catalog and announces the implementation that serves
+ * it. Nothing about those implementations is written here: which
+ * operations, which paths, where every argument travels and which error
+ * is which status all live in the documents, and the same documents are
+ * what the generic REST distribution answers requests by. That is the
+ * whole point of #76 — the broker used to describe its API three times
+ * (documents, Java interfaces, resource classes) and the three had drifted.
+ *
+ * <p>Only the deployment fact is added: {@code public.url} says where
+ * this instance is reachable, and the modelled base path is appended to
+ * it, so a consumer gets a self-contained flavor.
+ *
+ * <p>Three announcements, one per contract — each is its own
+ * implementation with its own base path, which is also how the generic
+ * distribution mounts them.
  *
  * <p>After activation a consumer can:
  * <pre>
@@ -103,32 +104,70 @@ public final class BrokerSelfPublisher {
 
 	@Activate
 	void activate(Config config) {
-		try {
-			ServiceInterface catalog = ensureCatalogEntry("broker-catalog-api.xmi");
-			ServiceInterface impls   = ensureCatalogEntry("broker-implementations-api.xmi");
-			ServiceInterface lookup  = ensureCatalogEntry("broker-lookup-api.xmi");
-
-			publishSelf(catalog, impls, lookup, URI.create(config.public_url()));
-			LOG.info("[DDSR] BrokerSelfPublisher: catalog seeded and self-impl published");
-		} catch (Throwable t) {
-			LOG.log(Level.WARNING, "[DDSR] BrokerSelfPublisher failed", t);
+		for (String document : List.of("broker-catalog-api.xmi", "broker-implementations-api.xmi",
+				"broker-lookup-api.xmi")) {
+			try {
+				announce(document, URI.create(config.public_url()));
+			} catch (Throwable failure) {
+				LOG.log(Level.WARNING, "[DDSR] BrokerSelfPublisher: " + document + " failed", failure);
+			}
 		}
 	}
 
-	// ------------------------------------------------------------
-	// Step 1: seed catalog from packaged XMIs
-	// ------------------------------------------------------------
+	/**
+	 * Seed one of the broker's own contracts and announce the
+	 * implementation that serves it.
+	 *
+	 * <p>Everything about that implementation — which operations, which
+	 * paths, where every argument travels, which error is which status —
+	 * is in the document. Nothing is restated here, which is the point:
+	 * the same document is what the generic distribution serves the API
+	 * by, so what the broker announces and what it answers cannot drift
+	 * apart (#76). Only the deployment fact is added: where this instance
+	 * is reachable.
+	 */
+	private void announce(String documentName, URI publicUrl) throws IOException {
+		List<EObject> roots = readBundle(documentName);
+		ServiceProvider provider = (ServiceProvider) roots.get(0);
+		ServiceInterface contract = (ServiceInterface) roots.get(1);
+		ServiceImplementation implementation = provider.getImplementations().get(0);
 
-	private ServiceInterface ensureCatalogEntry(String resourceName) throws IOException {
-		ServiceInterface si = readBundleInterface(resourceName);
-		Diagnostic d = catalog.addCatalogEntry(si, "broker-self-publisher");
-		if (d.getSeverity() == DiagnosticSeverity.ERROR
-				&& d.getCode() == DdsrDiagnostics.CODE_CATALOG_ENTRY_ALREADY_EXISTS) {
-			// Already present (from a restored snapshot). Fall through to
-			// the catalog lookup so the publish step references the live
-			// catalog object, not our throwaway parse.
+		// Already announced — from a restored snapshot, say. Re-publishing
+		// would add a second registration of the same thing.
+		for (ServiceImplementation live : catalog.getRegistry().getImplementations()) {
+			if (implementation.getName().equals(live.getName())) {
+				return;
+			}
 		}
-		return findInCatalog(si.getName());
+
+		Diagnostic added = catalog.addCatalogEntry(contract, "broker-self-publisher");
+		if (added.getSeverity() == DiagnosticSeverity.ERROR
+				&& added.getCode() != DdsrDiagnostics.CODE_CATALOG_ENTRY_ALREADY_EXISTS) {
+			LOG.warning("[DDSR] BrokerSelfPublisher: " + contract.getName() + " refused: " + added.getMessage());
+			return;
+		}
+		ServiceInterface inCatalog = findInCatalog(contract.getName());
+		if (inCatalog != null && inCatalog != contract) {
+			// The catalog already held it; reference the live entry so the
+			// publish does not carry a second copy of the same contract.
+			implementation.getServiceInterfaces().clear();
+			implementation.getServiceInterfaces().add(inCatalog);
+		}
+
+		RestFlavor flavor = (RestFlavor) implementation.getFlavors().get(0);
+		String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
+		flavor.setHost(publicUrl.getScheme() + "://" + publicUrl.getAuthority());
+		flavor.setBasePath((publicUrl.getPath() != null ? publicUrl.getPath() : "") + mountPath);
+
+		provider.setSymbolicName("org.eclipse.fennec.services.broker");
+		Diagnostic published = implementations.publishImplementation(provider, implementation);
+		if (published.getSeverity() == DiagnosticSeverity.ERROR) {
+			LOG.warning("[DDSR] self-publish of " + contract.getName() + " failed: code="
+					+ published.getCode() + " " + published.getMessage());
+			return;
+		}
+		LOG.info("[DDSR] BrokerSelfPublisher: " + contract.getName() + " seeded and served at "
+				+ flavor.getHost() + flavor.getBasePath());
 	}
 
 	private ServiceInterface findInCatalog(String name) {
@@ -140,105 +179,24 @@ public final class BrokerSelfPublisher {
 		return null;
 	}
 
-	private ServiceInterface readBundleInterface(String resourceName) throws IOException {
+	/**
+	 * The two roots of one API document: the provider that serves the
+	 * contract, and the contract itself. One document on purpose — every
+	 * reference from the flavor into the contract is then intra-document
+	 * and resolves wherever the file is read.
+	 */
+	private List<EObject> readBundle(String resourceName) throws IOException {
 		try (InputStream in = getClass().getClassLoader().getResourceAsStream(resourceName)) {
 			if (in == null) {
 				throw new IOException("bundle resource not found: " + resourceName);
 			}
-			EObject eo = XmiCodec.read(in, rsObjects);
-			if (!(eo instanceof ServiceInterface)) {
-				throw new IOException(resourceName + " does not contain a ServiceInterface root");
+			List<EObject> roots = XmiCodec.readBundle(in, rsObjects).roots();
+			if (roots.size() != 2 || !(roots.get(0) instanceof ServiceProvider)
+					|| !(roots.get(1) instanceof ServiceInterface)) {
+				throw new IOException(resourceName
+						+ " must hold a ServiceProvider and the ServiceInterface it serves, in that order");
 			}
-			return (ServiceInterface) eo;
+			return roots;
 		}
-	}
-
-	// ------------------------------------------------------------
-	// Step 2: self-publish provider + impl + RestFlavor
-	// ------------------------------------------------------------
-
-	private void publishSelf(ServiceInterface catalogApi, ServiceInterface implsApi, ServiceInterface lookupApi,
-			URI publicUrl) {
-		if (catalogApi == null || implsApi == null || lookupApi == null) {
-			LOG.warning("[DDSR] cannot self-publish: at least one API interface is missing from the catalog");
-			return;
-		}
-		// Idempotent: if a provider named ddsr-broker is already in the
-		// registry (e.g. restored from snapshot), skip — re-publishing
-		// would double-add provider + implementation.
-		for (ServiceProvider existing : catalog.getRegistry().getProviders()) {
-			if ("ddsr-broker".equals(existing.getName())) {
-				return;
-			}
-		}
-
-		ServiceProvider provider = ServicesFactory.eINSTANCE.createServiceProvider();
-		provider.setName("ddsr-broker");
-		provider.setVersion("1.0.0");
-		provider.setSymbolicName("org.eclipse.fennec.services.broker");
-
-		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
-		impl.setName("ddsr-broker-rest");
-		impl.setVersion("1.0.0");
-		impl.setImplementationId("org.eclipse.fennec.services.broker.rest");
-		impl.setDescription("Self-publishing entry: the DDSR broker exposes its own catalog/implementations/lookup API.");
-		impl.getServiceInterfaces().add(catalogApi);
-		impl.getServiceInterfaces().add(implsApi);
-		impl.getServiceInterfaces().add(lookupApi);
-
-		RestFlavor flavor = ServicesFactory.eINSTANCE.createRestFlavor();
-		flavor.setName("ddsr-broker-rest");
-		flavor.setKind(FlavorKind.REST);
-		// Split the configured public URL into authority (host) and path
-		// (basePath). Consumers get a self-contained RestFlavor — no
-		// client-side broker-URL config needed for URI building.
-		flavor.setHost(publicUrl.getScheme() + "://" + publicUrl.getAuthority());
-		flavor.setBasePath(publicUrl.getPath() != null ? publicUrl.getPath() : "");
-		flavor.getContentTypes().add("application/xml");
-
-		// Per-operation REST bindings. The path/method tuples mirror what
-		// the resource classes actually expose.
-		flavor.getOperationFlavors().add(opFlavor("listCatalog",          catalogApi, "listCatalog",          HttpMethod.GET,    "/catalog",                 200));
-		flavor.getOperationFlavors().add(opFlavor("addCatalogEntry",      catalogApi, "addCatalogEntry",      HttpMethod.POST,   "/catalog",                 200, 409));
-		flavor.getOperationFlavors().add(opFlavor("deprecateCatalogEntry",catalogApi, "deprecateCatalogEntry",HttpMethod.PUT,    "/catalog/{name}/deprecate",200, 404));
-		flavor.getOperationFlavors().add(opFlavor("removeCatalogEntry",   catalogApi, "removeCatalogEntry",   HttpMethod.DELETE, "/catalog/{name}",          200, 404, 409));
-		flavor.getOperationFlavors().add(opFlavor("publishImplementation",implsApi,   "publishImplementation",HttpMethod.POST,   "/implementations",         200, 403, 422));
-		flavor.getOperationFlavors().add(opFlavor("withdrawImplementation",implsApi,  "withdrawImplementation",HttpMethod.DELETE,"/implementations",         200, 403, 404));
-		flavor.getOperationFlavors().add(opFlavor("getServiceReferences", lookupApi,  "getServiceReferences", HttpMethod.GET,    "/references",              200, 400));
-
-		impl.getFlavors().add(flavor);
-		provider.getImplementations().add(impl);
-
-		Diagnostic d = implementations.publishImplementation(provider, impl);
-		if (d.getSeverity() == DiagnosticSeverity.ERROR) {
-			LOG.warning("[DDSR] self-publish failed: code=" + d.getCode() + " " + d.getMessage());
-		}
-	}
-
-	private static RestOperationFlavor opFlavor(String name, ServiceInterface iface, String opName,
-			HttpMethod method, String path, int... returnCodes) {
-		RestOperationFlavor of = ServicesFactory.eINSTANCE.createRestOperationFlavor();
-		of.setName(name);
-		of.setOperation(findOperation(iface, opName));
-		of.setMethod(method);
-		of.setPath(path);
-		of.getProduces().add("application/xml");
-		List<Integer> codes = new ArrayList<>(returnCodes.length);
-		for (int c : returnCodes) {
-			codes.add(c);
-		}
-		of.getReturnCodes().addAll(codes);
-		return of;
-	}
-
-	private static ServiceOperation findOperation(ServiceInterface iface, String opName) {
-		for (ServiceOperation so : iface.getOperations()) {
-			if (opName.equals(so.getName())) {
-				return so;
-			}
-		}
-		throw new IllegalStateException(
-				"operation '" + opName + "' missing on interface " + iface.getName()
-						+ ", available: " + iface.getOperations());
 	}
 }

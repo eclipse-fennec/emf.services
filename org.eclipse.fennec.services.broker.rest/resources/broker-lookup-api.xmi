@@ -1,22 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<services:ServiceInterface xmi:version="2.0"
+<xmi:XMI xmi:version="2.0"
     xmlns:xmi="http://www.omg.org/XMI"
-    xmlns:services="http://eclipse.org/fennec/services/1.0"
-    name="BrokerLookup"
-    version="1.0.0"
-    description="DDSR broker consumer-side lookup of ServiceReferences with optional filter and flavor matching.">
-  <operations name="getServiceReferences"
-      description="Return matching ServiceReferences, filtered by interface name, optional LDAP filter, and consumer-supported flavors.">
-    <parameters name="interfaceName" index="0" type="string"
-        description="Name of the ServiceInterface to look up. Required.">
-      <constraints xsi:type="services:RequiredConstraint"/>
-    </parameters>
-    <parameters name="filter" index="1" type="string" optional="true"
-        description="Optional LDAP filter over service properties."/>
-    <parameters name="flavors" index="2" type="string" optional="true"
-        description="Comma-separated list of FlavorKind values supported by the consumer (REST, MQTT, ...)."/>
-    <parameters name="consumerId" index="3" type="string" optional="true"
-        description="Optional consumer identity for audit / policy attribution."/>
-    <returnValue name="result" type="LocalServiceRegistry"/>
-  </operations>
-</services:ServiceInterface>
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="ddsr-broker" version="1.0.0">
+    <implementations name="ddsr-broker-lookup" version="1.0.0"
+        implementationId="ddsr-broker:lookup:1.0.0"
+        description="The broker's lookup API, served from this document by the generic REST distribution."
+        serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="broker-lookup-rest" kind="REST"
+          basePath="/references" contentTypes="application/xml">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getServiceReferences"
+            method="GET" path="/" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.0">
+          <parameterBindings parameter="/1/@operations.0/@parameters.0" binding="QUERY" wireName="interface"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.2" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.3" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.4" binding="QUERY"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="heartbeat"
+            method="PUT" path="/{referenceId}/heartbeat" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.1">
+          <parameterBindings parameter="/1/@operations.1/@parameters.0" binding="PATH"/>
+          <parameterBindings parameter="/1/@operations.1/@parameters.1" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="400"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="404"/>
+        </operationFlavors>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+
+  <services:ServiceInterface name="BrokerLookup" version="1.0.0"
+      description="What a consumer asks the broker: who implements this contract, and — once bound — that the provider is still alive.">
+    <operations name="getServiceReferences"
+        description="Every live registration of a contract that a consumer can use. The answer is one document: the references, the implementations behind them, and the contracts they name, copied out of the broker's state so nothing in it can be reached from the answer.">
+      <parameters name="interfaceName" index="0" type="string"
+          description="Name of the contract. Travels as 'interface' — the word is a keyword in more than one of the languages that read this."/>
+      <parameters name="filter" index="1" type="string" optional="true"
+          description="LDAP filter over the registration's properties."/>
+      <parameters name="flavors" index="2" type="string" optional="true"
+          description="Comma-separated transports the consumer can use; a registration that offers none of them is not a hit."/>
+      <parameters name="consumerId" index="3" type="string" optional="true"
+          description="Symbolic identity of the consumer, so the broker can pair this lookup with its session."/>
+      <parameters name="fingerprint" index="4" type="string" optional="true"
+          description="sd1 of the contract the consumer was built against; only registrations of exactly that contract are hits."/>
+      <returnValue name="result" description="References, implementations and contracts in one envelope.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//LocalServiceRegistry"/>
+      </returnValue>
+    </operations>
+    <operations name="heartbeat"
+        description="A provider says it is still there. Missing two intervals is what makes the broker declare it lost, so consumers hear about a provider that died without withdrawing.">
+      <parameters name="referenceId" index="0" type="string"
+          description="The registration this heartbeat is for."/>
+      <parameters name="intervalSeconds" index="1" type="long" optional="true" defaultValue="30"
+          description="How often the provider intends to report in. The broker sweeps on twice this."/>
+      <returnValue name="result" description="What the broker made of it.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
+      </returnValue>
+    </operations>
+
+    <exceptions name="HeartbeatInvalid" type="HeartbeatInvalid"
+        description="The interval is not one the broker accepts.">
+      <properties xsi:type="services:IntProperty" name="code" value="215"/>
+    </exceptions>
+    <exceptions name="ImplementationNotPublished" type="ImplementationNotPublished"
+        description="No live registration under that reference id.">
+      <properties xsi:type="services:IntProperty" name="code" value="212"/>
+    </exceptions>
+  </services:ServiceInterface>
+</xmi:XMI>

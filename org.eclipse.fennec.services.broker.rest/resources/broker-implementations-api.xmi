@@ -1,30 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<services:ServiceInterface xmi:version="2.0"
+<xmi:XMI xmi:version="2.0"
     xmlns:xmi="http://www.omg.org/XMI"
-    xmlns:services="http://eclipse.org/fennec/services/1.0"
-    name="BrokerImplementations"
-    version="1.0.0"
-    description="DDSR broker implementation registry: publish and withdraw ServiceImplementations.">
-  <operations name="publishImplementation"
-      description="Register a ServiceImplementation. Validates ownership and catalog membership; returns WARNING if any referenced interface is deprecated."
-      exceptions="//@exceptions.0 //@exceptions.1">
-    <parameters name="provider" index="0" type="ServiceProvider"
-        description="The provider that owns the implementation (must contain it)."/>
-    <parameters name="implementation" index="1" type="ServiceImplementation"
-        description="The implementation to publish; MUST be contained in provider.implementations."/>
-    <returnValue name="result" type="Diagnostic"/>
-  </operations>
-  <operations name="withdrawImplementation"
-      description="Withdraw a previously published implementation. Provider ownership is verified."
-      exceptions="//@exceptions.0 //@exceptions.2">
-    <parameters name="provider" index="0" type="ServiceProvider"/>
-    <parameters name="implementation" index="1" type="ServiceImplementation"/>
-    <returnValue name="result" type="Diagnostic"/>
-  </operations>
-  <exceptions name="ImplementationOwnershipViolation" type="org.eclipse.fennec.services.broker.exception.ImplementationOwnershipViolation"
-      description="Implementation does not belong to the given provider. HTTP 403, code 211."/>
-  <exceptions name="InterfaceNotInCatalog" type="org.eclipse.fennec.services.broker.exception.InterfaceNotInCatalog"
-      description="Referenced ServiceInterface is not present in the catalog. HTTP 422, code 210."/>
-  <exceptions name="ImplementationNotPublished" type="org.eclipse.fennec.services.broker.exception.ImplementationNotPublished"
-      description="Implementation is not currently published. HTTP 404, code 212."/>
-</services:ServiceInterface>
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="ddsr-broker" version="1.0.0">
+    <implementations name="ddsr-broker-implementations" version="1.0.0"
+        implementationId="ddsr-broker:implementations:1.0.0"
+        description="The broker's implementation registry API, served from this document by the generic REST distribution."
+        serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="broker-implementations-rest" kind="REST"
+          basePath="/implementations" contentTypes="application/xml">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="publishImplementation"
+            method="POST" path="/" returnCodes="200" produces="application/xml" consumes="application/xml"
+            operation="/1/@operations.0">
+          <parameterBindings parameter="/1/@operations.0/@parameters.0" binding="BODY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="422"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="403"/>
+          <exceptionBindings exception="/1/@exceptions.3" status="409"/>
+          <exceptionBindings exception="/1/@exceptions.4" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="modifyImplementation"
+            method="PUT" path="/" returnCodes="200" produces="application/xml" consumes="application/xml"
+            operation="/1/@operations.1">
+          <parameterBindings parameter="/1/@operations.1/@parameters.0" binding="BODY"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="403"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.3" status="409"/>
+          <exceptionBindings exception="/1/@exceptions.4" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="withdrawImplementation"
+            method="POST" path="/withdraw" returnCodes="200" produces="application/xml" consumes="application/xml"
+            operation="/1/@operations.2">
+          <parameterBindings parameter="/1/@operations.2/@parameters.0" binding="BODY"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="403"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.4" status="503"/>
+        </operationFlavors>
+        <!-- The body-carrying DELETE is the older spelling of withdraw and
+             stays served because consumers may still use it; POST /withdraw
+             is the canonical one (DECISIONS_PARITY D14/D15). Two flavors,
+             one operation: the contract has one withdraw. -->
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="withdrawImplementationViaDelete"
+            method="DELETE" path="/" returnCodes="200" produces="application/xml" consumes="application/xml"
+            operation="/1/@operations.2">
+          <parameterBindings parameter="/1/@operations.2/@parameters.0" binding="BODY"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="403"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.4" status="503"/>
+        </operationFlavors>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+
+  <services:ServiceInterface name="BrokerImplementations" version="1.0.0"
+      description="What a provider does with the broker: announce an implementation, change it in place, take it back. Every one of them carries the provider document itself — the broker reads the single implementation inside it.">
+    <operations name="publishImplementation"
+        description="Announce one implementation of a contract that is in the catalog. Announcing the identical implementation again is the same registration, not a second one.">
+      <parameters name="provider" index="0"
+          description="The provider document, carrying exactly one implementation. Contracts it references may travel as sibling roots.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//ServiceProvider"/>
+      </parameters>
+      <returnValue name="result" description="What the broker made of it.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
+      </returnValue>
+    </operations>
+    <operations name="modifyImplementation"
+        description="Change a live implementation in place — same identity, drifted endpoint. Consumers see MODIFIED under the reference id they already hold, instead of losing and rebinding it.">
+      <parameters name="provider" index="0"
+          description="The provider document, carrying the changed implementation under its existing identity.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//ServiceProvider"/>
+      </parameters>
+      <returnValue name="result" description="What the broker made of it.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
+      </returnValue>
+    </operations>
+    <operations name="withdrawImplementation"
+        description="Take an implementation back. Answers only once consumers have been told, so a provider can stop serving afterwards and no one calls a dead endpoint.">
+      <parameters name="provider" index="0"
+          description="The provider document naming the implementation to withdraw.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//ServiceProvider"/>
+      </parameters>
+      <returnValue name="result" description="What the broker made of it.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
+      </returnValue>
+    </operations>
+
+    <exceptions name="InterfaceNotInCatalog" type="InterfaceNotInCatalog"
+        description="The implementation names a contract the catalog does not hold.">
+      <properties xsi:type="services:IntProperty" name="code" value="210"/>
+    </exceptions>
+    <exceptions name="OwnershipViolation" type="OwnershipViolation"
+        description="The caller is not the provider of that implementation.">
+      <properties xsi:type="services:IntProperty" name="code" value="211"/>
+    </exceptions>
+    <exceptions name="ImplementationNotPublished" type="ImplementationNotPublished"
+        description="No live registration for that implementation.">
+      <properties xsi:type="services:IntProperty" name="code" value="212"/>
+    </exceptions>
+    <exceptions name="ContractChanged" type="ContractChanged"
+        description="The implementation states a different contract than the one it is registered against.">
+      <properties xsi:type="services:IntProperty" name="code" value="214"/>
+    </exceptions>
+    <exceptions name="PersistenceFailed" type="PersistenceFailed"
+        description="The broker could not write its registry; nothing was changed.">
+      <properties xsi:type="services:IntProperty" name="code" value="500"/>
+    </exceptions>
+  </services:ServiceInterface>
+</xmi:XMI>

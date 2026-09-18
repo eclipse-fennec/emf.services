@@ -178,7 +178,10 @@ async function main(): Promise<void> {
 
     await waitFor('drain-retire', () => has('UNREGISTERING', firstId, 'REPLACED') && has('RETIRED', firstId, 'REPLACED'), 45_000);
     check('locator-marked-rebind', locator.state === 'REBIND', `${locator.state}`);
-    const viaSuccessor = Number(await locator.invoke('getBalance', { accountId: 'lifecycle' }));
+    // Same window as in F: the successor announced itself before its
+    // endpoint was mounted, and a consumer meets that in the wild too.
+    const viaSuccessor = Number(await invokeWhenServed(
+      () => locator.invoke('getBalance', { accountId: 'lifecycle' }), 10_000));
     check('rebound-to-successor',
       Number.isFinite(viaSuccessor) && locator.implementation.version === '2.0.0' && locator.reference.id !== firstId,
       `${locator.reference.id}@${locator.implementation.version} at ${locator.restFlavor()?.host}`);

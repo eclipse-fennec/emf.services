@@ -160,6 +160,24 @@ org.eclipse.fennec.services.provider.rest       # generische REST-Distribution (
                                    #   mit publish=true auch der kopflose Provider:
                                    #     eine Konfiguration und ein Service, kein Code
 
+org.eclipse.fennec.services.rsa                 # OSGi Remote Service Admin auf DDSR (#24)
+                                   #   Kern kennt zwei SPIs und keinen Transport:
+                                   #     FlavorDistribution  (erreichbar machen)
+                                   #     ServiceDiscovery    (ankündigen, hören)
+                                   #   gewählt über RSA-Config-Types
+                                   #   registry/: lokale Service-Registry auf der
+                                   #     EObject-Registry (emf.osgi); Verträge aus
+                                   #     Bundle-Capability oder Ableitung, danach
+                                   #     nicht mehr unterscheidbar
+
+org.eclipse.fennec.services.rsa.distribution.rest  # fennec.rest: Flavor ableiten,
+                                   #   generisch servieren (provider.rest)
+org.eclipse.fennec.services.rsa.discovery.rest     # Broker + SSE als Discovery
+org.eclipse.fennec.services.rsa.topology           # exportiert, was darum bittet
+
+org.eclipse.fennec.services.examples.rsa     # ein simpler OSGi-Service, exportiert
+                                    #   ohne Vertragsdokument, Flavor, Publisher
+
 org.eclipse.fennec.services.examples.payment # Demo-Java-Provider
                                     #   PaymentResource (JAX-RS auf 9091)
                                     #   PaymentPublisher: addCatalogEntry + publish

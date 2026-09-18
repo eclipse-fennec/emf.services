@@ -78,7 +78,7 @@ public final class RestErrors {
 	 * recognised in a Diagnostic, which is a statement about the
 	 * contract, not a failure here.
 	 */
-	static OptionalInt codeOf(ServiceException declared) {
+	public static OptionalInt codeOf(ServiceException declared) {
 		if (declared == null || declared.eIsProxy()) {
 			return OptionalInt.empty();
 		}

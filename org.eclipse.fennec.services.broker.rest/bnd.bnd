@@ -9,7 +9,8 @@
 	org.eclipse.fennec.mcp.gogo.tools;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
-	org.eclipse.fennec.services.xmi.codec;version=snapshot
+	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.services.flavor.rest;version=snapshot
 
 -library: enableJakartaREST,\
 	enableEMF

@@ -28,6 +28,7 @@ import java.util.function.Supplier;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestExceptionBinding;
@@ -235,7 +236,14 @@ public class RestDispatcher {
 			return null;
 		}
 		if (bound.getEType() instanceof EClass) {
-			return XmiCodec.read(entity, resourceSets);
+			// Through readBundle, not read: a model on this wire may
+			// arrive with sibling roots beside the one meant as the
+			// argument — a publish body carries its contract stubs that
+			// way so the references out of the provider resolve. The
+			// first root is the argument, the rest is what it needs to
+			// be readable.
+			List<EObject> roots = XmiCodec.readBundle(entity, resourceSets).roots();
+			return roots.isEmpty() ? null : roots.get(0);
 		}
 		String text = new String(entity.readAllBytes(), UTF_8);
 		return text.isEmpty() ? null : text;

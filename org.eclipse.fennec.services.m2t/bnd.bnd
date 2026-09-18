@@ -3,24 +3,33 @@ Bundle-Description: MOFM2T templates that turn a ServiceInterface into language 
  plus the example that exercises them. The templates are the deliverable; the generated \
  sources are here to prove they compile.
 
-src: ${^src},src-gen
+src=${^src},src-gen,src-gen-rest
 
 # The contract is read through its JavaBinding: the binding references the
 # ServiceInterface, so handing the generator the binding brings both.
+#
+# The fileset in front of the attributes is the KEY of this merged
+# instruction, not just the set bnd watches: two generations whose filesets
+# are written identically collide, and the later one silently replaces the
+# earlier. Each generation therefore names its own templates.
 -generate: \
-	"../org.eclipse.fennec.services.model/model/services.ecore,model/*.xmi,templates/*.mtl"; \
+	"../org.eclipse.fennec.services.model/model/services.ecore,model/*.xmi,templates/service-interface.mtl,templates/java-types.mtl"; \
 		output   = src-gen/; \
 		generate = fennecM2T; \
 		ecore    = "../org.eclipse.fennec.services.model/model/services.ecore,../org.eclipse.fennec.services.examples.model/model/example.ecore"; \
 		model    = "model/example-java.xmi"; \
-		template = "templates/service-interface.mtl"
+		template = "templates/service-interface.mtl"; \
+		modules  = "templates/java-types.mtl"
 
 -privatepackage: \
 	org.eclipse.fennec.services.m2t.example
 
+-library: enableJakartaREST
+
 -buildpath: \
 	org.eclipse.fennec.services.examples.model;version=snapshot,\
-	org.osgi.service.component.annotations;version=latest
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.jakartars;version=latest
 
 # Plain JUnit: the test reads what the generator wrote into src-gen. It is the
 # net under the generator's quietest failure — a template it cannot use
@@ -31,3 +40,16 @@ src: ${^src},src-gen
 
 -includeresource.templates: templates=templates
 
+
+# The transport side, from the flavor, into its own output directory: bnd
+# empties the output of a generation before it runs, so two generations must
+# not share one. Keeping them apart also keeps the layering visible — the
+# interface comes from the contract, the resource from the flavor.
+-generate.rest: \
+	"../org.eclipse.fennec.services.model/model/services.ecore,model/*.xmi,templates/rest-resource.mtl,templates/java-types.mtl"; \
+		output   = src-gen-rest/; \
+		generate = fennecM2T; \
+		ecore    = "../org.eclipse.fennec.services.model/model/services.ecore,../org.eclipse.fennec.services.examples.model/model/example.ecore"; \
+		model    = "model/example-java.xmi,model/persons-impl.xmi"; \
+		template = "templates/rest-resource.mtl"; \
+		modules  = "templates/java-types.mtl"

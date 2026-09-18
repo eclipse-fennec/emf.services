@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceProvider xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="directory-java">
+  <implementations name="directory-java-rest" version="1.0.0"
+      implementationId="directory:java:1.0.0"
+      serviceInterfaces="persons.xmi#/">
+    <flavors xsi:type="services:RestFlavor" name="directory-rest" kind="REST"
+        host="http://localhost:9095" basePath="/directory">
+      <operationFlavors xsi:type="services:RestOperationFlavor" name="get"
+          method="GET" path="/persons/{id}" operation="persons.xmi#//@operations.0">
+        <parameterBindings parameter="persons.xmi#//@operations.0/@parameters.0" binding="PATH"/>
+        <exceptionBindings exception="persons.xmi#//@exceptions.0" status="404"/>
+      </operationFlavors>
+      <operationFlavors xsi:type="services:RestOperationFlavor" name="list"
+          method="GET" path="/persons" operation="persons.xmi#//@operations.1">
+        <parameterBindings parameter="persons.xmi#//@operations.1/@parameters.0" binding="QUERY"/>
+        <parameterBindings parameter="persons.xmi#//@operations.1/@parameters.1" binding="QUERY" wireName="max"/>
+      </operationFlavors>
+    </flavors>
+  </implementations>
+</services:ServiceProvider>

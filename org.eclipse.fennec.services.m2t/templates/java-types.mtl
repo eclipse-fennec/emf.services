@@ -1,0 +1,188 @@
+[module javatypes(_'http://eclipse.org/fennec/services/1.0', _'http://www.eclipse.org/emf/2002/Ecore')/]
+[comment]
+Copyright (c) 2026 Contributors to the Eclipse Foundation.
+
+This program and the accompanying materials are made
+available under the terms of the Eclipse Public License 2.0
+which is available at https://www.eclipse.org/legal/epl-2.0/
+
+SPDX-License-Identifier: EPL-2.0
+
+Contributors:
+  Data In Motion Consulting - initial implementation
+[/comment]
+[comment]
+What every Java template needs to know about a contract: how a slot becomes
+a Java type, what has to be imported for it, where a file goes and what
+header it carries. Shared on purpose — the interface and the transport code
+that implements it must not disagree about a single type name.
+[/comment]
+
+[comment]
+The binding's file header as a Java block comment. The package declaration is
+part of the same sequence on purpose: a multi-line block that iterates zero
+times still contributes the newline after its tail, so a loop that can be empty
+would push the package declaration down a line for every binding without a
+header. One loop that always has something to write cannot.
+[/comment]
+[query public preamble(binding : JavaBinding) : Sequence(String) =
+	headerLines(binding)
+		->append('package '.concat(binding.targetPackage).concat(';')) /]
+
+[query public headerLines(binding : JavaBinding) : Sequence(String) =
+	if binding.fileHeader->isEmpty() then Sequence{}
+	else Sequence{'/*'}
+		->union(binding.fileHeader->collect(line | commentLine(line)))
+		->append(' */')
+	endif /]
+
+[query public commentLine(line : String) : String =
+	if line.size() = 0 then ' *' else ' * '.concat(line) endif /]
+
+[comment]===================== paths and names =====================[/comment]
+
+[query public sourcePath(binding : JavaBinding, name : String) : String =
+	binding.targetPackage.substitute('.', '/').concat('/').concat(name).concat('.java') /]
+
+[comment]
+The Java simple name of a fully qualified one. tokenize() over '.' and the
+last segment — a class in the default package has no dot and stays as it is.
+[/comment]
+[query public simpleName(qualified : String) : String =
+	if qualified.strstr('.') then qualified.tokenize('.')->last() else qualified endif /]
+
+[comment]
+The package version: the contracts' version where they agree on one, nothing
+where they do not — a package cannot carry two.
+[/comment]
+[query public uniformVersion(binding : JavaBinding) : String =
+	if binding.serviceInterfaces->collect(version)->asSet()->size() = 1
+	then binding.serviceInterfaces->first().version
+	else '' endif /]
+
+[comment]
+A contract names its exception types SYMBOLICALLY — ServiceException.type is
+what travels on the wire, not a Java class. What it is called in Java, and
+whether that class exists or has to be written, is the binding's business.
+[/comment]
+[query public exceptionType(binding : JavaBinding, raised : ServiceException) : String =
+	mappedType(binding, raised.type) /]
+
+[comment]
+The language type for a symbolic name: the binding's mapping where there is
+one, otherwise the last segment of the symbolic name in the target package.
+[/comment]
+[query public mappedType(binding : JavaBinding, symbolic : String) : String =
+	if binding.typeMappings->exists(m | m.neutralType = symbolic)
+	then binding.typeMappings->select(m | m.neutralType = symbolic)->first().target
+	else binding.targetPackage.concat('.').concat(simpleName(symbolic)) endif /]
+
+[comment]The exceptions the contract owns — the binding says the generator writes them.[/comment]
+[query public ownExceptions(binding : JavaBinding, service : ServiceInterface) : Sequence(ServiceException) =
+	service.exceptions
+		->select(e | binding.typeMappings->exists(m | m.neutralType = e.type and m.generated))
+		->asSequence() /]
+
+[comment]===================== types =====================[/comment]
+
+[query public returnType(binding : JavaBinding, operation : ServiceOperation) : String =
+	if operation.returnValue.oclIsUndefined() then 'void'
+	else slotType(binding, operation.returnValue) endif /]
+
+[comment]A slot renders as its element type, or as a List of it when multi-valued.[/comment]
+[query public slotType(binding : JavaBinding, slot : Parameter) : String =
+	if slot.upperBound = 1 then elementType(binding, slot)
+	else 'List<'.concat(boxed(elementType(binding, slot))).concat('>') endif /]
+
+[comment]
+eType wins where it is set: an EClass renders as its name (imported through the
+binding's packageMappings), an Ecore EDataType through its instance class. Only
+where no eType is given does the language-neutral 'type' string decide.
+[/comment]
+[query public elementType(binding : JavaBinding, slot : Parameter) : String =
+	if slot.eType.oclIsUndefined() then javaType(slot.type)
+	else if slot.eType.oclIsKindOf(EDataType) then simpleName(slot.eType.instanceClassName)
+	else slot.eType.name endif endif /]
+
+[query public javaType(neutral : String) : String =
+	if neutral = 'string' then 'String'
+	else if neutral = 'boolean' then 'boolean'
+	else if neutral = 'int' then 'int'
+	else if neutral = 'long' then 'long'
+	else if neutral = 'float' then 'float'
+	else if neutral = 'double' then 'double'
+	else neutral endif endif endif endif endif endif /]
+
+[query public boxed(primitive : String) : String =
+	if primitive = 'boolean' then 'Boolean'
+	else if primitive = 'int' then 'Integer'
+	else if primitive = 'long' then 'Long'
+	else if primitive = 'float' then 'Float'
+	else if primitive = 'double' then 'Double'
+	else if primitive = 'short' then 'Short'
+	else if primitive = 'byte' then 'Byte'
+	else if primitive = 'char' then 'Character'
+	else primitive endif endif endif endif endif endif endif endif /]
+
+[comment]
+A declared constant renders as a Java literal of its Property kind. Long gets
+its suffix, a string its quotes, a string list becomes List.of(...).
+[/comment]
+[query public propertyLiteral(constant : Property) : String =
+	if constant.oclIsKindOf(StringProperty) then '"'.concat(constant.oclAsType(StringProperty).value).concat('"')
+	else if constant.oclIsKindOf(IntProperty) then constant.oclAsType(IntProperty).value.toString()
+	else if constant.oclIsKindOf(LongProperty) then constant.oclAsType(LongProperty).value.toString().concat('L')
+	else if constant.oclIsKindOf(ShortProperty) then constant.oclAsType(ShortProperty).value.toString()
+	else if constant.oclIsKindOf(DoubleProperty) then constant.oclAsType(DoubleProperty).value.toString()
+	else if constant.oclIsKindOf(FloatProperty) then constant.oclAsType(FloatProperty).value.toString().concat('f')
+	else if constant.oclIsKindOf(BoolProperty) then constant.oclAsType(BoolProperty).value.toString()
+	else if constant.oclIsKindOf(StringListProperty) then 'List.of()'
+	else '""' endif endif endif endif endif endif endif endif /]
+
+[comment]===================== imports =====================[/comment]
+
+[query public imports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
+	exceptionImports(binding, service)
+		->union(slotImports(binding, service))
+		->union(listImport(service))
+		->union(annotationImport(binding))
+		->select(i | i <> '')
+		->reject(i | i = binding.targetPackage.concat('.').concat(simpleName(i)))
+		->asSet()->sortedBy(i | i) /]
+
+[query public exceptionImports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
+	service.operations->collect(o | o.exceptions)
+		->collect(e | exceptionType(binding, e))->asSequence() /]
+
+[query public slotImports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
+	slots(service)->collect(s | qualifiedType(binding, s))->asSequence() /]
+
+[query public slots(service : ServiceInterface) : Sequence(Parameter) =
+	service.operations->collect(o | o.parameters)
+		->union(service.operations->collect(o | o.returnValue)->reject(s | s.oclIsUndefined()))
+		->asSequence() /]
+
+[comment]Only an EClass needs an import, and only where the binding maps its metamodel.[/comment]
+[query public qualifiedType(binding : JavaBinding, slot : Parameter) : String =
+	if slot.eType.oclIsUndefined() then ''
+	else if slot.eType.oclIsKindOf(EDataType) then ''
+	else if binding.packageMappings->exists(m | m.nsURI = slot.eType.ePackage.nsURI)
+		then binding.packageMappings->select(m | m.nsURI = slot.eType.ePackage.nsURI)
+			->first().target.concat('.').concat(slot.eType.name)
+		else '' endif endif endif /]
+
+[query public listImport(service : ServiceInterface) : Sequence(String) =
+	if slots(service)->exists(s | s.upperBound <> 1)
+	then Sequence{'java.util.List'} else Sequence{} endif /]
+
+[query public apiAnnotation(binding : JavaBinding) : String =
+	if binding.apiType = ApiType::PROVIDER then '@ProviderType'
+	else if binding.apiType = ApiType::CONSUMER then '@ConsumerType'
+	else '' endif endif /]
+
+[query public annotationImport(binding : JavaBinding) : Sequence(String) =
+	if binding.apiType = ApiType::PROVIDER
+	then Sequence{'org.osgi.annotation.versioning.ProviderType'}
+	else if binding.apiType = ApiType::CONSUMER
+	then Sequence{'org.osgi.annotation.versioning.ConsumerType'}
+	else Sequence{} endif endif /]

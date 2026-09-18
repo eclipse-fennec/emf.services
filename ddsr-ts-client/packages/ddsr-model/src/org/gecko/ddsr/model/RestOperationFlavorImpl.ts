@@ -9,6 +9,7 @@ import type { EClass, EStructuralFeature } from '@emfts/core';
 import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
 import type { HttpMethod } from './HttpMethod';
 import type { RestParameterBinding } from './RestParameterBinding';
+import type { RestExceptionBinding } from './RestExceptionBinding';
 import { ServiceOperationFlavorImpl } from './ServiceOperationFlavorImpl';
 import type { RestOperationFlavor } from './RestOperationFlavor';
 import { DDSRPackage } from './DDSRPackage';
@@ -23,12 +24,14 @@ export class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
   static readonly PATH: number = 5;
   static readonly RETURN_CODES: number = 6;
   static readonly PARAMETER_BINDINGS: number = 7;
+  static readonly EXCEPTION_BINDINGS: number = 8;
 
   // Private fields
   private _method?: HttpMethod;
   private _path?: string;
   private _returnCodes: number[] = [];
   private _parameterBindings: RestParameterBinding[] = [];
+  private _exceptionBindings: RestExceptionBinding[] = [];
 
   /**
    * Returns the EClass of this object
@@ -134,6 +137,30 @@ export class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
     }
   }
 
+  get exceptionBindings(): RestExceptionBinding[] {
+    return this._exceptionBindings;
+  }
+
+  set exceptionBindings(value: RestExceptionBinding[]) {
+    const oldValue = this._exceptionBindings;
+    this._exceptionBindings = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(RestOperationFlavorImpl.EXCEPTION_BINDINGS),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => RestOperationFlavorImpl.EXCEPTION_BINDINGS,
+        merge: () => false
+      });
+    }
+  }
+
   // Reflective API
 
   /**
@@ -150,6 +177,8 @@ export class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
         return this.returnCodes;
       case RestOperationFlavorImpl.PARAMETER_BINDINGS:
         return this.parameterBindings;
+      case RestOperationFlavorImpl.EXCEPTION_BINDINGS:
+        return this.exceptionBindings;
       default:
         return super.eGet(feature);
     }
@@ -177,6 +206,10 @@ export class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
         this.parameterBindings = newValue as RestParameterBinding[];
         super.eSet(feature, newValue);
         break;
+      case RestOperationFlavorImpl.EXCEPTION_BINDINGS:
+        this.exceptionBindings = newValue as RestExceptionBinding[];
+        super.eSet(feature, newValue);
+        break;
       default:
         super.eSet(feature, newValue);
     }
@@ -196,6 +229,8 @@ export class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
         return this._returnCodes !== undefined && this._returnCodes.length > 0;
       case RestOperationFlavorImpl.PARAMETER_BINDINGS:
         return this._parameterBindings !== undefined && this._parameterBindings.length > 0;
+      case RestOperationFlavorImpl.EXCEPTION_BINDINGS:
+        return this._exceptionBindings !== undefined && this._exceptionBindings.length > 0;
       default:
         return super.eIsSet(feature);
     }
@@ -218,6 +253,9 @@ export class RestOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
         return;
       case RestOperationFlavorImpl.PARAMETER_BINDINGS:
         this._parameterBindings = [];
+        return;
+      case RestOperationFlavorImpl.EXCEPTION_BINDINGS:
+        this._exceptionBindings = [];
         return;
       default:
         super.eUnset(feature);

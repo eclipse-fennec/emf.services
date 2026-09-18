@@ -66,6 +66,8 @@ import type { RestOperationFlavor } from './RestOperationFlavor';
 import { RestOperationFlavorImpl } from './RestOperationFlavorImpl';
 import type { RestParameterBinding } from './RestParameterBinding';
 import { RestParameterBindingImpl } from './RestParameterBindingImpl';
+import type { RestExceptionBinding } from './RestExceptionBinding';
+import { RestExceptionBindingImpl } from './RestExceptionBindingImpl';
 import type { MqttOperationFlavor } from './MqttOperationFlavor';
 import { MqttOperationFlavorImpl } from './MqttOperationFlavorImpl';
 import type { ServiceReference } from './ServiceReference';
@@ -329,6 +331,13 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new RestExceptionBinding instance
+   */
+  createRestExceptionBinding(): RestExceptionBinding {
+    return new RestExceptionBindingImpl();
+  }
+
+  /**
    * Create a new MqttOperationFlavor instance
    */
   createMqttOperationFlavor(): MqttOperationFlavor {
@@ -524,6 +533,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createRestOperationFlavor();
       case 'RestParameterBinding':
         return this.createRestParameterBinding();
+      case 'RestExceptionBinding':
+        return this.createRestExceptionBinding();
       case 'MqttOperationFlavor':
         return this.createMqttOperationFlavor();
       case 'ServiceReference':

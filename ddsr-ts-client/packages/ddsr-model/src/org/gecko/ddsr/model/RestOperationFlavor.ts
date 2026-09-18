@@ -9,6 +9,7 @@ import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/c
 import type { ServiceOperationFlavor } from './ServiceOperationFlavor';
 import type { HttpMethod } from './HttpMethod';
 import type { RestParameterBinding } from './RestParameterBinding';
+import type { RestExceptionBinding } from './RestExceptionBinding';
 
 /**
  * RestOperationFlavor
@@ -19,5 +20,6 @@ export interface RestOperationFlavor extends ServiceOperationFlavor {
   path?: string;
   returnCodes: number[];
   parameterBindings: RestParameterBinding[];
+  exceptionBindings: RestExceptionBinding[];
 
 }

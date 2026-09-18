@@ -27,10 +27,12 @@ import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttQos;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
+import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServiceFlavor;
+import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServicesFactory;
@@ -159,12 +161,13 @@ class ServiceImplementationFingerprintTest {
 	}
 
 	@Test
-	void restParameterBindingsAreOutsideIm1UntilIm2() throws Exception {
-		// #47: parameterBindings IS wire configuration and arguably belongs
-		// next to method/path — but im1 is frozen with its tag
-		// (FINGERPRINTS.md), so it stays out until an im2 scheme. This test
-		// pins the current behaviour so the omission is a decision, not
-		// an accident.
+	void bindingsAreWireConfigurationAndMoveTheHash() throws Exception {
+		// They used to be left out: im1 was frozen with its tag, and a
+		// binding nobody read was decoration. Since #74 a consumer places
+		// every argument where the binding says, so two implementations
+		// differing only in bindings are NOT the same endpoint — and a
+		// fingerprint that called them equal would be wrong about the one
+		// thing it exists to answer.
 		ServiceImplementation implementation = loadFixtureImplementation();
 		RestFlavor rest = (RestFlavor) implementation.getFlavors().get(0);
 		RestOperationFlavor operationFlavor = rest.getOperationFlavors().stream()
@@ -189,7 +192,44 @@ class ServiceImplementationFingerprintTest {
 		binding.setWireName("cur");
 		operationFlavor.getParameterBindings().add(binding);
 
-		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isEqualTo(before);
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation))
+				.as("a declared binding is part of the registration")
+				.isNotEqualTo(before);
+		assertThat(ServiceImplementationFingerprint.canonicalForm(implementation))
+				.contains("pb|" + parameter.getName() + "|binding=QUERY|wireName=cur");
+	}
+
+	@Test
+	void anExceptionBindingSaysWhichStatusAnErrorTravelsAs() throws Exception {
+		ServiceImplementation implementation = loadFixtureImplementation();
+		RestFlavor rest = (RestFlavor) implementation.getFlavors().get(0);
+		RestOperationFlavor operationFlavor = (RestOperationFlavor) rest.getOperationFlavors().get(0);
+		String before = ServiceImplementationFingerprint.fingerprint(implementation);
+
+		ServiceException declared = ServicesFactory.eINSTANCE.createServiceException();
+		declared.setName("InsufficientFunds");
+		declared.setType("example.InsufficientFunds");
+		implementation.getServiceInterfaces().get(0).getExceptions().add(declared);
+		RestExceptionBinding binding = ServicesFactory.eINSTANCE.createRestExceptionBinding();
+		binding.setException(declared);
+		binding.setStatus(409);
+		operationFlavor.getExceptionBindings().add(binding);
+
+		assertThat(ServiceImplementationFingerprint.canonicalForm(implementation))
+				.contains("xb|InsufficientFunds|status=409");
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isNotEqualTo(before);
+	}
+
+	@Test
+	void anImplementationWithoutBindingsHashesAsItAlwaysDid() throws Exception {
+		// The extension rule of docs/FINGERPRINTS.md: the grammar may grow,
+		// but nothing that was computable before may move. The golden
+		// fixture declares no bindings, and its im1 is unchanged.
+		ServiceImplementation implementation = loadFixtureImplementation();
+
+		assertThat(ServiceImplementationFingerprint.canonicalForm(implementation))
+				.doesNotContain("pb|")
+				.doesNotContain("xb|");
 	}
 
 	private static Capability capability(String namespace, String key, String value) {

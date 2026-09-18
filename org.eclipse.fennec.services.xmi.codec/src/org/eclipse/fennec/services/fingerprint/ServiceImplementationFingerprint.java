@@ -13,13 +13,17 @@
 package org.eclipse.fennec.services.fingerprint;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttOperationFlavor;
 import org.eclipse.fennec.services.Property;
+import org.eclipse.fennec.services.ParameterBinding;
+import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -111,6 +115,7 @@ public final class ServiceImplementationFingerprint {
 			lines.add("  " + flavorLine(flavor));
 			for (ServiceOperationFlavor operationFlavor : flavor.getOperationFlavors()) {
 				lines.add("    " + operationFlavorLine(operationFlavor));
+				lines.addAll(bindingLines(operationFlavor));
 			}
 		}
 
@@ -163,6 +168,47 @@ public final class ServiceImplementationFingerprint {
 					.append("|returnPath=").append(literal(mqtt.getReturnPath()));
 		}
 		return line.toString();
+	}
+
+	/**
+	 * The bindings of one operation flavor, one line each and sorted by
+	 * the name of what they bind — a binding is a set entry, its order
+	 * carries no meaning. Rendered only where the flavor declares any, so
+	 * an implementation that binds nothing hashes exactly as it did
+	 * before these lines existed.
+	 * <p>
+	 * They belong in im1 because they decide behaviour: since #74 a
+	 * consumer places every argument where the binding says, so two
+	 * implementations differing only in bindings are not the same
+	 * endpoint, and the fingerprint has to say so.
+	 */
+	private static List<String> bindingLines(ServiceOperationFlavor operationFlavor) {
+		if (!(operationFlavor instanceof RestOperationFlavor rest)) {
+			return List.of();
+		}
+		List<String> lines = new ArrayList<>();
+
+		List<RestParameterBinding> parameters = new ArrayList<>(rest.getParameterBindings());
+		parameters.sort(Comparator.comparing(
+				binding -> binding.getParameter() != null ? binding.getParameter().getName() : null,
+				Comparator.nullsFirst(Comparator.naturalOrder())));
+		for (RestParameterBinding binding : parameters) {
+			lines.add("      pb|" + esc(binding.getParameter() != null ? binding.getParameter().getName() : null)
+					+ "|binding=" + (binding.getBinding() != null
+							? binding.getBinding().getLiteral()
+							: ParameterBinding.BODY.getLiteral())
+					+ "|wireName=" + esc(binding.getWireName()));
+		}
+
+		List<RestExceptionBinding> exceptions = new ArrayList<>(rest.getExceptionBindings());
+		exceptions.sort(Comparator.comparing(
+				binding -> binding.getException() != null ? binding.getException().getName() : null,
+				Comparator.nullsFirst(Comparator.naturalOrder())));
+		for (RestExceptionBinding binding : exceptions) {
+			lines.add("      xb|" + esc(binding.getException() != null ? binding.getException().getName() : null)
+					+ "|status=" + binding.getStatus());
+		}
+		return lines;
 	}
 
 	/** Enum/object literal, empty for null (never the string "null"). */

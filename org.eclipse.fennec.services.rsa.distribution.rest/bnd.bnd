@@ -22,4 +22,5 @@ Private-Package: \
 
 -testpath: \
 	${junit},\
-	junit-platform-launcher;version=latest
+	junit-platform-launcher;version=latest,\
+	org.eclipse.fennec.services.derive;version=snapshot

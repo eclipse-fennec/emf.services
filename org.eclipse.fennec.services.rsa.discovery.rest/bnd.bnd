@@ -1,0 +1,25 @@
+Bundle-Name: Fennec Services RSA REST Discovery
+Bundle-Description: \
+	Announces exported services to the broker and hears about others' \
+	over its event stream. The provider side is a publish, the consumer \
+	side is a lookup plus SSE — both already exist; this is the RSA face \
+	on them.
+
+-library: enableEMF
+
+Private-Package: \
+	org.eclipse.fennec.services.rsa.discovery.rest
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
+	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.services.rsa;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

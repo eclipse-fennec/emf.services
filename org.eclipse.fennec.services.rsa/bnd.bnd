@@ -1,0 +1,25 @@
+Bundle-Name: Fennec Services Remote Service Admin
+Bundle-Description: \
+	OSGi Remote Service Admin on top of this registry. The core knows two \
+	things and no transport: a distribution provider makes a service \
+	reachable over one flavor, a discovery provider announces it and \
+	finds others. Which one is used is what an RSA config type selects.
+
+-library: enableEMF
+
+Export-Package: \
+	org.eclipse.fennec.services.rsa.spi
+
+Private-Package: \
+	org.eclipse.fennec.services.rsa.internal
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.remoteserviceadmin;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

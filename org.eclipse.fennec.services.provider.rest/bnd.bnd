@@ -8,7 +8,7 @@ Bundle-Description: \
 
 -library: enableJakartaREST, enableEMF
 
-Private-Package: \
+Export-Package: \
 	org.eclipse.fennec.services.provider.rest
 
 -buildpath: \

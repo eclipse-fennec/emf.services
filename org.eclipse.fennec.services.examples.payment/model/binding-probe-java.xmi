@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:JavaBinding xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="binding-probe-java"
+    targetPackage="org.eclipse.fennec.services.examples.payment.probe"
+    apiType="PROVIDER">
+  <fileHeader>Copyright (c) 2026 Contributors to the Eclipse Foundation.</fileHeader>
+  <fileHeader/>
+  <fileHeader>This program and the accompanying materials are made</fileHeader>
+  <fileHeader>available under the terms of the Eclipse Public License 2.0</fileHeader>
+  <fileHeader>which is available at https://www.eclipse.org/legal/epl-2.0/</fileHeader>
+  <fileHeader/>
+  <fileHeader>SPDX-License-Identifier: EPL-2.0</fileHeader>
+  <serviceInterfaces href="binding-probe.xmi#/"/>
+</services:JavaBinding>

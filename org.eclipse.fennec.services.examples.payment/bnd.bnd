@@ -8,10 +8,36 @@ Bundle-Description: \
 
 -library: enableJakartaREST, enableEMF
 
-Private-Package: org.eclipse.fennec.services.examples.payment, org.eclipse.fennec.services.examples.payment.internal
+src=${^src},src-gen,src-gen-rest
+
+Private-Package: org.eclipse.fennec.services.examples.payment, org.eclipse.fennec.services.examples.payment.internal, org.eclipse.fennec.services.examples.payment.probe
+
+# The BindingProbe contract and its endpoint are generated from the models in
+# model/ — the same documents the publisher loads and publishes at runtime, so
+# what this provider serves and what it announces cannot drift apart. The
+# templates live in the m2t module; the fileset in front of the attributes is
+# the KEY of this merged instruction, so each generation names its own.
+-generate.probeapi: \
+	"model/*.xmi,../org.eclipse.fennec.services.m2t/templates/service-interface.mtl"; \
+		output   = src-gen/; \
+		generate = fennecM2T; \
+		ecore    = "../org.eclipse.fennec.services.model/model/services.ecore"; \
+		model    = "model/binding-probe-java.xmi"; \
+		template = "../org.eclipse.fennec.services.m2t/templates/service-interface.mtl"; \
+		modules  = "../org.eclipse.fennec.services.m2t/templates/java-types.mtl"
+
+-generate.proberest: \
+	"model/*.xmi,../org.eclipse.fennec.services.m2t/templates/rest-resource.mtl"; \
+		output   = src-gen-rest/; \
+		generate = fennecM2T; \
+		ecore    = "../org.eclipse.fennec.services.model/model/services.ecore"; \
+		model    = "model/binding-probe-java.xmi,model/binding-probe-impl.xmi"; \
+		template = "../org.eclipse.fennec.services.m2t/templates/rest-resource.mtl"; \
+		modules  = "../org.eclipse.fennec.services.m2t/templates/java-types.mtl"
 
 -includeresource: \
-	OSGI-INF/configurator/=configs/
+	OSGI-INF/configurator/=configs/,\
+	model=model
 
 Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
 

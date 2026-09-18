@@ -1,0 +1,174 @@
+[module restresource(_'http://eclipse.org/fennec/services/1.0', _'http://www.eclipse.org/emf/2002/Ecore') extends javatypes/]
+[comment]
+Copyright (c) 2026 Contributors to the Eclipse Foundation.
+
+This program and the accompanying materials are made
+available under the terms of the Eclipse Public License 2.0
+which is available at https://www.eclipse.org/legal/epl-2.0/
+
+SPDX-License-Identifier: EPL-2.0
+
+Contributors:
+  Data In Motion Consulting - initial implementation
+[/comment]
+[comment]
+The provider-side endpoint of a RestFlavor: one JAX-RS resource per flavor,
+one method per operation flavor, every argument read from where the flavor
+says it travels and every declared error answered with the status the flavor
+binds to it.
+
+Generated is transport, never logic. Each method does one thing — delegate to
+the service interface generated from the contract — so the implementation
+stays hand-written and the endpoint cannot drift from what the catalog
+publishes about it.
+
+Two models: the binding says how the contract is named in Java, the provider
+document says what is served where.
+[/comment]
+
+[template public main(binding : JavaBinding, provider : ServiceProvider)]
+[for (implementation : ServiceImplementation | provider.implementations)]
+[for (flavor : RestFlavor | implementation.flavors->select(f | f.oclIsKindOf(RestFlavor)))]
+[file (sourcePath(binding, resourceName(implementation)), false)]
+[for (line : String | preamble(binding))]
+[line/]
+[/for]
+
+import jakarta.ws.rs.Path;
+[for (imported : String | restImports(flavor))]
+import [imported/];
+[/for]
+import jakarta.ws.rs.core.Response;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ServiceScope;
+import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsName;
+import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsResource;
+
+/**
+ * REST endpoint of the {@code [contractName(implementation)/]} contract, as the
+ * {@code [flavor.name/]} flavor of implementation {@code [implementation.name/]}
+ * declares it.
+ *
+ * <p>Generated from the flavor — do not edit. Transport only: every method
+ * delegates to the service and holds no state of its own.
+ */
+@JakartarsResource
+@JakartarsName("[flavor.name/]")
+@Component(service = [resourceName(implementation)/].class, scope = ServiceScope.PROTOTYPE)
+@Path("[flavor.basePath/]")
+public class [resourceName(implementation)/] {
+
+	@Reference
+	private [contractName(implementation)/] service;
+[for (operationFlavor : RestOperationFlavor | flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor)))]
+
+	@[httpMethod(operationFlavor)/]
+[if (operationFlavor.path <> null)]
+	@Path("[operationFlavor.path/]")
+[/if]
+	public Response [operationFlavor.operation.name/]([for (parameter : Parameter | operationFlavor.operation.parameters->sortedBy(p | p.index)) separator(', ')][parameterAnnotation(operationFlavor, parameter)/][slotType(binding, parameter)/] [parameter.name/][/for]) {
+[for (line : String | methodBody(binding, operationFlavor))]
+[line/]
+[/for]
+	}
+[/for]
+}
+[/file]
+[/for]
+[/for]
+[/template]
+
+[comment]===================== naming =====================[/comment]
+
+[query public contractName(implementation : ServiceImplementation) : String =
+	implementation.serviceInterfaces->first().name /]
+
+[query public resourceName(implementation : ServiceImplementation) : String =
+	contractName(implementation).concat('RestResource') /]
+
+[comment]===================== the method =====================[/comment]
+
+[query public httpMethod(operationFlavor : RestOperationFlavor) : String =
+	if operationFlavor.method.oclIsUndefined() then 'GET'
+	else operationFlavor.method.toString() endif /]
+
+[comment]
+Where an argument is read from is the flavor's statement, the same one the
+consumer reads to decide where to put it. An argument without a binding
+carries no annotation and is therefore the request entity — JAX-RS's own
+default, and the model's.
+[/comment]
+[query public parameterAnnotation(operationFlavor : RestOperationFlavor, parameter : Parameter) : String =
+	if not operationFlavor.parameterBindings->exists(b | b.parameter = parameter) then ''
+	else annotationFor(operationFlavor.parameterBindings->select(b | b.parameter = parameter)->first(), parameter)
+	endif /]
+
+[query public annotationFor(binding : RestParameterBinding, parameter : Parameter) : String =
+	if binding.binding = ParameterBinding::PATH then '@PathParam("'.concat(wireName(binding, parameter)).concat('") ')
+	else if binding.binding = ParameterBinding::QUERY then '@QueryParam("'.concat(wireName(binding, parameter)).concat('") ')
+	else if binding.binding = ParameterBinding::HEADER then '@HeaderParam("'.concat(wireName(binding, parameter)).concat('") ')
+	else '' endif endif endif /]
+
+[query public wireName(binding : RestParameterBinding, parameter : Parameter) : String =
+	if binding.wireName.oclIsUndefined() or binding.wireName.size() = 0 then parameter.name
+	else binding.wireName endif /]
+
+[comment]
+The body as finished lines: one delegation, wrapped in a try/catch when the
+operation declares errors. Built as a sequence so an operation without errors
+cannot leave an empty block behind.
+[/comment]
+[query public methodBody(binding : JavaBinding, operationFlavor : RestOperationFlavor) : Sequence(String) =
+	if operationFlavor.operation.exceptions->isEmpty()
+	then Sequence{'		'.concat(answer(operationFlavor))}
+	else Sequence{'		try {', '	'.concat('		').concat(answer(operationFlavor))}
+		->union(operationFlavor.operation.exceptions->sortedBy(e | e.name)
+			->collect(raised | catchBlock(binding, operationFlavor, raised))->flatten())
+		->append('		}')
+	endif /]
+
+[query public catchBlock(binding : JavaBinding, operationFlavor : RestOperationFlavor, raised : ServiceException) : Sequence(String) =
+	Sequence{
+		'		} catch ('.concat(simpleName(exceptionType(binding, raised))).concat(' failure) {'),
+		'			return Response.status('.concat(statusFor(operationFlavor, raised).toString()).concat(').entity(failure.getMessage()).build();')
+	} /]
+
+[query public answer(operationFlavor : RestOperationFlavor) : String =
+	if operationFlavor.operation.returnValue.oclIsUndefined()
+	then 'service.'.concat(call(operationFlavor)).concat(';')
+		.concat(' return Response.noContent().build();')
+	else 'return Response.ok(service.'.concat(call(operationFlavor)).concat(').build();')
+	endif /]
+
+[query public call(operationFlavor : RestOperationFlavor) : String =
+	operationFlavor.operation.name.concat('(')
+		.concat(operationFlavor.operation.parameters->sortedBy(p | p.index)
+			->iterate(parameter : Parameter; joined : String = '' |
+				if joined.size() = 0 then parameter.name else joined.concat(', ').concat(parameter.name) endif))
+		.concat(')') /]
+
+[comment]
+The status a declared error travels as. Without a binding it is a 500 — the
+error is still the error it is, it just has no status of its own.
+[/comment]
+[query public statusFor(operationFlavor : RestOperationFlavor, raised : ServiceException) : Integer =
+	if operationFlavor.exceptionBindings->exists(b | b.exception = raised)
+	then operationFlavor.exceptionBindings->select(b | b.exception = raised)->first().status
+	else 500 endif /]
+
+[comment]===================== imports =====================[/comment]
+
+[query public restImports(flavor : RestFlavor) : Sequence(String) =
+	flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor))
+		->collect(o | 'jakarta.ws.rs.'.concat(httpMethod(o.oclAsType(RestOperationFlavor))))
+		->union(flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor))
+			->collect(o | o.oclAsType(RestOperationFlavor).parameterBindings)->flatten()
+			->collect(b | bindingImport(b)))
+		->select(i | i <> '')->asSet()->sortedBy(i | i) /]
+
+[query public bindingImport(binding : RestParameterBinding) : String =
+	if binding.binding = ParameterBinding::PATH then 'jakarta.ws.rs.PathParam'
+	else if binding.binding = ParameterBinding::QUERY then 'jakarta.ws.rs.QueryParam'
+	else if binding.binding = ParameterBinding::HEADER then 'jakarta.ws.rs.HeaderParam'
+	else '' endif endif endif /]

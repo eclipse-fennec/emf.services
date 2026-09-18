@@ -104,4 +104,53 @@ describe('ServiceImplementationFingerprint (im1) — cross-language golden', () 
     expect(implementationFingerprint(undefined)).toBeUndefined();
     expect(implementationCanonicalForm(undefined)).toBeUndefined();
   });
+
+  // The mirror of ServiceImplementationFingerprintTest on the Java side.
+  // Bindings used to be left out of im1 while nobody read them; since #74
+  // they decide where every argument travels, so two implementations
+  // differing only in bindings are not the same endpoint.
+  it('renders the bindings a flavor declares', () => {
+    const factory = DDSRFactory.eINSTANCE;
+    const impl = factory.createServiceImplementation();
+    impl.name = 'payments';
+    impl.implementationId = 'fixture:bindings:1';
+
+    const operation = factory.createServiceOperation();
+    operation.name = 'get';
+    const id = factory.createParameter();
+    id.name = 'id';
+    id.type = 'string';
+    operation.parameters.push(id);
+    const raised = factory.createServiceException();
+    raised.name = 'NotFound';
+    raised.type = 'example.NotFound';
+
+    const rest = factory.createRestFlavor();
+    rest.name = 'rest';
+    const opFlavor = factory.createRestOperationFlavor();
+    opFlavor.name = 'get';
+    opFlavor.operation = operation;
+    const parameterBinding = factory.createRestParameterBinding();
+    parameterBinding.parameter = id;
+    parameterBinding.binding = 'PATH' as never;
+    opFlavor.parameterBindings.push(parameterBinding);
+    const exceptionBinding = factory.createRestExceptionBinding();
+    exceptionBinding.exception = raised;
+    exceptionBinding.status = 404;
+    opFlavor.exceptionBindings.push(exceptionBinding);
+    rest.operationFlavors.push(opFlavor);
+    impl.flavors.push(rest);
+
+    const canonical = implementationCanonicalForm(impl)!;
+    expect(canonical).toContain('pb|id|binding=PATH|wireName=');
+    expect(canonical).toContain('xb|NotFound|status=404');
+  });
+
+  it('an implementation without bindings hashes as it always did', () => {
+    // The extension rule of docs/FINGERPRINTS.md: the grammar may grow,
+    // but nothing that was computable before may move.
+    const canonical = implementationCanonicalForm(goldenImplementation())!;
+    expect(canonical).not.toContain('pb|');
+    expect(canonical).not.toContain('xb|');
+  });
 });

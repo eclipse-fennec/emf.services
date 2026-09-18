@@ -112,8 +112,15 @@ IM|<implementationId>|name=<name>|version=<version>
   c|<sd1-value>                        contracts, DECLARED order
   F|<eClass>|<name>|kind=<literal>…    flavors, DECLARED order
     o|<eClass>|<name>|operation=|consumes=<list>|produces=<list>…
+      pb|<parameter>|binding=<literal>|wireName=   parameter bindings, sorted by parameter
+      xb|<exception>|status=<int>                  exception bindings, sorted by exception
   pr|<tag>|<name>|value=<value>        properties, sorted (sd1 rules)
 ```
+
+The two binding lines render **only where the flavor declares any**, so an
+implementation that binds nothing hashes exactly as it did before they
+existed — the same extension rule as in sd1: the grammar may grow, no
+computable value may change.
 
 Flavor-specific fields: `RestFlavor` adds
 `|host=|basePath=|contentTypes=<list>`, `MqttFlavor` adds
@@ -136,8 +143,16 @@ and `ContractAddressingTest`:
 | `ServiceInterface.updatePolicy`, `replacedBy`, `deprecationReason` | lifecycle metadata of a catalog entry, not the contract; a policy change must not move the address of every implementation |
 | `ServiceImplementation.updatePolicy`, `replaces`, `cutoverGraceMillis` | input to the broker's update state machine, not "what is registered" |
 | `ServiceImplementation.capabilities`, `ServiceFlavor.capabilities` | feed the lookup resolver; the registration itself is unchanged |
-| `RestOperationFlavor.parameterBindings` | **is** wire configuration and arguably belongs next to `method=`/`path=` — but im1 is frozen with its tag, so it waits for an `im2` scheme. Until then two implementations that differ only in bindings share an im1. |
 | `ServiceEvent.reasonCode` | events are not fingerprinted |
+
+`RestOperationFlavor.parameterBindings` used to stand in this table: a
+binding nobody read was decoration, and im1 was frozen with its tag.
+Since the SDKs place every argument where the binding says (#74), two
+implementations differing only in bindings are **not** the same endpoint
+— a consumer holding the older binding calls it wrongly — so the
+fingerprint would have been wrong about the one thing it exists to
+answer. `exceptionBindings` joins it for the same reason. The tag stayed
+`im1` because no value that could be computed before has moved.
 
 ## Where fingerprints appear
 

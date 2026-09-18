@@ -67,6 +67,7 @@ export function implementationCanonicalForm(
     lines.push(`  ${flavorLine(flavor)}`);
     for (const opFlavor of toArray<Record<string, unknown>>(flavor.operationFlavors)) {
       lines.push(`    ${operationFlavorLine(opFlavor)}`);
+      lines.push(...bindingLines(opFlavor));
     }
   }
 
@@ -97,6 +98,65 @@ function flavorLine(flavor: Record<string, unknown>): string {
       `|defaultRetained=${boolWithDefault(flavor.defaultRetained, false)}`;
   }
   return line;
+}
+
+/**
+ * The bindings of one operation flavor, one line each and sorted by the
+ * name of what they bind — a binding is a set entry, its order carries no
+ * meaning. Rendered only where the flavor declares any, so an
+ * implementation that binds nothing hashes exactly as it did before these
+ * lines existed.
+ *
+ * They belong in im1 because they decide behaviour: since #74 a consumer
+ * places every argument where the binding says, so two implementations
+ * differing only in bindings are not the same endpoint.
+ */
+function bindingLines(opFlavor: Record<string, unknown>): string[] {
+  if (eClassName(opFlavor) !== 'RestOperationFlavor') return [];
+  const lines: string[] = [];
+
+  const parameterBindings = toArray<Record<string, unknown>>(opFlavor.parameterBindings);
+  for (const binding of sortByBoundName(parameterBindings, 'parameter')) {
+    const parameter = binding.parameter as { name?: string } | undefined;
+    lines.push(
+      `      pb|${esc(parameter?.name)}` +
+      `|binding=${enumText(binding.binding, 'BODY')}` +
+      `|wireName=${esc(str(binding.wireName))}`
+    );
+  }
+
+  const exceptionBindings = toArray<Record<string, unknown>>(opFlavor.exceptionBindings);
+  for (const binding of sortByBoundName(exceptionBindings, 'exception')) {
+    const raised = binding.exception as { name?: string } | undefined;
+    lines.push(`      xb|${esc(raised?.name)}|status=${statusText(binding.status)}`);
+  }
+  return lines;
+}
+
+/**
+ * The status as exact decimal text. The XMI reader hands attribute values
+ * over as strings, so this coerces along the model type — the canonical
+ * form is computed over model semantics, not reader artefacts. An unset
+ * status is the model default 500.
+ */
+function statusText(raw: unknown): string {
+  if (raw === undefined || raw === null || raw === '') return '500';
+  const value = typeof raw === 'number' ? Math.trunc(raw) : Number.parseInt(String(raw).trim(), 10);
+  return Number.isNaN(value) ? '500' : String(value);
+}
+
+function sortByBoundName(
+  bindings: Record<string, unknown>[],
+  feature: string
+): Record<string, unknown>[] {
+  return [...bindings].sort((a, b) => {
+    const an = (a[feature] as { name?: string } | undefined)?.name;
+    const bn = (b[feature] as { name?: string } | undefined)?.name;
+    if (an == null && bn == null) return 0;
+    if (an == null) return -1;
+    if (bn == null) return 1;
+    return an < bn ? -1 : an > bn ? 1 : 0;
+  });
 }
 
 function operationFlavorLine(opFlavor: Record<string, unknown>): string {

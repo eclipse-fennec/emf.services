@@ -175,10 +175,14 @@ export class DDSRPackage extends BasicEPackage {
     REST_OPERATION_FLAVOR__PATH: null as unknown as EAttribute | EReference,
     REST_OPERATION_FLAVOR__RETURN_CODES: null as unknown as EAttribute | EReference,
     REST_OPERATION_FLAVOR__PARAMETER_BINDINGS: null as unknown as EAttribute | EReference,
+    REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS: null as unknown as EAttribute | EReference,
     REST_PARAMETER_BINDING: null as unknown as EClass,
     REST_PARAMETER_BINDING__PARAMETER: null as unknown as EAttribute | EReference,
     REST_PARAMETER_BINDING__BINDING: null as unknown as EAttribute | EReference,
     REST_PARAMETER_BINDING__WIRE_NAME: null as unknown as EAttribute | EReference,
+    REST_EXCEPTION_BINDING: null as unknown as EClass,
+    REST_EXCEPTION_BINDING__EXCEPTION: null as unknown as EAttribute | EReference,
+    REST_EXCEPTION_BINDING__STATUS: null as unknown as EAttribute | EReference,
     MQTT_OPERATION_FLAVOR: null as unknown as EClass,
     MQTT_OPERATION_FLAVOR__REQUEST_TOPIC: null as unknown as EAttribute | EReference,
     MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC: null as unknown as EAttribute | EReference,
@@ -1507,6 +1511,15 @@ export class DDSRPackage extends BasicEPackage {
     restOperationFlavorClass.getEStructuralFeatures().push(restOperationFlavor_parameterBindings);
     DDSRPackage.Literals.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS = restOperationFlavor_parameterBindings;
 
+    // Create exceptionBindings feature
+    const restOperationFlavor_exceptionBindings = new BasicEReference();
+    restOperationFlavor_exceptionBindings.setContainment(true);
+    restOperationFlavor_exceptionBindings.setName('exceptionBindings');
+    restOperationFlavor_exceptionBindings.setLowerBound(0);
+    restOperationFlavor_exceptionBindings.setUpperBound(-1);
+    restOperationFlavorClass.getEStructuralFeatures().push(restOperationFlavor_exceptionBindings);
+    DDSRPackage.Literals.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS = restOperationFlavor_exceptionBindings;
+
     // Create RestParameterBinding class
     const restParameterBindingClass = new BasicEClass();
     restParameterBindingClass.setName('RestParameterBinding');
@@ -1540,6 +1553,32 @@ export class DDSRPackage extends BasicEPackage {
     restParameterBinding_wireName.setUpperBound(1);
     restParameterBindingClass.getEStructuralFeatures().push(restParameterBinding_wireName);
     DDSRPackage.Literals.REST_PARAMETER_BINDING__WIRE_NAME = restParameterBinding_wireName;
+
+    // Create RestExceptionBinding class
+    const restExceptionBindingClass = new BasicEClass();
+    restExceptionBindingClass.setName('RestExceptionBinding');
+    restExceptionBindingClass.setAbstract(false);
+    restExceptionBindingClass.setInterface(false);
+    this.getEClassifiers().push(restExceptionBindingClass);
+    restExceptionBindingClass.setEPackage(this);
+    DDSRPackage.Literals.REST_EXCEPTION_BINDING = restExceptionBindingClass;
+
+    // Create exception feature
+    const restExceptionBinding_exception = new BasicEReference();
+    restExceptionBinding_exception.setContainment(false);
+    restExceptionBinding_exception.setName('exception');
+    restExceptionBinding_exception.setLowerBound(1);
+    restExceptionBinding_exception.setUpperBound(1);
+    restExceptionBindingClass.getEStructuralFeatures().push(restExceptionBinding_exception);
+    DDSRPackage.Literals.REST_EXCEPTION_BINDING__EXCEPTION = restExceptionBinding_exception;
+
+    // Create status feature
+    const restExceptionBinding_status = new BasicEAttribute();
+    restExceptionBinding_status.setName('status');
+    restExceptionBinding_status.setLowerBound(1);
+    restExceptionBinding_status.setUpperBound(1);
+    restExceptionBindingClass.getEStructuralFeatures().push(restExceptionBinding_status);
+    DDSRPackage.Literals.REST_EXCEPTION_BINDING__STATUS = restExceptionBinding_status;
 
     // Create MqttOperationFlavor class
     const mqttOperationFlavorClass = new BasicEClass();
@@ -2536,7 +2575,9 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_FLAVOR__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__OPERATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION);
     (DDSRPackage.Literals.REST_OPERATION_FLAVOR__PARAMETER_BINDINGS as BasicEReference).setEType(DDSRPackage.Literals.REST_PARAMETER_BINDING);
+    (DDSRPackage.Literals.REST_OPERATION_FLAVOR__EXCEPTION_BINDINGS as BasicEReference).setEType(DDSRPackage.Literals.REST_EXCEPTION_BINDING);
     (DDSRPackage.Literals.REST_PARAMETER_BINDING__PARAMETER as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
+    (DDSRPackage.Literals.REST_EXCEPTION_BINDING__EXCEPTION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROVIDER as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
     (DDSRPackage.Literals.SERVICE_REFERENCE__REGISTRATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REGISTRATION);

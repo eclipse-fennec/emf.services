@@ -46,8 +46,6 @@ import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.osgi.service.component.ComponentServiceObjects;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.FrameworkUtil;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -101,13 +99,6 @@ public final class PaymentPublisher {
 		String public_url() default "http://192.168.1.6:9091/payments";
 
 		@AttributeDefinition(
-				name = "Publish the BindingProbe contract",
-				description = "Additionally publish the tiny BindingProbe contract whose one operation "
-						+ "carries its three arguments in path, query and header. Off by default: it is "
-						+ "a second registration, and the demo should not grow one for everybody.")
-		boolean publish_binding_probe() default false;
-
-		@AttributeDefinition(
 				name = "Broker URL",
 				description = "Base URL of the DDSR broker. Used to build the canonical "
 						+ "per-catalog-entry URL for SI references in the publish body.")
@@ -159,13 +150,6 @@ public final class PaymentPublisher {
 	private Registration registration;
 
 	/**
-	 * The BindingProbe registration (#74). A second, tiny contract whose one
-	 * operation carries its three arguments in three different places, so
-	 * the harness can prove that a consumer places them where the published
-	 * flavor says — and not where the type of the value would suggest.
-	 */
-	private Registration probeRegistration;
-	/**
 	 * Held for the life of the registration, not just the publish call:
 	 * emf.osgi clears every Resource of a prototype ResourceSet on
 	 * ungetService, which would detach paymentApi from its catalog-URL
@@ -204,9 +188,6 @@ public final class PaymentPublisher {
 			ServiceImplementation impl = provider.getImplementations().get(0);
 
 			this.registration = client.provider().publish(provider, impl);
-			if (config.publish_binding_probe()) {
-				this.probeRegistration = publishBindingProbe(config, url);
-			}
 			LOG.info("[DDSR-Payment-Java] published " + config.provider_name()
 					+ " at " + url + " (SI ref → " + entryUrl
 					+ ") — registration=" + (registration != null ? "ok" : "null"));
@@ -215,63 +196,8 @@ public final class PaymentPublisher {
 		}
 	}
 
-	/**
-	 * Publish the BindingProbe contract by LOADING it: contract, flavor and
-	 * every parameter binding live in one document in {@code model/} of this
-	 * bundle — one document on purpose, so every reference between flavor and
-	 * contract is intra-document and resolves wherever the file is read. The
-	 * same document is what the interface is generated from (#75) and what the
-	 * generic distribution serves it by (#84). Nothing here restates it, so
-	 * what this provider serves and what it announces cannot drift apart.
-	 *
-	 * <p>Only the deployment facts are filled in here: where this instance is
-	 * reachable is configuration, not contract.
-	 */
-	private Registration publishBindingProbe(Config config, URI url) {
-		Bundle bundle = FrameworkUtil.getBundle(PaymentPublisher.class);
-		org.eclipse.emf.common.util.URI modelUri = org.eclipse.emf.common.util.URI
-				.createURI(bundle.getEntry("model/binding-probe.xmi").toString());
-		Resource loaded = catalogEntryResourceSet.getResource(modelUri, true);
-		ServiceProvider provider = (ServiceProvider) loaded.getContents().get(0);
-		ServiceImplementation impl = provider.getImplementations().get(0);
-		ServiceInterface probeApi = impl.getServiceInterfaces().get(0);
-
-		Diagnostic added = catalog.addCatalogEntry(probeApi, "payments-java-publisher");
-		if (added.getSeverity() == DiagnosticSeverity.ERROR && added.getCode() != 202) {
-			throw new IllegalStateException("could not add BindingProbe to catalog: " + added.getMessage());
-		}
-
-		// Same parking as the Payment entry: the contract moves out of the
-		// bundle document into one named by its canonical catalog URL, so the
-		// publish body references it instead of carrying a second copy.
-		String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + probeApi.getName();
-		Resource entryResource = catalogEntryResourceSet.createResource(
-				org.eclipse.emf.common.util.URI.createURI(entryUrl));
-		entryResource.getContents().add(probeApi);
-
-		// The flavor's basePath in the model is where this provider mounts the
-		// endpoint inside itself — the generated resource carries it as its
-		// @Path, and it is what keeps two contracts of one provider apart.
-		// What a CONSUMER sees is that path behind the deployment's own, so
-		// the published value is the configured path plus the modelled one.
-		RestFlavor flavor = (RestFlavor) impl.getFlavors().get(0);
-		String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
-		flavor.setHost(url.getScheme() + "://" + url.getAuthority());
-		flavor.setBasePath((url.getPath() != null ? url.getPath() : "") + mountPath);
-
-		return client.provider().publish(provider, impl);
-	}
-
 	@Deactivate
 	void deactivate() {
-		if (probeRegistration != null) {
-			try {
-				probeRegistration.withdraw();
-			} catch (Exception withdrawFailed) {
-				LOG.log(Level.WARNING, "[DDSR-Payment-Java] BindingProbe withdraw failed", withdrawFailed);
-			}
-			probeRegistration = null;
-		}
 		if (registration != null) {
 			try {
 				// Deliberately synchronous: deactivation returns only after

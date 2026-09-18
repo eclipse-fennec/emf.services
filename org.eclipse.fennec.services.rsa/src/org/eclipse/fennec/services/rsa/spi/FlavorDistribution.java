@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.rsa.spi;
 import java.util.Map;
 
 import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.ServiceInterface;
 
 /**
  * Makes a service reachable over one flavor.
@@ -45,11 +46,17 @@ public interface FlavorDistribution {
 	 * Make {@code service} reachable, and say in the model what a
 	 * consumer has to do to reach it.
 	 *
+	 * <p>The contract arrives ready. Whether it was written by its
+	 * provider or derived from a Java interface is the registry's
+	 * business and deliberately not visible here — a distribution that
+	 * could tell the two apart would be able to treat them differently,
+	 * and then the promise that it cannot would be worth nothing.
+	 *
 	 * @param service    the object that answers calls
-	 * @param contracts  the interfaces it is exported as
+	 * @param contract   what it promises
 	 * @param properties the effective service properties — the RSA ones
 	 *                   and whatever the exporter added
 	 * @return the live endpoint; closing it takes it down again
 	 */
-	ExportedEndpoint export(Object service, Class<?>[] contracts, Map<String, ?> properties);
+	ExportedEndpoint export(Object service, ServiceInterface contract, Map<String, ?> properties);
 }

@@ -23,7 +23,6 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.derive.JavaContracts;
 import org.eclipse.fennec.services.provider.rest.RestDistribution;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
@@ -69,10 +68,6 @@ public class RestDistributionProvider implements FlavorDistribution {
 						+ "exported contract is served under its own path below it.")
 		String public_url();
 
-		@AttributeDefinition(name = "Default contract version",
-				description = "The version a derived contract gets when the exporting service names none. "
-						+ "A contract without a version cannot be addressed.")
-		String default_version() default "1.0.0";
 	}
 
 	@Reference
@@ -96,16 +91,10 @@ public class RestDistributionProvider implements FlavorDistribution {
 	}
 
 	@Override
-	public ExportedEndpoint export(Object service, Class<?>[] contracts, Map<String, ?> properties) {
-		if (contracts == null || contracts.length != 1) {
-			// One contract, one endpoint. A service exported as two
-			// interfaces is two exports — anything else would need one
-			// path to mean two contracts.
-			throw new IllegalArgumentException("a REST export covers exactly one interface, got "
-					+ (contracts == null ? 0 : contracts.length));
+	public ExportedEndpoint export(Object service, ServiceInterface contract, Map<String, ?> properties) {
+		if (contract == null) {
+			throw new IllegalArgumentException("a REST export needs the contract to serve");
 		}
-		String version = version(properties);
-		ServiceInterface contract = JavaContracts.contractOf(contracts[0], version);
 		String mountPath = RestFlavors.basePathFor(contract);
 		RestFlavor flavor = RestFlavors.flavorFor(contract, mountPath);
 
@@ -122,11 +111,6 @@ public class RestDistributionProvider implements FlavorDistribution {
 		LOG.info("[DDSR] exported " + contract.getName() + " over REST at "
 				+ flavor.getHost() + flavor.getBasePath());
 		return new RestEndpoint(contract, implementation, served);
-	}
-
-	private String version(Map<String, ?> properties) {
-		Object stated = properties == null ? null : properties.get("ddsr.contract.version");
-		return stated == null || stated.toString().isBlank() ? config.default_version() : stated.toString();
 	}
 
 	private static ServiceImplementation implementationOf(ServiceInterface contract, RestFlavor flavor,

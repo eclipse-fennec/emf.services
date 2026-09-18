@@ -32,7 +32,7 @@ import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
-import org.eclipse.fennec.services.rsa.spi.FlavorDiscovery;
+import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -57,10 +57,10 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * interface, not a change to anything that uses it.
  */
 @Designate(ocd = RestDiscoveryProvider.Config.class)
-@Component(service = FlavorDiscovery.class,
+@Component(service = ServiceDiscovery.class,
 		configurationPid = "org.eclipse.fennec.services.rsa.discovery.rest",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
-public class RestDiscoveryProvider implements FlavorDiscovery {
+public class RestDiscoveryProvider implements ServiceDiscovery {
 
 	/** The RSA configuration type a deployment names to discover this way. */
 	public static final String CONFIG_TYPE = "fennec.rest";

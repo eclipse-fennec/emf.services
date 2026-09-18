@@ -134,9 +134,29 @@ org.eclipse.fennec.services.client.rest         # REST-Flavor
                                    #   RestServiceInvoker: reflective wire-call
                                    #   ReflectiveServiceProxyFactory: java.lang.reflect.Proxy
 
+org.eclipse.fennec.services.flavor.rest         # geteilt: die Platzierungsregeln
+                                   #   RestPlacement: wohin ein Argument geht
+                                   #   RestArguments: wo es wieder herkommt
+                                   #   RestRoute: welche Operation ein Request meint
+                                   #   KEIN JAX-RS: dieselbe Regel gilt für den
+                                   #     Consumer, den Dispatcher und das Template
+
+org.eclipse.fennec.services.provider.rest       # generische REST-Distribution (#84)
+                                   #   GenericRestDistribution: eine Application pro
+                                   #     konfigurierter Implementierung, Factory-PID
+                                   #     org.eclipse.fennec.services.provider.rest
+                                   #   RestDispatcher: @Path("{path:.*}") je Verb,
+                                   #     entscheidet in Modellbegriffen und ruft
+                                   #     reflektiv auf
+                                   #   mit publish=true auch der kopflose Provider:
+                                   #     eine Konfiguration und ein Service, kein Code
+
 org.eclipse.fennec.services.examples.payment # Demo-Java-Provider
                                     #   PaymentResource (JAX-RS auf 9091)
                                     #   PaymentPublisher: addCatalogEntry + publish
+                                    #   BindingProbe: nichts davon — Vertrag im
+                                    #     Modell, serviert und angemeldet von
+                                    #     provider.rest
                                     #   Eigene Launch: payment-provider.bndrun
 ```
 
@@ -402,6 +422,8 @@ Aktuell auf LAN-IPs verdrahtet:
 | client.java | `org.eclipse.fennec.services.client` | `supported.flavors`, `consumer.id` | `REST`, — |
 | example.payment | `org.eclipse.fennec.services.examples.payment` | `public.url`, `broker.url`, `provider.name` | `http://192.168.1.6:9091/payments`, `http://192.168.1.6:8887/ddsr/rest`, `payments-java` |
 | example.payment | `org.apache.felix.http~paymentsHttp` | port / context | `9091` / `payments` |
+| provider.rest | `org.eclipse.fennec.services.provider.rest~<name>` (Factory) | `ddsr.contract`, `service.filter`, `model.bundle`, `model.entry`, `osgi.jakartars.application.base` | eine Distribution pro Vertrag |
+| provider.rest | dieselbe Factory-PID | `publish`, `public.url`, `broker.url` | mit `publish=true` meldet sie sich auch selbst an |
 
 Die drei Broker-Werte (`public.url`, Port, Host) sind in
 `broker.rest/configs/config.json` nicht mehr fest verdrahtet, sondern
@@ -420,7 +442,8 @@ Container — siehe [DEPLOYMENT.md](DEPLOYMENT.md).
 |---|---|
 | Modell: ggf. iD wieder zurück auf gezielte Klassen (ServiceInterface, ServiceProvider) — wenn globale Eindeutigkeit gewünscht | offen |
 | `/registry`-Response: Provider als Sibling-Roots (statt Cross-Doc-hrefs) | erledigt (XmiBundle-Pattern in LookupResource) |
-| Operationen / Parameter-Marshalling für komplexe Payloads (z. B. nested DTO als JSON oder XMI) | offen — heute nur primitive Query-Params oder einzelne EObject als XMI-Body |
+| Operationen / Parameter-Marshalling für komplexe Payloads (z. B. nested DTO als JSON oder XMI) | teilweise — die generische Distribution liest einen Body nach dem Typ, den der Vertrag deklariert (EClass → XMI, sonst Text); JSON gibt es nicht |
+| Reihenfolge beim kopflosen Provider: die Anmeldung geht raus, bevor das Whiteboard die Application gemountet hat, und beim Deaktivieren stirbt der Endpunkt vor der Abmeldung (DS nimmt den Service vor `deactivate` weg) | offen — wer FR-P3 braucht, meldet aus einer eigenen Komponente an |
 | Service-Health / Reachability-Probing im Client (filter dead locators) | offen — heute pickt `PaymentProxyRegistrar` jeden Provider, Caller filtern via `ddsr.provider.name` |
 | Code-Generator für Service-Stubs (`PaymentRemote`-style) aus dem Catalog | offen |
 | Wire-Konvention für POST/PUT mit gemischten EObject + primitive Args | offen |

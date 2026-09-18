@@ -35,7 +35,9 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceOperation;
+import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
+import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestRoute;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.framework.ServiceObjects;
@@ -73,6 +75,7 @@ import jakarta.ws.rs.core.UriInfo;
  * a body that will not decode        400
  * a required argument is missing     400
  * no result, or an empty collection  204
+ * a failing Diagnostic               the status bound to its code, 400 without one
  * a declared error                   the status its binding names, 500 without one
  * anything else                      500
  * </pre>
@@ -248,10 +251,20 @@ public class RestDispatcher {
 		if (result == null || (result instanceof Collection<?> collection && collection.isEmpty())) {
 			return Response.noContent().build();
 		}
+		// A failure that came back as a value rather than as a throw: the
+		// body stays what the operation returned, only the status is the
+		// transport's word on it.
+		if (RestErrors.isFailure(result)) {
+			return withMediaType(operationFlavor,
+					Response.status(RestErrors.statusFor(operationFlavor, (Diagnostic) result)).entity(result));
+		}
 		int status = operationFlavor.getReturnCodes().isEmpty() ? 200 : operationFlavor.getReturnCodes().get(0);
-		Response.ResponseBuilder answer = Response.status(status).entity(result);
+		return withMediaType(operationFlavor, Response.status(status).entity(result));
+	}
+
+	private static Response withMediaType(RestOperationFlavor operationFlavor, Response.ResponseBuilder answer) {
 		if (!operationFlavor.getProduces().isEmpty()) {
-			answer = answer.type(MediaType.valueOf(operationFlavor.getProduces().get(0)));
+			return answer.type(MediaType.valueOf(operationFlavor.getProduces().get(0))).build();
 		}
 		return answer.build();
 	}

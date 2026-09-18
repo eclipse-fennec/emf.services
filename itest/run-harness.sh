@@ -174,6 +174,20 @@ CLIENT_PID=$LAST_PID
 wait_for_line "$WORK/client.log" 'ts.charge(10.0, "EUR") =' 90
 echo "Java consumer called the TS provider:"
 grep -E 'ts\.(getBalance|charge)' "$WORK/client.log"
+# That call is the mixed-binding proof in the other direction (#82): the
+# TS provider serves charge as /charge/{amount} with the currency in
+# X-Currency and refuses anything else, so a Java consumer only reaches
+# it by reading the bindings the TS side published. The broker has to
+# carry them through publish, snapshot and lookup for that to work —
+# assert them on the wire too, so a regression names itself instead of
+# showing up as a failed call.
+TS_LOOKUP=$(curl -sf "$BROKER_URL/references?interface=Payment")
+if ! grep -q 'binding="PATH"' <<<"$TS_LOOKUP" || ! grep -q 'parameter="' <<<"$TS_LOOKUP"; then
+  echo "SCENARIO B FAILED: the broker does not re-serve the TS provider's parameter bindings"
+  echo "$TS_LOOKUP"
+  exit 1
+fi
+echo "  ✓ ts-bindings-survive-the-broker: PATH + parameter references present in the lookup"
 
 log "Scenario B: stopping the TS provider (SIGTERM) — FR-P3 order check"
 kill "$TS_PROVIDER_PID"

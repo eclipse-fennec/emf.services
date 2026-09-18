@@ -43,12 +43,18 @@ const server = createServer((request, response) => {
     response.writeHead(status, { 'Content-Type': 'text/plain' });
     response.end(body);
   };
-  if (request.method === 'POST' && url.pathname === `${basePath}/charge`) {
-    const amount = Number(url.searchParams.get('amount'));
-    if (Number.isNaN(amount)) return reply(400, 'amount required');
+  // charge/{amount} with the currency in X-Currency — the shape the
+  // published flavor declares. Deliberately NOT readable from the
+  // query: a caller that ignored the bindings must fail here, not
+  // silently succeed (#82).
+  if (request.method === 'POST' && url.pathname.startsWith(`${basePath}/charge/`)) {
+    const amount = Number(decodeURIComponent(url.pathname.slice(`${basePath}/charge/`.length)));
+    if (Number.isNaN(amount)) return reply(400, 'amount required in the path');
+    const currency = request.headers['x-currency'];
+    if (typeof currency !== 'string' || !currency) return reply(400, 'X-Currency required');
     const balance = (balances.get(DEFAULT_ACCOUNT) ?? 1000) - amount;
     balances.set(DEFAULT_ACCOUNT, balance);
-    log(`charge(${amount} ${url.searchParams.get('currency') ?? 'EUR'}) -> ${balance}`);
+    log(`charge(${amount} ${currency}) -> ${balance}`);
     return reply(200, String(balance));
   }
   if (request.method === 'GET' && url.pathname === `${basePath}/balance`) {

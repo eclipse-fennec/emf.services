@@ -70,6 +70,7 @@ class CatalogHttpProxyTest {
 			return (T) entity;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override public <T> T readEntity(GenericType<T> entityType) { return readEntity((Class<T>) entityType.getRawType()); }
 		@Override public <T> T readEntity(Class<T> entityType, Annotation[] annotations) { return readEntity(entityType); }
 		@Override public <T> T readEntity(GenericType<T> entityType, Annotation[] annotations) { return readEntity(entityType); }

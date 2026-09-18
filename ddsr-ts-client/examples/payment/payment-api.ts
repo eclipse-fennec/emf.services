@@ -48,16 +48,26 @@ export function buildPaymentInterface(): ServiceInterface {
 }
 
 /**
- * This demo serves every argument as a query parameter. Saying so binds
- * the endpoint to the catalog instead of to a convention: a consumer
- * reads where each value goes instead of guessing from its type (#74).
- * The Java PaymentPublisher declares the same.
+ * Say where each argument goes. That binds the endpoint to the catalog
+ * instead of to a convention: a consumer reads where each value belongs
+ * instead of guessing from its type (#74).
+ *
+ * @param places binding per parameter name; anything unnamed goes in the
+ *               query, which is what the SDKs fall back to anyway
+ * @param wireNames the name on the wire where it differs from the
+ *               parameter's
  */
-function bindEveryArgumentToTheQuery(opFlavor: RestOperationFlavor): void {
+function bindArguments(
+  opFlavor: RestOperationFlavor,
+  places: Record<string, ParameterBinding> = {},
+  wireNames: Record<string, string> = {}
+): void {
   for (const parameter of toArray<Parameter>(opFlavor.operation!.parameters)) {
     const binding = factory.createRestParameterBinding();
     binding.parameter = parameter;
-    binding.binding = ParameterBinding.QUERY;
+    binding.binding = places[parameter.name!] ?? ParameterBinding.QUERY;
+    const wireName = wireNames[parameter.name!];
+    if (wireName) binding.wireName = wireName;
     opFlavor.parameterBindings.push(binding);
   }
 }
@@ -129,12 +139,20 @@ export function buildPaymentProvider(
 
   const operations = toArray<ServiceOperation>(serviceInterface.operations);
 
+  // charge places its two arguments differently on purpose: the amount
+  // in the path, the currency in a header under a name of its own. A
+  // consumer that ignored the bindings and put both in the query would
+  // miss this endpoint entirely — which is what makes the harness's
+  // Java-consumer call a proof that a TypeScript provider's bindings
+  // arrive, rather than a proof that both sides guess alike (#82).
   const chargeFlavor = factory.createRestOperationFlavor();
   chargeFlavor.name = 'charge';
   chargeFlavor.method = 'POST';
-  chargeFlavor.path = '/charge';
+  chargeFlavor.path = '/charge/{amount}';
   chargeFlavor.operation = operations.find(o => o.name === 'charge')!;
-  bindEveryArgumentToTheQuery(chargeFlavor);
+  bindArguments(chargeFlavor,
+    { amount: ParameterBinding.PATH, currency: ParameterBinding.HEADER },
+    { currency: 'X-Currency' });
   flavor.operationFlavors.push(chargeFlavor);
 
   const balanceFlavor = factory.createRestOperationFlavor();
@@ -142,7 +160,7 @@ export function buildPaymentProvider(
   balanceFlavor.method = 'GET';
   balanceFlavor.path = '/balance';
   balanceFlavor.operation = operations.find(o => o.name === 'getBalance')!;
-  bindEveryArgumentToTheQuery(balanceFlavor);
+  bindArguments(balanceFlavor);
   flavor.operationFlavors.push(balanceFlavor);
 
   implementation.flavors.push(flavor);

@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.client.rest.internal;
+package org.eclipse.fennec.services.flavor.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,16 +25,15 @@ import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.client.DdsrException;
-import org.eclipse.fennec.services.client.rest.internal.RestServiceInvoker.Placement;
 import org.junit.jupiter.api.Test;
 
 /**
- * Where an argument travels is the provider's statement, not a guess
- * about its Java type (#74). These tests pin the sorting; the HTTP
- * mechanics behind it belong to JAX-RS.
+ * Where an argument travels is the provider's statement, not a guess about
+ * its Java type (#74). These tests pin the sorting — the rule both ends of
+ * a REST distribution obey, which is why it lives here and not in one of
+ * them.
  */
-class RestServiceInvokerPlacementTest {
+class RestPlacementTest {
 
 	private static final ServicesFactory F = ServicesFactory.eINSTANCE;
 
@@ -80,14 +79,14 @@ class RestServiceInvokerPlacementTest {
 		bind(flavor, currency, ParameterBinding.QUERY, null);
 		bind(flavor, tenant, ParameterBinding.HEADER, "X-Tenant");
 
-		Placement placement = RestServiceInvoker.place(flavor,
+		RestPlacement placement = RestPlacement.of(flavor,
 				args("id", "42", "currency", "EUR", "tenant", "acme"));
 
 		// GET /payments/{id}?currency=EUR with a tenant header — the case
 		// the binding layer exists for.
-		assertThat(placement.path).containsExactly(Map.entry("id", "42"));
-		assertThat(placement.queryParameters()).containsExactly(Map.entry("currency", "EUR"));
-		assertThat(placement.header).containsExactly(Map.entry("X-Tenant", "acme"));
+		assertThat(placement.path()).containsExactly(Map.entry("id", "42"));
+		assertThat(placement.query()).containsExactly(Map.entry("currency", "EUR"));
+		assertThat(placement.header()).containsExactly(Map.entry("X-Tenant", "acme"));
 	}
 
 	@Test
@@ -100,9 +99,9 @@ class RestServiceInvokerPlacementTest {
 		flavor.setOperation(operation);
 		bind(flavor, accountId, ParameterBinding.QUERY, "account_id");
 
-		Placement placement = RestServiceInvoker.place(flavor, args("accountId", "7"));
+		RestPlacement placement = RestPlacement.of(flavor, args("accountId", "7"));
 
-		assertThat(placement.queryParameters())
+		assertThat(placement.query())
 				.as("the contract keeps calling it accountId")
 				.containsExactly(Map.entry("account_id", "7"));
 	}
@@ -116,10 +115,10 @@ class RestServiceInvokerPlacementTest {
 		RestOperationFlavor flavor = F.createRestOperationFlavor();
 		flavor.setOperation(operation);
 
-		Placement placement = RestServiceInvoker.place(flavor, args("amount", 12.5));
+		RestPlacement placement = RestPlacement.of(flavor, args("amount", 12.5));
 
-		assertThat(placement.body()).isNull();
-		assertThat(placement.queryParameters()).containsExactly(Map.entry("amount", 12.5));
+		assertThat(placement.body()).isEmpty();
+		assertThat(placement.query()).containsExactly(Map.entry("amount", 12.5));
 	}
 
 	@Test
@@ -131,11 +130,11 @@ class RestServiceInvokerPlacementTest {
 		RestOperationFlavor flavor = F.createRestOperationFlavor();
 		flavor.setOperation(operation);
 
-		Placement placement = RestServiceInvoker.place(flavor,
+		RestPlacement placement = RestPlacement.of(flavor,
 				args("serviceInterface", F.createServiceInterface()));
 
-		assertThat(placement.body()).isNotNull();
-		assertThat(placement.queryParameters())
+		assertThat(placement.body()).isPresent();
+		assertThat(placement.query())
 				.as("an argument that became the body must not travel twice")
 				.isEmpty();
 	}
@@ -152,10 +151,10 @@ class RestServiceInvokerPlacementTest {
 		bind(flavor, amount, ParameterBinding.BODY, null);
 		bind(flavor, currency, ParameterBinding.BODY, null);
 
-		Placement placement = RestServiceInvoker.place(flavor, args("amount", 12.5, "currency", "EUR"));
+		RestPlacement placement = RestPlacement.of(flavor, args("amount", 12.5, "currency", "EUR"));
 
 		assertThatThrownBy(placement::body)
-				.isInstanceOf(DdsrException.class)
+				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("no wire encoding");
 	}
 }

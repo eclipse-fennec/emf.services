@@ -68,6 +68,7 @@ jersey.deps:
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.eclipse.fennec.services.client.rest;version=snapshot,\
+	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
 	org.eclipse.fennec.services.examples.payment;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\

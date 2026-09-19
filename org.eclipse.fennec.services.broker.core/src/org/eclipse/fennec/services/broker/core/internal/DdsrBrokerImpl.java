@@ -83,26 +83,11 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	private static final java.util.logging.Logger LOG =
 			java.util.logging.Logger.getLogger(DdsrBrokerImpl.class.getName());
 
-	/** XMI URI scheme for the in-memory resource (file-backed when persisted). */
-	private static final String DEFAULT_SNAPSHOT_PATH = "./broker-state.xmi";
-
-	private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-	private final ResourceSet resourceSet;
-	private final Resource resource;
-	private final Path snapshotPath;
+	/** The index a lookup asks; fed by every publish, modify and withdraw. */
 	private final LookupBackend lookup;
-	private final EventSink events;
 
-	/**
-	 * The runtime home of the provider-side handles. Registrations have
-	 * no containment place in the persisted RemoteServiceRegistry — they
-	 * carry their links as model references instead
-	 * ({@code registration.provider/.implementation/.reference}, paired
-	 * resp. transient), which replaced the former
-	 * {@code implByRegistration} side-map (ACQUISITION.md §8). Insertion
-	 * order (deterministic), guarded by the broker lock.
-	 */
-	private final List<ServiceRegistration> registrations = new ArrayList<>();
+	/** Where an acknowledged and persisted change is announced. */
+	private final EventSink events;
 
 	/**
 	 * Consumer sessions by consumerId (ACQUISITION.md §3/§4). Runtime
@@ -175,74 +160,24 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			String providerName, Path file) {
 	}
 
-	/**
-	 * Serializes {@link #persist()} against itself: {@code snapshot()}
-	 * runs under the <em>read</em> lock, so two concurrent snapshots (or
-	 * a snapshot racing the deactivate path) would otherwise write the
-	 * same {@link Resource} to the same file at the same time.
-	 */
-	private final Object persistMonitor = new Object();
-
-	private RemoteServiceRegistry registry;
+	/** The registry, the lock that guards it and the file it lives in. */
+	private final BrokerState state;
 
 	public DdsrBrokerImpl(Path snapshotPath, LookupBackend lookup) {
 		this(snapshotPath, lookup, EventSink.NOOP);
 	}
 
 	public DdsrBrokerImpl(Path snapshotPath, LookupBackend lookup, EventSink events) {
-		this.snapshotPath = snapshotPath != null ? snapshotPath : Paths.get(DEFAULT_SNAPSHOT_PATH);
+		this.state = new BrokerState(snapshotPath);
 		this.lookup = lookup;
 		this.events = events != null ? events : EventSink.NOOP;
-
-		// EMF setup: register the DDSR package and a XMI resource factory
-		// for the .xmi extension. This needs to work both in OSGi (where
-		// emf.osgi may have done the registration already) and in plain
-		// Java unit tests.
-		ServicesPackage.eINSTANCE.eClass();
-		this.resourceSet = new ResourceSetImpl();
-		resourceSet.getResourceFactoryRegistry().getExtensionToFactoryMap()
-				.put("xmi", new XMIResourceFactoryImpl());
-
-		URI uri = URI.createFileURI(this.snapshotPath.toAbsolutePath().toString());
-		Resource loaded = null;
-		if (Files.isRegularFile(this.snapshotPath)) {
-			try {
-				loaded = resourceSet.getResource(uri, true);
-			} catch (Exception ex) {
-				// Corrupt snapshot — treat as empty start. Caller decides
-				// how to react via the snapshot() diagnostic. Say so
-				// loudly: a snapshot written by an older model version
-				// fails here too (EMF throws on a feature the model no
-				// longer has), and silently starting empty would look
-				// like the registry simply lost everything.
-				LOG.warning("[DDSR] snapshot " + this.snapshotPath
-						+ " could not be read, starting with an empty registry: " + ex);
-				loaded = null;
-			}
-		}
-		if (loaded != null && !loaded.getContents().isEmpty()) {
-			this.resource = loaded;
-			EObject root = loaded.getContents().get(0);
-			this.registry = (root instanceof RemoteServiceRegistry) ? (RemoteServiceRegistry) root : freshRegistry();
-			if (root != this.registry) {
-				resource.getContents().clear();
-				resource.getContents().add(this.registry);
-			}
-			// Re-index existing references with the lookup backend.
+		if (state.rehydrated()) {
+			// The providers and implementations came back from the snapshot,
+			// but the reference/registration pairs and the lookup index are
+			// runtime state and have to be rebuilt.
 			reindex();
-		} else {
-			this.resource = resourceSet.createResource(uri);
-			this.registry = freshRegistry();
-			this.resource.getContents().add(this.registry);
 		}
 		loadColdStubs();
-	}
-
-	private RemoteServiceRegistry freshRegistry() {
-		RemoteServiceRegistry r = ServicesFactory.eINSTANCE.createRemoteServiceRegistry();
-		r.setName("ddsr-broker");
-		r.setKind(RegistryKind.REMOTE);
-		return r;
 	}
 
 	private void reindex() {
@@ -252,7 +187,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		// be rebuilt. New UUIDs are assigned on each rehydration —
 		// references aren't stable across restarts; consumers must
 		// re-lookup after a broker reconnect.
-		for (ServiceImplementation impl : registry.getImplementations()) {
+		for (ServiceImplementation impl : state.registry().getImplementations()) {
 			EObject container = impl.eContainer();
 			if (!(container instanceof ServiceProvider)) {
 				continue;
@@ -268,7 +203,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			reg.setProvider(provider);
 			reg.setImplementation(impl);
 			ref.setRegistration(reg);
-			registrations.add(reg);
+			state.registrations().add(reg);
 			decorateReference(ref, impl);
 
 			lookup.serviceAdded(impl, ref);
@@ -290,7 +225,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 					"implementation must be contained in provider.implementations");
 		}
 
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			// Catalog validation + by-name resolve: incoming
 			// impl.serviceInterfaces may be stub SIs (just name+version
@@ -321,8 +256,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			String replacesNote = null;
 			if (implementation.getReplaces() != null) {
 				ServiceImplementation wanted = implementation.getReplaces();
-				ServiceImplementation live = findImplementationByNameVersion(
-						registry.getImplementations(), wanted.getName(), wanted.getVersion());
+				ServiceImplementation live = BrokerState.implementationNamed(
+						state.registry().getImplementations(), wanted.getName(), wanted.getVersion());
 				boolean ownIdentity = live != null
 						&& java.util.Objects.equals(live.getName(), implementation.getName())
 						&& java.util.Objects.equals(live.getVersion(), implementation.getVersion());
@@ -341,7 +276,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// Provider dedup: if a provider with the same (name, version)
 			// is already in the registry, reuse it instead of adding a
 			// duplicate.
-			ServiceProvider existing = findProviderByNameVersion(provider.getName(), provider.getVersion());
+			ServiceProvider existing = state.providerNamed(provider.getName(), provider.getVersion());
 			if (existing != null && existing != provider) {
 				provider = existing;
 			}
@@ -353,7 +288,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// entries → duplicate ServiceReferences after reindex →
 			// non-deterministic lookup hits.
 			ServiceReference retired = null;
-			ServiceImplementation old = findImplementationByNameVersion(
+			ServiceImplementation old = BrokerState.implementationNamed(
 					provider.getImplementations(), implementation.getName(), implementation.getVersion());
 			if (old != null && old != implementation) {
 				retired = retireImplementation(provider, old);
@@ -365,18 +300,18 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				provider.getImplementations().add(implementation);
 			}
 
-			if (!registry.getProviders().contains(provider)) {
-				registry.getProviders().add(provider);
+			if (!state.registry().getProviders().contains(provider)) {
+				state.registry().getProviders().add(provider);
 			}
-			if (!registry.getImplementations().contains(implementation)) {
-				registry.getImplementations().add(implementation);
+			if (!state.registry().getImplementations().contains(implementation)) {
+				state.registry().getImplementations().add(implementation);
 			}
-			// Non-containment refs (registry.providers / .implementations)
+			// Non-containment refs (state.registry().providers / .implementations)
 			// need their targets to be URI-resolvable for XMI save to work.
 			// Park the provider as an additional resource root if it has no
 			// container yet — the implementation rides along via containment.
 			if (provider.eResource() == null) {
-				resource.getContents().add(provider);
+				state.resource().getContents().add(provider);
 			}
 
 			// Synthesize a ServiceReference + ServiceRegistration pair so
@@ -390,7 +325,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			reg.setProvider(provider);
 			reg.setImplementation(implementation);
 			ref.setRegistration(reg);
-			registrations.add(reg);
+			state.registrations().add(reg);
 			registrationSince.put(reg, Instant.now());
 			// A (re-)publish supersedes a cold twin of the same identity —
 			// e.g. a provider restarting while its old registration is
@@ -408,12 +343,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 			lookup.serviceAdded(implementation, ref);
 
-			Diagnostic d = persist();
+			Diagnostic d = state.persist();
 			if (isError(d)) {
 				// Rollback in-memory state on persist failure.
-				registry.getImplementations().remove(implementation);
+				state.registry().getImplementations().remove(implementation);
 				lookup.serviceRemoved(implementation, ref);
-				registrations.remove(reg);
+				state.registrations().remove(reg);
 				return d;
 			}
 			// Order matters for a consumer holding the old reference: the
@@ -433,7 +368,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 							"interface(s) marked deprecated: " + deprecationNote)
 					: DdsrDiagnostics.ok();
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -447,17 +382,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION,
 					"implementation must be contained in provider.implementations");
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			// Over REST the pair is freshly parsed from the wire; resolve the
 			// live registration by (name, version) like withdraw does.
-			ServiceProvider liveProvider = findProviderByNameVersion(provider.getName(), provider.getVersion());
+			ServiceProvider liveProvider = state.providerNamed(provider.getName(), provider.getVersion());
 			ServiceImplementation liveImpl = liveProvider == null ? null
-					: findImplementationByNameVersion(liveProvider.getImplementations(),
+					: BrokerState.implementationNamed(liveProvider.getImplementations(),
 							implementation.getName(), implementation.getVersion());
-			ServiceRegistration registration = liveImpl == null ? null : findRegistrationByImplementation(liveImpl);
+			ServiceRegistration registration = liveImpl == null ? null : state.registrationOf(liveImpl);
 			if (liveImpl == null || registration == null || registration.isUnregistered()
-					|| !registry.getImplementations().contains(liveImpl)) {
+					|| !state.registry().getImplementations().contains(liveImpl)) {
 				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
 						"modify needs a live registration of " + implementation.getName() + "/"
 						+ implementation.getVersion() + " — publish instead");
@@ -484,7 +419,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			decorateReference(reference, liveImpl);
 			lookup.serviceModified(liveImpl, reference);
 
-			Diagnostic d = persist();
+			Diagnostic d = state.persist();
 			if (isError(d)) {
 				applyModification(liveImpl, before);
 				reference.getProperties().clear();
@@ -500,7 +435,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 							"interface(s) marked deprecated: " + contracts.deprecationNote())
 					: DdsrDiagnostics.ok();
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -540,19 +475,19 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 					"implementation must belong to the given provider");
 		}
 
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			// Over REST the provider/implementation pair is freshly parsed
 			// from the wire body and never identical to the live objects —
 			// resolve by (name, version) before concluding "not published".
 			ServiceProvider liveProvider = provider;
 			ServiceImplementation liveImpl = implementation;
-			if (!registry.getImplementations().contains(liveImpl)) {
-				liveProvider = findProviderByNameVersion(provider.getName(), provider.getVersion());
+			if (!state.registry().getImplementations().contains(liveImpl)) {
+				liveProvider = state.providerNamed(provider.getName(), provider.getVersion());
 				liveImpl = liveProvider == null ? null
-						: findImplementationByNameVersion(liveProvider.getImplementations(),
+						: BrokerState.implementationNamed(liveProvider.getImplementations(),
 								implementation.getName(), implementation.getVersion());
-				if (liveImpl == null || !registry.getImplementations().contains(liveImpl)) {
+				if (liveImpl == null || !state.registry().getImplementations().contains(liveImpl)) {
 					return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
 							"implementation is not currently published");
 				}
@@ -560,7 +495,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 			// Find and drop the matching registration / reference pair
 			// (deterministic: insertion order of the registrations list).
-			ServiceRegistration toRemove = findRegistrationByImplementation(liveImpl);
+			ServiceRegistration toRemove = state.registrationOf(liveImpl);
 			ServiceReference withdrawn = toRemove != null ? toRemove.getReference() : null;
 
 			// Build the event material BEFORE anything is detached, so the
@@ -575,7 +510,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// Remember positions for an exact rollback: provider
 			// containment order matters for positional cross-refs.
 			int indexInProvider = liveProvider.getImplementations().indexOf(liveImpl);
-			int indexInRegistry = registry.getImplementations().indexOf(liveImpl);
+			int indexInRegistry = state.registry().getImplementations().indexOf(liveImpl);
 
 			// A withdrawn registration must never stay acquired: release
 			// the leases (holders re-acquire live refs on their next PUT).
@@ -586,7 +521,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			ProviderLease providerLease = toRemove != null ? providerLeases.remove(toRemove) : null;
 			if (toRemove != null) {
 				lookup.serviceRemoved(liveImpl, toRemove.getReference());
-				registrations.remove(toRemove);
+				state.registrations().remove(toRemove);
 				toRemove.getUsingSessions().clear();
 				// The transient links (implementation/provider/reference)
 				// stay on the dead pair for event building and rollback,
@@ -599,10 +534,10 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				forgetSupersession(toRemove);
 			}
 
-			registry.getImplementations().remove(liveImpl);
+			state.registry().getImplementations().remove(liveImpl);
 			// Detach from the provider as well, exactly like the republish
 			// path does in retireImplementation. Dropping it only from
-			// registry.implementations leaves it in the provider's
+			// state.registry().implementations leaves it in the provider's
 			// containment, which has two consequences: the withdrawn
 			// implementation keeps being written to every snapshot, and it
 			// keeps a non-containment reference to its catalog interface —
@@ -612,15 +547,15 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// resource".
 			liveProvider.getImplementations().remove(liveImpl);
 
-			Diagnostic d = persist();
+			Diagnostic d = state.persist();
 			if (isError(d)) {
 				// Roll back — a withdrawal that could not be persisted must
 				// leave the in-memory state exactly as it was, and no event
 				// may be announced for it.
 				liveProvider.getImplementations().add(indexInProvider, liveImpl);
-				registry.getImplementations().add(indexInRegistry, liveImpl);
+				state.registry().getImplementations().add(indexInRegistry, liveImpl);
 				if (toRemove != null) {
-					registrations.add(toRemove);
+					state.registrations().add(toRemove);
 					toRemove.setUnregistered(false);
 					toRemove.getUsingSessions().addAll(leaseHolders);
 					if (providerLease != null) {
@@ -635,7 +570,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			emit(ServiceEventType.UNREGISTERING, eventReference, ServiceEventReasons.WITHDRAWN);
 			return d;
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -679,11 +614,11 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (isError(d)) {
 			return null;
 		}
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
-			return findRegistrationByImplementation(implementation);
+			return state.registrationOf(implementation);
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -694,11 +629,11 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	@Override
 	public ServiceReference getServiceReference(String interfaceName) {
 		touchAndRehydrate(interfaceName);
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			return lookup.getServiceReference(interfaceName, null, null);
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -706,12 +641,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	public List<ServiceReference> getServiceReferences(String interfaceName, String filter,
 			ConsumerCapability capability) {
 		touchAndRehydrate(interfaceName);
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			return withoutDraining(filterByRequestedFingerprint(
 					lookup.getServiceReferences(interfaceName, filter, capability), capability));
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -719,12 +654,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	public List<ServiceReference> getAllServiceReferences(String interfaceName, String filter,
 			ConsumerCapability capability) {
 		touchAndRehydrate(interfaceName);
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			return filterByRequestedFingerprint(
 					lookup.getAllServiceReferences(interfaceName, filter, capability), capability);
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -738,7 +673,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND,
 					"serviceInterface and serviceInterface.name must not be null");
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			// (name, sd1) key (§11.2): identical content is an idempotent
 			// no-op; a different contract under the same name COEXISTS as
@@ -752,13 +687,13 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 							+ sd1);
 				}
 			}
-			registry.getCatalog().add(serviceInterface);
-			Diagnostic d = persist();
+			state.registry().getCatalog().add(serviceInterface);
+			Diagnostic d = state.persist();
 			if (isError(d)) {
 				// Roll back so a failed save does not leave the in-memory
 				// catalog ahead of the snapshot — see the note on
 				// rollbackOnPersistFailure.
-				registry.getCatalog().remove(serviceInterface);
+				state.registry().getCatalog().remove(serviceInterface);
 				return d;
 			}
 			// Hand the broker's fingerprint of the accepted entry back to
@@ -769,7 +704,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 							: " (coexists with " + sameName.size()
 							+ " other contract(s) named '" + serviceInterface.getName() + "')"));
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -779,7 +714,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND,
 					"serviceInterface and serviceInterface.name must not be null");
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			CatalogResolution resolution = resolveCatalogEntry(serviceInterface,
 					serviceInterface.getName(), DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND);
@@ -799,7 +734,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				inCatalog.setReplacedBy(serviceInterface.getReplacedBy());
 			}
 
-			Diagnostic d = persist();
+			Diagnostic d = state.persist();
 			if (isError(d)) {
 				inCatalog.setStatus(previousStatus);
 				inCatalog.setDeprecationReason(previousReason);
@@ -807,7 +742,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return d;
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -817,7 +752,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND,
 					"serviceInterface and serviceInterface.name must not be null");
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			CatalogResolution resolution = resolveCatalogEntry(serviceInterface,
 					serviceInterface.getName(), DdsrDiagnostics.CODE_CATALOG_ENTRY_NOT_FOUND);
@@ -830,7 +765,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// Identity, not name: the publish path rewires every live impl
 			// onto its catalog entry, and with (name, sd1) coexistence a
 			// same-named SIBLING contract must not block this removal.
-			for (ServiceImplementation impl : registry.getImplementations()) {
+			for (ServiceImplementation impl : state.registry().getImplementations()) {
 				for (ServiceInterface si : impl.getServiceInterfaces()) {
 					if (si == inCatalog) {
 						return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_HAS_LIVE_IMPLS,
@@ -854,15 +789,15 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// Keep the position so a rollback restores the catalog exactly,
 			// not just its contents — cross-refs into the catalog use
 			// positional URI fragments (//@catalog.N), so order matters.
-			int previousIndex = registry.getCatalog().indexOf(inCatalog);
-			registry.getCatalog().remove(inCatalog);
-			Diagnostic d = persist();
+			int previousIndex = state.registry().getCatalog().indexOf(inCatalog);
+			state.registry().getCatalog().remove(inCatalog);
+			Diagnostic d = state.persist();
 			if (isError(d)) {
-				registry.getCatalog().add(previousIndex, inCatalog);
+				state.registry().getCatalog().add(previousIndex, inCatalog);
 			}
 			return d;
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -885,16 +820,16 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 */
 	@Override
 	public RemoteServiceRegistry getRegistry() {
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			EcoreUtil.Copier copier = new EcoreUtil.Copier();
-			RemoteServiceRegistry registryCopy = (RemoteServiceRegistry) copier.copy(registry);
-			copier.copyAll(new ArrayList<>(registry.getProviders()));
+			RemoteServiceRegistry registryCopy = (RemoteServiceRegistry) copier.copy(state.registry());
+			copier.copyAll(new ArrayList<>(state.registry().getProviders()));
 			copier.copyReferences();
 
 			Resource holder = new XMIResourceImpl(URI.createURI("services:registry"));
 			holder.getContents().add(registryCopy);
-			for (ServiceProvider provider : registry.getProviders()) {
+			for (ServiceProvider provider : state.registry().getProviders()) {
 				EObject providerCopy = copier.get(provider);
 				if (providerCopy != null && providerCopy.eContainer() == null) {
 					holder.getContents().add(providerCopy);
@@ -902,7 +837,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return registryCopy;
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -912,16 +847,16 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 * outside the broker's own locking is the caller's race to lose.
 	 */
 	RemoteServiceRegistry liveRegistry() {
-		return registry;
+		return state.registry();
 	}
 
 	@Override
 	public Diagnostic snapshot() {
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
-			return persist();
+			return state.persist();
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -934,13 +869,13 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (reg == null) {
 			return null;
 		}
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			// The transient link survives on a withdrawn pair (needed for
 			// event building and rollback) — the flag is what says "dead".
 			return reg.isUnregistered() ? null : reg.getImplementation();
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -954,7 +889,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
 					"session and session.consumerId must not be null or blank");
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			String consumerId = session.getConsumerId();
 			// Full replace: the previous session's leases are released
@@ -968,7 +903,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			List<String> unknown = new ArrayList<>();
 			if (acquiredReferenceIds != null) {
 				for (String referenceId : acquiredReferenceIds) {
-					ServiceRegistration registration = findRegistrationByReferenceId(referenceId);
+					ServiceRegistration registration = state.registrationWithReferenceId(referenceId);
 					if (registration == null) {
 						// Over-claiming is harmless: stale or foreign ids
 						// (e.g. from before a broker restart) are skipped
@@ -988,7 +923,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.ok("session accepted, " + accepted + " acquisition(s)"
 					+ (unknown.isEmpty() ? "" : ", skipped unknown reference id(s): " + unknown));
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -998,7 +933,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
 					"consumerId must not be null or blank");
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			ConsumerSession removed = sessions.remove(consumerId);
 			if (removed == null) {
@@ -1008,7 +943,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			releaseAcquisitions(removed);
 			return DdsrDiagnostics.ok("session removed, all acquisitions released");
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -1017,7 +952,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (consumerId == null || consumerId.isBlank()) {
 			return Optional.empty();
 		}
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			ConsumerSession stored = sessions.get(consumerId);
 			if (stored == null) {
@@ -1041,7 +976,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return Optional.of(new SessionSnapshot(view, ids));
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -1050,7 +985,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (cutoff == null) {
 			return 0;
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			int expired = 0;
 			var iterator = sessions.entrySet().iterator();
@@ -1065,17 +1000,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return expired;
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
 	@Override
 	public int sessionCount() {
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			return sessions.size();
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -1103,12 +1038,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (cutoff == null) {
 			return 0;
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			Instant now = Instant.now();
-			registrationSince.keySet().retainAll(new java.util.HashSet<>(registrations));
+			registrationSince.keySet().retainAll(new java.util.HashSet<>(state.registrations()));
 			int moved = 0;
-			for (ServiceRegistration reg : new ArrayList<>(registrations)) {
+			for (ServiceRegistration reg : new ArrayList<>(state.registrations())) {
 				if (reg.isUnregistered() || reg.getImplementation() == null || reg.getProvider() == null) {
 					continue;
 				}
@@ -1131,17 +1066,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return moved;
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
 	/** Number of cold entries currently parked on disk. */
 	public int coldCount() {
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			return coldEntries.size();
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -1201,7 +1136,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		registrationSince.remove(reg);
 		coldEntries.put(key, new ColdEntry(key, names, fingerprints,
 				impl.getImplementationId(), provider.getName(), file));
-		Diagnostic d = persist();
+		Diagnostic d = state.persist();
 		if (isError(d)) {
 			// Degraded but recoverable: the entry is discoverable through
 			// its stub, and rehydration republishes it.
@@ -1233,7 +1168,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (interfaceName == null || coldEntries.isEmpty()) {
 			return;
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			for (ColdEntry entry : new ArrayList<>(coldEntries.values())) {
 				if (!entry.interfaceNames().contains(interfaceName)) {
@@ -1253,7 +1188,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				}
 			}
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -1320,8 +1255,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	}
 
 	private Path coldDir() {
-		Path parent = snapshotPath.toAbsolutePath().getParent();
-		return parent.resolve(snapshotPath.getFileName() + ".cold");
+		Path parent = state.snapshotPath().toAbsolutePath().getParent();
+		return parent.resolve(state.snapshotPath().getFileName() + ".cold");
 	}
 
 	private static String coldKey(String providerName, String implName, String implVersion) {
@@ -1342,27 +1277,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		}
 	}
 
-	private ServiceRegistration findRegistrationByImplementation(ServiceImplementation implementation) {
-		for (ServiceRegistration registration : registrations) {
-			if (registration.getImplementation() == implementation) {
-				return registration;
-			}
-		}
-		return null;
-	}
 
-	private ServiceRegistration findRegistrationByReferenceId(String referenceId) {
-		if (referenceId == null || referenceId.isBlank()) {
-			return null;
-		}
-		for (ServiceRegistration registration : registrations) {
-			ServiceReference reference = registration.getReference();
-			if (reference != null && referenceId.equals(reference.getId())) {
-				return registration;
-			}
-		}
-		return null;
-	}
 
 	/**
 	 * Contract addressing (ACQUISITION.md §11.2): when the consumer's
@@ -1424,7 +1339,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (name == null) {
 			return entries;
 		}
-		for (ServiceInterface si : registry.getCatalog()) {
+		for (ServiceInterface si : state.registry().getCatalog()) {
 			if (name.equals(si.getName())) {
 				entries.add(si);
 			}
@@ -1605,33 +1520,20 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		return proxyUri.segment(segments - 1);
 	}
 
-	private static ServiceImplementation findImplementationByNameVersion(
-			java.util.List<ServiceImplementation> impls, String name, String version) {
-		if (name == null) {
-			return null;
-		}
-		for (ServiceImplementation impl : impls) {
-			if (name.equals(impl.getName())
-					&& java.util.Objects.equals(version, impl.getVersion())) {
-				return impl;
-			}
-		}
-		return null;
-	}
 
 	/**
 	 * Drop a stale {@link ServiceImplementation} that is about to be
 	 * replaced by a fresher copy with the same (name, version):
-	 * detach from its provider, remove from {@code registry.implementations},
+	 * detach from its provider, remove from {@code state.registry().implementations},
 	 * tell the lookup backend its reference is gone, and clean up
 	 * the registrations list.
 	 */
 	private ServiceReference retireImplementation(ServiceProvider provider, ServiceImplementation oldImpl) {
 		provider.getImplementations().remove(oldImpl);
-		registry.getImplementations().remove(oldImpl);
-		ServiceRegistration deadReg = findRegistrationByImplementation(oldImpl);
+		state.registry().getImplementations().remove(oldImpl);
+		ServiceRegistration deadReg = state.registrationOf(oldImpl);
 		if (deadReg != null) {
-			registrations.remove(deadReg);
+			state.registrations().remove(deadReg);
 			registrationSince.remove(deadReg);
 			providerLeases.remove(deadReg);
 			forgetSupersession(deadReg);
@@ -1794,7 +1696,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 * only answered while it addresses one.
 	 */
 	public ServiceInterface getCatalogEntry(String name, String fingerprint) {
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			List<ServiceInterface> named = entriesNamed(name);
 			if (fingerprint != null && !fingerprint.isBlank()) {
@@ -1816,7 +1718,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return named.get(0);
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -1859,7 +1761,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	private List<ServiceInterface> entriesNamed(String name) {
 		List<ServiceInterface> named = new ArrayList<>();
-		for (ServiceInterface entry : registry.getCatalog()) {
+		for (ServiceInterface entry : state.registry().getCatalog()) {
 			if (entry.getName() != null && entry.getName().equals(name)) {
 				named.add(entry);
 			}
@@ -1904,7 +1806,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 * The predecessor itself is only retired by {@link #advanceUpdatePolicies}.
 	 */
 	private void armUpdatePolicy(ServiceRegistration successor, ServiceImplementation predecessorImpl) {
-		ServiceRegistration predecessor = findRegistrationByImplementation(predecessorImpl);
+		ServiceRegistration predecessor = state.registrationOf(predecessorImpl);
 		if (predecessor == null || predecessor.isUnregistered() || predecessor == successor) {
 			return; // parked cold or already gone — nothing to drain
 		}
@@ -1946,18 +1848,18 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (now == null) {
 			return 0;
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
 			int retired = 0;
 			for (Map.Entry<ServiceRegistration, Supersession> entry : new ArrayList<>(superseded.entrySet())) {
 				ServiceRegistration predecessor = entry.getKey();
 				Supersession supersession = entry.getValue();
-				if (predecessor.isUnregistered() || !registrations.contains(predecessor)) {
+				if (predecessor.isUnregistered() || !state.registrations().contains(predecessor)) {
 					superseded.remove(predecessor); // withdrawn meanwhile
 					continue;
 				}
 				ServiceRegistration successor = supersession.successor();
-				if (successor.isUnregistered() || !registrations.contains(successor)) {
+				if (successor.isUnregistered() || !state.registrations().contains(successor)) {
 					superseded.remove(predecessor);
 					LOG.info("[DDSR] successor of " + identityOf(predecessor)
 							+ " is gone — cancelling its " + supersession.policy().getLiteral());
@@ -1979,7 +1881,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 					successorImpl.setReplaces(null); // would dangle in the snapshot
 				}
 				superseded.remove(predecessor);
-				Diagnostic d = persist();
+				Diagnostic d = state.persist();
 				if (isError(d)) {
 					LOG.warning("[DDSR] persist after policy retire of " + identityOf(predecessor)
 							+ " failed: " + d.getMessage());
@@ -1995,7 +1897,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return retired;
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -2013,9 +1915,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_HEARTBEAT_INVALID,
 					"intervalSeconds must be positive, got " + intervalSeconds);
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
-			ServiceRegistration registration = findRegistrationByReferenceId(referenceId);
+			ServiceRegistration registration = state.registrationWithReferenceId(referenceId);
 			if (registration == null) {
 				// Unknown here means: restart, coldified, retired for silence
 				// or replaced — in every case the provider has to publish
@@ -2033,7 +1935,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			return DdsrDiagnostics.ok("heartbeat accepted, lost after "
 					+ (intervalSeconds * MISSED_HEARTBEATS_TO_LOSE) + " s of silence");
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
@@ -2054,9 +1956,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (now == null) {
 			return 0;
 		}
-		lock.writeLock().lock();
+		state.writeLock().lock();
 		try {
-			providerLeases.keySet().retainAll(new HashSet<>(registrations));
+			providerLeases.keySet().retainAll(new HashSet<>(state.registrations()));
 			int retired = 0;
 			for (Map.Entry<ServiceRegistration, ProviderLease> entry : new ArrayList<>(providerLeases.entrySet())) {
 				ServiceRegistration registration = entry.getKey();
@@ -2073,13 +1975,13 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				ServiceReference eventReference = selfContainedEventReference(provider, impl, registration.getReference());
 				ServiceReference retiredRef = retireImplementation(provider, impl);
 				// A successor's `replaces` would dangle in the snapshot.
-				for (ServiceRegistration other : registrations) {
+				for (ServiceRegistration other : state.registrations()) {
 					ServiceImplementation otherImpl = other.getImplementation();
 					if (otherImpl != null && otherImpl.getReplaces() == impl) {
 						otherImpl.setReplaces(null);
 					}
 				}
-				Diagnostic d = persist();
+				Diagnostic d = state.persist();
 				if (isError(d)) {
 					LOG.warning("[DDSR] persist after retiring lost provider " + identityOf(registration)
 							+ " failed: " + d.getMessage());
@@ -2093,17 +1995,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			return retired;
 		} finally {
-			lock.writeLock().unlock();
+			state.writeLock().unlock();
 		}
 	}
 
 	/** Number of registrations currently under liveness supervision. */
 	public int providerLeaseCount() {
-		lock.readLock().lock();
+		state.readLock().lock();
 		try {
 			return providerLeases.size();
 		} finally {
-			lock.readLock().unlock();
+			state.readLock().unlock();
 		}
 	}
 
@@ -2161,18 +2063,6 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		return impl == null ? "?" : impl.getName() + "/" + impl.getVersion();
 	}
 
-	private ServiceProvider findProviderByNameVersion(String name, String version) {
-		if (name == null) {
-			return null;
-		}
-		for (ServiceProvider p : registry.getProviders()) {
-			if (name.equals(p.getName())
-					&& java.util.Objects.equals(version, p.getVersion())) {
-				return p;
-			}
-		}
-		return null;
-	}
 
 	/**
 	 * Hands one lifecycle event to the sink. Called only for mutations
@@ -2217,25 +2107,6 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 */
 	private static boolean isError(Diagnostic d) {
 		return d.getSeverity().getValue() >= DiagnosticSeverity.ERROR_VALUE;
-	}
-
-	/**
-	 * Persists the registry resource to disk. Caller MUST hold the
-	 * write lock (or read lock during {@link #snapshot()}). Returns a
-	 * Diagnostic — OK on success, ERROR on I/O failure.
-	 */
-	private Diagnostic persist() {
-		synchronized (persistMonitor) {
-			try {
-				Map<Object, Object> opts = new HashMap<>();
-				opts.put(org.eclipse.emf.ecore.xmi.XMIResource.OPTION_ENCODING, "UTF-8");
-				resource.save(opts);
-				return DdsrDiagnostics.ok();
-			} catch (IOException ex) {
-				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_PERSISTENCE_FAILED,
-						"failed to persist registry snapshot: " + ex.getMessage());
-			}
-		}
 	}
 
 	/**

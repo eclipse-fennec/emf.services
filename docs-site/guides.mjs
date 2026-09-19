@@ -8,13 +8,18 @@
 // DECISIONS_PARITY, security analysis, plans) stay in ../docs and are browsed on
 // GitHub. The full documentation buildout is tracked in issue #5.
 export const GUIDES = [
+  { file: 'OVERVIEW.md', slug: 'overview', title: 'Overview' },
   { file: 'GETTING_STARTED.md', slug: 'getting-started', title: 'Getting started' },
-  { file: 'ARCHITECTURE.md', slug: 'architecture', title: 'Architecture' },
-  { file: 'WIRE_FORMAT.md', slug: 'wire-format', title: 'Wire format reference' },
+  { file: 'EVENTING.md', slug: 'eventing', title: 'Eventing' },
   { file: 'FINGERPRINTS.md', slug: 'fingerprints', title: 'Fingerprints (sd1/im1)' },
+  { file: 'TRANSPORTS.md', slug: 'transports', title: 'Transports' },
+  { file: 'CODE_GENERATION.md', slug: 'code-generation', title: 'Code generation' },
+  { file: 'RSA.md', slug: 'rsa', title: 'Remote Service Admin' },
   { file: 'CLIENT_FRAMEWORK_GUIDE.md', slug: 'client-framework', title: 'Client framework (Java)' },
   { file: 'ACQUISITION.md', slug: 'acquisition', title: 'Discovery, Acquisition, Invocation' },
   { file: 'UPDATE_POLICY.md', slug: 'update-policy', title: 'Update policies' },
+  { file: 'WIRE_FORMAT.md', slug: 'wire-format', title: 'Wire format reference' },
+  { file: 'ARCHITECTURE.md', slug: 'architecture', title: 'Architecture (internal)' },
   { file: 'HARNESS.md', slug: 'harness', title: 'Cross-language harness' },
   { file: 'DEPLOYMENT.md', slug: 'deployment', title: 'Deployment (container image)' },
 ];

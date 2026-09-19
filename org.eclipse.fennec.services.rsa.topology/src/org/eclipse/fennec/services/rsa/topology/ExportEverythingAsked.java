@@ -25,6 +25,7 @@ import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.Designate;
@@ -61,8 +62,28 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	private ServiceTracker<Object, Collection<ExportRegistration>> tracker;
 
+	private BundleContext context;
+
 	@Activate
 	void activate(BundleContext context, TopologyPolicy policy) throws InvalidSyntaxException {
+		this.context = context;
+		apply(policy);
+	}
+
+	/**
+	 * The policy changed — or, far more often, the same configuration was
+	 * delivered a second time while the framework started. Taking it
+	 * here rather than letting the component be destroyed and rebuilt is
+	 * what keeps an export that is running at that moment from finding
+	 * its provider dead (#107).
+	 */
+	@Modified
+	void modified(TopologyPolicy policy) throws InvalidSyntaxException {
+		stop();
+		apply(policy);
+	}
+
+	private void apply(TopologyPolicy policy) throws InvalidSyntaxException {
 		LOG.info("[DDSR] topology policy is " + policy.policy());
 		if (TopologyPolicy.MANUAL.equals(policy.policy())) {
 			return;
@@ -74,6 +95,11 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	@Deactivate
 	void deactivate() {
+		stop();
+	}
+
+	/** Stop exporting on our own and take back what we exported. */
+	private void stop() {
 		if (tracker != null) {
 			tracker.close();
 			tracker = null;
@@ -107,9 +133,16 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	public void modifiedService(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
 		// Properties changed. Re-exporting would mean closing and opening
 		// the endpoint, which a consumer would see as the service going
-		// away and coming back. Updating in place is what
-		// ExportRegistration.update is for, and it is not implemented yet
-		// (#24) — so this deliberately does nothing rather than churn.
+		// away and coming back. Saying the endpoint anew is what
+		// ExportRegistration.update is for (#99), and the transport stays
+		// up while it happens.
+		for (ExportRegistration registration : registrations) {
+			try {
+				registration.update(null);
+			} catch (RuntimeException failure) {
+				LOG.log(Level.WARNING, "[DDSR] updating the export of " + reference + " failed", failure);
+			}
+		}
 	}
 
 	@Override

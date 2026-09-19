@@ -456,6 +456,11 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		}
 	}
 
+	/** Whether some provider here answers to this configuration type. */
+	private boolean speaks(String configType) {
+		return distributionFor(configType) != null || discoveryFor(configType) != null;
+	}
+
 	private FlavorDistribution distributionFor(String configType) {
 		for (FlavorDistribution candidate : distributions) {
 			if (List.of(candidate.supportedConfigs()).contains(configType)) {
@@ -497,6 +502,16 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 	 */
 	@Override
 	public ImportRegistration importService(EndpointDescription endpoint) {
+		// 122.4.2: an endpoint that names no configuration type this admin
+		// speaks is not ours to import, whatever else it says. Answering
+		// otherwise would claim an endpoint another admin can actually
+		// reach.
+		List<String> configTypes = endpoint.getConfigurationTypes();
+		if (configTypes.stream().noneMatch(this::speaks)) {
+			LOG.fine(() -> "[DDSR] not importing " + endpoint.getId() + ": " + configTypes
+					+ " is not a configuration type this admin speaks");
+			return null;
+		}
 		Object contract = endpoint.getProperties().get(RsaProperties.CONTRACT);
 		if (contract == null) {
 			LOG.fine(() -> "[DDSR] not importing " + endpoint.getId() + ": it names no contract of ours");

@@ -31,6 +31,7 @@ import org.osgi.framework.hooks.service.ListenerHook;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.remoteserviceadmin.EndpointDescription;
@@ -100,9 +101,22 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 
 	@Activate
 	void activate(TopologyPolicy policy) {
+		apply(policy);
+	}
+
+	/** See the export side: a configuration update is taken, not died of (#107). */
+	@Modified
+	void modified(TopologyPolicy policy) {
+		apply(policy);
+	}
+
+	private void apply(TopologyPolicy policy) {
 		manual = TopologyPolicy.MANUAL.equals(policy.policy());
 		if (manual) {
 			LOG.info("[DDSR] topology policy is manual — nothing is imported on its own");
+			// Whatever is already watched stays: dropping it would
+			// unregister proxies a consumer is using, and manual means
+			// "start nothing new", not "take away what runs".
 		}
 	}
 

@@ -68,6 +68,10 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addAdmin(RemoteServiceAdmin admin) {
 		admins.add(admin);
+		// An endpoint that arrived before any admin did is not gone, it is
+		// waiting. Discovery reports an endpoint once; if nobody could take
+		// it then, nobody ever hears of it again unless we come back to it.
+		List.copyOf(waiting.values()).forEach(this::add);
 	}
 
 	void removeAdmin(RemoteServiceAdmin admin) {
@@ -78,6 +82,9 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 
 	/** What we imported, by the endpoint's id. */
 	private final Map<String, ImportRegistration> imported = new ConcurrentHashMap<>();
+
+	/** What was discovered while no admin could take it, by the same id. */
+	private final Map<String, EndpointDescription> waiting = new ConcurrentHashMap<>();
 
 	private volatile boolean manual;
 
@@ -136,8 +143,11 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 				}
 			}
 			if (registration == null) {
+				waiting.put(endpoint.getId(), endpoint);
+				LOG.fine(() -> "[DDSR] no admin speaks " + endpoint.getId() + " yet; it waits for one");
 				return;
 			}
+			waiting.remove(endpoint.getId());
 			imported.put(endpoint.getId(), registration);
 			LOG.info("[DDSR] imported the discovered endpoint " + endpoint.getId() + " " + endpoint.getInterfaces());
 		} catch (RuntimeException failure) {
@@ -150,6 +160,7 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 	}
 
 	private void remove(String endpointId) {
+		waiting.remove(endpointId);
 		ImportRegistration registration = imported.remove(endpointId);
 		if (registration == null) {
 			return;
@@ -166,5 +177,6 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 	void deactivate() {
 		imported.keySet().forEach(this::remove);
 		imported.clear();
+		waiting.clear();
 	}
 }

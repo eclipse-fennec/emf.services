@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.client.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,6 +37,7 @@ import org.eclipse.fennec.services.FlavorKind;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.component.annotations.ReferencePolicy;
@@ -164,8 +166,12 @@ public final class DdsrClientComponent implements DdsrClient {
 
 	private DdsrClientImpl delegate;
 
+	/** What the running client was built from, to tell a real change from a repeat. */
+	private Config config;
+
 	@Activate
 	void activate(Config config) {
+		this.config = config;
 		try {
 			List<FlavorKind> flavors = parseFlavors(config.supported_flavors());
 			this.supportedFlavors = flavors;
@@ -206,6 +212,54 @@ public final class DdsrClientComponent implements DdsrClient {
 			LOG.log(Level.WARNING, "[DDSR-Client] activation FAILED", t);
 			throw t;
 		}
+	}
+
+	/**
+	 * A changed configuration is taken, not died of.
+	 *
+	 * <p>Configuration Admin delivers the same configuration more than
+	 * once while a framework starts, and without this method the
+	 * component runtime answers each delivery by destroying this client
+	 * and building another: a new consumer id, a new session at the
+	 * broker, every open event stream closed, and — because discovery
+	 * and the RSA admin are wired to this service — that whole column
+	 * torn down with it. An export running at that moment failed for a
+	 * reason nothing in the log explained (#107).
+	 *
+	 * <p>A configuration that says the same thing therefore does nothing
+	 * at all. One that says something different is rebuilt the way a
+	 * restart would have done it — but by us, so the component instance,
+	 * and everything bound to it, survives.
+	 */
+	@Modified
+	void modified(Config config) {
+		if (saysTheSame(this.config, config)) {
+			return;
+		}
+		LOG.info("[DDSR-Client] configuration changed — rebuilding the client");
+		deactivate();
+		activate(config);
+	}
+
+	/** Whether two configurations would build the same client. */
+	private static boolean saysTheSame(Config running, Config fresh) {
+		if (running == null) {
+			return false;
+		}
+		return Objects.equals(running.supported_flavors(), fresh.supported_flavors())
+				&& Objects.equals(blankToNull(running.consumer_id()), blankToNull(fresh.consumer_id()))
+				&& running.session_interval_seconds() == fresh.session_interval_seconds()
+				&& running.provider_heartbeat_seconds() == fresh.provider_heartbeat_seconds()
+				&& running.greedy_rebind() == fresh.greedy_rebind();
+	}
+
+	/**
+	 * A blank consumer id means "make one up", and the one made up at
+	 * activation is still in use — so blank and blank are the same
+	 * configuration, not two different ones.
+	 */
+	private static String blankToNull(String value) {
+		return value == null || value.isBlank() ? null : value;
 	}
 
 	/**

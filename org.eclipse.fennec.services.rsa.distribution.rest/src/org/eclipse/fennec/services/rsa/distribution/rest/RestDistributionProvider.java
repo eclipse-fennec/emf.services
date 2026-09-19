@@ -32,6 +32,7 @@ import org.osgi.framework.Constants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
@@ -95,6 +96,30 @@ public class RestDistributionProvider implements FlavorDistribution {
 		String uuid = context.getProperty(Constants.FRAMEWORK_UUID);
 		this.frameworkTag = uuid == null || uuid.length() < 8 ? "local" : uuid.substring(0, 8);
 		LOG.info("[DDSR] REST distribution ready — exports are reachable under " + config.public_url());
+	}
+
+	/**
+	 * A changed configuration is taken, not died of.
+	 *
+	 * <p>Without this method the component runtime answers every
+	 * configuration update by destroying the instance and building a new
+	 * one — and Configuration Admin delivers the same configuration more
+	 * than once while a framework starts. Anything holding this
+	 * provider's service objects at that moment (an export in flight,
+	 * for one) finds them dead, which is how #107 showed itself.
+	 *
+	 * <p>Endpoints already mounted keep the address they were announced
+	 * with; a new public URL applies to what is exported from now on.
+	 * Re-announcing the live ones belongs to the configuration work in
+	 * #109, which is where the address stops being said twice.
+	 */
+	@Modified
+	void modified(Config config) {
+		if (!config.public_url().equals(this.config.public_url())) {
+			LOG.info("[DDSR] REST distribution now says " + config.public_url()
+					+ "; endpoints already announced keep their address");
+		}
+		this.config = config;
 	}
 
 	@Override

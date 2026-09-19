@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.rsa.registry.ServiceModelCapability;
 import org.eclipse.fennec.services.rsa.registry.ServiceModels;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
@@ -88,6 +89,25 @@ public class ServiceModelsComponent implements ServiceModels {
 		this.registry = ServicesFactory.eINSTANCE.createLocalServiceRegistry();
 		registry.setName(config.registry_name());
 		registry.setKind(RegistryKind.LOCAL);
+	}
+
+	/**
+	 * A changed configuration renames the registry; it does not replace
+	 * it.
+	 *
+	 * <p>Without this method the component runtime would build a second
+	 * {@code LocalServiceRegistry} and throw the first away — together
+	 * with every implementation added to it — whenever Configuration
+	 * Admin delivers the configuration again, which it does more than
+	 * once while a framework starts (#107).
+	 */
+	@Modified
+	void modified(Config config) {
+		this.config = config;
+		if (!config.registry_name().equals(registry.getName())) {
+			LOG.info("[DDSR] the local service registry is now called " + config.registry_name());
+			registry.setName(config.registry_name());
+		}
 	}
 
 	@Override

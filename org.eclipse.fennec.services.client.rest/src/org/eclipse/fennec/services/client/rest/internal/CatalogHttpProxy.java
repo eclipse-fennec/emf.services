@@ -13,6 +13,9 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
@@ -41,6 +44,8 @@ import jakarta.ws.rs.core.Response;
 		property = "ddsr.broker.transport=rest")
 @ServiceDescription("DDSR BrokerCatalog REST proxy")
 public final class CatalogHttpProxy implements BrokerCatalog {
+
+	private static final Logger LOG = Logger.getLogger(CatalogHttpProxy.class.getName());
 
 	@Reference
 	private RestTransport tx;
@@ -97,10 +102,20 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 	static Diagnostic readDiagnostic(Response r) {
 		try {
 			if (r.hasEntity()) {
+				// Buffered so the body can be read a second time when the
+				// first read fails. Without it the failure says only that
+				// something was wrong, and the one thing that would say
+				// what — the body — is gone with the stream.
+				try {
+					r.bufferEntity();
+				} catch (RuntimeException notBufferable) {
+					LOG.log(Level.FINE, "[DDSR-Client] response could not be buffered", notBufferable);
+				}
 				try {
 					return r.readEntity(Diagnostic.class);
 				} catch (Exception parseFail) {
-					return synth(r.getStatus(), "could not parse Diagnostic body: " + parseFail.getMessage());
+					return synth(r.getStatus(), "could not parse Diagnostic body: " + parseFail.getMessage()
+							+ " [HTTP " + r.getStatus() + ", " + r.getMediaType() + ", body: " + preview(r) + "]");
 				}
 			}
 			if (r.getStatus() / 100 == 2) {
@@ -109,6 +124,28 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 			return synth(r.getStatus(), "HTTP " + r.getStatus() + " with empty body");
 		} finally {
 			r.close();
+		}
+	}
+
+	/**
+	 * The beginning of the body, for a failure message.
+	 *
+	 * <p>This goes into our own log and into the exception a caller sees
+	 * — not back over HTTP. The parser's own message is deliberately not
+	 * echoed to a remote caller (S7 in the codec), but the operator whose
+	 * broker answered something unreadable has to be able to see what it
+	 * was; "unparsable" alone has cost more than one debugging session.
+	 */
+	private static String preview(Response r) {
+		try {
+			String body = r.readEntity(String.class);
+			if (body == null || body.isBlank()) {
+				return "<empty>";
+			}
+			String flat = body.strip().replaceAll("\\s+", " ");
+			return flat.length() <= 300 ? flat : flat.substring(0, 300) + "… (" + body.length() + " chars)";
+		} catch (Exception unreadable) {
+			return "<unreadable: " + unreadable.getMessage() + ">";
 		}
 	}
 

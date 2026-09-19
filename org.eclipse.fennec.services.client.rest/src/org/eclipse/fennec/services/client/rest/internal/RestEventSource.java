@@ -20,6 +20,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,6 +36,8 @@ import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
@@ -90,6 +95,23 @@ public final class RestEventSource implements EventSource {
 		LOG.info("[DDSR-Client] RestEventSource activated, flavors=" + flavors);
 	}
 
+	/**
+	 * A changed configuration is taken, not died of (#107): being
+	 * destroyed and rebuilt would close every open stream, and
+	 * Configuration Admin delivers the same configuration more than once
+	 * while a framework starts. Streams already open keep the flavors
+	 * they subscribed with; a new value applies to the next one.
+	 */
+	@Modified
+	void modified(Config config) {
+		if (!config.flavors().equals(this.flavors)) {
+			LOG.info("[DDSR-Client] RestEventSource now subscribes with flavors=" + config.flavors()
+					+ "; streams already open keep theirs");
+		}
+		this.flavors = config.flavors();
+		this.reconnectSeconds = config.reconnect_seconds();
+	}
+
 	@Override
 	public AutoCloseable open(Handler handler) {
 		WebTarget target = transport.target().path("events");
@@ -97,8 +119,28 @@ public final class RestEventSource implements EventSource {
 			target = target.queryParam("flavors", flavors);
 		}
 		StreamReader reader = new StreamReader(target, handler);
+		streams.add(reader);
 		reader.start();
 		return reader;
+	}
+
+	/**
+	 * Every stream this source opened is closed with it.
+	 *
+	 * <p>A reader is a thread, and a thread outlives the component that
+	 * started it unless something stops it. On shutdown the bundles go in
+	 * whatever order the framework picked: if this one goes before the
+	 * consumer that holds the subscription, the reader keeps pumping and
+	 * decodes the next event against service objects that are already
+	 * dead — 30 warnings per framework in the RSA TCK, and nothing in
+	 * them saying the framework was simply on its way out (#107).
+	 */
+	@Deactivate
+	void deactivate() {
+		for (StreamReader reader : List.copyOf(streams)) {
+			reader.close();
+		}
+		streams.clear();
 	}
 
 	/**
@@ -118,6 +160,9 @@ public final class RestEventSource implements EventSource {
 	 * exactly when a connection was (re-)established and can say so,
 	 * which FR-Sync-Reconnect needs in order to trigger a fresh snapshot.
 	 */
+	/** The streams handed out and not yet closed. */
+	private final Set<StreamReader> streams = ConcurrentHashMap.newKeySet();
+
 	private final class StreamReader implements AutoCloseable, Runnable {
 
 		private final WebTarget target;
@@ -199,6 +244,7 @@ public final class RestEventSource implements EventSource {
 		 */
 		@Override
 		public void close() {
+			streams.remove(this);
 			running.set(false);
 			Thread t = thread;
 			if (t != null) {

@@ -17,7 +17,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.ServiceEvent;
@@ -37,6 +39,7 @@ import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
@@ -92,6 +95,21 @@ public class RestDiscoveryProvider implements ServiceDiscovery {
 	@Activate
 	void activate(Config config) {
 		this.config = config;
+		LOG.info("[DDSR] discovery ready — announcing to and watching " + config.broker_url());
+	}
+
+	/**
+	 * A changed configuration is taken, not died of — see the same method
+	 * on the REST distribution (#107). A discovery that is destroyed and
+	 * rebuilt mid-export hands out service objects that are already dead,
+	 * and the export fails for a reason no log explains.
+	 */
+	@Modified
+	void modified(Config config) {
+		if (!config.broker_url().equals(this.config.broker_url())) {
+			LOG.info("[DDSR] discovery now talks to " + config.broker_url());
+		}
+		this.config = config;
 	}
 
 	@Override
@@ -106,22 +124,42 @@ public class RestDiscoveryProvider implements ServiceDiscovery {
 
 		Diagnostic added = catalog.addCatalogEntry(contract, implementation.getName());
 		if (added.getSeverity() == DiagnosticSeverity.ERROR) {
-			throw new IllegalStateException("the broker refused " + contract.getName() + ": " + added.getMessage());
+			throw new IllegalStateException("the broker refused " + contract.getName() + ": " + added.getMessage()
+					+ " (code " + added.getCode() + ")");
 		}
 
-		// Parked under its catalog URL so the publish body references the
-		// contract rather than carrying a second copy of it.
+		Registration registration;
 		ResourceSet resourceSet = resourceSets.getService();
-		String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
-		resourceSet.createResource(org.eclipse.emf.common.util.URI.createURI(entryUrl))
-				.getContents().add(contract);
+		try {
+			// The publish body is built from copies, and that is not
+			// bookkeeping: putting an EObject into a Resource's contents
+			// takes it out of the one it was in, so parking the registry's
+			// own contract here would quietly empty the local registry of
+			// the very thing it exists to hold. Copier keeps the two in
+			// step — the copied flavors point at the copied operations,
+			// not back at the originals.
+			EcoreUtil.Copier copier = new EcoreUtil.Copier();
+			ServiceInterface parked = (ServiceInterface) copier.copy(contract);
+			ServiceImplementation published = (ServiceImplementation) copier.copy(implementation);
+			copier.copyReferences();
 
-		ServiceProvider provider = ServicesFactory.eINSTANCE.createServiceProvider();
-		provider.setName(implementation.getName());
-		provider.setVersion(implementation.getVersion());
-		provider.getImplementations().add(implementation);
+			// Parked under its catalog URL so the publish body references
+			// the contract rather than carrying a second copy of it.
+			String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
+			resourceSet.createResource(URI.createURI(entryUrl)).getContents().add(parked);
 
-		Registration registration = client.provider().publish(provider, implementation);
+			ServiceProvider provider = ServicesFactory.eINSTANCE.createServiceProvider();
+			provider.setName(implementation.getName());
+			provider.setVersion(implementation.getVersion());
+			provider.getImplementations().add(published);
+
+			registration = client.provider().publish(provider, published);
+		} finally {
+			// A prototype ResourceSet is a service instance like any
+			// other: what is taken has to be given back, or every export
+			// leaves one behind for the lifetime of the framework.
+			resourceSets.ungetService(resourceSet);
+		}
 		LOG.info("[DDSR] announced " + contract.getName() + " as " + implementation.getImplementationId());
 
 		AtomicBoolean announced = new AtomicBoolean(true);

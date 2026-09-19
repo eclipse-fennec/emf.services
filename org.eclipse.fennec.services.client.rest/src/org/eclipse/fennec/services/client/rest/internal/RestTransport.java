@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.client.rest.internal;
 
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyReader;
@@ -25,6 +26,7 @@ import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
@@ -84,19 +86,58 @@ public final class RestTransport {
 	@Reference
 	private ClientBuilder clientBuilder;
 
+	private static final Logger LOG = Logger.getLogger(RestTransport.class.getName());
+
 	private URI baseUrl;
 	private Client client;
+	private Config config;
 
 	@Activate
 	void activate(Config config) {
+		this.config = config;
 		this.baseUrl = URI.create(config.broker_url());
+		this.client = build(config);
+	}
+
+	/**
+	 * A changed configuration is taken, not died of.
+	 *
+	 * <p>This transport sits under every broker proxy, which sit under
+	 * the client, which sits under discovery. Letting the component
+	 * runtime destroy and rebuild it takes that whole column down with
+	 * it — and Configuration Admin delivers the same configuration more
+	 * than once while a framework starts, so it happened for no reason
+	 * at all (#107). An identical configuration now changes nothing.
+	 *
+	 * <p>Changed timeouts do need a new client; the old one is closed
+	 * once the new one is in place, which is no worse than the restart
+	 * this method replaces.
+	 */
+	@Modified
+	void modified(Config config) {
+		this.baseUrl = URI.create(config.broker_url());
+		boolean timeoutsChanged = config.connect_timeout_millis() != this.config.connect_timeout_millis()
+				|| config.read_timeout_millis() != this.config.read_timeout_millis();
+		this.config = config;
+		if (!timeoutsChanged) {
+			return;
+		}
+		LOG.info("[DDSR-Client] REST transport timeouts changed — building a new client");
+		Client previous = this.client;
+		this.client = build(config);
+		if (previous != null) {
+			previous.close();
+		}
+	}
+
+	private Client build(Config config) {
 		if (config.connect_timeout_millis() > 0) {
 			clientBuilder.connectTimeout(config.connect_timeout_millis(), TimeUnit.MILLISECONDS);
 		}
 		if (config.read_timeout_millis() > 0) {
 			clientBuilder.readTimeout(config.read_timeout_millis(), TimeUnit.MILLISECONDS);
 		}
-		this.client = clientBuilder
+		return clientBuilder
 				.register(new XmiMessageBodyReader(rsObjects))
 				.register(new XmiMessageBodyWriter(rsObjects))
 				.register(new XmiBundleMessageBodyReader(rsObjects))

@@ -7,6 +7,17 @@ Bundle-Description: \
 
 -library: enableEMF
 
+# This project has no source of its own: it holds the launch. Without a
+# compile step its jar task has nothing to wait for, so the build runs it
+# early and in parallel — before any other project has resolved a thing.
+# On a cold runner that raced the repository and failed with nine
+# "Not found in bnd-cache" for a buildpath nobody else touches.
+#
+# Saying what it depends on puts it last, where it belongs, and gives the
+# launch tasks freshly built bundles instead of whatever the previous
+# build left behind.
+-dependson: org.eclipse.fennec.services.*
+
 -buildpath: \
 	org.osgi.test.cases.remoteserviceadmin;version=latest
 

@@ -96,6 +96,9 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 
 	private static final Logger LOG = Logger.getLogger(EndpointBridge.class.getName());
 
+	/** How long shutdown may spend taking announcements back. */
+	private static final long WITHDRAW_BUDGET_MILLIS = 2_000;
+
 	@Reference
 	private DdsrClient client;
 
@@ -182,19 +185,52 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 		this.brokerUrl = config.broker_url();
 	}
 
+	/**
+	 * Take the announcements back — but never at the price of the
+	 * framework's shutdown.
+	 *
+	 * <p>Withdrawing is an HTTP call, and on the way down the broker may
+	 * be slow, unreachable, or behind a transport that is already
+	 * closing. A component that blocks there blocks
+	 * {@code Framework.stop()}, and a framework that does not stop is a
+	 * worse failure than a registration that lingers — the broker's
+	 * liveness supervision retires what we could not withdraw within two
+	 * missed heartbeats.
+	 *
+	 * <p>So a daemon thread does the work and we wait a bounded time for
+	 * it: the same shape {@code RestEventSource.close()} uses for the
+	 * event stream, for the same reason.
+	 */
 	@Deactivate
 	void deactivate() {
 		close(watch);
 		watch = null;
-		for (Announcements.Announced announcement : announced.values()) {
-			try {
-				announcement.close();
-			} catch (RuntimeException failure) {
-				LOG.log(Level.WARNING, "[DDSR] withdrawing an announced endpoint failed", failure);
-			}
-		}
+		List<Announcements.Announced> open = List.copyOf(announced.values());
 		announced.clear();
 		arrived.clear();
+		if (open.isEmpty()) {
+			return;
+		}
+		Thread withdrawals = new Thread(() -> {
+			for (Announcements.Announced announcement : open) {
+				try {
+					announcement.close();
+				} catch (RuntimeException failure) {
+					LOG.log(Level.WARNING, "[DDSR] withdrawing an announced endpoint failed", failure);
+				}
+			}
+		}, "ddsr-endpoint-withdrawals");
+		withdrawals.setDaemon(true);
+		withdrawals.start();
+		try {
+			withdrawals.join(WITHDRAW_BUDGET_MILLIS);
+			if (withdrawals.isAlive()) {
+				LOG.warning("[DDSR] " + open.size() + " endpoint(s) could not be withdrawn within "
+						+ WITHDRAW_BUDGET_MILLIS + " ms — the broker will retire them by heartbeat");
+			}
+		} catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	// ---------------------------------------------------------------- in

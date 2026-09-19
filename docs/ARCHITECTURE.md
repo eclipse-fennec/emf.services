@@ -87,7 +87,15 @@ org.eclipse.fennec.services.model               # ecore-generierte Modellklassen
                                    #     (Cross-Refs laufen positional)
                                    #   - ServiceReference.id: bleibt iD (UUID)
 
-org.eclipse.fennec.services.broker.core         # API + In-Memory-Impl
+org.eclipse.fennec.services.broker.api          # NUR die API (#105): ein Launch, der
+                                   #   nur mit einem Broker spricht, nimmt dieses
+                                   #   Bundle und bekommt damit keinen Broker
+
+org.eclipse.fennec.services.shutdown            # ein Component: sauberer Framework-Stop
+                                   #   bei SIGTERM. In jeden Launch; lag vorher in
+                                   #   broker.core und wirkte dort per Zufall
+
+org.eclipse.fennec.services.broker.core         # der Broker selbst
                                    #   role-Interfaces:
                                    #     BrokerCatalog
                                    #     BrokerImplementations

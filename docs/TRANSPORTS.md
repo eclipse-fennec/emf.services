@@ -116,6 +116,19 @@ client must not accidentally bind the in-process one.
 | `session.interval.seconds` | `600` | 0 switches sessions off |
 | `provider.heartbeat.seconds` | `30` | 0 switches liveness off |
 
+## A launch that only talks to a broker
+
+`org.eclipse.fennec.services.broker.api` carries the four role
+interfaces and nothing else. A framework that only *talks* to a broker
+takes that bundle and gets no broker: the implementation lives in
+`…broker.core`, and a launch without it has none.
+
+Every launch also wants `org.eclipse.fennec.services.shutdown`. It is
+one component with no configuration, and it makes an externally
+terminated JVM stop the framework instead of dying, so that every
+`@Deactivate` runs. Without it a provider killed with SIGTERM never
+withdraws, and its consumers are never told.
+
 ## `broker.rest` — the broker's REST face
 
 Serves `/registry`, `/references` (with the heartbeat endpoint),

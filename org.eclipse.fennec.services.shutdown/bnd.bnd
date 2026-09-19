@@ -1,0 +1,12 @@
+Bundle-Name: Fennec Services Clean Shutdown
+Bundle-Description: \
+	Stops the OSGi framework when the JVM is terminated from outside, so \
+	that every @Deactivate runs before the process exits. One component, \
+	no configuration, no dependencies beyond the framework.
+
+Private-Package: \
+	org.eclipse.fennec.services.shutdown
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest

@@ -35,8 +35,11 @@ for (const { items, dir } of sections) {
 }
 
 // Rewrite ](target.md...) links: published -> route, others -> GitHub blob.
+// The character class must include the underscore: nearly every document here is
+// named SCREAMING_SNAKE, and without it every cross-link to one of them was left
+// untouched and 404-ed on the published site.
 function rewriteLinks(md) {
-  return md.replace(/\]\((\.?\/?)([a-z0-9-]+)\.md(#[^)]*)?\)/gi, (m, _prefix, name, anchor = '') => {
+  return md.replace(/\]\((\.?\/?)([a-z0-9_-]+)\.md(#[^)]*)?\)/gi, (m, _prefix, name, anchor = '') => {
     const file = `${name}.md`;
     if (published.has(file)) {
       const { dir, slug } = published.get(file);

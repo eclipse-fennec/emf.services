@@ -183,12 +183,16 @@ public class GenericRestDistribution extends Application {
 	 * a deployment that only serves must not wait for a broker client
 	 * that will never come.
 	 *
-	 * <p>Bound through a method rather than a field because the arrival
-	 * is what triggers the announcement. A broker client that shows up
-	 * after this component activated is the normal case, not an edge
-	 * one — its own configuration has to be applied first — and an
-	 * announcement that only ever happened in {@code activate} would
-	 * simply be skipped then, leaving an endpoint nobody can discover.
+	 * <p>Optional because the configuration decides whether it is needed:
+	 * with {@code publish} off this distribution serves an endpoint and
+	 * announces nothing, and a deployment doing that has no broker client
+	 * to offer. DS cannot say "mandatory when publish is true", and the
+	 * shape that could — serving and announcing as two components, as the
+	 * class comment above already suggests — is a change to #84's headless
+	 * provider rather than to this reference.
+	 *
+	 * <p>Bound through a method because the arrival is what triggers the
+	 * announcement: whichever of the two comes last completes the pair.
 	 */
 	@Reference(cardinality = ReferenceCardinality.OPTIONAL,
 			policy = ReferencePolicy.DYNAMIC, policyOption = ReferencePolicyOption.RELUCTANT)
@@ -209,6 +213,9 @@ public class GenericRestDistribution extends Application {
 	 * for the interface alone also has that bundle's own in-process
 	 * catalog to offer, and announcing into an empty local broker looks
 	 * like success and reaches nobody.
+	 *
+	 * <p>Optional for the same reason as the client above: without
+	 * {@code publish} there is nothing to announce into.
 	 */
 	@Reference(target = "(ddsr.broker.transport=rest)",
 			cardinality = ReferenceCardinality.OPTIONAL,

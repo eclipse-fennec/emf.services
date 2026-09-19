@@ -1,0 +1,25 @@
+Bundle-Name: Fennec Services RSA Configuration
+Bundle-Description: \
+	One configuration per role instead of nine per deployment. A role \
+	configuration holds the few facts that are a decision — the broker, \
+	the public address, the registry name, the policy — and a \
+	configuration component derives the individual configurations from \
+	it, validates them before anything comes up, updates them together \
+	and takes them down in an order that withdraws before the transports \
+	go.
+
+Private-Package: \
+	org.eclipse.fennec.services.rsa.config
+
+-buildpath: \
+	osgi.core;version=latest,\
+	osgi.cmpn;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.service.cm;version=latest,\
+	org.osgi.service.jakartars;version=latest
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

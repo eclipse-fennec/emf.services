@@ -36,6 +36,7 @@ jersey.deps:
 	bnd.identity;id='junit-vintage-engine',\
 	bnd.identity;id='org.apache.felix.eventadmin',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa',\
+	bnd.identity;id='org.eclipse.fennec.services.rsa.config',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.distribution.rest',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.discovery.rest',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.discovery.local',\
@@ -123,6 +124,7 @@ runbundles.files: ${uniq;\
 	${repo;org.eclipse.fennec.services.model;latest},\
 	${repo;org.eclipse.fennec.services.provider.rest;latest},\
 	${repo;org.eclipse.fennec.services.rsa;latest},\
+	${repo;org.eclipse.fennec.services.rsa.config;latest},\
 	${repo;org.eclipse.fennec.services.rsa.discovery.rest;latest},\
 	${repo;org.eclipse.fennec.services.rsa.distribution.rest;latest},\
 	${repo;org.eclipse.fennec.services.rsa.topology;latest},\
@@ -201,6 +203,7 @@ runbundles.files: ${uniq;\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.provider.rest;version=snapshot,\
 	org.eclipse.fennec.services.rsa;version=snapshot,\
+	org.eclipse.fennec.services.rsa.config;version=snapshot,\
 	org.eclipse.fennec.services.rsa.discovery.rest;version=snapshot,\
 	org.eclipse.fennec.services.rsa.distribution.rest;version=snapshot,\
 	org.eclipse.fennec.services.rsa.tck;version=snapshot,\

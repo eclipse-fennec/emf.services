@@ -1,42 +1,13 @@
 {
   ":configurator:resource-version": 1,
-  "org.apache.felix.http~tckHttp": {
-    "org.osgi.service.http.port": "$[prop:rsa.tck.http.port;default=9096]",
-    "org.osgi.service.http.host": "0.0.0.0",
-    "org.apache.felix.http.context_path": "services",
-    "org.apache.felix.http.name": "RSA TCK HTTP",
-    "org.apache.felix.http.runtime.init.id": "tckHttp"
-  },
-  "JakartarsServletWhiteboardRuntimeComponent~tckRest": {
-    "jersey.jakartars.whiteboard.name": "RSA TCK Rest",
-    "osgi.http.whiteboard.target": "(id=tckHttp)"
-  },
-  "org.eclipse.fennec.services.client.rest": {
-    "broker.url": "$[prop:rsa.tck.broker.url;default=http://localhost:8887/ddsr/rest]"
-  },
-  "org.eclipse.fennec.services.client": {
+  "org.eclipse.fennec.services.rsa.provider": {
+    "broker.url": "$[prop:rsa.tck.broker.url;default=http://localhost:8887/ddsr/rest]",
+    "http.port": "$[prop:rsa.tck.http.port;default=9096]",
+    "http.id": "tckHttp",
+    "context.path": "services",
+    "registry.name": "rsa-tck",
+    "policy": "manual",
     "provider.heartbeat.seconds": "5",
     "session.interval.seconds": "0"
-  },
-  "EObjectRegistry~ddsrContracts": {
-    "name": "ddsr.contracts",
-    "initialProvider.target": "(emf.eobject.provider.name=ddsr.bundle.models)"
-  },
-  "org.eclipse.fennec.services.rsa.registry": {
-    "registry.name": "rsa-tck"
-  },
-  "org.eclipse.fennec.services.rsa.distribution.rest": {
-    "public.url": "http://localhost:$[prop:rsa.tck.http.port;default=9096]/services"
-  },
-  "org.eclipse.fennec.services.rsa.discovery.rest": {
-    "broker.url": "$[prop:rsa.tck.broker.url;default=http://localhost:8887/ddsr/rest]"
-  },
-  "org.eclipse.fennec.services.rsa.topology": {
-    "policy": "manual"
-  },
-  "org.eclipse.fennec.services.rsa~rest": {
-    "remote.configs.supported": "fennec.rest",
-    "distribution.target": "(ddsr.rsa.flavor=fennec.rest)",
-    "discovery.target": "(ddsr.rsa.flavor=fennec.rest)"
   }
 }

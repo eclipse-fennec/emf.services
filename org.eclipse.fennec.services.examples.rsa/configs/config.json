@@ -1,40 +1,13 @@
 {
   ":configurator:resource-version": 1,
-  "org.apache.felix.http~rsaHttp": {
-    "org.osgi.service.http.port": "$[env:RSA_HTTP_PORT;default=9095]",
-    "org.osgi.service.http.host": "0.0.0.0",
-    "org.apache.felix.http.context_path": "services",
-    "org.apache.felix.http.name": "RSA Example HTTP",
-    "org.apache.felix.http.runtime.init.id": "rsaHttp"
-  },
-  "JakartarsServletWhiteboardRuntimeComponent~rsaRest": {
-    "jersey.jakartars.whiteboard.name": "RSA Example Rest",
-    "osgi.http.whiteboard.target": "(id=rsaHttp)"
-  },
-  "org.eclipse.fennec.services.client.rest": {
-    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
-  },
-  "org.eclipse.fennec.services.client": {
+  "org.eclipse.fennec.services.rsa.provider": {
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
+    "http.port": "$[env:RSA_HTTP_PORT;default=9095]",
+    "http.id": "rsaHttp",
+    "context.path": "services",
+    "public.host": "$[env:RSA_PUBLIC_HOST;default=localhost]",
+    "registry.name": "rsa-example",
     "provider.heartbeat.seconds": "30",
     "session.interval.seconds": "0"
-  },
-  "EObjectRegistry~ddsrContracts": {
-    "name": "ddsr.contracts",
-    "initialProvider.target": "(emf.eobject.provider.name=ddsr.bundle.models)"
-  },
-  "org.eclipse.fennec.services.rsa.registry": {
-    "registry.name": "rsa-example",
-    "default.version": "1.0.0"
-  },
-  "org.eclipse.fennec.services.rsa.distribution.rest": {
-    "public.url": "$[env:RSA_PUBLIC_URL;default=http://localhost:9095/services]"
-  },
-  "org.eclipse.fennec.services.rsa.discovery.rest": {
-    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
-  },
-  "org.eclipse.fennec.services.rsa~rest": {
-    "remote.configs.supported": "fennec.rest",
-    "distribution.target": "(ddsr.rsa.flavor=fennec.rest)",
-    "discovery.target": "(ddsr.rsa.flavor=fennec.rest)"
   }
 }

@@ -25,15 +25,14 @@ import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
-import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
-import org.osgi.service.jakartars.runtime.dto.ApplicationDTO;
-import org.osgi.service.jakartars.runtime.dto.FailedApplicationDTO;
-import org.osgi.service.jakartars.runtime.dto.RuntimeDTO;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
+import org.osgi.service.jakartars.runtime.dto.ApplicationDTO;
+import org.osgi.service.jakartars.runtime.dto.FailedApplicationDTO;
+import org.osgi.service.jakartars.runtime.dto.RuntimeDTO;
 
 import jakarta.ws.rs.core.Application;
 

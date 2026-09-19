@@ -97,6 +97,10 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addAdmin(RemoteServiceAdmin admin) {
 		admins.add(admin);
+		// Discovery reports a provider once. Whatever appeared while no
+		// admin could take it has been waiting since, and this is the only
+		// moment anyone comes back to it.
+		watches.values().forEach(Watch::importWhatIsWaiting);
 	}
 
 	void removeAdmin(RemoteServiceAdmin admin) {
@@ -112,6 +116,10 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addDiscovery(ServiceDiscovery discovery) {
 		discoveries.add(discovery);
+		// A watch subscribes to the discoveries that exist when it is
+		// created. One that comes up afterwards knows providers the others
+		// do not, so every standing watch subscribes to it too.
+		watches.values().forEach(watch -> watch.alsoWatch(discovery));
 	}
 
 	void removeDiscovery(ServiceDiscovery discovery) {
@@ -223,6 +231,8 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 		final String contractName;
 		int listeners;
 		private final Map<String, ImportRegistration> imports = new ConcurrentHashMap<>();
+		/** What appeared while no admin could take it. */
+		private final Map<String, ServiceImplementation> waiting = new ConcurrentHashMap<>();
 		/** One subscription per discovery: each may know a different provider. */
 		private final List<AutoCloseable> subscriptions = new ArrayList<>();
 
@@ -245,10 +255,26 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			for (RemoteServiceAdmin admin : admins) {
 				ImportRegistration imported = admin.importService(describe(referenceId, implementation));
 				if (imported != null) {
+					waiting.remove(referenceId);
 					imports.put(referenceId, imported);
 					return;
 				}
 			}
+			// Nobody could, for now. Remembered rather than dropped: the
+			// admin for this flavor is a component like any other and may
+			// still be bringing its transports up.
+			waiting.put(referenceId, implementation);
+		}
+
+		/** Offer everything that is still waiting to the admins there are now. */
+		void importWhatIsWaiting() {
+			Map<String, ServiceImplementation> pending = Map.copyOf(waiting);
+			pending.forEach(this::appeared);
+		}
+
+		/** Subscribe to a discovery that came up after this watch did. */
+		void alsoWatch(ServiceDiscovery discovery) {
+			subscriptions.add(discovery.watch(contractName, this));
 		}
 
 		@Override
@@ -265,6 +291,7 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 
 		@Override
 		public void gone(String referenceId) {
+			waiting.remove(referenceId);
 			ImportRegistration imported = imports.remove(referenceId);
 			if (imported != null) {
 				imported.close();

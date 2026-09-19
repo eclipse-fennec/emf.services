@@ -13,7 +13,6 @@
 
 package org.eclipse.fennec.services.rsa.topology;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +71,7 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addAdmin(RemoteServiceAdmin admin) {
 		admins.add(admin);
+		exportThrough(admin);
 	}
 
 	void removeAdmin(RemoteServiceAdmin admin) {
@@ -80,7 +80,14 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	private final List<RemoteServiceAdmin> admins = new CopyOnWriteArrayList<>();
 
-	private final Map<ServiceReference<?>, Collection<ExportRegistration>> exported = new ConcurrentHashMap<>();
+	/**
+	 * Everything that asked to be exported, with whatever came of it.
+	 *
+	 * <p>A service with an empty collection is one no admin has taken
+	 * yet, and it stays here on purpose: it is what {@link #addAdmin}
+	 * comes back to.
+	 */
+	private final Map<ServiceReference<Object>, Collection<ExportRegistration>> exported = new ConcurrentHashMap<>();
 
 	private ServiceTracker<Object, Collection<ExportRegistration>> tracker;
 
@@ -132,28 +139,49 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	@Override
 	public Collection<ExportRegistration> addingService(ServiceReference<Object> reference) {
-		try {
+		Collection<ExportRegistration> registrations = new CopyOnWriteArrayList<>();
+		exported.put(reference, registrations);
+		for (RemoteServiceAdmin admin : admins) {
 			// Every admin is asked: each serves one configuration type,
 			// and a service that names none should be exported by all of
-			// them — which is what a promiscuous topology manager means.
-			List<ExportRegistration> registrations = new ArrayList<>();
-			for (RemoteServiceAdmin admin : admins) {
-				registrations.addAll(admin.exportService(reference, null));
-			}
-			if (registrations.isEmpty()) {
-				// Not ours: no distribution answers the configuration type
-				// it asked for. Another topology manager or another admin
-				// may well take it.
-				return null;
-			}
-			exported.put(reference, registrations);
+			// them - which is what a promiscuous topology manager means.
+			exportThrough(admin, reference, registrations);
+		}
+		if (registrations.isEmpty()) {
+			// No admin speaks the configuration type this service asked
+			// for. It stays tracked all the same, because an admin is a
+			// component like any other and may simply not be up yet; when
+			// one arrives, addAdmin comes back to it.
+			LOG.info("[DDSR] nothing exports " + reference + " yet");
+		} else {
 			LOG.info("[DDSR] exported " + reference);
-			return registrations;
+		}
+		return registrations;
+	}
+
+	/**
+	 * Offers everything that asked to be exported to an admin that just
+	 * arrived.
+	 *
+	 * <p>Without this, an admin is only ever asked about services that
+	 * register after it. That is the wrong way round: a service says it
+	 * wants to be exported and then waits, while the transports and the
+	 * admin above them take their time coming up. The example provider
+	 * exported nothing at all for exactly this reason, and the TCK never
+	 * showed it because the TCK exports by hand.
+	 */
+	private void exportThrough(RemoteServiceAdmin admin) {
+		exported.forEach((reference, registrations) -> exportThrough(admin, reference, registrations));
+	}
+
+	private void exportThrough(RemoteServiceAdmin admin, ServiceReference<Object> reference,
+			Collection<ExportRegistration> registrations) {
+		try {
+			registrations.addAll(admin.exportService(reference, null));
 		} catch (RuntimeException failure) {
 			// One service that cannot be exported must not stop the
 			// others, and the reason has to be visible.
 			LOG.log(Level.WARNING, "[DDSR] exporting " + reference + " failed", failure);
-			return null;
 		}
 	}
 

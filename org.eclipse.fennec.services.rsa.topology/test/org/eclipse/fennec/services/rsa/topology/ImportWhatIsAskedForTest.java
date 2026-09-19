@@ -20,8 +20,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.fennec.services.ServiceImplementation;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
@@ -46,6 +49,8 @@ class ImportWhatIsAskedForTest {
 	/** Records which contracts were asked for; reports nothing back. */
 	private static final class RecordingDiscovery implements ServiceDiscovery {
 		final List<String> watched = new ArrayList<>();
+		/** The watch itself, so a test can play discovery to it. */
+		DiscoveryListener listener;
 
 		@Override
 		public String[] supportedConfigs() {
@@ -60,11 +65,12 @@ class ImportWhatIsAskedForTest {
 		@Override
 		public AutoCloseable watch(String contractName, DiscoveryListener listener) {
 			watched.add(contractName);
+			this.listener = listener;
 			return () -> { };
 		}
 	}
 
-	private static final class IdleAdmin implements RemoteServiceAdmin {
+	private static class IdleAdmin implements RemoteServiceAdmin {
 		@Override
 		public Collection<ExportRegistration> exportService(ServiceReference<?> reference, Map<String, ?> properties) {
 			return List.of();
@@ -135,6 +141,67 @@ class ImportWhatIsAskedForTest {
 				listenerFor("(objectClass=org.eclipse.fennec.services.client.DdsrClient)")));
 
 		assertThat(discovery.watched).as("none of these could ever be somebody else's service").isEmpty();
+	}
+
+	@Test
+	@DisplayName("a provider that appeared while no admin existed is imported when one arrives")
+	void whatAppearedTooEarlyIsNotLost() {
+		RecordingDiscovery discovery = new RecordingDiscovery();
+		ImportWhatIsAskedFor topology = new ImportWhatIsAskedFor().with(new IdleAdmin(), discovery);
+		topology.added(List.of(listenerFor("(objectClass=com.acme.Thing)")));
+
+		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
+		implementation.setImplementationId("thing-1");
+		discovery.listener.appeared("endpoint-1", implementation);
+
+		RecordingAdmin late = new RecordingAdmin();
+		topology.addAdmin(late);
+
+		assertThat(late.imported).as("discovery reports a provider once; this is the only second chance")
+				.containsExactly("endpoint-1");
+	}
+
+	@Test
+	@DisplayName("a discovery that comes up later is watched by the standing watches too")
+	void aLateDiscoveryIsAlsoWatched() {
+		RecordingDiscovery first = new RecordingDiscovery();
+		ImportWhatIsAskedFor topology = new ImportWhatIsAskedFor().with(new IdleAdmin(), first);
+		topology.added(List.of(listenerFor("(objectClass=com.acme.Thing)")));
+
+		RecordingDiscovery later = new RecordingDiscovery();
+		topology.addDiscovery(later);
+
+		assertThat(later.watched).as("it may know a provider the first one does not").containsExactly("Thing");
+	}
+
+	/** An admin that takes every endpoint and says which ones it was given. */
+	private static final class RecordingAdmin extends IdleAdmin {
+		final List<String> imported = new ArrayList<>();
+
+		@Override
+		public ImportRegistration importService(EndpointDescription endpoint) {
+			imported.add(endpoint.getId());
+			return new ImportRegistration() {
+				@Override
+				public ImportReference getImportReference() {
+					return null;
+				}
+
+				@Override
+				public void close() {
+				}
+
+				@Override
+				public Throwable getException() {
+					return null;
+				}
+
+				@Override
+				public boolean update(EndpointDescription updated) {
+					return true;
+				}
+			};
+		}
 	}
 
 	@Test

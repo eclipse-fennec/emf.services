@@ -54,8 +54,34 @@ public class RestDistributionComponent implements RestDistribution {
 	/** How long a whiteboard may take to deploy one application. */
 	private static final long DEPLOY_TIMEOUT_MILLIS = 10_000;
 
-	@Reference(target = "(emf.name=services)")
-	private ComponentServiceObjects<ResourceSet> resourceSets;
+	/**
+	 * The ResourceSet for the services model — bound dynamically, and
+	 * that is the point, not a style choice.
+	 *
+	 * <p>The ResourceSet service is registered first and only <em>gains</em>
+	 * {@code emf.name=services} afterwards, through a property update as
+	 * the model's configurator arrives. A static reference has to be
+	 * woken by that modification to notice a service it did not match
+	 * before, and this component — alone among the ones targeting this
+	 * ResourceSet — has no configuration whose arrival would make the
+	 * runtime look at it again. In roughly one child framework in ten of
+	 * the RSA TCK it was never looked at again: the distribution simply
+	 * never appeared, and nothing said why. A dynamic reference is
+	 * tracked as services come, go and change, which is the path that
+	 * does not depend on that wake-up. (#106)
+	 */
+	@Reference(target = "(emf.name=services)", policy = ReferencePolicy.DYNAMIC)
+	void setResourceSets(ComponentServiceObjects<ResourceSet> resourceSets) {
+		this.resourceSets = resourceSets;
+	}
+
+	void unsetResourceSets(ComponentServiceObjects<ResourceSet> resourceSets) {
+		if (this.resourceSets == resourceSets) {
+			this.resourceSets = null;
+		}
+	}
+
+	private volatile ComponentServiceObjects<ResourceSet> resourceSets;
 
 	/**
 	 * The whiteboard this distribution mounts into, when there is one to

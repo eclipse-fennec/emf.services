@@ -76,7 +76,19 @@ p: org.osgi.test.cases.remoteserviceadmin
 # Generated from -runbundles; regenerate when that changes. Repository
 # bundles carry the resolved range — 'latest' would hand the child the
 # index's highest version, not the one the parent runs.
+# The child starts these in list order, and the order matters: the
+# configuration stack and the bundle that carries the configurations go
+# first, so every configuration exists in Configuration Admin before a
+# component that requires one registers with SCR. Started alphabetically,
+# our component bundles came up before the configuration bundle, and in
+# roughly one child in seven a configuration written afterwards was never
+# delivered — present in Configuration Admin, unknown to the component.
 runbundles.files: ${uniq;\
+	${repo;org.apache.felix.configadmin;[1.9.26,1.9.27)},\
+	${repo;org.apache.felix.cm.json;[2.0.6,2.0.7)},\
+	${repo;org.apache.felix.configadmin.plugin.interpolation;[1.2.8,1.2.9)},\
+	${repo;org.apache.felix.configurator;[1.0.18,1.0.19)},\
+	${repo;org.eclipse.fennec.services.rsa.tck;latest},\
 	${repo;assertj-core;[3.27.7,3.27.8)},\
 	${repo;jakarta.activation-api;[2.1.3,2.1.4)},\
 	${repo;jakarta.annotation-api;[2.1.1,2.1.2)},\
@@ -93,10 +105,6 @@ runbundles.files: ${uniq;\
 	${repo;org.apache.aries.spifly.dynamic.bundle;[1.3.7,1.3.8)},\
 	${repo;org.apache.commons.commons-fileupload;[1.6.0,1.6.1)},\
 	${repo;org.apache.commons.commons-io;[2.22.0,2.22.1)},\
-	${repo;org.apache.felix.cm.json;[2.0.6,2.0.7)},\
-	${repo;org.apache.felix.configadmin;[1.9.26,1.9.27)},\
-	${repo;org.apache.felix.configadmin.plugin.interpolation;[1.2.8,1.2.9)},\
-	${repo;org.apache.felix.configurator;[1.0.18,1.0.19)},\
 	${repo;org.apache.felix.eventadmin;[1.6.4,1.6.5)},\
 	${repo;org.apache.felix.http.jetty12;[1.1.0,1.1.1)},\
 	${repo;org.apache.felix.http.servlet-api;[6.1.0,6.1.1)},\
@@ -117,7 +125,6 @@ runbundles.files: ${uniq;\
 	${repo;org.eclipse.fennec.services.rsa;latest},\
 	${repo;org.eclipse.fennec.services.rsa.discovery.rest;latest},\
 	${repo;org.eclipse.fennec.services.rsa.distribution.rest;latest},\
-	${repo;org.eclipse.fennec.services.rsa.tck;latest},\
 	${repo;org.eclipse.fennec.services.rsa.topology;latest},\
 	${repo;org.eclipse.fennec.services.xmi.codec;latest},\
 	${repo;org.eclipse.osgitech.rest;[1.2.3,1.2.4)},\

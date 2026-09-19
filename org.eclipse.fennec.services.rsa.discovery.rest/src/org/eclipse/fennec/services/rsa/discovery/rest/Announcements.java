@@ -22,6 +22,8 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.osgi.service.component.ComponentServiceObjects;
 
 /**
@@ -52,12 +54,17 @@ final class Announcements {
 
 	/**
 	 * Publish {@code implementation} of {@code contract}, with the
-	 * contract parked under the broker's catalog URL for the length of
-	 * the call.
+	 * contract parked under the broker's catalog URL.
+	 *
+	 * <p>The parking lasts as long as the announcement, not as long as
+	 * this call: saying the announcement anew serialises the
+	 * implementation again, and a contract that has meanwhile fallen out
+	 * of its resource fails that with "not contained in a resource" —
+	 * the same wall the first publish would have hit.
 	 *
 	 * @param providerName what the provider is called in the registry
 	 */
-	static Registration publish(DdsrClient client, ComponentServiceObjects<ResourceSet> resourceSets,
+	static Announced publish(DdsrClient client, ComponentServiceObjects<ResourceSet> resourceSets,
 			String brokerUrl, ServiceInterface contract, ServiceImplementation implementation,
 			String providerName) {
 		ResourceSet resourceSet = resourceSets.getService();
@@ -75,12 +82,57 @@ final class Announcements {
 			provider.setVersion(implementation.getVersion());
 			provider.getImplementations().add(published);
 
-			return client.provider().publish(provider, published);
-		} finally {
-			// A prototype ResourceSet is a service instance like any
-			// other: what is taken has to be given back, or every
-			// announcement leaves one behind.
+			return new Announced(client.provider().publish(provider, published), published,
+					() -> resourceSets.ungetService(resourceSet));
+		} catch (RuntimeException failure) {
 			resourceSets.ungetService(resourceSet);
+			throw failure;
+		}
+	}
+
+	/**
+	 * One live announcement: what the broker knows, the document it was
+	 * said with, and the borrowed ResourceSet that holds it.
+	 */
+	static final class Announced {
+
+		private final Registration registration;
+		private final ServiceImplementation published;
+		private final Runnable release;
+		private final AtomicBoolean open = new AtomicBoolean(true);
+
+		private Announced(Registration registration, ServiceImplementation published, Runnable release) {
+			this.registration = registration;
+			this.published = published;
+			this.release = release;
+		}
+
+		/** The implementation as the broker holds it — mutate, then {@link #update()}. */
+		ServiceImplementation implementation() {
+			return published;
+		}
+
+		/** Say it anew, keeping the identity the broker knows it by. */
+		void update() {
+			registration.update();
+		}
+
+		/**
+		 * Withdraw and give the ResourceSet back. Idempotent: closing an
+		 * announcement twice is something a lifecycle does, not a fault.
+		 */
+		void close() {
+			if (!open.compareAndSet(true, false)) {
+				return;
+			}
+			try {
+				registration.withdraw();
+			} finally {
+				// A prototype ResourceSet is a service instance like any
+				// other: what is taken has to be given back, or every
+				// announcement leaves one behind.
+				release.run();
+			}
 		}
 	}
 }

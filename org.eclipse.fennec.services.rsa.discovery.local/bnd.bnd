@@ -1,0 +1,30 @@
+Bundle-Name: Fennec Services RSA Local Discovery
+Bundle-Description: \
+	The endpoint description extender of 122.6.2: a bundle may carry the \
+	descriptions of endpoints it knows about in XML files named by its \
+	Remote-Service header, and this reads them and tells the local \
+	endpoint listeners. No transport, no broker — the descriptions are \
+	already written down; what is missing is someone to read them.
+
+-library: enableEMF
+
+Private-Package: \
+	org.eclipse.fennec.services.rsa.discovery.local
+
+# 122.6.2: what an endpoint description extender says about itself. The
+# version is the specification's, not ours, and the uses directive is
+# exactly the package a description is expressed in.
+Provide-Capability: \
+	osgi.extender;osgi.extender="osgi.remoteserviceadmin";version:Version="1.1";uses:="org.osgi.service.remoteserviceadmin"
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.remoteserviceadmin;version=latest,\
+	org.eclipse.fennec.services.rsa;version=snapshot,\
+	org.osgi.util.tracker;version=latest
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

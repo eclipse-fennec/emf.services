@@ -131,14 +131,14 @@ public class RestDiscoveryProvider implements ServiceDiscovery {
 					+ " (code " + added.getCode() + ")");
 		}
 
-		Registration registration = Announcements.publish(client, resourceSets, config.broker_url(), contract,
-				implementation, implementation.getName());
+		Announcements.Announced announcement = Announcements.publish(client, resourceSets, config.broker_url(),
+				contract, implementation, implementation.getName());
 		LOG.info("[DDSR] announced " + contract.getName() + " as " + implementation.getImplementationId());
 
 		AtomicBoolean announced = new AtomicBoolean(true);
 		return () -> {
 			if (announced.compareAndSet(true, false)) {
-				registration.withdraw();
+				announcement.close();
 				LOG.info("[DDSR] withdrew " + contract.getName());
 			}
 		};

@@ -41,4 +41,20 @@ public @interface TopologyPolicy {
 			options = { @org.osgi.service.metatype.annotations.Option(label = "promiscuous", value = PROMISCUOUS),
 					@org.osgi.service.metatype.annotations.Option(label = "manual", value = MANUAL) })
 	String policy() default PROMISCUOUS;
+
+	/**
+	 * What to do with an endpoint a discovery reports.
+	 *
+	 * <p>Separate from {@link #policy()} because exporting and importing
+	 * are separate decisions, and a deployment often wants one without
+	 * the other: a node that only consumes exports nothing, and a test
+	 * that drives the admin itself still wants what discovery finds to
+	 * arrive.
+	 */
+	@AttributeDefinition(name = "Import policy",
+			description = "promiscuous: import every endpoint a discovery reports. manual: import nothing "
+					+ "on your own.",
+			options = { @org.osgi.service.metatype.annotations.Option(label = "promiscuous", value = PROMISCUOUS),
+					@org.osgi.service.metatype.annotations.Option(label = "manual", value = MANUAL) })
+	String import_policy() default PROMISCUOUS;
 }

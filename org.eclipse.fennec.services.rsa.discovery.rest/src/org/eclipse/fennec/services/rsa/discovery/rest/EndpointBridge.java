@@ -34,6 +34,7 @@ import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
 import org.eclipse.fennec.services.client.ServiceLocator;
+import org.eclipse.fennec.services.rsa.spi.EndpointScopes;
 import org.eclipse.fennec.services.rsa.spi.OsgiProperties;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -112,7 +113,7 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	private final Map<EndpointListener, List<String>> legacyListeners = new ConcurrentHashMap<>();
 
 	/** What this framework announced, by endpoint id. */
-	private final Map<String, Registration> announced = new ConcurrentHashMap<>();
+	private final Map<String, Announcements.Announced> announced = new ConcurrentHashMap<>();
 
 	/** What arrived over the wire, by the registry's reference id. */
 	private final Map<String, EndpointDescription> arrived = new ConcurrentHashMap<>();
@@ -129,8 +130,8 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addEventListener(EndpointEventListener listener, Map<String, Object> properties) {
 		if (someoneElse(properties)) {
-			eventListeners.put(listener, scopeOf(properties));
-			replay(listener, scopeOf(properties));
+			eventListeners.put(listener, EndpointScopes.of(properties));
+			replay(listener, EndpointScopes.of(properties));
 		}
 	}
 
@@ -141,8 +142,8 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addLegacyListener(EndpointListener listener, Map<String, Object> properties) {
 		if (someoneElse(properties)) {
-			legacyListeners.put(listener, scopeOf(properties));
-			replay(listener, scopeOf(properties));
+			legacyListeners.put(listener, EndpointScopes.of(properties));
+			replay(listener, EndpointScopes.of(properties));
 		}
 	}
 
@@ -185,9 +186,9 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	void deactivate() {
 		close(watch);
 		watch = null;
-		for (Registration registration : announced.values()) {
+		for (Announcements.Announced announcement : announced.values()) {
 			try {
-				registration.withdraw();
+				announcement.close();
 			} catch (RuntimeException failure) {
 				LOG.log(Level.WARNING, "[DDSR] withdrawing an announced endpoint failed", failure);
 			}
@@ -231,7 +232,7 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 					+ endpoint.getFrameworkUUID());
 			return;
 		}
-		Registration known = announced.get(endpoint.getId());
+		Announcements.Announced known = announced.get(endpoint.getId());
 		if (known != null) {
 			// A modification, and it has to reach the other side as one:
 			// withdrawing and announcing again would tell every consumer
@@ -269,12 +270,12 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	}
 
 	/** Say the same endpoint anew, keeping its identity in the registry. */
-	private void modify(EndpointDescription endpoint, Registration registration) {
+	private void modify(EndpointDescription endpoint, Announcements.Announced announcement) {
 		try {
-			ServiceImplementation published = registration.implementation();
+			ServiceImplementation published = announcement.implementation();
 			published.getProperties().clear();
 			published.getProperties().addAll(OsgiProperties.toModel(endpoint.getProperties()));
-			registration.update();
+			announcement.update();
 			LOG.info("[DDSR] modified endpoint " + endpoint.getId());
 		} catch (RuntimeException failure) {
 			LOG.log(Level.WARNING, "[DDSR] modifying " + endpoint.getId() + " failed", failure);
@@ -282,12 +283,12 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	}
 
 	private void unannounce(EndpointDescription endpoint) {
-		Registration registration = announced.remove(endpoint.getId());
-		if (registration == null) {
+		Announcements.Announced announcement = announced.remove(endpoint.getId());
+		if (announcement == null) {
 			return;
 		}
 		try {
-			registration.withdraw();
+			announcement.close();
 			LOG.info("[DDSR] withdrew endpoint " + endpoint.getId());
 		} catch (RuntimeException failure) {
 			LOG.log(Level.WARNING, "[DDSR] withdrawing " + endpoint.getId() + " failed", failure);
@@ -378,13 +379,13 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	private void deliver(EndpointEvent event) {
 		EndpointDescription endpoint = event.getEndpoint();
 		eventListeners.forEach((listener, scope) -> {
-			String matched = matching(scope, endpoint);
+			String matched = EndpointScopes.matching(scope, endpoint);
 			if (matched != null) {
 				safely(() -> listener.endpointChanged(event, matched), listener);
 			}
 		});
 		legacyListeners.forEach((listener, scope) -> {
-			String matched = matching(scope, endpoint);
+			String matched = EndpointScopes.matching(scope, endpoint);
 			if (matched == null) {
 				return;
 			}
@@ -402,7 +403,7 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	/** Everything already known, for a listener that just showed up. */
 	private void replay(Object listener, List<String> scope) {
 		for (EndpointDescription endpoint : arrived.values()) {
-			String matched = matching(scope, endpoint);
+			String matched = EndpointScopes.matching(scope, endpoint);
 			if (matched == null) {
 				continue;
 			}
@@ -415,43 +416,7 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 		}
 	}
 
-	/** The first filter of the scope the endpoint matches, or {@code null}. */
-	private static String matching(List<String> scope, EndpointDescription endpoint) {
-		for (String filter : scope) {
-			try {
-				if (endpoint.matches(filter)) {
-					return filter;
-				}
-			} catch (IllegalArgumentException malformed) {
-				LOG.log(Level.FINE, "[DDSR] a listener's scope is not a filter: " + filter, malformed);
-			}
-		}
-		return null;
-	}
 
-	/** {@code endpoint.listener.scope}, however it was said. */
-	private static List<String> scopeOf(Map<String, Object> properties) {
-		Object scope = properties.get(EndpointEventListener.ENDPOINT_LISTENER_SCOPE);
-		List<String> filters = new ArrayList<>();
-		if (scope instanceof String single) {
-			if (!single.isBlank()) {
-				filters.add(single);
-			}
-		} else if (scope instanceof String[] several) {
-			for (String filter : several) {
-				if (filter != null && !filter.isBlank()) {
-					filters.add(filter);
-				}
-			}
-		} else if (scope instanceof Collection<?> several) {
-			for (Object filter : several) {
-				if (filter != null && !filter.toString().isBlank()) {
-					filters.add(filter.toString());
-				}
-			}
-		}
-		return filters;
-	}
 
 	private static void safely(Runnable delivery, Object listener) {
 		try {

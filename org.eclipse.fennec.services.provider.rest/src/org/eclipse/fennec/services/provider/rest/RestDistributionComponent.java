@@ -33,6 +33,8 @@ import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.component.annotations.ReferenceCardinality;
 
 import jakarta.ws.rs.core.Application;
 
@@ -50,26 +52,43 @@ public class RestDistributionComponent implements RestDistribution {
 	private static final Logger LOG = Logger.getLogger(RestDistributionComponent.class.getName());
 
 	/** How long a whiteboard may take to deploy one application. */
-	private static final long DEPLOY_TIMEOUT_MILLIS = 30_000;
+	private static final long DEPLOY_TIMEOUT_MILLIS = 10_000;
 
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> resourceSets;
 
 	/**
-	 * The whiteboard this distribution mounts into.
+	 * The whiteboard this distribution mounts into, when there is one to
+	 * ask.
 	 *
-	 * <p>Referenced for two reasons. It is a readiness signal: the
-	 * runtime service exists only once a whiteboard is actually running,
-	 * so this distribution cannot offer to serve while there is nothing
-	 * to serve into. And it is the only way to find out whether an
-	 * application was really deployed — registering one is a request, not
-	 * an accomplishment.
+	 * <p>It is the only way to find out whether an application was really
+	 * deployed — registering one is a request, not an accomplishment —
+	 * and that is worth having. It is deliberately <em>not</em> required:
+	 * making it so turned "the whiteboard is late" into "the distribution
+	 * never appears" in three of seven frameworks of the RSA TCK, which
+	 * is a worse answer than the race it was meant to close.
+	 *
+	 * <p>Readiness belongs in a signal the module raises when it can
+	 * serve, not in a reference that decides whether it exists at all
+	 * (#114). Until then: when a runtime is here, we ask it; when it is
+	 * not, we serve the way this always did.
 	 *
 	 * <p>A deployment with more than one whiteboard says which, the way
 	 * DS lets any reference be pointed: {@code runtime.target}.
 	 */
-	@Reference(name = "runtime")
-	private JakartarsServiceRuntime runtime;
+	@Reference(name = "runtime", cardinality = ReferenceCardinality.OPTIONAL,
+			policy = ReferencePolicy.DYNAMIC)
+	void setRuntime(JakartarsServiceRuntime runtime) {
+		this.runtime = runtime;
+	}
+
+	void unsetRuntime(JakartarsServiceRuntime runtime) {
+		if (this.runtime == runtime) {
+			this.runtime = null;
+		}
+	}
+
+	private volatile JakartarsServiceRuntime runtime;
 
 	private BundleContext context;
 
@@ -139,9 +158,15 @@ public class RestDistributionComponent implements RestDistribution {
 	 * worth far more than a timeout.
 	 */
 	private void awaitDeployed(String applicationName) {
+		JakartarsServiceRuntime whiteboard = runtime;
+		if (whiteboard == null) {
+			LOG.fine(() -> "[DDSR] no Jakarta REST runtime to ask about " + applicationName
+					+ " — serving without waiting for the deployment");
+			return;
+		}
 		long deadline = System.currentTimeMillis() + DEPLOY_TIMEOUT_MILLIS;
 		while (true) {
-			RuntimeDTO dto = runtime.getRuntimeDTO();
+			RuntimeDTO dto = whiteboard.getRuntimeDTO();
 			for (ApplicationDTO application : dto.applicationDTOs) {
 				if (applicationName.equals(application.name)) {
 					return;

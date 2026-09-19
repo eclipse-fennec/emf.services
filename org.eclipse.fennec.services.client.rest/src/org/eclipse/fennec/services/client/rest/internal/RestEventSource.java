@@ -66,6 +66,9 @@ public final class RestEventSource implements EventSource {
 
 	private static final Logger LOG = Logger.getLogger(RestEventSource.class.getName());
 
+	/** How long a close waits on the drain before leaving it to the daemon thread. */
+	private static final long CLOSE_GRACE_MILLIS = 250;
+
 	@ObjectClassDefinition(name = "DDSR REST Event Source",
 			description = "Subscription to the broker's SSE event stream")
 	public @interface Config {
@@ -266,7 +269,14 @@ public final class RestEventSource implements EventSource {
 				closer.setDaemon(true);
 				closer.start();
 				try {
-					closer.join(2_000);
+					// A short grace, not a wait for completion: the drain
+					// only finishes when the broker's next heartbeat wakes
+					// the reader, and nothing here depends on that — the
+					// stream stopped delivering the moment running went
+					// false. Waiting a full heartbeat interval instead
+					// cost two seconds on every client shutdown, which on
+					// a framework stop is two seconds of nothing.
+					closer.join(CLOSE_GRACE_MILLIS);
 				} catch (InterruptedException interrupted) {
 					Thread.currentThread().interrupt();
 				}

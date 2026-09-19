@@ -84,37 +84,33 @@ public class RestDistributionComponent implements RestDistribution {
 	private volatile ComponentServiceObjects<ResourceSet> resourceSets;
 
 	/**
-	 * The whiteboard this distribution mounts into, when there is one to
-	 * ask.
+	 * The whiteboard this distribution mounts into.
 	 *
-	 * <p>It is the only way to find out whether an application was really
-	 * deployed — registering one is a request, not an accomplishment —
-	 * and that is worth having. It is deliberately <em>not</em> required:
-	 * making it so turned "the whiteboard is late" into "the distribution
-	 * never appears" in three of seven frameworks of the RSA TCK, which
-	 * is a worse answer than the race it was meant to close.
+	 * <p>Mandatory and static, and that is the readiness signal itself:
+	 * this component exists only where something can actually serve, so
+	 * the {@code RestDistribution} service exists only then, so the
+	 * {@code FlavorDistribution} above it exists only then, and so does
+	 * the remote service admin that is configured for it. A caller never
+	 * meets an admin that cannot serve, and nothing has to wait on a
+	 * timer to find that out (#114).
 	 *
-	 * <p>Readiness belongs in a signal the module raises when it can
-	 * serve, not in a reference that decides whether it exists at all
-	 * (#114). Until then: when a runtime is here, we ask it; when it is
-	 * not, we serve the way this always did.
+	 * <p>It is also the only way to learn whether an application was
+	 * really deployed — registering one is a request, not an
+	 * accomplishment — which is what {@link #awaitDeployed} asks it.
+	 *
+	 * <p>An earlier attempt at this turned "the whiteboard is late" into
+	 * "the distribution never appears" in three of seven frameworks of
+	 * the RSA TCK. That was not this reference's doing: the component
+	 * below it held a static reference to a ResourceSet that gains its
+	 * target property only later, and the child framework started our
+	 * bundles before the one carrying their configuration. Both are
+	 * fixed, and required is what this reference should have been.
 	 *
 	 * <p>A deployment with more than one whiteboard says which, the way
 	 * DS lets any reference be pointed: {@code runtime.target}.
 	 */
-	@Reference(name = "runtime", cardinality = ReferenceCardinality.OPTIONAL,
-			policy = ReferencePolicy.DYNAMIC)
-	void setRuntime(JakartarsServiceRuntime runtime) {
-		this.runtime = runtime;
-	}
-
-	void unsetRuntime(JakartarsServiceRuntime runtime) {
-		if (this.runtime == runtime) {
-			this.runtime = null;
-		}
-	}
-
-	private volatile JakartarsServiceRuntime runtime;
+	@Reference(name = "runtime")
+	private JakartarsServiceRuntime runtime;
 
 	private BundleContext context;
 
@@ -184,15 +180,9 @@ public class RestDistributionComponent implements RestDistribution {
 	 * worth far more than a timeout.
 	 */
 	private void awaitDeployed(String applicationName) {
-		JakartarsServiceRuntime whiteboard = runtime;
-		if (whiteboard == null) {
-			LOG.fine(() -> "[DDSR] no Jakarta REST runtime to ask about " + applicationName
-					+ " — serving without waiting for the deployment");
-			return;
-		}
 		long deadline = System.currentTimeMillis() + DEPLOY_TIMEOUT_MILLIS;
 		while (true) {
-			RuntimeDTO dto = whiteboard.getRuntimeDTO();
+			RuntimeDTO dto = runtime.getRuntimeDTO();
 			for (ApplicationDTO application : dto.applicationDTOs) {
 				if (applicationName.equals(application.name)) {
 					return;

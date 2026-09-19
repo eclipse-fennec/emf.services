@@ -171,6 +171,18 @@ final class UpdatePolicies {
 							+ " is gone — cancelling its " + supersession.policy().getLiteral());
 					continue;
 				}
+				// A hard cutover is a clock the publisher set and needs no
+				// consent; a drain waits for the last consumer to let go.
+				//
+				// ACQUISITION.md §6 asks for a grace period here, so that a
+				// broker whose session map is still empty right after a
+				// restart does not read that as "nobody is using this" and
+				// drain everything. That cannot happen: this map is runtime
+				// state, a restart forgets every armed handover, and there
+				// is nothing left to drain until a successor publishes with
+				// `replaces` again. Adding the wait anyway would delay every
+				// drain in a deployment that does not use sessions at all,
+				// for a hazard that is already ruled out (#2).
 				boolean due = supersession.policy() == UpdatePolicy.HARD_CUTOVER
 						? !now.isBefore(supersession.cutoverAt())
 						: predecessor.getUsingSessions().isEmpty();

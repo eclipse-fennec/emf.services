@@ -501,6 +501,16 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 				closed -> {
 					myImports.remove(closed);
 					registrations.importClosed(closed);
+				},
+				// Letting go of the acquisition is what lets a drain finish
+				// (#24). Best effort: a client that is already shutting down
+				// has nothing left to tell.
+				reference -> {
+					try {
+						client.consumer().release(reference);
+					} catch (RuntimeException goingAway) {
+						LOG.log(Level.FINE, "[DDSR] releasing " + reference + " failed", goingAway);
+					}
 				});
 		try {
 			imported.register(ProxyHost.in(context).getBundleContext());

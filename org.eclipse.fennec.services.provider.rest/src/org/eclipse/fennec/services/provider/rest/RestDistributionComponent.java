@@ -33,7 +33,6 @@ import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 
 import jakarta.ws.rs.core.Application;
@@ -55,33 +54,22 @@ public class RestDistributionComponent implements RestDistribution {
 	private static final long DEPLOY_TIMEOUT_MILLIS = 10_000;
 
 	/**
-	 * The ResourceSet for the services model — bound dynamically, and
-	 * that is the point, not a style choice.
+	 * The ResourceSet that carries the services model.
 	 *
-	 * <p>The ResourceSet service is registered first and only <em>gains</em>
-	 * {@code emf.name=services} afterwards, through a property update as
-	 * the model's configurator arrives. A static reference has to be
-	 * woken by that modification to notice a service it did not match
-	 * before, and this component — alone among the ones targeting this
-	 * ResourceSet — has no configuration whose arrival would make the
-	 * runtime look at it again. In roughly one child framework in ten of
-	 * the RSA TCK it was never looked at again: the distribution simply
-	 * never appeared, and nothing said why. A dynamic reference is
-	 * tracked as services come, go and change, which is the path that
-	 * does not depend on that wake-up. (#106)
+	 * <p>Mandatory and static, like every other place in this workspace
+	 * that reads or writes a contract: this component needs a ResourceSet,
+	 * and it needs one that knows the model, so there is nothing dynamic
+	 * about it. {@code emf.name} is the model name, which is exactly what
+	 * belongs in the filter.
+	 *
+	 * <p>It was dynamic for a while (#106), because emf.osgi adds
+	 * {@code emf.name} to the registration after the fact, as the union of
+	 * the models it has tracked grows. That made this a workaround for a
+	 * timing problem rather than a statement about the collaborator, and
+	 * the start-order fix in the same wave removed the reason for it.
 	 */
-	@Reference(target = "(emf.name=services)", policy = ReferencePolicy.DYNAMIC)
-	void setResourceSets(ComponentServiceObjects<ResourceSet> resourceSets) {
-		this.resourceSets = resourceSets;
-	}
-
-	void unsetResourceSets(ComponentServiceObjects<ResourceSet> resourceSets) {
-		if (this.resourceSets == resourceSets) {
-			this.resourceSets = null;
-		}
-	}
-
-	private volatile ComponentServiceObjects<ResourceSet> resourceSets;
+	@Reference(target = "(emf.name=services)")
+	private ComponentServiceObjects<ResourceSet> resourceSets;
 
 	/**
 	 * The whiteboard this distribution mounts into.

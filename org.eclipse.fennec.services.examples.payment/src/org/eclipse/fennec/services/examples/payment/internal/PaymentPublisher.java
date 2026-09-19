@@ -51,8 +51,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -131,18 +129,17 @@ public final class PaymentPublisher {
 		String replaces_version() default "";
 	}
 
-	// DYNAMIC references so transient restarts of downstream services
-	// (RestTransport → CatalogHttpProxy etc. during launch bootstrap)
-	// only rebind the fields rather than tearing down the publisher
-	// and triggering a repeat publish.
-	@Reference(policy = ReferencePolicy.DYNAMIC, policyOption = ReferencePolicyOption.RELUCTANT)
-	private volatile DdsrClient client;
+	// Both are used while activating — the catalog entry is added and the
+	// provider published there — so a reference that may arrive later is
+	// not resilience but a publisher that runs before it can publish.
+	// They were dynamic to survive "transient restarts of downstream
+	// services during launch bootstrap"; those restarts were the
+	// configuration flapping fixed in #107, and nothing flaps now.
+	@Reference
+	private DdsrClient client;
 
-	@Reference(
-			target = "(ddsr.broker.transport=rest)",
-			policy = ReferencePolicy.DYNAMIC,
-			policyOption = ReferencePolicyOption.RELUCTANT)
-	private volatile BrokerCatalog catalog;
+	@Reference(target = "(ddsr.broker.transport=rest)")
+	private BrokerCatalog catalog;
 
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;

@@ -15,9 +15,11 @@ package org.eclipse.fennec.services.rsa.topology;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -33,6 +35,8 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.remoteserviceadmin.EndpointDescription;
 import org.osgi.service.remoteserviceadmin.ImportRegistration;
@@ -81,16 +85,45 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			"org.eclipse.fennec.services.client.",
 			"org.eclipse.fennec.services.rsa.");
 
-	@Reference
-	private RemoteServiceAdmin rsa;
+	/**
+	 * Every admin in the framework.
+	 *
+	 * <p>There is one per configuration type, and they come and go with
+	 * the transports they are for — so this is a whiteboard, not a
+	 * setting: dynamic, multiple, and bound through methods so the
+	 * arrival of one is something this component is told about rather
+	 * than something it reads out of a field by luck.
+	 */
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+	void addAdmin(RemoteServiceAdmin admin) {
+		admins.add(admin);
+	}
 
-	@Reference
-	private ServiceDiscovery discovery;
+	void removeAdmin(RemoteServiceAdmin admin) {
+		admins.remove(admin);
+	}
+
+	private final List<RemoteServiceAdmin> admins = new CopyOnWriteArrayList<>();
+
+	/**
+	 * Every discovery, for the same reason: one per flavor, coming and
+	 * going with its transport. A watch is placed on all of them.
+	 */
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+	void addDiscovery(ServiceDiscovery discovery) {
+		discoveries.add(discovery);
+	}
+
+	void removeDiscovery(ServiceDiscovery discovery) {
+		discoveries.remove(discovery);
+	}
+
+	private final List<ServiceDiscovery> discoveries = new CopyOnWriteArrayList<>();
 
 	/** Package-private: tests wire the two collaborators by hand. */
 	ImportWhatIsAskedFor with(RemoteServiceAdmin admin, ServiceDiscovery watching) {
-		this.rsa = admin;
-		this.discovery = watching;
+		admins.add(admin);
+		discoveries.add(watching);
 		return this;
 	}
 
@@ -190,13 +223,16 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 		final String contractName;
 		int listeners;
 		private final Map<String, ImportRegistration> imports = new ConcurrentHashMap<>();
-		private final AutoCloseable subscription;
+		/** One subscription per discovery: each may know a different provider. */
+		private final List<AutoCloseable> subscriptions = new ArrayList<>();
 
 		Watch(String interfaceName, String contractName) {
 			this.interfaceName = interfaceName;
 			this.contractName = contractName;
 			LOG.info("[DDSR] " + interfaceName + " is wanted here — watching for " + contractName);
-			this.subscription = discovery.watch(contractName, this);
+			for (ServiceDiscovery watching : discoveries) {
+				subscriptions.add(watching.watch(contractName, this));
+			}
 		}
 
 		@Override
@@ -204,9 +240,14 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			if (imports.containsKey(referenceId)) {
 				return;
 			}
-			ImportRegistration imported = rsa.importService(describe(referenceId, implementation));
-			if (imported != null) {
-				imports.put(referenceId, imported);
+			// Whichever admin speaks this endpoint's configuration type
+			// takes it; the others answer null.
+			for (RemoteServiceAdmin admin : admins) {
+				ImportRegistration imported = admin.importService(describe(referenceId, implementation));
+				if (imported != null) {
+					imports.put(referenceId, imported);
+					return;
+				}
 			}
 		}
 
@@ -262,11 +303,14 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 		void close() {
 			imports.values().forEach(ImportRegistration::close);
 			imports.clear();
-			try {
-				subscription.close();
-			} catch (Exception failure) {
-				LOG.log(Level.WARNING, "[DDSR] stopping the watch for " + contractName + " failed", failure);
+			for (AutoCloseable subscription : subscriptions) {
+				try {
+					subscription.close();
+				} catch (Exception failure) {
+					LOG.log(Level.WARNING, "[DDSR] stopping the watch for " + contractName + " failed", failure);
+				}
 			}
+			subscriptions.clear();
 		}
 	}
 

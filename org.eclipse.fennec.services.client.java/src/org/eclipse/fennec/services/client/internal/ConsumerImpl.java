@@ -138,10 +138,6 @@ final class ConsumerImpl implements DdsrConsumer {
 		return names;
 	}
 
-	/** @see ServiceListenerRegistry#transportAvailable() */
-	void transportAvailable() {
-		listeners.transportAvailable();
-	}
 
 	/** Stop listening; the locators handed out stay valid as objects. */
 	void close() {

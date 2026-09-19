@@ -13,8 +13,6 @@
 
 package org.eclipse.fennec.services.rsa.discovery.rest;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,7 +30,6 @@ import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
-import org.eclipse.fennec.services.client.Registration;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.rsa.spi.EndpointScopes;
 import org.eclipse.fennec.services.rsa.spi.OsgiProperties;

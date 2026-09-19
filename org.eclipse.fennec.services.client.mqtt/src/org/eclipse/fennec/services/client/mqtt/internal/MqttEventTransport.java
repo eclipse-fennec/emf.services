@@ -38,14 +38,17 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * <p>
  * {@code configurationPolicy = REQUIRE}: a broker URL is
  * deployment-specific, so this transport only starts where someone
- * configured it. A client with both this and the SSE source configured
- * would have two event sources — the SDK binds one; choosing
- * deliberately between them is the job of a service ranking or a target
- * filter, not of this class.
+ * configured it. A client with both this and the SSE source installed
+ * has two event sources, and which one it uses is said in the client's
+ * own configuration — {@code eventSource.target} against the
+ * {@code ddsr.event.transport} property below. Not by ranking: a
+ * deployment that configures a client is describing the setup it
+ * expects, not entering a contest.
  */
 @Component(
 		service = EventSource.class,
 		configurationPid = "org.eclipse.fennec.services.client.mqtt",
+		property = "ddsr.event.transport=mqtt",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 @Designate(ocd = MqttEventTransport.Config.class)
 public final class MqttEventTransport implements EventSource {

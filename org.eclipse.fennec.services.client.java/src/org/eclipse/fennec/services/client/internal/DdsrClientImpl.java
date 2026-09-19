@@ -72,8 +72,4 @@ public final class DdsrClientImpl implements DdsrClient {
 		consumer.close();
 	}
 
-	/** Lets the component tell the consumer that a transport showed up. */
-	public void transportAvailable() {
-		consumer.transportAvailable();
-	}
 }

@@ -64,10 +64,33 @@ public class Registrations {
 
 	private static final String TOPIC_PREFIX = "org/osgi/service/remoteserviceadmin/";
 
+	// Listeners and Event Admin are the audience, not the setup: anyone
+	// may register a listener at any time, and Event Admin is there or it
+	// is not. That is what dynamic is for — and bound through methods, so
+	// a change is something this component is told about rather than
+	// something it reads out of a field and hopes is current.
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
-	private volatile List<RemoteServiceAdminListener> listeners = new CopyOnWriteArrayList<>();
+	void addListener(RemoteServiceAdminListener listener) {
+		listeners.add(listener);
+	}
+
+	void removeListener(RemoteServiceAdminListener listener) {
+		listeners.remove(listener);
+	}
+
+	private final List<RemoteServiceAdminListener> listeners = new CopyOnWriteArrayList<>();
 
 	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setEventAdmin(EventAdmin eventAdmin) {
+		this.eventAdmin = eventAdmin;
+	}
+
+	void unsetEventAdmin(EventAdmin eventAdmin) {
+		if (this.eventAdmin == eventAdmin) {
+			this.eventAdmin = null;
+		}
+	}
+
 	private volatile EventAdmin eventAdmin;
 
 	private final List<ExportedService> exported = new CopyOnWriteArrayList<>();

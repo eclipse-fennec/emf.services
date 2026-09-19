@@ -39,9 +39,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferencePolicyOption;
-import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -113,47 +110,41 @@ public final class DdsrClientComponent implements DdsrClient {
 	// deterministically bind either side, defeating the point of the
 	// flavor split.
 	/**
-	 * Optional: without an event transport the client works exactly as
-	 * before, it just does not notify. Which transport shows up here —
-	 * SSE today, MQTT later — is none of the SDK's business.
+	 * The transport this client hears events on.
+	 *
+	 * <p>Mandatory and static, and chosen by configuration: a deployment
+	 * that configures a client is describing the setup it expects, not
+	 * entering a contest. Which source it is said with
+	 * {@code eventSource.target} against the {@code ddsr.event.transport}
+	 * property the sources carry; with no target it is SSE, which every
+	 * launch that has a client at all also has.
+	 *
+	 * <p>It used to be optional, dynamic and greedy, and that cost
+	 * events: a greedy rebind closes the open stream and opens another,
+	 * and whatever was published in between reached nobody — MQTT has no
+	 * session to replay it from. A transport is not something to change
+	 * mid-flight, and nothing ever asked for it; only our own test setup
+	 * ranked one source above the other to make the switch happen.
 	 */
-	private volatile EventSource eventSource;
-
-	/**
-	 * Bind method rather than field injection, because the arrival of a
-	 * transport has to be acted on: a listener may already be registered
-	 * and waiting. Registration and transport activation are independent
-	 * components, so either order happens — and it did, which is how this
-	 * was found.
-	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
-			policyOption = ReferencePolicyOption.GREEDY)
-	void bindEventSource(EventSource source) {
-		this.eventSource = source;
-		DdsrClientImpl current = delegate;
-		if (current != null) {
-			current.transportAvailable();
-		}
-	}
-
-	void unbindEventSource(EventSource source) {
-		if (this.eventSource == source) {
-			this.eventSource = null;
-		}
-	}
+	@Reference
+	private EventSource eventSource;
 
 	@Reference(target = "(ddsr.broker.transport=rest)")
 	private BrokerImplementations implementations;
 
 	/**
-	 * Optional like the event transport: a client without a session
-	 * proxy simply does not lease — it only loses drain protection
-	 * (ACQUISITION.md §5), nothing functional.
+	 * The session proxy that holds this consumer's leases
+	 * (ACQUISITION.md §5).
+	 *
+	 * <p>Mandatory and static for the same reason as the event source:
+	 * it comes from the same transport bundle as the lookup and the
+	 * implementations proxy, both of which are already required here.
+	 * Calling it optional said that a client might silently run without
+	 * drain protection — which is not a setup anyone configures, only
+	 * one nobody noticed.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC,
-			policyOption = ReferencePolicyOption.GREEDY,
-			target = "(ddsr.broker.transport=rest)")
-	private volatile BrokerSessions sessions;
+	@Reference(target = "(ddsr.broker.transport=rest)")
+	private BrokerSessions sessions;
 
 	private ScheduledExecutorService sessionRenewal;
 
@@ -263,18 +254,16 @@ public final class DdsrClientComponent implements DdsrClient {
 	}
 
 	/**
-	 * Opens the stream on whichever event transport is bound right now.
-	 * Returns {@code null} when none is — the caller then knows it has no
-	 * subscription and can try again later, instead of holding a handle
-	 * that never delivers anything.
+	 * Opens the stream on the configured transport.
+	 *
+	 * <p>The source itself may still answer {@code null} — a transport
+	 * that is registered but not yet carrying (its connection is coming
+	 * up) says so this way. The registry then holds no subscription and
+	 * tries again when the next listener registers, rather than keeping
+	 * a handle that delivers nothing.
 	 */
 	private AutoCloseable openEventStream(EventSource.Handler handler) {
-		EventSource current = eventSource;
-		if (current == null) {
-			LOG.info("[DDSR-Client] no event transport bound yet — will connect when one appears");
-			return null;
-		}
-		return current.open(handler);
+		return eventSource.open(handler);
 	}
 
 	/**

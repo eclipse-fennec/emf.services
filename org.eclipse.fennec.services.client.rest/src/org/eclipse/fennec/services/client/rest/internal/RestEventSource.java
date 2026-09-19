@@ -55,8 +55,12 @@ import jakarta.ws.rs.core.MediaType;
  * would sit beside this class and change nothing in
  * {@code client.java}.
  */
+// ddsr.event.transport is what a deployment points at when it wants
+// this one rather than another: eventSource.target in the client's
+// configuration. Without a target the client binds whatever is there,
+// and SSE is what is there in every launch that has a client at all.
 @Component(service = EventSource.class, configurationPid = "org.eclipse.fennec.services.client.rest.events",
-		immediate = true)
+		property = "ddsr.event.transport=rest", immediate = true)
 @Designate(ocd = RestEventSource.Config.class)
 public final class RestEventSource implements EventSource {
 

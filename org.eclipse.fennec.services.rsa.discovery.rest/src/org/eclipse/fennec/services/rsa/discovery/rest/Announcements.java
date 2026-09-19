@@ -13,6 +13,8 @@
 
 package org.eclipse.fennec.services.rsa.discovery.rest;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.util.EcoreUtil;
@@ -22,8 +24,6 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.osgi.service.component.ComponentServiceObjects;
 
 /**

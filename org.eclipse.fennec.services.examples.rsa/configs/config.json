@@ -31,5 +31,10 @@
   },
   "org.eclipse.fennec.services.rsa.discovery.rest": {
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+  },
+  "org.eclipse.fennec.services.rsa~rest": {
+    "remote.configs.supported": "fennec.rest",
+    "distribution.target": "(ddsr.rsa.flavor=fennec.rest)",
+    "discovery.target": "(ddsr.rsa.flavor=fennec.rest)"
   }
 }

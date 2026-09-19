@@ -13,9 +13,12 @@
 
 package org.eclipse.fennec.services.rsa.topology;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,6 +30,8 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.remoteserviceadmin.ExportRegistration;
@@ -55,8 +60,25 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	private static final Logger LOG = Logger.getLogger(ExportEverythingAsked.class.getName());
 
-	@Reference
-	private RemoteServiceAdmin rsa;
+	/**
+	 * Every admin in the framework.
+	 *
+	 * <p>There is one per configuration type, and they come and go with
+	 * the transports they are for — so this is a whiteboard, not a
+	 * setting: dynamic, multiple, and bound through methods so the
+	 * arrival of one is something this component is told about rather
+	 * than something it reads out of a field by luck.
+	 */
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+	void addAdmin(RemoteServiceAdmin admin) {
+		admins.add(admin);
+	}
+
+	void removeAdmin(RemoteServiceAdmin admin) {
+		admins.remove(admin);
+	}
+
+	private final List<RemoteServiceAdmin> admins = new CopyOnWriteArrayList<>();
 
 	private final Map<ServiceReference<?>, Collection<ExportRegistration>> exported = new ConcurrentHashMap<>();
 
@@ -111,7 +133,13 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	@Override
 	public Collection<ExportRegistration> addingService(ServiceReference<Object> reference) {
 		try {
-			Collection<ExportRegistration> registrations = rsa.exportService(reference, null);
+			// Every admin is asked: each serves one configuration type,
+			// and a service that names none should be exported by all of
+			// them — which is what a promiscuous topology manager means.
+			List<ExportRegistration> registrations = new ArrayList<>();
+			for (RemoteServiceAdmin admin : admins) {
+				registrations.addAll(admin.exportService(reference, null));
+			}
 			if (registrations.isEmpty()) {
 				// Not ours: no distribution answers the configuration type
 				// it asked for. Another topology manager or another admin

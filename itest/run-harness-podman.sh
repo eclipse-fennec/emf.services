@@ -202,8 +202,8 @@ log "Scenario D: Java MQTT wire proof (broker sink + client source over mosquitt
 # Fresh broker+client pair from the -mqtt launch variants: same
 # bundles plus org.eclipse.fennec.services.itest.mqtt.config, which
 # wakes the dormant MQTT transports (configurationPolicy REQUIRE) with
-# localhost Mosquitto settings and ranks the client's MQTT EventSource
-# above SSE. Config as a BUNDLE on purpose: configurator.initial is
+# localhost Mosquitto settings and points the client's eventSource
+# reference at the MQTT source. Config as a BUNDLE on purpose: configurator.initial is
 # parsed before the jakarta.json provider bundle starts ("Invalid
 # JSON"), and JAVA_TOOL_OPTIONS strips the double quotes inline JSON
 # would need.
@@ -223,12 +223,13 @@ podman stop -t 20 ddsr-payment-mqtt >/dev/null
 wait_for_log ddsr-client-mqtt "EVENT UNREGISTERING" 60
 
 podman logs ddsr-client-mqtt >"$WORK/client-mqtt.log" 2>&1
-# Ordering control: SSE may legitimately carry the stream for a moment
-# (RestEventSource activates before the configurator ranks MQTT in; the
-# SDK then closes and reopens the stream on the greedy rebind). What
-# pins the EVENTs onto MQTT is the order: the LAST stream (re)open
-# before the events must be the MQTT subscription, with no SSE
-# subscription after it.
+# Ordering control. The client binds the transport its configuration
+# names (eventSource.target against ddsr.event.transport), so there is
+# one subscription and it is the MQTT one — no ranking contest, no
+# greedy rebind, and no window between closing one stream and opening
+# the next in which a published event reaches nobody. The check still
+# reads the log rather than trusting that: the events must come after
+# the MQTT subscription, and no SSE subscription may appear at all.
 mqtt_sub=$(grep -n "subscribed to ddsr/events/#" "$WORK/client-mqtt.log" | tail -1 | cut -d: -f1)
 sse_sub=$(grep -n "subscribed to http" "$WORK/client-mqtt.log" | tail -1 | cut -d: -f1)
 first_event=$(grep -n "EVENT REGISTERED" "$WORK/client-mqtt.log" | head -1 | cut -d: -f1)

@@ -15,21 +15,31 @@ Maven groupId: `org.eclipse.fennec.services` (Quelle: `gradle.properties`, Singl
 
 ## Begleit-Dokumentation
 
-Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → OPEN_ISSUES → CLIENT_FRAMEWORK_GUIDE → REQUIREMENTS**.
+Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → CLIENT_FRAMEWORK_GUIDE**; die Harness schlägt beide, weil sie den Zustand tatsächlich ausführt.
 
-- [docs/STATUS.md](docs/STATUS.md) — datierte Momentaufnahme gegen den DoD; Einstiegspunkt „wo stehen wir?"
-- [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) — Vision, Cross-Language-Demo-Flow, Stufe-2-DoD
+**Benutzer-Guide** (englisch, neu mit #111) — für jemanden, der Fennec Services *benutzen* will:
+
+- [docs/guide/README.md](docs/guide/README.md) — Einstieg: welche Seite für welche Aufgabe
+- [docs/guide/01-architecture.md](docs/guide/01-architecture.md) — die drei Parteien, warum das Modell der Vertrag ist, Bundle-Landkarte
+- [docs/guide/02-eventing.md](docs/guide/02-eventing.md) — SSE und MQTT, was ein Consumer garantiert sieht und was nicht
+- [docs/guide/03-fingerprints.md](docs/guide/03-fingerprints.md) — sd1 und im1, was einen Fingerprint ändert
+- [docs/guide/04-code-generation.md](docs/guide/04-code-generation.md) — Ecore nach src-gen, Arbeitsteilung am Modell
+- [docs/guide/05-transports.md](docs/guide/05-transports.md) — was mitgeliefert wird und was ein Deployment konfigurieren muss
+- [docs/guide/06-rsa.md](docs/guide/06-rsa.md) — OSGi Remote Service Admin auf dieser Registry
+
+**Interne Dokumente** — für uns geschrieben, deutsch:
+
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Bundle-Layout, Wire-Format, Architektur-Entscheidungen, Demo-Reproduktion
 - [docs/CLIENT_FRAMEWORK_GUIDE.md](docs/CLIENT_FRAMEWORK_GUIDE.md) — Java-Provider/-Consumer schreiben
-- [docs/OPEN_ISSUES.md](docs/OPEN_ISSUES.md) — Befund-Backlog mit stabilen IDs (W*/C*/M*/T*/O*/A*/S*)
-- [docs/DECISIONS_PARITY.md](docs/DECISIONS_PARITY.md) — Entscheidungslog TS-Parität/Lifecycle/Fingerprints (D1–D16)
-- [docs/ACQUISITION.md](docs/ACQUISITION.md) — Discovery/Acquisition/Invocation, ConsumerSession/Lease-Modell, im1/Cold-Cache; Design für Issue #2/#6
+- [docs/ACQUISITION.md](docs/ACQUISITION.md) — Discovery/Acquisition/Invocation, ConsumerSession/Lease-Modell, im1/Cold-Cache
 - [docs/UPDATE_POLICY.md](docs/UPDATE_POLICY.md) — Update-Policies, Heartbeat (präzisiert durch ACQUISITION.md)
+- [docs/WIRE_FORMAT.md](docs/WIRE_FORMAT.md) — Draht-Dokumente und ihre Felder
 - [docs/WIRE_CHANNELS.md](docs/WIRE_CHANNELS.md) — Channel-Modell (v2-Design)
-- [docs/SECURITY.md](docs/SECURITY.md) — STRIDE-Analyse, ASVS/Grundschutz-Mapping (speist die S*-Findings)
-- [docs/TS_CLIENT_PLAN.md](docs/TS_CLIENT_PLAN.md) — TS-Client-Plan
+- [docs/FINGERPRINTS.md](docs/FINGERPRINTS.md) — sd1/im1 im Detail
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) — vom frischen Checkout zu Broker, Provider und Consumer
+- [docs/EXAMPLE_PAYMENT.md](docs/EXAMPLE_PAYMENT.md) — das Payment-Beispiel
+- [docs/HARNESS.md](docs/HARNESS.md) / [itest/README.md](itest/README.md) — Cross-Language-Harness (Host + Podman + Mosquitto)
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Broker-Container-Image, Konfigurationsfläche, Publish-Pipeline
-- [itest/README.md](itest/README.md) — Cross-Language-Harness (Host + Podman + Mosquitto)
 
 ## Module
 

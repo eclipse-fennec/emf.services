@@ -89,13 +89,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	/** Where an acknowledged and persisted change is announced. */
 	private final EventSink events;
 
-	/**
-	 * Consumer sessions by consumerId (ACQUISITION.md §3/§4). Runtime
-	 * state by design: deliberately NOT part of the persisted registry —
-	 * after a restart, consumers rebuild their sessions via their
-	 * regular PUTs. Guarded by the broker lock.
-	 */
-	private final Map<String, ConsumerSession> sessions = new LinkedHashMap<>();
+	/** Who has acquired what. */
+	private final Sessions sessions;
+
 
 	/**
 	 * Cold cache (ACQUISITION.md §10, optional policy — default off):
@@ -171,6 +167,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		this.state = new BrokerState(snapshotPath);
 		this.lookup = lookup;
 		this.events = events != null ? events : EventSink.NOOP;
+		this.sessions = new Sessions(state);
 		if (state.rehydrated()) {
 			// The providers and implementations came back from the snapshot,
 			// but the reference/registration pairs and the lookup index are
@@ -664,6 +661,35 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	}
 
 	// ============================================================
+	// Consumer sessions — see Sessions
+	// ============================================================
+
+	@Override
+	public Diagnostic putSession(ConsumerSession session, Collection<String> acquiredReferenceIds) {
+		return sessions.putSession(session, acquiredReferenceIds);
+	}
+
+	@Override
+	public Diagnostic deleteSession(String consumerId) {
+		return sessions.deleteSession(consumerId);
+	}
+
+	@Override
+	public Optional<SessionSnapshot> getSession(String consumerId) {
+		return sessions.getSession(consumerId);
+	}
+
+	@Override
+	public int expireSessions(Instant cutoff) {
+		return sessions.expireSessions(cutoff);
+	}
+
+	@Override
+	public int sessionCount() {
+		return sessions.sessionCount();
+	}
+
+	// ============================================================
 	// Catalog operations
 	// ============================================================
 
@@ -883,141 +909,11 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	// Session operations (ACQUISITION.md §3/§4)
 	// ============================================================
 
-	@Override
-	public Diagnostic putSession(ConsumerSession session, Collection<String> acquiredReferenceIds) {
-		if (session == null || session.getConsumerId() == null || session.getConsumerId().isBlank()) {
-			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
-					"session and session.consumerId must not be null or blank");
-		}
-		state.writeLock().lock();
-		try {
-			String consumerId = session.getConsumerId();
-			// Full replace: the previous session's leases are released
-			// first — the incoming list is the complete, current truth.
-			ConsumerSession previous = sessions.remove(consumerId);
-			if (previous != null) {
-				releaseAcquisitions(previous);
-			}
-			session.setLastRenewal(new Date());
-			int accepted = 0;
-			List<String> unknown = new ArrayList<>();
-			if (acquiredReferenceIds != null) {
-				for (String referenceId : acquiredReferenceIds) {
-					ServiceRegistration registration = state.registrationWithReferenceId(referenceId);
-					if (registration == null) {
-						// Over-claiming is harmless: stale or foreign ids
-						// (e.g. from before a broker restart) are skipped
-						// and reported, never rejected (ACQUISITION.md §5).
-						unknown.add(referenceId);
-						continue;
-					}
-					if (!session.getAcquisitions().contains(registration)) {
-						session.getAcquisitions().add(registration);
-						accepted++;
-					}
-				}
-			}
-			sessions.put(consumerId, session);
-			// Deliberately NO persist and NO event: sessions are runtime
-			// state (ACQUISITION.md §6).
-			return DdsrDiagnostics.ok("session accepted, " + accepted + " acquisition(s)"
-					+ (unknown.isEmpty() ? "" : ", skipped unknown reference id(s): " + unknown));
-		} finally {
-			state.writeLock().unlock();
-		}
-	}
 
-	@Override
-	public Diagnostic deleteSession(String consumerId) {
-		if (consumerId == null || consumerId.isBlank()) {
-			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
-					"consumerId must not be null or blank");
-		}
-		state.writeLock().lock();
-		try {
-			ConsumerSession removed = sessions.remove(consumerId);
-			if (removed == null) {
-				// Idempotent: a shutdown-notify may race the TTL expiry.
-				return DdsrDiagnostics.ok("no session for '" + consumerId + "' — nothing to release");
-			}
-			releaseAcquisitions(removed);
-			return DdsrDiagnostics.ok("session removed, all acquisitions released");
-		} finally {
-			state.writeLock().unlock();
-		}
-	}
 
-	@Override
-	public Optional<SessionSnapshot> getSession(String consumerId) {
-		if (consumerId == null || consumerId.isBlank()) {
-			return Optional.empty();
-		}
-		state.readLock().lock();
-		try {
-			ConsumerSession stored = sessions.get(consumerId);
-			if (stored == null) {
-				return Optional.empty();
-			}
-			// Manual detached copy — NOT EcoreUtil.copy: copying the
-			// bidirectional (transient) acquisitions would touch the live
-			// registrations' usingSessions via the eOpposite.
-			ConsumerSession view = ServicesFactory.eINSTANCE.createConsumerSession();
-			view.setConsumerId(stored.getConsumerId());
-			view.setLastRenewal(stored.getLastRenewal());
-			if (stored.getCapabilities() != null) {
-				view.setCapabilities(EcoreUtil.copy(stored.getCapabilities()));
-			}
-			List<String> ids = new ArrayList<>(stored.getAcquisitions().size());
-			for (ServiceRegistration registration : stored.getAcquisitions()) {
-				ServiceReference reference = registration.getReference();
-				if (reference != null && reference.getId() != null) {
-					ids.add(reference.getId());
-				}
-			}
-			return Optional.of(new SessionSnapshot(view, ids));
-		} finally {
-			state.readLock().unlock();
-		}
-	}
 
-	@Override
-	public int expireSessions(Instant cutoff) {
-		if (cutoff == null) {
-			return 0;
-		}
-		state.writeLock().lock();
-		try {
-			int expired = 0;
-			var iterator = sessions.entrySet().iterator();
-			while (iterator.hasNext()) {
-				ConsumerSession session = iterator.next().getValue();
-				Date lastRenewal = session.getLastRenewal();
-				if (lastRenewal == null || lastRenewal.toInstant().isBefore(cutoff)) {
-					releaseAcquisitions(session);
-					iterator.remove();
-					expired++;
-				}
-			}
-			return expired;
-		} finally {
-			state.writeLock().unlock();
-		}
-	}
 
-	@Override
-	public int sessionCount() {
-		state.readLock().lock();
-		try {
-			return sessions.size();
-		} finally {
-			state.readLock().unlock();
-		}
-	}
 
-	/** Clears the acquisitions; the eOpposite removes the session from every registration's usingSessions. */
-	private static void releaseAcquisitions(ConsumerSession session) {
-		session.getAcquisitions().clear();
-	}
 
 	// ============================================================
 	// Cold cache (ACQUISITION.md §10)

@@ -62,13 +62,31 @@ final class ImportedService implements ImportRegistration, ImportReference, Serv
 	private volatile EndpointDescription endpoint;
 	private volatile ServiceRegistration<?> registration;
 
+	/**
+	 * How this import lets go of the reference it uses.
+	 *
+	 * <p>An import is the Remote Service Admin way of saying "this
+	 * service is in use here", and the registry's way of saying the same
+	 * is a session acquisition. The two have to end together: a
+	 * predecessor draining towards its successor waits for the last
+	 * consumer to let go, and an import that closed without letting go
+	 * keeps it waiting for somebody who has already gone (#24).
+	 */
+	private final Consumer<String> release;
+
 	ImportedService(EndpointDescription endpoint, ServiceLocator locator, ServiceProxyFactory proxies,
-			Consumer<ImportedService> onUpdate, Consumer<ImportedService> forget) {
+			Consumer<ImportedService> onUpdate, Consumer<ImportedService> forget, Consumer<String> release) {
 		this.endpoint = endpoint;
 		this.locator = locator;
 		this.proxies = proxies;
 		this.onUpdate = onUpdate;
 		this.forget = forget;
+		this.release = release;
+	}
+
+	/** The reference this import uses, or {@code null} if it has none. */
+	private String referenceId() {
+		return locator == null || locator.reference() == null ? null : locator.reference().getId();
 	}
 
 	/**
@@ -196,6 +214,11 @@ final class ImportedService implements ImportRegistration, ImportReference, Serv
 		} catch (IllegalStateException alreadyGone) {
 			LOG.log(Level.FINE, "[DDSR] " + endpoint.getId() + " was already unregistered", alreadyGone);
 		} finally {
+			String reference = referenceId();
+			if (reference != null && release != null) {
+				release.accept(reference);
+				LOG.fine(() -> "[DDSR] released " + reference + " with the import of " + endpoint.getId());
+			}
 			forget.accept(this);
 		}
 	}

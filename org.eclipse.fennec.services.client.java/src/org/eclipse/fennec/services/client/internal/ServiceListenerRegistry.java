@@ -128,6 +128,21 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 		closeIfUnused();
 	}
 
+	/**
+	 * Stops claiming a reference this consumer no longer uses.
+	 *
+	 * <p>The note is what the session protocol sends as an acquisition,
+	 * so dropping it is how a consumer lets go. Until this existed, the
+	 * only thing that ever removed a claim was the service going away —
+	 * which is the wrong way round for a drain, because a drain is
+	 * waiting for consumers to let go before it takes the service away.
+	 */
+	void forgetReference(String referenceId) {
+		if (referenceId != null) {
+			interfacesByReference.remove(referenceId);
+		}
+	}
+
 	/** Remembers what interface a reference belongs to, e.g. from a lookup. */
 	void noteReference(String referenceId, Set<String> interfaceNames) {
 		if (referenceId != null && interfaceNames != null && !interfaceNames.isEmpty()) {

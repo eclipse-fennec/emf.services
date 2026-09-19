@@ -187,4 +187,5 @@ final class Sessions {
 	private static void releaseAcquisitions(ConsumerSession session) {
 		session.getAcquisitions().clear();
 	}
+
 }

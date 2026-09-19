@@ -57,6 +57,24 @@ public interface DdsrConsumer {
 	 * @param listener      receives the events
 	 * @return a handle; closing it removes the listener
 	 */
+	/**
+	 * Says that this consumer no longer uses a reference.
+	 *
+	 * <p>A lookup makes the client claim the references it found, and the
+	 * session it renews carries those claims. A claim is what a
+	 * {@code DEPRECATE_AND_DRAIN} handover waits for: the predecessor
+	 * stays alive until the last consumer has let go. This is how to let
+	 * go.
+	 *
+	 * <p>Not calling it is safe and simply means the claim lasts until
+	 * the service disappears; the cost is a handover that waits for a
+	 * consumer which has in truth already moved on.
+	 *
+	 * @param referenceId the id of the reference, as
+	 *        {@link ServiceLocator#reference()} reports it
+	 */
+	void release(String referenceId);
+
 	AutoCloseable addServiceListener(String interfaceName, String filter, DdsrServiceListener listener);
 
 	/**

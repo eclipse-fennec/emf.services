@@ -79,6 +79,11 @@ final class ConsumerImpl implements DdsrConsumer {
 	}
 
 	@Override
+	public void release(String referenceId) {
+		listeners.forgetReference(referenceId);
+	}
+
+	@Override
 	public AutoCloseable addServiceListener(String interfaceName, String filter,
 			DdsrServiceListener listener) {
 		return listeners.add(interfaceName, filter, listener);

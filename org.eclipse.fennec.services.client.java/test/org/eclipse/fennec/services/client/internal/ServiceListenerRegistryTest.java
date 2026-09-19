@@ -270,4 +270,30 @@ class ServiceListenerRegistryTest {
 
 		assertThat(survivor).containsExactly("ref-1");
 	}
+
+	@Test
+	void aConsumerCanLetGoOfAReferenceItNoLongerUses() {
+		ServiceListenerRegistry registry = new ServiceListenerRegistry(new FakeSource(), null);
+		registry.noteReference("ref-1", Set.of("Payment"));
+		registry.noteReference("ref-2", Set.of("Payment"));
+
+		assertThat(registry.knownReferenceIds()).containsExactlyInAnyOrder("ref-1", "ref-2");
+
+		registry.forgetReference("ref-1");
+
+		assertThat(registry.knownReferenceIds())
+				.as("the claim is what the session sends, so letting go has to remove it")
+				.containsExactly("ref-2");
+	}
+
+	@Test
+	void lettingGoOfSomethingUnknownIsHarmless() {
+		ServiceListenerRegistry registry = new ServiceListenerRegistry(new FakeSource(), null);
+		registry.noteReference("ref-1", Set.of("Payment"));
+
+		registry.forgetReference("never-seen");
+		registry.forgetReference(null);
+
+		assertThat(registry.knownReferenceIds()).containsExactly("ref-1");
+	}
 }

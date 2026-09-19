@@ -15,7 +15,7 @@
     "broker.url": "$[prop:rsa.tck.broker.url;default=http://localhost:8887/ddsr/rest]"
   },
   "org.eclipse.fennec.services.client": {
-    "provider.heartbeat.seconds": "30",
+    "provider.heartbeat.seconds": "5",
     "session.interval.seconds": "0"
   },
   "EObjectRegistry~ddsrContracts": {

@@ -25,6 +25,10 @@ import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
+import org.osgi.service.jakartars.runtime.dto.ApplicationDTO;
+import org.osgi.service.jakartars.runtime.dto.FailedApplicationDTO;
+import org.osgi.service.jakartars.runtime.dto.RuntimeDTO;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -45,8 +49,27 @@ public class RestDistributionComponent implements RestDistribution {
 
 	private static final Logger LOG = Logger.getLogger(RestDistributionComponent.class.getName());
 
+	/** How long a whiteboard may take to deploy one application. */
+	private static final long DEPLOY_TIMEOUT_MILLIS = 30_000;
+
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> resourceSets;
+
+	/**
+	 * The whiteboard this distribution mounts into.
+	 *
+	 * <p>Referenced for two reasons. It is a readiness signal: the
+	 * runtime service exists only once a whiteboard is actually running,
+	 * so this distribution cannot offer to serve while there is nothing
+	 * to serve into. And it is the only way to find out whether an
+	 * application was really deployed — registering one is a request, not
+	 * an accomplishment.
+	 *
+	 * <p>A deployment with more than one whiteboard says which, the way
+	 * DS lets any reference be pointed: {@code runtime.target}.
+	 */
+	@Reference(name = "runtime")
+	private JakartarsServiceRuntime runtime;
 
 	private BundleContext context;
 
@@ -68,9 +91,19 @@ public class RestDistributionComponent implements RestDistribution {
 		Dictionary<String, Object> properties = new Hashtable<>();
 		properties.put("osgi.jakartars.application.base", base);
 		properties.put("osgi.jakartars.name", name == null ? base : name);
+		String applicationName = name == null ? base : name;
 		ServiceRegistration<Application> registration = context.registerService(Application.class,
 				new ServedApplication(dispatcher, resourceSets), properties);
-		LOG.info("[DDSR] serving " + (name == null ? base : name) + " at " + base);
+		try {
+			awaitDeployed(applicationName);
+		} catch (RuntimeException notServed) {
+			// Nothing is serving, so nothing may be announced: the whole
+			// order this project keeps — serve, then tell the world —
+			// rests on this call having actually happened.
+			registration.unregister();
+			throw notServed;
+		}
+		LOG.info("[DDSR] serving " + applicationName + " at " + base);
 
 		return new Served() {
 
@@ -89,6 +122,48 @@ public class RestDistributionComponent implements RestDistribution {
 				}
 			}
 		};
+	}
+
+	/**
+	 * Wait until the whiteboard says the application is deployed.
+	 *
+	 * <p>Registering an {@code Application} service asks the whiteboard
+	 * to deploy it; the deployment happens afterwards, on the
+	 * whiteboard's own thread. Returning before it has is what made a
+	 * consumer dial an address that answered 404 — the announce-before-
+	 * mount race the harness worked around with a retry.
+	 *
+	 * <p>The runtime's DTO is the only honest answer to "is it up?", and
+	 * it also says when the answer is no: a rejected application is in
+	 * {@code failedApplicationDTOs} with a reason, and that reason is
+	 * worth far more than a timeout.
+	 */
+	private void awaitDeployed(String applicationName) {
+		long deadline = System.currentTimeMillis() + DEPLOY_TIMEOUT_MILLIS;
+		while (true) {
+			RuntimeDTO dto = runtime.getRuntimeDTO();
+			for (ApplicationDTO application : dto.applicationDTOs) {
+				if (applicationName.equals(application.name)) {
+					return;
+				}
+			}
+			for (FailedApplicationDTO failed : dto.failedApplicationDTOs) {
+				if (applicationName.equals(failed.name)) {
+					throw new IllegalStateException("the whiteboard refused the application " + applicationName
+							+ ": failure reason " + failed.failureReason);
+				}
+			}
+			if (System.currentTimeMillis() >= deadline) {
+				throw new IllegalStateException("the whiteboard did not deploy the application "
+						+ applicationName + " within " + DEPLOY_TIMEOUT_MILLIS / 1000 + " s");
+			}
+			try {
+				Thread.sleep(25);
+			} catch (InterruptedException interrupted) {
+				Thread.currentThread().interrupt();
+				throw new IllegalStateException("interrupted while waiting for " + applicationName, interrupted);
+			}
+		}
 	}
 
 	/**

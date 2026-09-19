@@ -29,6 +29,7 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
+import org.osgi.service.component.annotations.Component;
 
 /**
  * Default {@link LookupBackend}: maintains references in a simple
@@ -51,7 +52,18 @@ import org.eclipse.fennec.services.broker.core.LookupBackend;
  *     allow.</li>
  * </ul>
  */
-final class InMemoryLookupBackend implements LookupBackend {
+/*
+ * Registered as the default backend rather than constructed by the
+ * broker: the broker now insists on having one (a broker that cannot
+ * look anything up is not a lesser broker), and a deployment that wants
+ * a different one — a REST-backed index, a shared store — installs it
+ * and either outranks this or is named through {@code
+ * broker.backend.target}. The negative ranking is what makes "installs
+ * it" enough.
+ */
+@Component(service = LookupBackend.class, property = { "ddsr.lookup.backend=in-memory",
+		"service.ranking:Integer=-100" })
+public final class InMemoryLookupBackend implements LookupBackend {
 
 	private static final Logger LOG = Logger.getLogger(InMemoryLookupBackend.class.getName());
 

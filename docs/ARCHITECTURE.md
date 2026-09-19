@@ -93,7 +93,20 @@ org.eclipse.fennec.services.broker.core         # API + In-Memory-Impl
                                    #     BrokerImplementations
                                    #     BrokerLookup
                                    #   DdsrBroker = composite extends alle drei
-                                   #   DdsrBrokerImpl: state + XMI-Persistenz
+                                   #   DdsrBrokerImpl: Fassade, nur Konstruktion
+                                   #     und Weiterreichen (#110)
+                                   #   dahinter, je ein Belang:
+                                   #     BrokerState    Registry, Sperre, Snapshot
+                                   #     Registrations  publish/modify/withdraw
+                                   #     CatalogStore   Governance + Auflösung
+                                   #     Lookups        wer bedient dieses Interface
+                                   #     UpdatePolicies Supersession, Drain, Cutover
+                                   #     Liveness       Leases, Heartbeat, Sweep
+                                   #     Sessions       Erwerbe (nie persistiert)
+                                   #     ColdCache      geparkte Registrierungen
+                                   #     Announcements  EventSink-Zugang
+                                   #   Retirement / Republication: die zwei Nähte,
+                                   #     über die Belange einander aufrufen
 
 org.eclipse.fennec.services.broker.rest         # JAX-RS-Endpoints
                                    #   /catalog und /implementations werden NICHT

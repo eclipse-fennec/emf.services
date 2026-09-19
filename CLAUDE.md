@@ -34,7 +34,7 @@ Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → OPE
 ## Module
 
 - `org.eclipse.fennec.services.model` — EMF-Codegen aus `model/services.ecore` nach **`src-gen`** (fennecEMF `-generate`; das persistierte GenModel wird NICHT auto-reconciled — bei Ecore-Änderungen manuell mitpflegen)
-- `org.eclipse.fennec.services.broker.core` / `broker.rest` / `broker.mqtt` — Broker-API + In-Memory-Impl, JAX-RS/SSE, MQTT-EventSink
+- `org.eclipse.fennec.services.broker.core` / `broker.rest` / `broker.mqtt` — Broker-API + In-Memory-Impl, JAX-RS/SSE, MQTT-EventSink. `DdsrBrokerImpl` ist seit #110 nur noch Fassade; dahinter je ein Belang (`BrokerState`, `Registrations`, `CatalogStore`, `Lookups`, `UpdatePolicies`, `Liveness`, `Sessions`, `ColdCache`, `Announcements`), und `Retirement`/`Republication` sind die zwei Nähte, über die sie einander aufrufen
 - `org.eclipse.fennec.services.xmi.codec` — XMI-Wire-Codec + `…services.fingerprint` (sd1)
 - `org.eclipse.fennec.services.client.java` / `client.rest` / `client.mqtt` — transport-agnostisches SDK + Transporte
 - `org.eclipse.fennec.services.derive` — Vertrag aus einem Java-Interface ableiten (Reflection, deterministisch: stabiler sd1); Baustein für die RSA-Facade (#24)

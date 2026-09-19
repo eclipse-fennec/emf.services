@@ -257,4 +257,10 @@ final class BrokerState {
 		}
 		return null;
 	}
+
+	/** How a registration is named in a log line. */
+	static String identityOf(ServiceRegistration registration) {
+		ServiceImplementation impl = registration.getImplementation();
+		return impl == null ? "?" : impl.getName() + "/" + impl.getVersion();
+	}
 }

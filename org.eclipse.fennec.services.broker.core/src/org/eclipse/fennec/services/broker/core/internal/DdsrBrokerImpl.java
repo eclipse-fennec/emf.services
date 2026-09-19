@@ -87,10 +87,13 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	private final LookupBackend lookup;
 
 	/** Where an acknowledged and persisted change is announced. */
-	private final EventSink events;
+	private final Announcements announcements;
 
 	/** Who has acquired what. */
 	private final Sessions sessions;
+
+	/** Whether a provider is still there. */
+	private final Liveness liveness;
 
 
 	/**
@@ -128,24 +131,6 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	private record Supersession(ServiceRegistration successor, UpdatePolicy policy, Instant cutoverAt) {
 	}
 
-	/**
-	 * Provider liveness (#52): the last heartbeat per registration and
-	 * the interval the provider promised. Opt-in — only registrations
-	 * that heartbeat are in here. Runtime state like the sessions: a
-	 * broker restart forgets the leases, and the providers' next
-	 * heartbeat (404 → republish) rebuilds them.
-	 */
-	private final Map<ServiceRegistration, ProviderLease> providerLeases = new IdentityHashMap<>();
-
-	private record ProviderLease(Instant lastHeartbeat, long intervalSeconds) {
-		Instant lostAt() {
-			return lastHeartbeat.plusSeconds(intervalSeconds * MISSED_HEARTBEATS_TO_LOSE);
-		}
-	}
-
-	/** UPDATE_POLICY.md §4: silence of this many intervals means the provider is gone. */
-	public static final int MISSED_HEARTBEATS_TO_LOSE = 2;
-
 	/** UPDATE_POLICY.md §2.3: default failover window of a HARD_CUTOVER. */
 	public static final long DEFAULT_CUTOVER_GRACE_MILLIS = 30_000L;
 	private volatile long defaultCutoverGraceMillis = DEFAULT_CUTOVER_GRACE_MILLIS;
@@ -166,8 +151,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	public DdsrBrokerImpl(Path snapshotPath, LookupBackend lookup, EventSink events) {
 		this.state = new BrokerState(snapshotPath);
 		this.lookup = lookup;
-		this.events = events != null ? events : EventSink.NOOP;
+		this.announcements = new Announcements(events);
 		this.sessions = new Sessions(state);
+		this.liveness = new Liveness(state, announcements, this::retireImplementation);
 		if (state.rehydrated()) {
 			// The providers and implementations came back from the snapshot,
 			// but the reference/registration pairs and the lookup index are
@@ -341,7 +327,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			lookup.serviceAdded(implementation, ref);
 
 			Diagnostic d = state.persist();
-			if (isError(d)) {
+			if (DdsrDiagnostics.isError(d)) {
 				// Rollback in-memory state on persist failure.
 				state.registry().getImplementations().remove(implementation);
 				lookup.serviceRemoved(implementation, ref);
@@ -350,8 +336,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			// Order matters for a consumer holding the old reference: the
 			// replaced service goes away, then the new one appears.
-			emit(ServiceEventType.UNREGISTERING, retired, ServiceEventReasons.REPLACED);
-			emit(ServiceEventType.REGISTERED, ref);
+			announcements.emit(ServiceEventType.UNREGISTERING, retired, ServiceEventReasons.REPLACED);
+			announcements.emit(ServiceEventType.REGISTERED, ref);
 			if (predecessor != null) {
 				armUpdatePolicy(reg, predecessor);
 			}
@@ -417,7 +403,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			lookup.serviceModified(liveImpl, reference);
 
 			Diagnostic d = state.persist();
-			if (isError(d)) {
+			if (DdsrDiagnostics.isError(d)) {
 				applyModification(liveImpl, before);
 				reference.getProperties().clear();
 				reference.getProperties().addAll(decorationBefore);
@@ -426,7 +412,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			// Same reference id, same leases: consumers refresh, they do
 			// not rebind (UPDATE_POLICY/#55 — MODIFIED is OSGi's MODIFIED).
-			emit(ServiceEventType.MODIFIED, reference);
+			announcements.emit(ServiceEventType.MODIFIED, reference);
 			return contracts.deprecationNote() != null
 					? DdsrDiagnostics.warning(DdsrDiagnostics.CODE_INTERFACE_DEPRECATED,
 							"interface(s) marked deprecated: " + contracts.deprecationNote())
@@ -502,7 +488,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			// would have to fall back to "_unknown" / deliver-to-all.
 			// Published only after a successful persist, so the EventSink
 			// contract ("only acknowledged and persisted mutations") holds.
-			ServiceReference eventReference = selfContainedEventReference(liveProvider, liveImpl, withdrawn);
+			ServiceReference eventReference = Announcements.selfContained(liveProvider, liveImpl, withdrawn);
 
 			// Remember positions for an exact rollback: provider
 			// containment order matters for positional cross-refs.
@@ -515,7 +501,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			List<ConsumerSession> leaseHolders = toRemove != null
 					? List.copyOf(toRemove.getUsingSessions())
 					: List.of();
-			ProviderLease providerLease = toRemove != null ? providerLeases.remove(toRemove) : null;
+			Liveness.ProviderLease providerLease = toRemove != null ? liveness.forget(toRemove) : null;
 			if (toRemove != null) {
 				lookup.serviceRemoved(liveImpl, toRemove.getReference());
 				state.registrations().remove(toRemove);
@@ -545,7 +531,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			liveProvider.getImplementations().remove(liveImpl);
 
 			Diagnostic d = state.persist();
-			if (isError(d)) {
+			if (DdsrDiagnostics.isError(d)) {
 				// Roll back — a withdrawal that could not be persisted must
 				// leave the in-memory state exactly as it was, and no event
 				// may be announced for it.
@@ -555,60 +541,25 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 					state.registrations().add(toRemove);
 					toRemove.setUnregistered(false);
 					toRemove.getUsingSessions().addAll(leaseHolders);
-					if (providerLease != null) {
-						providerLeases.put(toRemove, providerLease);
-					}
+					liveness.restore(toRemove, providerLease);
 					lookup.serviceAdded(liveImpl, toRemove.getReference());
 				}
 				return d;
 			}
 			// After the save, never before: a withdrawal that could not
 			// be persisted must not be announced.
-			emit(ServiceEventType.UNREGISTERING, eventReference, ServiceEventReasons.WITHDRAWN);
+			announcements.emit(ServiceEventType.UNREGISTERING, eventReference, ServiceEventReasons.WITHDRAWN);
 			return d;
 		} finally {
 			state.writeLock().unlock();
 		}
 	}
 
-	/**
-	 * A detached copy of the withdrawn reference whose provider subtree
-	 * contains exactly the withdrawn implementation (plus copies of its
-	 * interfaces), so that {@code EventDocument} can build a
-	 * self-contained UNREGISTERING document although the live lookup no
-	 * longer resolves the implementation by the time the event goes out.
-	 * <p>
-	 * Copied with {@code useOriginalReferences = false}: references to
-	 * anything outside the copy set (notably the registration and its
-	 * eOpposite) are dropped instead of pointing back into — and via
-	 * eOpposite mutating — live broker state.
-	 */
-	private static ServiceReference selfContainedEventReference(ServiceProvider provider,
-			ServiceImplementation implementation, ServiceReference reference) {
-		if (reference == null) {
-			return null;
-		}
-		EcoreUtil.Copier copier = new EcoreUtil.Copier(true, false);
-		Collection<EObject> originals = new ArrayList<>();
-		originals.add(reference);
-		originals.add(provider);
-		originals.addAll(implementation.getServiceInterfaces());
-		copier.copyAll(originals);
-		copier.copyReferences();
-
-		ServiceProvider providerCopy = (ServiceProvider) copier.get(provider);
-		ServiceImplementation implCopy = (ServiceImplementation) copier.get(implementation);
-		providerCopy.getImplementations().removeIf(other -> other != implCopy);
-
-		ServiceReference referenceCopy = (ServiceReference) copier.get(reference);
-		referenceCopy.setProvider(providerCopy);
-		return referenceCopy;
-	}
 
 	@Override
 	public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 		Diagnostic d = publishImplementation(provider, implementation);
-		if (isError(d)) {
+		if (DdsrDiagnostics.isError(d)) {
 			return null;
 		}
 		state.readLock().lock();
@@ -658,6 +609,25 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		} finally {
 			state.readLock().unlock();
 		}
+	}
+
+	// ============================================================
+	// Provider liveness — see Liveness
+	// ============================================================
+
+	@Override
+	public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
+		return liveness.heartbeat(referenceId, intervalSeconds);
+	}
+
+	/** Sweeps the leases; driven by the component's scheduler, not by the wire. */
+	public int retireLostProviders(Instant now) {
+		return liveness.retireLostProviders(now);
+	}
+
+	/** How many registrations are being watched; for tests and diagnostics. */
+	public int providerLeaseCount() {
+		return liveness.providerLeaseCount();
 	}
 
 	// ============================================================
@@ -715,7 +685,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 			state.registry().getCatalog().add(serviceInterface);
 			Diagnostic d = state.persist();
-			if (isError(d)) {
+			if (DdsrDiagnostics.isError(d)) {
 				// Roll back so a failed save does not leave the in-memory
 				// catalog ahead of the snapshot — see the note on
 				// rollbackOnPersistFailure.
@@ -761,7 +731,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			}
 
 			Diagnostic d = state.persist();
-			if (isError(d)) {
+			if (DdsrDiagnostics.isError(d)) {
 				inCatalog.setStatus(previousStatus);
 				inCatalog.setDeprecationReason(previousReason);
 				inCatalog.setReplacedBy(previousReplacedBy);
@@ -818,7 +788,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			int previousIndex = state.registry().getCatalog().indexOf(inCatalog);
 			state.registry().getCatalog().remove(inCatalog);
 			Diagnostic d = state.persist();
-			if (isError(d)) {
+			if (DdsrDiagnostics.isError(d)) {
 				state.registry().getCatalog().add(previousIndex, inCatalog);
 			}
 			return d;
@@ -1027,18 +997,18 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		// retire): after retireImplementation the lookup no longer resolves
 		// the implementation, and a bare reference would send the event to
 		// MQTT's _unknown topic / SSE's deliver-to-all fallback (#54 matrix).
-		ServiceReference eventReference = selfContainedEventReference(provider, impl, reg.getReference());
+		ServiceReference eventReference = Announcements.selfContained(provider, impl, reg.getReference());
 		ServiceReference retiredRef = retireImplementation(provider, impl);
 		registrationSince.remove(reg);
 		coldEntries.put(key, new ColdEntry(key, names, fingerprints,
 				impl.getImplementationId(), provider.getName(), file));
 		Diagnostic d = state.persist();
-		if (isError(d)) {
+		if (DdsrDiagnostics.isError(d)) {
 			// Degraded but recoverable: the entry is discoverable through
 			// its stub, and rehydration republishes it.
 			LOG.warning("[DDSR] persist after coldify failed for " + key + ": " + d.getMessage());
 		}
-		emit(ServiceEventType.UNREGISTERING, eventReference != null ? eventReference : retiredRef,
+		announcements.emit(ServiceEventType.UNREGISTERING, eventReference != null ? eventReference : retiredRef,
 				ServiceEventReasons.COLDIFIED);
 		LOG.fine(() -> "[DDSR] coldified " + key + " -> " + file);
 		return true;
@@ -1072,7 +1042,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				}
 				coldEntries.remove(entry.key());
 				Diagnostic d = rehydrate(entry);
-				if (isError(d)) {
+				if (DdsrDiagnostics.isError(d)) {
 					LOG.warning("[DDSR] cold entry " + entry.key() + " failed to rehydrate and was dropped: "
 							+ d.getMessage());
 				} else {
@@ -1431,7 +1401,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		if (deadReg != null) {
 			state.registrations().remove(deadReg);
 			registrationSince.remove(deadReg);
-			providerLeases.remove(deadReg);
+			liveness.forget(deadReg);
 			forgetSupersession(deadReg);
 			// A replaced registration releases its leases; holders
 			// re-acquire the successor on their next session PUT.
@@ -1708,22 +1678,22 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		}
 		UpdatePolicy policy = effectiveUpdatePolicy(successor.getImplementation());
 		switch (policy) {
-		case EVERGREEN -> LOG.fine(() -> "[DDSR] " + identityOf(successor) + " replaces "
-				+ identityOf(predecessor) + " under EVERGREEN — both stay registered");
+		case EVERGREEN -> LOG.fine(() -> "[DDSR] " + BrokerState.identityOf(successor) + " replaces "
+				+ BrokerState.identityOf(predecessor) + " under EVERGREEN — both stay registered");
 		case HARD_CUTOVER -> {
 			long own = successor.getImplementation().getCutoverGraceMillis();
 			long grace = own > 0 ? own : defaultCutoverGraceMillis;
 			superseded.put(predecessor, new Supersession(successor, policy, Instant.now().plusMillis(grace)));
-			LOG.info("[DDSR] " + identityOf(successor) + " replaces " + identityOf(predecessor)
+			LOG.info("[DDSR] " + BrokerState.identityOf(successor) + " replaces " + BrokerState.identityOf(predecessor)
 					+ " under HARD_CUTOVER — retiring the predecessor in " + grace + " ms");
 		}
 		default -> {
 			// DEPRECATE_AND_DRAIN: hidden from new lookups, kept alive by
 			// its leases, UPGRADE_AVAILABLE as the hint to migrate.
 			superseded.put(predecessor, new Supersession(successor, UpdatePolicy.DEPRECATE_AND_DRAIN, null));
-			LOG.info("[DDSR] " + identityOf(successor) + " replaces " + identityOf(predecessor)
+			LOG.info("[DDSR] " + BrokerState.identityOf(successor) + " replaces " + BrokerState.identityOf(predecessor)
 					+ " under DEPRECATE_AND_DRAIN — draining " + predecessor.getUsingSessions().size() + " lease(s)");
-			emit(ServiceEventType.UPGRADE_AVAILABLE, predecessor.getReference());
+			announcements.emit(ServiceEventType.UPGRADE_AVAILABLE, predecessor.getReference());
 		}
 		}
 	}
@@ -1757,7 +1727,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				ServiceRegistration successor = supersession.successor();
 				if (successor.isUnregistered() || !state.registrations().contains(successor)) {
 					superseded.remove(predecessor);
-					LOG.info("[DDSR] successor of " + identityOf(predecessor)
+					LOG.info("[DDSR] successor of " + BrokerState.identityOf(predecessor)
 							+ " is gone — cancelling its " + supersession.policy().getLiteral());
 					continue;
 				}
@@ -1770,7 +1740,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				ServiceProvider provider = predecessor.getProvider();
 				ServiceImplementation impl = predecessor.getImplementation();
 				// Event material before the detach, as in the withdraw path.
-				ServiceReference eventReference = selfContainedEventReference(provider, impl, predecessor.getReference());
+				ServiceReference eventReference = Announcements.selfContained(provider, impl, predecessor.getReference());
 				ServiceReference retiredRef = retireImplementation(provider, impl);
 				ServiceImplementation successorImpl = successor.getImplementation();
 				if (successorImpl != null && successorImpl.getReplaces() == impl) {
@@ -1778,17 +1748,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				}
 				superseded.remove(predecessor);
 				Diagnostic d = state.persist();
-				if (isError(d)) {
-					LOG.warning("[DDSR] persist after policy retire of " + identityOf(predecessor)
+				if (DdsrDiagnostics.isError(d)) {
+					LOG.warning("[DDSR] persist after policy retire of " + BrokerState.identityOf(predecessor)
 							+ " failed: " + d.getMessage());
 				}
 				String reason = supersession.policy() == UpdatePolicy.HARD_CUTOVER
 						? ServiceEventReasons.CUTOVER
 						: ServiceEventReasons.REPLACED;
 				ServiceReference announced = eventReference != null ? eventReference : retiredRef;
-				emit(ServiceEventType.UNREGISTERING, announced, reason);
-				emit(ServiceEventType.RETIRED, announced, reason);
-				LOG.info("[DDSR] retired " + identityOf(predecessor) + " (" + reason + ")");
+				announcements.emit(ServiceEventType.UNREGISTERING, announced, reason);
+				announcements.emit(ServiceEventType.RETIRED, announced, reason);
+				LOG.info("[DDSR] retired " + BrokerState.identityOf(predecessor) + " (" + reason + ")");
 				retired++;
 			}
 			return retired;
@@ -1801,109 +1771,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	// Provider liveness (#52, UPDATE_POLICY.md §4)
 	// ============================================================
 
-	@Override
-	public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
-		if (referenceId == null || referenceId.isBlank()) {
-			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
-					"referenceId must not be null or blank");
-		}
-		if (intervalSeconds <= 0) {
-			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_HEARTBEAT_INVALID,
-					"intervalSeconds must be positive, got " + intervalSeconds);
-		}
-		state.writeLock().lock();
-		try {
-			ServiceRegistration registration = state.registrationWithReferenceId(referenceId);
-			if (registration == null) {
-				// Unknown here means: restart, coldified, retired for silence
-				// or replaced — in every case the provider has to publish
-				// again to be listed. 404 on the wire, and that is the cue.
-				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
-						"no live registration for reference '" + referenceId + "' — publish again");
-			}
-			boolean armed = providerLeases.containsKey(registration);
-			providerLeases.put(registration, new ProviderLease(Instant.now(), intervalSeconds));
-			if (!armed) {
-				LOG.info("[DDSR] provider liveness armed for " + identityOf(registration)
-						+ " — lost after " + (intervalSeconds * MISSED_HEARTBEATS_TO_LOSE) + " s of silence");
-			}
-			// Runtime state, like the sessions: no persist, no event.
-			return DdsrDiagnostics.ok("heartbeat accepted, lost after "
-					+ (intervalSeconds * MISSED_HEARTBEATS_TO_LOSE) + " s of silence");
-		} finally {
-			state.writeLock().unlock();
-		}
-	}
 
-	/**
-	 * Retires every registration whose provider promised heartbeats and
-	 * has been silent for {@link #MISSED_HEARTBEATS_TO_LOSE} intervals at
-	 * {@code now}, announcing {@code UNREGISTERING} followed by
-	 * {@code RETIRED} with reason {@code PROVIDER_LOST}. A lost predecessor
-	 * of a supersession counts as retired (the drain is over), a lost
-	 * successor cancels the drain and the predecessor becomes visible to
-	 * lookups again. Maintenance entry point like {@link #coldifyIdle}
-	 * and {@link #advanceUpdatePolicies}, not part of the client-facing
-	 * contract.
-	 *
-	 * @return the number of registrations retired in this pass
-	 */
-	public int retireLostProviders(Instant now) {
-		if (now == null) {
-			return 0;
-		}
-		state.writeLock().lock();
-		try {
-			providerLeases.keySet().retainAll(new HashSet<>(state.registrations()));
-			int retired = 0;
-			for (Map.Entry<ServiceRegistration, ProviderLease> entry : new ArrayList<>(providerLeases.entrySet())) {
-				ServiceRegistration registration = entry.getKey();
-				if (registration.isUnregistered() || now.isBefore(entry.getValue().lostAt())) {
-					continue;
-				}
-				ServiceProvider provider = registration.getProvider();
-				ServiceImplementation impl = registration.getImplementation();
-				if (provider == null || impl == null) {
-					providerLeases.remove(registration);
-					continue;
-				}
-				// Event material before the detach, as in the withdraw path.
-				ServiceReference eventReference = selfContainedEventReference(provider, impl, registration.getReference());
-				ServiceReference retiredRef = retireImplementation(provider, impl);
-				// A successor's `replaces` would dangle in the snapshot.
-				for (ServiceRegistration other : state.registrations()) {
-					ServiceImplementation otherImpl = other.getImplementation();
-					if (otherImpl != null && otherImpl.getReplaces() == impl) {
-						otherImpl.setReplaces(null);
-					}
-				}
-				Diagnostic d = state.persist();
-				if (isError(d)) {
-					LOG.warning("[DDSR] persist after retiring lost provider " + identityOf(registration)
-							+ " failed: " + d.getMessage());
-				}
-				ServiceReference announced = eventReference != null ? eventReference : retiredRef;
-				emit(ServiceEventType.UNREGISTERING, announced, ServiceEventReasons.PROVIDER_LOST);
-				emit(ServiceEventType.RETIRED, announced, ServiceEventReasons.PROVIDER_LOST);
-				LOG.warning("[DDSR] retired " + identityOf(registration) + " — provider silent since "
-						+ entry.getValue().lastHeartbeat() + " (PROVIDER_LOST)");
-				retired++;
-			}
-			return retired;
-		} finally {
-			state.writeLock().unlock();
-		}
-	}
 
-	/** Number of registrations currently under liveness supervision. */
-	public int providerLeaseCount() {
-		state.readLock().lock();
-		try {
-			return providerLeases.size();
-		} finally {
-			state.readLock().unlock();
-		}
-	}
 
 	/**
 	 * UPDATE_POLICY.md §2.2: a predecessor in DEPRECATE_AND_DRAIN is
@@ -1954,56 +1823,10 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		superseded.values().removeIf(supersession -> supersession.successor() == registration);
 	}
 
-	private static String identityOf(ServiceRegistration registration) {
-		ServiceImplementation impl = registration.getImplementation();
-		return impl == null ? "?" : impl.getName() + "/" + impl.getVersion();
-	}
 
 
-	/**
-	 * Hands one lifecycle event to the sink. Called only for mutations
-	 * that were acknowledged AND persisted, and while the write lock is
-	 * still held, so per-service ordering matches the order in which the
-	 * mutations were applied.
-	 * <p>
-	 * A sink must not throw, but we do not trust it to keep that promise:
-	 * a misbehaving subscriber may not undo a change the broker has
-	 * already committed and persisted.
-	 */
-	private void emit(ServiceEventType type, ServiceReference reference) {
-		emit(type, reference, null);
-	}
 
-	/**
-	 * Emits a lifecycle event. {@code reason} is one of the
-	 * {@link ServiceEventReasons} tokens for an {@code UNREGISTERING},
-	 * {@code null} for {@code REGISTERED} — see the model documentation
-	 * of {@code ServiceEvent.reasonCode}.
-	 */
-	private void emit(ServiceEventType type, ServiceReference reference, String reason) {
-		if (reference == null) {
-			return;
-		}
-		ServiceEvent event = ServicesFactory.eINSTANCE.createServiceEvent();
-		event.setType(type);
-		event.setReference(reference);
-		event.setTimestamp(new Date());
-		event.setReasonCode(reason);
-		try {
-			events.publish(event);
-		} catch (RuntimeException sinkFailure) {
-			// Swallow deliberately — see above.
-		}
-	}
 
-	/**
-	 * Whether a diagnostic denies the operation. Mutations that already
-	 * touched the model roll their change back when this is true, so the
-	 * in-memory state never runs ahead of the persisted snapshot.
-	 */
-	private static boolean isError(Diagnostic d) {
-		return d.getSeverity().getValue() >= DiagnosticSeverity.ERROR_VALUE;
-	}
 
 	/**
 	 * Framework decoration of a freshly minted reference: the

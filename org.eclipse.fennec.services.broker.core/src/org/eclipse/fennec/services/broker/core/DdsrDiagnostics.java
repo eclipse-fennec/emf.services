@@ -113,4 +113,13 @@ public final class DdsrDiagnostics {
 		}
 		return d;
 	}
+
+	/**
+	 * Whether a diagnostic denies the operation. Mutations that already
+	 * touched the model roll their change back when this is true, so the
+	 * in-memory state never runs ahead of the persisted snapshot.
+	 */
+	public static boolean isError(Diagnostic d) {
+		return d.getSeverity().getValue() >= DiagnosticSeverity.ERROR_VALUE;
+	}
 }

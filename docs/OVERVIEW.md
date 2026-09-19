@@ -1,4 +1,30 @@
-# 1 · Architecture
+# Overview
+
+Everything here is written for someone who wants to *use* Fennec
+Services: publish a service, find one, run a broker, export an ordinary
+OSGi service to another framework.
+
+Some of the documents beside this one are written for the people
+building it, and are in German. They are linked where they go deeper.
+Where a page and one of those disagree about the wire, the older
+document is the one to trust.
+
+Every page says what is true **today**. Where something is planned but
+not built, the page says so and names the issue.
+
+## Which page
+
+| You want to | Read |
+| --- | --- |
+| get a broker and a provider running | [Getting started](GETTING_STARTED.md) |
+| understand who talks to whom | this page |
+| know what a consumer is told, and when | [Eventing](EVENTING.md) |
+| know why a provider was refused, or ignored | [Fingerprints](FINGERPRINTS.md) |
+| change the model, or generate from it | [Code generation](CODE_GENERATION.md) |
+| configure REST or MQTT for your deployment | [Transports](TRANSPORTS.md) |
+| export an OSGi service to another framework | [Remote Service Admin](RSA.md) |
+| write a Java provider or consumer by hand | [Client framework](CLIENT_FRAMEWORK_GUIDE.md) |
+
 
 ## Three parties and one thing the broker does not do
 
@@ -37,7 +63,7 @@ Two consequences run through everything else:
 
 - **A contract can be hashed.** Both sides compute the same fingerprint
   over the same model, which is how a consumer can refuse a provider
-  whose contract drifted. See [3 · Fingerprints](03-fingerprints.md).
+  whose contract drifted. See [Fingerprints](FINGERPRINTS.md).
 - **A call can be made without generated code.** An invoker reads the
   parameter names from the model rather than from Java reflection, so
   it does not depend on the `-parameters` compile flag, and a generic
@@ -73,7 +99,7 @@ Three stages, and only the first is mandatory.
    full replace: the list you send is the complete truth.
 3. **Invocation** — peer to peer, over the flavor.
 
-Details in [docs/ACQUISITION.md](../ACQUISITION.md).
+Details in [Discovery, Acquisition, Invocation](ACQUISITION.md).
 
 ## The one lifecycle guarantee worth memorising
 
@@ -96,7 +122,7 @@ shutdown is not instant. The benefit is that a consumer never discovers
 the withdrawal by getting a connection refused.
 
 A provider that dies without saying so is a different case, handled by
-heartbeats — see [2 · Eventing](02-eventing.md).
+heartbeats — see [Eventing](EVENTING.md).
 
 ## Bundles
 
@@ -125,7 +151,7 @@ never edit them by hand.
 - `…derive` — builds a contract from a Java interface by reflection,
   deterministically
 
-**Remote Service Admin** — see [6 · RSA](06-rsa.md)
+**Remote Service Admin** — see [Remote Service Admin](RSA.md)
 - `…rsa`, `…rsa.distribution.rest`, `…rsa.discovery.rest`,
   `…rsa.discovery.local`, `…rsa.topology`, `…rsa.config`
 
@@ -146,8 +172,8 @@ to end. When a document and the harness disagree, the harness is right.
 
 ## Read next
 
-- [docs/GETTING_STARTED.md](../GETTING_STARTED.md) — a broker and a
+- [Getting started](GETTING_STARTED.md) — a broker and a
   provider running, from a fresh checkout
-- [2 · Eventing](02-eventing.md) — what a consumer is told, and when
-- [docs/ARCHITECTURE.md](../ARCHITECTURE.md) — the internal view, in
+- [Eventing](EVENTING.md) — what a consumer is told, and when
+- [ARCHITECTURE.md](ARCHITECTURE.md) — the internal view, in
   German, with the decision record

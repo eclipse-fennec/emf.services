@@ -95,6 +95,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	/** Whether a provider is still there. */
 	private final Liveness liveness;
 
+	/** What happens to the service a new one replaces. */
+	private final UpdatePolicies policies;
+
 
 	/**
 	 * Cold cache (ACQUISITION.md §10, optional policy — default off):
@@ -118,22 +121,6 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 * cold-idle rule. Identity-keyed runtime state, pruned each sweep.
 	 */
 	private final Map<ServiceRegistration, Instant> registrationSince = new IdentityHashMap<>();
-	/**
-	 * Predecessors superseded by a publish that declared {@code replaces}
-	 * (UPDATE_POLICY.md §2), keyed by the predecessor's registration.
-	 * Runtime state like {@link #registrationSince}: a broker restart
-	 * forgets pending drains and cutovers, which fails safe — nothing is
-	 * retired by accident; the successor re-arms the policy by publishing
-	 * again with {@code replaces}.
-	 */
-	private final Map<ServiceRegistration, Supersession> superseded = new IdentityHashMap<>();
-
-	private record Supersession(ServiceRegistration successor, UpdatePolicy policy, Instant cutoverAt) {
-	}
-
-	/** UPDATE_POLICY.md §2.3: default failover window of a HARD_CUTOVER. */
-	public static final long DEFAULT_CUTOVER_GRACE_MILLIS = 30_000L;
-	private volatile long defaultCutoverGraceMillis = DEFAULT_CUTOVER_GRACE_MILLIS;
 
 	/** In-memory remainder of a coldified registration. */
 	private record ColdEntry(String key, List<String> interfaceNames,
@@ -154,6 +141,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		this.announcements = new Announcements(events);
 		this.sessions = new Sessions(state);
 		this.liveness = new Liveness(state, announcements, this::retireImplementation);
+		this.policies = new UpdatePolicies(state, announcements, this::retireImplementation);
 		if (state.rehydrated()) {
 			// The providers and implementations came back from the snapshot,
 			// but the reference/registration pairs and the lookup index are
@@ -339,7 +327,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			announcements.emit(ServiceEventType.UNREGISTERING, retired, ServiceEventReasons.REPLACED);
 			announcements.emit(ServiceEventType.REGISTERED, ref);
 			if (predecessor != null) {
-				armUpdatePolicy(reg, predecessor);
+				policies.armUpdatePolicy(reg, predecessor);
 			}
 
 			if (replacesNote != null) {
@@ -514,7 +502,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				toRemove.setUnregistered(true);
 				// A withdrawn predecessor needs no drain; a withdrawn
 				// successor cancels the drain — the predecessor stays.
-				forgetSupersession(toRemove);
+				policies.forgetSupersession(toRemove);
 			}
 
 			state.registry().getImplementations().remove(liveImpl);
@@ -591,7 +579,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		touchAndRehydrate(interfaceName);
 		state.readLock().lock();
 		try {
-			return withoutDraining(filterByRequestedFingerprint(
+			return policies.withoutDraining(filterByRequestedFingerprint(
 					lookup.getServiceReferences(interfaceName, filter, capability), capability));
 		} finally {
 			state.readLock().unlock();
@@ -609,6 +597,25 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		} finally {
 			state.readLock().unlock();
 		}
+	}
+
+	// ============================================================
+	// Update policies — see UpdatePolicies
+	// ============================================================
+
+	/** UPDATE_POLICY.md §4: silence of this many intervals means the provider is gone. */
+	public static final int MISSED_HEARTBEATS_TO_LOSE = Liveness.MISSED_HEARTBEATS_TO_LOSE;
+
+	/** UPDATE_POLICY.md §2.3: default failover window of a HARD_CUTOVER. */
+	public static final long DEFAULT_CUTOVER_GRACE_MILLIS = UpdatePolicies.DEFAULT_CUTOVER_GRACE_MILLIS;
+
+	public void setDefaultCutoverGraceMillis(long millis) {
+		policies.setDefaultCutoverGraceMillis(millis);
+	}
+
+	/** Advances every armed handover; driven by the component's scheduler. */
+	public int advanceUpdatePolicies(Instant now) {
+		return policies.advanceUpdatePolicies(now);
 	}
 
 	// ============================================================
@@ -913,7 +920,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 				if (reg.isUnregistered() || reg.getImplementation() == null || reg.getProvider() == null) {
 					continue;
 				}
-				if (isPartyOfSupersession(reg)) {
+				if (policies.isPartyOfSupersession(reg)) {
 					// The policy sweep owns the predecessor's fate, and the
 					// successor must stay hot for consumers migrating to it.
 					continue;
@@ -1402,7 +1409,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			state.registrations().remove(deadReg);
 			registrationSince.remove(deadReg);
 			liveness.forget(deadReg);
-			forgetSupersession(deadReg);
+			policies.forgetSupersession(deadReg);
 			// A replaced registration releases its leases; holders
 			// re-acquire the successor on their next session PUT.
 			deadReg.getUsingSessions().clear();
@@ -1639,133 +1646,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	// Update policies (UPDATE_POLICY.md §2)
 	// ============================================================
 
-	/** Broker default for {@code cutoverGraceMillis} when the successor leaves it at 0. */
-	public void setDefaultCutoverGraceMillis(long millis) {
-		this.defaultCutoverGraceMillis = Math.max(0L, millis);
-	}
 
-	/**
-	 * Successor override, else the strictest default among its interfaces
-	 * (HARD_CUTOVER &gt; DEPRECATE_AND_DRAIN &gt; EVERGREEN), else the broker
-	 * default DEPRECATE_AND_DRAIN. {@code UNSPECIFIED} means "inherit" on
-	 * both levels.
-	 */
-	static UpdatePolicy effectiveUpdatePolicy(ServiceImplementation implementation) {
-		UpdatePolicy own = implementation.getUpdatePolicy();
-		if (own != null && own != UpdatePolicy.UNSPECIFIED) {
-			return own;
-		}
-		UpdatePolicy strictest = UpdatePolicy.UNSPECIFIED;
-		for (ServiceInterface si : implementation.getServiceInterfaces()) {
-			UpdatePolicy candidate = si.getUpdatePolicy();
-			if (candidate != null && candidate.getValue() > strictest.getValue()) {
-				strictest = candidate;
-			}
-		}
-		return strictest == UpdatePolicy.UNSPECIFIED ? UpdatePolicy.DEPRECATE_AND_DRAIN : strictest;
-	}
 
-	/**
-	 * Arms the update policy for a successor that named a live
-	 * predecessor. Runs after the successor's REGISTERED went out, so a
-	 * consumer reacting to UPGRADE_AVAILABLE already finds the successor.
-	 * The predecessor itself is only retired by {@link #advanceUpdatePolicies}.
-	 */
-	private void armUpdatePolicy(ServiceRegistration successor, ServiceImplementation predecessorImpl) {
-		ServiceRegistration predecessor = state.registrationOf(predecessorImpl);
-		if (predecessor == null || predecessor.isUnregistered() || predecessor == successor) {
-			return; // parked cold or already gone — nothing to drain
-		}
-		UpdatePolicy policy = effectiveUpdatePolicy(successor.getImplementation());
-		switch (policy) {
-		case EVERGREEN -> LOG.fine(() -> "[DDSR] " + BrokerState.identityOf(successor) + " replaces "
-				+ BrokerState.identityOf(predecessor) + " under EVERGREEN — both stay registered");
-		case HARD_CUTOVER -> {
-			long own = successor.getImplementation().getCutoverGraceMillis();
-			long grace = own > 0 ? own : defaultCutoverGraceMillis;
-			superseded.put(predecessor, new Supersession(successor, policy, Instant.now().plusMillis(grace)));
-			LOG.info("[DDSR] " + BrokerState.identityOf(successor) + " replaces " + BrokerState.identityOf(predecessor)
-					+ " under HARD_CUTOVER — retiring the predecessor in " + grace + " ms");
-		}
-		default -> {
-			// DEPRECATE_AND_DRAIN: hidden from new lookups, kept alive by
-			// its leases, UPGRADE_AVAILABLE as the hint to migrate.
-			superseded.put(predecessor, new Supersession(successor, UpdatePolicy.DEPRECATE_AND_DRAIN, null));
-			LOG.info("[DDSR] " + BrokerState.identityOf(successor) + " replaces " + BrokerState.identityOf(predecessor)
-					+ " under DEPRECATE_AND_DRAIN — draining " + predecessor.getUsingSessions().size() + " lease(s)");
-			announcements.emit(ServiceEventType.UPGRADE_AVAILABLE, predecessor.getReference());
-		}
-		}
-	}
 
-	/**
-	 * Advances the update-policy state machine (UPDATE_POLICY.md §2):
-	 * retires every DEPRECATE_AND_DRAIN predecessor whose last lease is
-	 * gone and every HARD_CUTOVER predecessor whose grace window has
-	 * elapsed at {@code now}, announcing each as {@code UNREGISTERING}
-	 * followed by {@code RETIRED} (reason REPLACED resp. CUTOVER).
-	 * Idempotent. Like {@link #coldifyIdle} a maintenance entry point of
-	 * the implementation, deliberately not part of the client-facing
-	 * {@code BrokerImplementations} contract.
-	 *
-	 * @return the number of predecessors retired in this pass
-	 */
-	public int advanceUpdatePolicies(Instant now) {
-		if (now == null) {
-			return 0;
-		}
-		state.writeLock().lock();
-		try {
-			int retired = 0;
-			for (Map.Entry<ServiceRegistration, Supersession> entry : new ArrayList<>(superseded.entrySet())) {
-				ServiceRegistration predecessor = entry.getKey();
-				Supersession supersession = entry.getValue();
-				if (predecessor.isUnregistered() || !state.registrations().contains(predecessor)) {
-					superseded.remove(predecessor); // withdrawn meanwhile
-					continue;
-				}
-				ServiceRegistration successor = supersession.successor();
-				if (successor.isUnregistered() || !state.registrations().contains(successor)) {
-					superseded.remove(predecessor);
-					LOG.info("[DDSR] successor of " + BrokerState.identityOf(predecessor)
-							+ " is gone — cancelling its " + supersession.policy().getLiteral());
-					continue;
-				}
-				boolean due = supersession.policy() == UpdatePolicy.HARD_CUTOVER
-						? !now.isBefore(supersession.cutoverAt())
-						: predecessor.getUsingSessions().isEmpty();
-				if (!due) {
-					continue;
-				}
-				ServiceProvider provider = predecessor.getProvider();
-				ServiceImplementation impl = predecessor.getImplementation();
-				// Event material before the detach, as in the withdraw path.
-				ServiceReference eventReference = Announcements.selfContained(provider, impl, predecessor.getReference());
-				ServiceReference retiredRef = retireImplementation(provider, impl);
-				ServiceImplementation successorImpl = successor.getImplementation();
-				if (successorImpl != null && successorImpl.getReplaces() == impl) {
-					successorImpl.setReplaces(null); // would dangle in the snapshot
-				}
-				superseded.remove(predecessor);
-				Diagnostic d = state.persist();
-				if (DdsrDiagnostics.isError(d)) {
-					LOG.warning("[DDSR] persist after policy retire of " + BrokerState.identityOf(predecessor)
-							+ " failed: " + d.getMessage());
-				}
-				String reason = supersession.policy() == UpdatePolicy.HARD_CUTOVER
-						? ServiceEventReasons.CUTOVER
-						: ServiceEventReasons.REPLACED;
-				ServiceReference announced = eventReference != null ? eventReference : retiredRef;
-				announcements.emit(ServiceEventType.UNREGISTERING, announced, reason);
-				announcements.emit(ServiceEventType.RETIRED, announced, reason);
-				LOG.info("[DDSR] retired " + BrokerState.identityOf(predecessor) + " (" + reason + ")");
-				retired++;
-			}
-			return retired;
-		} finally {
-			state.writeLock().unlock();
-		}
-	}
 
 	// ============================================================
 	// Provider liveness (#52, UPDATE_POLICY.md §4)
@@ -1774,54 +1657,9 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 
 
-	/**
-	 * UPDATE_POLICY.md §2.2: a predecessor in DEPRECATE_AND_DRAIN is
-	 * invisible to new lookups (its holders keep it through their leases);
-	 * during a HARD_CUTOVER grace window both stay visible (§2.3 phase 2).
-	 * {@code getAllServiceReferences} waives this like it waives flavor
-	 * matching.
-	 */
-	private List<ServiceReference> withoutDraining(List<ServiceReference> references) {
-		if (superseded.isEmpty() || references.isEmpty()) {
-			return references;
-		}
-		List<ServiceReference> visible = new ArrayList<>(references.size());
-		for (ServiceReference reference : references) {
-			Supersession supersession = supersessionOf(reference);
-			if (supersession == null || supersession.policy() != UpdatePolicy.DEPRECATE_AND_DRAIN) {
-				visible.add(reference);
-			}
-		}
-		return visible;
-	}
 
-	private Supersession supersessionOf(ServiceReference reference) {
-		for (Map.Entry<ServiceRegistration, Supersession> entry : superseded.entrySet()) {
-			ServiceReference candidate = entry.getKey().getReference();
-			if (candidate == reference
-					|| (candidate != null && reference.getId() != null && reference.getId().equals(candidate.getId()))) {
-				return entry.getValue();
-			}
-		}
-		return null;
-	}
 
-	private boolean isPartyOfSupersession(ServiceRegistration registration) {
-		if (superseded.containsKey(registration)) {
-			return true;
-		}
-		for (Supersession supersession : superseded.values()) {
-			if (supersession.successor() == registration) {
-				return true;
-			}
-		}
-		return false;
-	}
 
-	private void forgetSupersession(ServiceRegistration registration) {
-		superseded.remove(registration);
-		superseded.values().removeIf(supersession -> supersession.successor() == registration);
-	}
 
 
 

@@ -163,7 +163,7 @@ class DdsrBrokerUpdatePolicyTest {
 
 	@Test
 	void unspecifiedEverywhereMeansDeprecateAndDrain() {
-		assertThat(DdsrBrokerImpl.effectiveUpdatePolicy(soleImpl(version("2.0.0"))))
+		assertThat(UpdatePolicies.effectiveUpdatePolicy(soleImpl(version("2.0.0"))))
 				.isEqualTo(UpdatePolicy.DEPRECATE_AND_DRAIN);
 	}
 
@@ -175,7 +175,7 @@ class DdsrBrokerUpdatePolicyTest {
 		impl.getServiceInterfaces().add(lenient);
 		payment.setUpdatePolicy(UpdatePolicy.HARD_CUTOVER);
 
-		assertThat(DdsrBrokerImpl.effectiveUpdatePolicy(impl)).isEqualTo(UpdatePolicy.HARD_CUTOVER);
+		assertThat(UpdatePolicies.effectiveUpdatePolicy(impl)).isEqualTo(UpdatePolicy.HARD_CUTOVER);
 	}
 
 	@Test
@@ -184,7 +184,7 @@ class DdsrBrokerUpdatePolicyTest {
 		payment.setUpdatePolicy(UpdatePolicy.HARD_CUTOVER);
 		impl.setUpdatePolicy(UpdatePolicy.EVERGREEN);
 
-		assertThat(DdsrBrokerImpl.effectiveUpdatePolicy(impl)).isEqualTo(UpdatePolicy.EVERGREEN);
+		assertThat(UpdatePolicies.effectiveUpdatePolicy(impl)).isEqualTo(UpdatePolicy.EVERGREEN);
 	}
 
 	// ------------------------------------------------------------------

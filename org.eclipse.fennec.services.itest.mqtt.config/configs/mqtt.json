@@ -3,7 +3,9 @@
     "broker.url": "tcp://localhost:1883"
   },
   "org.eclipse.fennec.services.client.mqtt": {
-    "broker.url": "tcp://localhost:1883",
-    "service.ranking:Integer": 100
+    "broker.url": "tcp://localhost:1883"
+  },
+  "org.eclipse.fennec.services.client": {
+    "eventSource.target": "(ddsr.event.transport=mqtt)"
   }
 }

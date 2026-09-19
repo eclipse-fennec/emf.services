@@ -170,36 +170,27 @@ class ServiceListenerRegistryTest {
 	}
 
 	@Test
-	void aListenerRegisteredBeforeTheTransportGetsConnectedWhenItArrives() {
-		// The order that actually happens in OSGi: the component holding
-		// the listener came up before the event transport did. Without the
-		// retry the listener stayed silently unconnected — that was a real
-		// bug, found in a launch, not in a test.
+	void aSourceThatCannotCarryYetIsAskedAgainOnTheNextListener() {
 		AtomicInteger delivered = new AtomicInteger();
-		FakeSource late = new FakeSource();
-		boolean[] transportUp = { false };
+		FakeSource source = new FakeSource();
+		boolean[] carrying = { false };
 		ServiceListenerRegistry r = new ServiceListenerRegistry(
-				handler -> transportUp[0] ? late.open(handler) : null, null);
+				handler -> carrying[0] ? source.open(handler) : null, null);
 
 		r.add("Payment", null, event -> delivered.incrementAndGet());
-		assertThat(r.isStreamOpen()).as("nothing could carry events yet").isFalse();
+		assertThat(r.isStreamOpen()).as("the transport is there but not carrying yet").isFalse();
 
-		transportUp[0] = true;
-		r.transportAvailable();
+		// The transport is chosen by configuration and is present from
+		// the start; what it may lack for a moment is a live connection.
+		// The next listener is reason enough to ask it again.
+		carrying[0] = true;
+		r.add("Other", null, event -> delivered.incrementAndGet());
 
-		assertThat(r.isStreamOpen()).as("the waiting listener must be connected now").isTrue();
-		late.handler.onEvent(registeredEvent("ref-1", "Payment"));
+		assertThat(r.isStreamOpen()).as("asked again, and this time it could carry").isTrue();
+		source.handler.onEvent(registeredEvent("ref-1", "Payment"));
 		assertThat(delivered.get()).isEqualTo(1);
 	}
 
-	@Test
-	void transportAvailableIsHarmlessWithoutListeners() {
-		ServiceListenerRegistry r = registry();
-
-		r.transportAvailable();
-
-		assertThat(r.isStreamOpen()).as("no listener, so no reason to hold a connection").isFalse();
-	}
 
 	// --- routing ------------------------------------------------------
 

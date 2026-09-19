@@ -53,8 +53,12 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * it serves on.
  */
 @Designate(ocd = RestDistributionProvider.Config.class)
+// ddsr.rsa.flavor is how an admin's configuration points at this one:
+// distribution.target. A deployment says which transport it exports
+// over; it is not decided by whoever happens to be registered.
 @Component(service = FlavorDistribution.class,
 		configurationPid = "org.eclipse.fennec.services.rsa.distribution.rest",
+		property = "ddsr.rsa.flavor=fennec.rest",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class RestDistributionProvider implements FlavorDistribution {
 

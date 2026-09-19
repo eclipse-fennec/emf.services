@@ -103,28 +103,6 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 		return () -> remove(listener);
 	}
 
-	/**
-	 * An event transport became available — or a BETTER one took over
-	 * (DS greedy rebind on service.ranking). Listeners may already be
-	 * waiting, and a stream may already be open on the transport that
-	 * just lost the binding — so this closes any open stream and reopens
-	 * through the indirection, which reads the currently bound source.
-	 * The reopen announces itself via onStreamEstablished, so the
-	 * consumer re-snapshots and no event is lost in the switch
-	 * (FR-Sync-Reconnect covers transport handover for free).
-	 */
-	synchronized void transportAvailable() {
-		if (subscription != null) {
-			try {
-				subscription.close();
-			} catch (Exception closeFailure) {
-				LOG.warning("[DDSR-Client] closing the event stream for transport switch failed: "
-						+ closeFailure);
-			}
-			subscription = null;
-		}
-		openIfNeeded();
-	}
 
 	/**
 	 * The client is going away: the stream goes with it. Without this the

@@ -13,8 +13,10 @@
 
 package org.eclipse.fennec.services.rsa.topology;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -23,6 +25,8 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.remoteserviceadmin.EndpointDescription;
 import org.osgi.service.remoteserviceadmin.EndpointEvent;
@@ -52,8 +56,25 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 
 	private static final Logger LOG = Logger.getLogger(ImportWhatIsDiscovered.class.getName());
 
-	@Reference
-	private RemoteServiceAdmin rsa;
+	/**
+	 * Every admin in the framework.
+	 *
+	 * <p>There is one per configuration type, and they come and go with
+	 * the transports they are for — so this is a whiteboard, not a
+	 * setting: dynamic, multiple, and bound through methods so the
+	 * arrival of one is something this component is told about rather
+	 * than something it reads out of a field by luck.
+	 */
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+	void addAdmin(RemoteServiceAdmin admin) {
+		admins.add(admin);
+	}
+
+	void removeAdmin(RemoteServiceAdmin admin) {
+		admins.remove(admin);
+	}
+
+	private final List<RemoteServiceAdmin> admins = new CopyOnWriteArrayList<>();
 
 	/** What we imported, by the endpoint's id. */
 	private final Map<String, ImportRegistration> imported = new ConcurrentHashMap<>();
@@ -104,10 +125,17 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 			return;
 		}
 		try {
-			ImportRegistration registration = rsa.importService(endpoint);
+			// Whoever speaks this endpoint's configuration type takes it;
+			// the others answer null, which is the specification's way of
+			// saying "ask someone else".
+			ImportRegistration registration = null;
+			for (RemoteServiceAdmin admin : admins) {
+				registration = admin.importService(endpoint);
+				if (registration != null) {
+					break;
+				}
+			}
 			if (registration == null) {
-				// Not ours: the admin does not speak this endpoint's
-				// configuration type. Another one may.
 				return;
 			}
 			imported.put(endpoint.getId(), registration);

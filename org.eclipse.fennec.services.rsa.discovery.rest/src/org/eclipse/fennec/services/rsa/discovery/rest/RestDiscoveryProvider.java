@@ -17,21 +17,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
-import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServiceProvider;
-import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
-import org.eclipse.fennec.services.client.Registration;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
@@ -60,8 +56,11 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * interface, not a change to anything that uses it.
  */
 @Designate(ocd = RestDiscoveryProvider.Config.class)
+// ddsr.rsa.flavor is how an admin's configuration points at this one:
+// discovery.target.
 @Component(service = ServiceDiscovery.class,
 		configurationPid = RestDiscoveryProvider.PID,
+		property = "ddsr.rsa.flavor=fennec.rest",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class RestDiscoveryProvider implements ServiceDiscovery {
 

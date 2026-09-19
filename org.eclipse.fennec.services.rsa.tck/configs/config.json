@@ -34,7 +34,9 @@
   "org.eclipse.fennec.services.rsa.topology": {
     "policy": "manual"
   },
-  "org.eclipse.fennec.services.rsa": {
-    "export.grace.seconds": 20
+  "org.eclipse.fennec.services.rsa~rest": {
+    "remote.configs.supported": "fennec.rest",
+    "distribution.target": "(ddsr.rsa.flavor=fennec.rest)",
+    "discovery.target": "(ddsr.rsa.flavor=fennec.rest)"
   }
 }

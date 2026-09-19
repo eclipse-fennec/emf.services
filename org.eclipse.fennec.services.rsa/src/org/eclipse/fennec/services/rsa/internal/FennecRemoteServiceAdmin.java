@@ -46,6 +46,7 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
@@ -82,81 +83,52 @@ import org.osgi.service.remoteserviceadmin.RemoteServiceAdmin;
  * else: serve before announcing, withdraw before stopping to serve. A
  * consumer must never be sent to an address that has already gone quiet.
  */
-// remote.configs.supported is what the specification says an admin
-// advertises, and what a topology manager — and the TCK — reads to learn
-// which configuration types it can export with. Static for now, which is
-// wrong the moment a second distribution is installed (#98): the honest
-// value is the union of what the bound FlavorDistributions support, and
-// that has to become a dynamic service property.
-@Designate(ocd = FennecRemoteServiceAdmin.Config.class)
+@Designate(ocd = FennecRemoteServiceAdmin.Config.class, factory = true)
 @Component(service = RemoteServiceAdmin.class, scope = ServiceScope.BUNDLE,
 		configurationPid = "org.eclipse.fennec.services.rsa",
-		property = RemoteConstants.REMOTE_CONFIGS_SUPPORTED + "=fennec.rest")
+		configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 
 	private static final Logger LOG = Logger.getLogger(FennecRemoteServiceAdmin.class.getName());
 
 	@ObjectClassDefinition(name = "Fennec Services Remote Service Admin",
-			description = "How this admin behaves while a framework is still coming up.")
+			description = "One admin per configuration type: which transport it exports over and which "
+					+ "discovery announces it are named here, not searched for.")
 	public @interface Config {
 
 		/**
-		 * How long an export waits for the provider of its configuration
-		 * type.
-		 *
-		 * <p>At startup the admin, the distribution and the discovery come
-		 * up in whatever order configuration reaches them, and a bundle
-		 * that exports the moment it sees the admin — the OSGi TCK's test
-		 * bundles do — would be told "not mine" for a transport that is
-		 * seconds away. How long is worth waiting depends on the
-		 * deployment: a container that brings a Jakarta REST whiteboard up
-		 * from cold takes far longer than an embedded launch.
+		 * The configuration type this admin serves, and the property the
+		 * specification has a topology manager read to find that out
+		 * (122.4). Configuration Admin puts it on the registered service,
+		 * so what a deployment writes here is what the world sees.
 		 */
-		@AttributeDefinition(name = "Export grace (seconds)",
-				description = "How long exportService waits for the distribution and discovery of the "
-						+ "configuration type it was asked for. 0 does not wait at all.")
-		int export_grace_seconds() default 10;
+		@AttributeDefinition(name = "Configuration type",
+				description = "e.g. fennec.rest — must be one the targeted distribution supports.")
+		String remote_configs_supported() default "fennec.rest";
 	}
 
-	private volatile long graceMillis = 10_000L;
+	/**
+	 * The transport this admin exports over.
+	 *
+	 * <p>Mandatory and static, named by the configuration through
+	 * {@code distribution.target} against {@code ddsr.rsa.flavor}. It used
+	 * to be a dynamic list that {@code exportService} searched by
+	 * configuration type, and — because the search could come up empty
+	 * while a framework was still starting — a timer that waited for one
+	 * to appear. Both were symptoms of modelling a deployment's decision
+	 * as a discovery problem: either the transport this admin is for is
+	 * here, and then there is an admin, or it is not, and then there is
+	 * none to mislead anybody.
+	 *
+	 * <p>A node that exports nothing points this at
+	 * {@link NothingIsExported}.
+	 */
+	@Reference
+	private FlavorDistribution distribution;
 
-	private final List<FlavorDistribution> distributions = new CopyOnWriteArrayList<>();
-
-	private final List<ServiceDiscovery> discoveries = new CopyOnWriteArrayList<>();
-
-	/** Signalled whenever a provider arrives, for exports waiting on one. */
-	private final Object providersChanged = new Object();
-
-	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
-	void addDistribution(FlavorDistribution distribution) {
-		distributions.add(distribution);
-		wakeWaiting();
-	}
-
-	void removeDistribution(FlavorDistribution distribution) {
-		distributions.remove(distribution);
-	}
-
-	// No admin without a discovery: an admin nobody can hear is not a
-	// lesser admin but a trap — a bundle that finds it and exports at
-	// once (the TCK's test bundles do) is answered before the transports
-	// are up. A distribution may still be missing (a consumer that only
-	// imports has none), so that one is waited for, not required.
-	@Reference(cardinality = ReferenceCardinality.AT_LEAST_ONE, policy = ReferencePolicy.DYNAMIC)
-	void addDiscovery(ServiceDiscovery discovery) {
-		discoveries.add(discovery);
-		wakeWaiting();
-	}
-
-	void removeDiscovery(ServiceDiscovery discovery) {
-		discoveries.remove(discovery);
-	}
-
-	private void wakeWaiting() {
-		synchronized (providersChanged) {
-			providersChanged.notifyAll();
-		}
-	}
+	/** The discovery that announces what this admin exports, likewise named. */
+	@Reference
+	private ServiceDiscovery discovery;
 
 	@Reference
 	private ServiceModels models;
@@ -175,18 +147,31 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 
 	private final List<ImportedService> myImports = new CopyOnWriteArrayList<>();
 
+	/** The configuration type this admin is for. */
+	private volatile String configType;
+
 	private BundleContext context;
 
 	@Activate
 	void activate(BundleContext context, Config config) {
 		this.context = context;
-		this.graceMillis = Math.max(0, config.export_grace_seconds()) * 1000L;
+		this.configType = config.remote_configs_supported();
+		if (serves(configType)) {
+			LOG.info("[DDSR] remote service admin for '" + configType + "' ready — exporting over "
+					+ distribution.getClass().getSimpleName() + ", announcing with "
+					+ discovery.getClass().getSimpleName());
+		} else {
+			// Not a fault: a consumer-only node says so by targeting the
+			// distribution that exports nothing. It still imports.
+			LOG.info("[DDSR] remote service admin for '" + configType + "' ready — importing only, "
+					+ distribution.getClass().getSimpleName() + " exports nothing");
+		}
 	}
 
 	/** A changed configuration is taken, not died of (#107). */
 	@Modified
 	void modified(Config config) {
-		this.graceMillis = Math.max(0, config.export_grace_seconds()) * 1000L;
+		this.configType = config.remote_configs_supported();
 	}
 
 	/**
@@ -214,35 +199,27 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 			// specification says an empty collection means "not mine".
 			return List.of();
 		}
-		String configType = configTypeOf(effective);
-		if (configType.isEmpty()) {
-			// Nothing asked for and nothing installed yet: wait for the
-			// first transport, then take it.
-			awaitProviders(() -> !distributions.isEmpty());
-			configType = configTypeOf(effective);
-		} else {
-			String wanted = configType;
-			awaitProviders(() -> distributionFor(wanted) != null && discoveryFor(wanted) != null);
-		}
-		FlavorDistribution distribution = distributionFor(configType);
-		ServiceDiscovery discovery = discoveryFor(configType);
-		if (distribution == null || discovery == null) {
-			LOG.info("[DDSR] no " + (distribution == null ? "distribution" : "discovery")
-					+ " for configuration type '" + configType + "' after waiting " + graceMillis / 1000
-					+ " s — not exporting " + Arrays.toString(contracts) + " (installed: distributions "
-					+ distributions.stream().map(d -> Arrays.toString(d.supportedConfigs())).toList()
-					+ ", discoveries " + discoveries.stream().map(d -> Arrays.toString(d.supportedConfigs())).toList()
-					+ ")");
+		String asked = configTypeOf(effective);
+		if (!asked.isEmpty() && !asked.equals(configType)) {
+			// Another admin's business. Answering "not mine" is what the
+			// specification asks for, and with one admin per transport it
+			// is a fact rather than a guess.
+			LOG.fine(() -> "[DDSR] " + asked + " is not this admin's configuration type (" + configType + ")");
 			return List.of();
 		}
+		if (!serves(configType)) {
+			LOG.fine(() -> "[DDSR] this admin exports nothing — " + Arrays.toString(contracts) + " is not ours");
+			return List.of();
+		}
+
 		List<String> promised = List.of(distribution.supportedIntents());
-		Set<String> asked = intentsAskedFor(effective);
-		asked.removeAll(promised);
-		if (!asked.isEmpty()) {
+		Set<String> intents = intentsAskedFor(effective);
+		intents.removeAll(promised);
+		if (!intents.isEmpty()) {
 			// An intent is a promise about how the call behaves. One this
 			// transport cannot keep is not exported — the consumer relying
 			// on it would be told a lie.
-			LOG.info("[DDSR] intents " + asked + " are not supported over '" + configType + "' — not exporting "
+			LOG.info("[DDSR] intents " + intents + " are not supported over '" + configType + "' — not exporting "
 					+ Arrays.toString(contracts));
 			return List.of();
 		}
@@ -433,9 +410,9 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		if (asked instanceof Collection<?> several && !several.isEmpty()) {
 			return String.valueOf(several.iterator().next());
 		}
-		return distributions.isEmpty() || distributions.get(0).supportedConfigs().length == 0
-				? ""
-				: distributions.get(0).supportedConfigs()[0];
+		// Nothing asked for: this admin's own type answers, because there
+		// is exactly one and the deployment named it.
+		return "";
 	}
 
 	/**
@@ -460,47 +437,13 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		return intents;
 	}
 
-	/** Wait, up to the grace period, until {@code ready} holds. */
-	private void awaitProviders(BooleanSupplier ready) {
-		long deadline = System.currentTimeMillis() + graceMillis;
-		synchronized (providersChanged) {
-			while (!ready.getAsBoolean()) {
-				long remaining = deadline - System.currentTimeMillis();
-				if (remaining <= 0) {
-					return;
-				}
-				LOG.fine("[DDSR] waiting for a distribution and discovery to appear");
-				try {
-					providersChanged.wait(remaining);
-				} catch (InterruptedException interrupted) {
-					Thread.currentThread().interrupt();
-					return;
-				}
-			}
-		}
-	}
 
-	/** Whether some provider here answers to this configuration type. */
-	private boolean speaks(String configType) {
-		return distributionFor(configType) != null || discoveryFor(configType) != null;
-	}
 
-	private FlavorDistribution distributionFor(String configType) {
-		for (FlavorDistribution candidate : distributions) {
-			if (List.of(candidate.supportedConfigs()).contains(configType)) {
-				return candidate;
-			}
-		}
-		return null;
-	}
 
-	private ServiceDiscovery discoveryFor(String configType) {
-		for (ServiceDiscovery candidate : discoveries) {
-			if (List.of(candidate.supportedConfigs()).contains(configType)) {
-				return candidate;
-			}
-		}
-		return null;
+
+	/** Whether the bound distribution can serve the type this admin is for. */
+	private boolean serves(String type) {
+		return List.of(distribution.supportedConfigs()).contains(type);
 	}
 
 	@Override
@@ -531,7 +474,7 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		// otherwise would claim an endpoint another admin can actually
 		// reach.
 		List<String> configTypes = endpoint.getConfigurationTypes();
-		if (configTypes.stream().noneMatch(this::speaks)) {
+		if (!configTypes.contains(configType)) {
 			LOG.fine(() -> "[DDSR] not importing " + endpoint.getId() + ": " + configTypes
 					+ " is not a configuration type this admin speaks");
 			return null;

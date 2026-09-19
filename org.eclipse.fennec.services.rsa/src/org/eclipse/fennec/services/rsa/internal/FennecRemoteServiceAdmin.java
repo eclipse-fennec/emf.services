@@ -47,10 +47,14 @@ import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.ServiceScope;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import org.osgi.service.remoteserviceadmin.EndpointDescription;
 import org.osgi.service.remoteserviceadmin.ExportReference;
 import org.osgi.service.remoteserviceadmin.ExportRegistration;
@@ -84,24 +88,37 @@ import org.osgi.service.remoteserviceadmin.RemoteServiceAdmin;
 // wrong the moment a second distribution is installed (#98): the honest
 // value is the union of what the bound FlavorDistributions support, and
 // that has to become a dynamic service property.
+@Designate(ocd = FennecRemoteServiceAdmin.Config.class)
 @Component(service = RemoteServiceAdmin.class, scope = ServiceScope.BUNDLE,
+		configurationPid = "org.eclipse.fennec.services.rsa",
 		property = RemoteConstants.REMOTE_CONFIGS_SUPPORTED + "=fennec.rest")
 public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 
 	private static final Logger LOG = Logger.getLogger(FennecRemoteServiceAdmin.class.getName());
 
-	/**
-	 * How long an export waits for the provider of its configuration type.
-	 *
-	 * <p>At startup the admin, the distribution and the discovery come up
-	 * in whatever order configuration reaches them, and a bundle that
-	 * exports the moment it sees the admin — the TCK's test bundles do —
-	 * would be told "not mine" for a transport that is seconds away.
-	 * Waiting a little is the honest answer; an admin that must not have
-	 * a distribution at all (a consumer that only imports) is left alone,
-	 * because nobody exports through it.
-	 */
-	private static final long PROVIDER_GRACE_MILLIS = 10_000;
+	@ObjectClassDefinition(name = "Fennec Services Remote Service Admin",
+			description = "How this admin behaves while a framework is still coming up.")
+	public @interface Config {
+
+		/**
+		 * How long an export waits for the provider of its configuration
+		 * type.
+		 *
+		 * <p>At startup the admin, the distribution and the discovery come
+		 * up in whatever order configuration reaches them, and a bundle
+		 * that exports the moment it sees the admin — the OSGi TCK's test
+		 * bundles do — would be told "not mine" for a transport that is
+		 * seconds away. How long is worth waiting depends on the
+		 * deployment: a container that brings a Jakarta REST whiteboard up
+		 * from cold takes far longer than an embedded launch.
+		 */
+		@AttributeDefinition(name = "Export grace (seconds)",
+				description = "How long exportService waits for the distribution and discovery of the "
+						+ "configuration type it was asked for. 0 does not wait at all.")
+		int export_grace_seconds() default 10;
+	}
+
+	private volatile long graceMillis = 10_000L;
 
 	private final List<FlavorDistribution> distributions = new CopyOnWriteArrayList<>();
 
@@ -161,8 +178,15 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 	private BundleContext context;
 
 	@Activate
-	void activate(BundleContext context) {
+	void activate(BundleContext context, Config config) {
 		this.context = context;
+		this.graceMillis = Math.max(0, config.export_grace_seconds()) * 1000L;
+	}
+
+	/** A changed configuration is taken, not died of (#107). */
+	@Modified
+	void modified(Config config) {
+		this.graceMillis = Math.max(0, config.export_grace_seconds()) * 1000L;
 	}
 
 	/**
@@ -204,7 +228,7 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		ServiceDiscovery discovery = discoveryFor(configType);
 		if (distribution == null || discovery == null) {
 			LOG.info("[DDSR] no " + (distribution == null ? "distribution" : "discovery")
-					+ " for configuration type '" + configType + "' after waiting " + PROVIDER_GRACE_MILLIS / 1000
+					+ " for configuration type '" + configType + "' after waiting " + graceMillis / 1000
 					+ " s — not exporting " + Arrays.toString(contracts) + " (installed: distributions "
 					+ distributions.stream().map(d -> Arrays.toString(d.supportedConfigs())).toList()
 					+ ", discoveries " + discoveries.stream().map(d -> Arrays.toString(d.supportedConfigs())).toList()
@@ -438,7 +462,7 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 
 	/** Wait, up to the grace period, until {@code ready} holds. */
 	private void awaitProviders(BooleanSupplier ready) {
-		long deadline = System.currentTimeMillis() + PROVIDER_GRACE_MILLIS;
+		long deadline = System.currentTimeMillis() + graceMillis;
 		synchronized (providersChanged) {
 			while (!ready.getAsBoolean()) {
 				long remaining = deadline - System.currentTimeMillis();

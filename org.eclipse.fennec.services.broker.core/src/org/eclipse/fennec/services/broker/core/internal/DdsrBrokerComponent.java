@@ -37,11 +37,11 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
-import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.BrokerSessions;
 import org.eclipse.fennec.services.broker.core.DdsrBroker;
+import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.osgi.service.component.annotations.Activate;
@@ -50,7 +50,6 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -134,10 +133,7 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 		long liveness_sweep_seconds() default 5;
 	}
 
-	@Reference(
-			cardinality = ReferenceCardinality.OPTIONAL,
-			policy = ReferencePolicy.DYNAMIC,
-			policyOption = ReferencePolicyOption.GREEDY)
+	@Reference(name="broker.backend")
 	private volatile LookupBackend externalLookup;
 
 	/**
@@ -200,8 +196,7 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	void activate(Config config) {
 		try {
 			Path snapshotPath = Paths.get(config.snapshot_path());
-			LookupBackend backend = externalLookup != null ? externalLookup : new InMemoryLookupBackend();
-			this.delegate = new DdsrBrokerImpl(snapshotPath, backend, this::fanOut);
+			this.delegate = new DdsrBrokerImpl(snapshotPath, externalLookup, this::fanOut);
 			long expirySeconds = config.session_expiry_seconds();
 			long coldSeconds = config.cold_after_seconds();
 			long policySweepSeconds = config.policy_sweep_seconds();

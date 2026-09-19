@@ -33,5 +33,8 @@
   },
   "org.eclipse.fennec.services.rsa.topology": {
     "policy": "manual"
+  },
+  "org.eclipse.fennec.services.rsa": {
+    "export.grace.seconds": 40
   }
 }

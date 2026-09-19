@@ -61,9 +61,12 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  */
 @Designate(ocd = RestDiscoveryProvider.Config.class)
 @Component(service = ServiceDiscovery.class,
-		configurationPid = "org.eclipse.fennec.services.rsa.discovery.rest",
+		configurationPid = RestDiscoveryProvider.PID,
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class RestDiscoveryProvider implements ServiceDiscovery {
+
+	/** The configuration both this provider and the endpoint bridge read. */
+	public static final String PID = "org.eclipse.fennec.services.rsa.discovery.rest";
 
 	/** The RSA configuration type a deployment names to discover this way. */
 	public static final String CONFIG_TYPE = "fennec.rest";
@@ -128,38 +131,8 @@ public class RestDiscoveryProvider implements ServiceDiscovery {
 					+ " (code " + added.getCode() + ")");
 		}
 
-		Registration registration;
-		ResourceSet resourceSet = resourceSets.getService();
-		try {
-			// The publish body is built from copies, and that is not
-			// bookkeeping: putting an EObject into a Resource's contents
-			// takes it out of the one it was in, so parking the registry's
-			// own contract here would quietly empty the local registry of
-			// the very thing it exists to hold. Copier keeps the two in
-			// step — the copied flavors point at the copied operations,
-			// not back at the originals.
-			EcoreUtil.Copier copier = new EcoreUtil.Copier();
-			ServiceInterface parked = (ServiceInterface) copier.copy(contract);
-			ServiceImplementation published = (ServiceImplementation) copier.copy(implementation);
-			copier.copyReferences();
-
-			// Parked under its catalog URL so the publish body references
-			// the contract rather than carrying a second copy of it.
-			String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
-			resourceSet.createResource(URI.createURI(entryUrl)).getContents().add(parked);
-
-			ServiceProvider provider = ServicesFactory.eINSTANCE.createServiceProvider();
-			provider.setName(implementation.getName());
-			provider.setVersion(implementation.getVersion());
-			provider.getImplementations().add(published);
-
-			registration = client.provider().publish(provider, published);
-		} finally {
-			// A prototype ResourceSet is a service instance like any
-			// other: what is taken has to be given back, or every export
-			// leaves one behind for the lifetime of the framework.
-			resourceSets.ungetService(resourceSet);
-		}
+		Registration registration = Announcements.publish(client, resourceSets, config.broker_url(), contract,
+				implementation, implementation.getName());
 		LOG.info("[DDSR] announced " + contract.getName() + " as " + implementation.getImplementationId());
 
 		AtomicBoolean announced = new AtomicBoolean(true);

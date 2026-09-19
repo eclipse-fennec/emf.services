@@ -181,6 +181,12 @@ org.eclipse.fennec.services.rsa.topology           # exportiert, was darum bitte
                                    #   worauf gewartet wird und was eine Discovery
                                    #   meldet; policy / import.policy =
                                    #   promiscuous|manual
+org.eclipse.fennec.services.rsa.config             # eine Konfiguration je Rolle statt neun je
+                                   #   Deployment: PID …rsa.provider bzw.
+                                   #   …rsa.consumer; leitet ab, prüft vor dem
+                                   #   Start, schreibt von innen nach außen und
+                                   #   räumt in der Gegenrichtung ab (#109)
+
 org.eclipse.fennec.services.rsa.tck                # OSGi-RSA-TCK 8.1.0 (Central) als Launch
                                    #   gegen die vier Bundles (#99); Broker läuft
                                    #   außerhalb: itest/run-tck.sh

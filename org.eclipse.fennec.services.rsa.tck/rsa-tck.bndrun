@@ -116,7 +116,8 @@ runbundles.files: ${uniq;\
 	${repo;org.eclipse.emf.ecore.xmi;[2.39.0,2.39.1)},\
 	${repo;org.eclipse.fennec.emf.osgi.component.minimal;[1.1.0,1.1.1)},\
 	${repo;org.eclipse.fennec.emf.osgi.eobject.registry;[1.1.0,1.1.1)},\
-	${repo;org.eclipse.fennec.services.broker.core;latest},\
+	${repo;org.eclipse.fennec.services.broker.api;latest},\
+	${repo;org.eclipse.fennec.services.shutdown;latest},\
 	${repo;org.eclipse.fennec.services.client.java;latest},\
 	${repo;org.eclipse.fennec.services.client.rest;latest},\
 	${repo;org.eclipse.fennec.services.derive;latest},\
@@ -195,7 +196,8 @@ runbundles.files: ${uniq;\
 	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\
 	org.eclipse.fennec.emf.osgi.component.minimal;version='[1.1.0,1.1.1)',\
 	org.eclipse.fennec.emf.osgi.eobject.registry;version='[1.1.0,1.1.1)',\
-	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.services.broker.api;version=snapshot,\
+	org.eclipse.fennec.services.shutdown;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.eclipse.fennec.services.client.rest;version=snapshot,\
 	org.eclipse.fennec.services.derive;version=snapshot,\

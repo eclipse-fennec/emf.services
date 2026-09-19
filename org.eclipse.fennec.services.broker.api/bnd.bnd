@@ -1,0 +1,24 @@
+Bundle-Name: Fennec Services Broker API
+Bundle-Description: \
+	What a broker offers and what anyone talking to one needs: the four \
+	role interfaces, the diagnostics, the event sink and the event \
+	document, the lookup backend, and the exceptions. No implementation, \
+	no components, no configuration.
+
+Export-Package: \
+	org.eclipse.fennec.services.broker.core,\
+	org.eclipse.fennec.services.broker.core.exception
+
+-library: enableEMF
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+# ContractAddressing is the one piece here with behaviour worth pinning:
+# it decides what a catalog entry is addressed by, and the answer has to
+# survive a deprecation.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

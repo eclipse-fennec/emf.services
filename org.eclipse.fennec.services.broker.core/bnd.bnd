@@ -1,13 +1,11 @@
-Bundle-Name: Gecko DDSR Broker Core
+Bundle-Name: Fennec Services Broker Core
 Bundle-Description: \
-	In-memory RemoteServiceRegistry with XMI snapshot persistence. \
-	Pluggable LookupBackend (InMemory default; Lucene via separate module).
+	The broker itself: an in-memory RemoteServiceRegistry with XMI \
+	snapshot persistence, behind the API in \
+	org.eclipse.fennec.services.broker.api. A framework that only talks \
+	to a broker needs that bundle, not this one.
 
 -library: enableEMF
-
-Export-Package: \
-	org.eclipse.fennec.services.broker.core,\
-	org.eclipse.fennec.services.broker.core.exception
 
 Private-Package: \
 	org.eclipse.fennec.services.broker.core.internal
@@ -20,7 +18,8 @@ Private-Package: \
 	org.osgi.service.cm;version=latest,\
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
-	org.eclipse.fennec.services.xmi.codec;version=snapshot
+	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.services.broker.api;version=snapshot
 
 # Plain JUnit, no OSGi runtime: DdsrBrokerImpl is deliberately pure Java
 # (see its class comment) and takes its collaborators as constructor

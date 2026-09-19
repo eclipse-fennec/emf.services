@@ -101,6 +101,8 @@ jersey.deps:
 	reactive-streams;version='[1.0.4,1.0.5)',\
 	slf4j.api;version='[2.0.17,2.0.18)',\
 	slf4j.simple;version='[2.0.17,2.0.18)',\
+	org.eclipse.fennec.services.broker.api;version=snapshot,\
+	org.eclipse.fennec.services.shutdown;version=snapshot,\
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\

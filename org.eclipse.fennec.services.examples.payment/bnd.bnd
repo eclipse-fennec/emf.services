@@ -41,4 +41,4 @@ Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
-	org.eclipse.fennec.services.broker.core;version=snapshot
+	org.eclipse.fennec.services.broker.api;version=snapshot

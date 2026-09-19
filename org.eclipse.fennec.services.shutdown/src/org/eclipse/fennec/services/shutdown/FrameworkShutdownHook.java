@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.broker.core.internal;
+package org.eclipse.fennec.services.shutdown;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.launch.Framework;
@@ -32,6 +32,14 @@ import org.osgi.service.component.annotations.Deactivate;
  * The hook stops the system bundle and waits (bounded) for the stop to
  * complete, which runs the whole DS deactivation chain synchronously
  * before the JVM exits.
+ * <p>
+ * It lives in a bundle of its own because it is not about the broker,
+ * the client or any one role: every launch that must shut down cleanly
+ * needs it. It used to sit in broker.core, where it quietly did this
+ * job for any launch that happened to drag that bundle in. Removing
+ * that accidental dependency (#105) took the hook away from the
+ * provider launches with it, and the harness said so immediately: a
+ * SIGTERM'd provider never withdrew, and no consumer was told.
  */
 @Component(immediate = true)
 public class FrameworkShutdownHook {

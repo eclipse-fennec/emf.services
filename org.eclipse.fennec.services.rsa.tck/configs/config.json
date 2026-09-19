@@ -35,6 +35,6 @@
     "policy": "manual"
   },
   "org.eclipse.fennec.services.rsa": {
-    "export.grace.seconds": 40
+    "export.grace.seconds": 20
   }
 }

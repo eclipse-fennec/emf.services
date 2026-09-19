@@ -13,8 +13,8 @@ hero:
       text: Getting started
       link: /guides/getting-started
     - theme: alt
-      text: Vision & Requirements
-      link: /guides/requirements
+      text: Overview
+      link: /guides/overview
     - theme: alt
       text: Architecture
       link: /guides/architecture

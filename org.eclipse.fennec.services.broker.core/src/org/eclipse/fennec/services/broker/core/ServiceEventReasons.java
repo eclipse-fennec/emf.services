@@ -42,7 +42,7 @@ public final class ServiceEventReasons {
 	 */
 	public static final String REPLACED = "REPLACED";
 
-	/** A HARD_CUTOVER grace window elapsed (reserved for the update-policy work). */
+	/** A HARD_CUTOVER grace window elapsed. */
 	public static final String CUTOVER = "CUTOVER";
 
 	/**
@@ -55,6 +55,6 @@ public final class ServiceEventReasons {
 	/** A consumer session lease expired (reserved; sessions do not emit service events today). */
 	public static final String SESSION_EXPIRED = "SESSION_EXPIRED";
 
-	/** The provider stopped answering (reserved for provider liveness). */
+	/** The provider stopped answering: two missed heartbeats, swept by Liveness. */
 	public static final String PROVIDER_LOST = "PROVIDER_LOST";
 }

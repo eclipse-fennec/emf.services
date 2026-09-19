@@ -101,10 +101,12 @@ its shutdown hook), `REPLACED` (a republish under the same (name,
 version) retired the old copy; a `REGISTERED` for the successor follows
 immediately), `COLDIFIED` (the idle sweep parked the entry in the cold
 cache; it stays discoverable and rehydrates on the next lookup with a
-fresh `REGISTERED`). `CUTOVER`, `SESSION_EXPIRED` and `PROVIDER_LOST`
-are reserved for the update-policy and liveness work. `REGISTERED` and
-`MODIFIED` carry no reason; the attribute is additive and simply absent
-when unset.
+fresh `REGISTERED`), `CUTOVER` (a HARD_CUTOVER grace window elapsed)
+and `PROVIDER_LOST` (the provider stopped answering; two missed
+heartbeats). `SESSION_EXPIRED` is the one constant that exists and is
+never emitted — sessions raise no service events today. `REGISTERED`
+and `MODIFIED` carry no reason; the attribute is additive and simply
+absent when unset.
 
 ## MQTT event transport
 
@@ -115,10 +117,15 @@ Consumers subscribe `ddsr/events/#`. Both sides are dormant OSGi
 components (`configurationPolicy = REQUIRE`) with the PIDs
 `org.eclipse.fennec.services.broker.mqtt` and
 `org.eclipse.fennec.services.client.mqtt` (`broker.url`,
-`topic.prefix`, `client.id`, `qos`). Ranking the client transport above
-the SSE source (`service.ranking`) makes the SDK switch — the stream is
-closed and reopened, and the reopen re-snapshots, so a transport
-handover loses no events.
+`topic.prefix`, `client.id`, `qos`). Which transport the SDK uses is
+said in the client's own configuration — `eventSource.target` against
+the `ddsr.event.transport` property (`rest` or `mqtt`) — and
+deliberately **not** by `service.ranking`. A deployment that configures
+a client is describing the setup it expects, not entering a contest,
+and a ranking handover would close the open stream and reopen another,
+losing whatever is published in the gap. The podman harness scenario D
+asserts that exactly one subscription exists and that it is the
+configured one.
 
 ## MQTT invocation (request/response)
 

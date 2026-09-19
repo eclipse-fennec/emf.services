@@ -1,9 +1,9 @@
-# 6 · Remote Service Admin
+# Remote Service Admin
 
 OSGi has a specification for making a service in one framework usable
 in another: Remote Service Admin, chapter 122. Fennec Services
 implements it on top of the registry described in
-[1 · Architecture](01-architecture.md).
+[Overview](OVERVIEW.md).
 
 The point is what you *do not* write. An ordinary OSGi service, with
 one property added, becomes callable from another framework. No
@@ -167,6 +167,6 @@ speaks.
 
 ## Read next
 
-- [5 · Transports](05-transports.md) — what REST needs configured
-- [3 · Fingerprints](03-fingerprints.md) — why an imported service may
+- [Transports](TRANSPORTS.md) — what REST needs configured
+- [Fingerprints](FINGERPRINTS.md) — why an imported service may
   refuse a provider

@@ -32,7 +32,9 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.RegistryKind;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
@@ -262,5 +264,48 @@ final class BrokerState {
 	static String identityOf(ServiceRegistration registration) {
 		ServiceImplementation impl = registration.getImplementation();
 		return impl == null ? "?" : impl.getName() + "/" + impl.getVersion();
+	}
+
+	/**
+	 * Returns a <b>detached copy</b> of the registry, created under the
+	 * read lock. Callers (the REST layer serializing it as an entity, the
+	 * self-publisher scanning names) work on a consistent snapshot while
+	 * concurrent mutations proceed — serializing the <em>live</em> tree
+	 * outside the lock was a torn-document race, and it leaked
+	 * {@code file:} hrefs of the snapshot path into responses (W1).
+	 * <p>
+	 * The copy (registry plus provider roots, cross-references rewired)
+	 * is parked in a throwaway in-memory resource with the opaque URI
+	 * {@code services:registry}, so downstream XMI serialization has
+	 * resolvable targets for the registry's non-containment references.
+	 */
+	RemoteServiceRegistry getRegistry() {
+		lock.readLock().lock();
+		try {
+			EcoreUtil.Copier copier = new EcoreUtil.Copier();
+			RemoteServiceRegistry registryCopy = (RemoteServiceRegistry) copier.copy(registry);
+			copier.copyAll(new ArrayList<>(registry.getProviders()));
+			copier.copyReferences();
+
+			Resource holder = new XMIResourceImpl(URI.createURI("services:registry"));
+			holder.getContents().add(registryCopy);
+			for (ServiceProvider provider : registry.getProviders()) {
+				EObject providerCopy = copier.get(provider);
+				if (providerCopy != null && providerCopy.eContainer() == null) {
+					holder.getContents().add(providerCopy);
+				}
+			}
+			return registryCopy;
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+	Diagnostic snapshot() {
+		lock.readLock().lock();
+		try {
+			return persist();
+		} finally {
+			lock.readLock().unlock();
+		}
 	}
 }

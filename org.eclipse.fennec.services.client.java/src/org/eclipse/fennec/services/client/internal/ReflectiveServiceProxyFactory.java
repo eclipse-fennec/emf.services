@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.client.rest.internal;
+package org.eclipse.fennec.services.client.internal;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -20,10 +20,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
+import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.Parameter;
-import org.eclipse.fennec.services.RestFlavor;
-import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -35,6 +37,8 @@ import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
 /**
@@ -49,14 +53,75 @@ import org.osgi.service.component.propertytypes.ServiceDescription;
  * convention expects (query-param names for GET; for our current
  * single-EObject convention the key is ignored anyway).
  */
-@Component(
-		service = ServiceProxyFactory.class,
-		property = "ddsr.broker.transport=rest")
-@ServiceDescription("DDSR reflective service-proxy factory (REST flavor)")
+@Component(service = ServiceProxyFactory.class)
+@ServiceDescription("DDSR reflective service-proxy factory")
 public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory {
 
-	@Reference
-	ServiceInvoker invoker;
+	/**
+	 * The invokers this runtime has, by the flavor each speaks.
+	 *
+	 * <p>Dynamic and multiple, with method injection: they are the
+	 * audience, not the cast. A runtime with only the REST transport
+	 * installed has one, a runtime with both has two, and a proxy over a
+	 * service that announces a flavor nobody here speaks fails saying
+	 * exactly that instead of calling the wrong way.
+	 */
+	private final Map<FlavorKind, ServiceInvoker> invokers = new ConcurrentHashMap<>();
+
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+	void addInvoker(ServiceInvoker invoker, Map<String, Object> properties) {
+		FlavorKind kind = flavorOf(properties);
+		if (kind != null) {
+			invokers.put(kind, invoker);
+		}
+	}
+
+	void removeInvoker(ServiceInvoker invoker, Map<String, Object> properties) {
+		FlavorKind kind = flavorOf(properties);
+		if (kind != null) {
+			invokers.remove(kind, invoker);
+		}
+	}
+
+	private static FlavorKind flavorOf(Map<String, Object> properties) {
+		Object declared = properties == null ? null : properties.get(ServiceInvoker.FLAVOR_PROPERTY);
+		if (declared == null) {
+			return null;
+		}
+		return FlavorKind.getByName(String.valueOf(declared));
+	}
+
+	/**
+	 * The invoker for a service, by the flavors it announces — in the
+	 * order it announces them, because that order is the provider's own
+	 * statement about what it prefers. A lookup already filtered by what
+	 * this consumer said it speaks, so anything still listed here is
+	 * fair game.
+	 */
+	private ServiceInvoker invokerFor(ServiceLocator locator) {
+		ServiceImplementation implementation = locator.implementation();
+		List<String> announced = new ArrayList<>();
+		if (implementation != null) {
+			for (ServiceFlavor flavor : implementation.getFlavors()) {
+				if (flavor.getKind() == null) {
+					continue;
+				}
+				announced.add(flavor.getKind().getName());
+				ServiceInvoker invoker = invokers.get(flavor.getKind());
+				if (invoker != null) {
+					return invoker;
+				}
+			}
+		}
+		// Nothing announced at all is the older shape of a locator, and
+		// one invoker is then the only sensible reading of it.
+		if (announced.isEmpty() && invokers.size() == 1) {
+			return invokers.values().iterator().next();
+		}
+		throw new DdsrException("this service is reachable over " + announced
+				+ " and this runtime speaks " + invokers.keySet()
+				+ " — no transport in common");
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -67,7 +132,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		if (locator == null) {
 			throw new DdsrException("locator must not be null");
 		}
-		InvocationHandler handler = new RemoteCallHandler(invoker, locator, serviceInterface);
+		InvocationHandler handler = new RemoteCallHandler(this::invokerFor, locator, serviceInterface);
 		return (T) Proxy.newProxyInstance(
 				serviceInterface.getClassLoader(),
 				new Class<?>[] { serviceInterface },
@@ -76,12 +141,18 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 
 	private static final class RemoteCallHandler implements InvocationHandler {
 
-		private final ServiceInvoker invoker;
+		/**
+		 * Asked per call rather than bound once: a tracked locator may
+		 * rebind to another implementation, and the new one does not have
+		 * to be reachable the same way as the old.
+		 */
+		private final Function<ServiceLocator, ServiceInvoker> invokerFor;
 		private final ServiceLocator locator;
 		private final Class<?> serviceInterface;
 
-		RemoteCallHandler(ServiceInvoker invoker, ServiceLocator locator, Class<?> serviceInterface) {
-			this.invoker = invoker;
+		RemoteCallHandler(Function<ServiceLocator, ServiceInvoker> invokerFor, ServiceLocator locator,
+				Class<?> serviceInterface) {
+			this.invokerFor = invokerFor;
 			this.locator = locator;
 			this.serviceInterface = serviceInterface;
 		}
@@ -95,7 +166,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 			Map<String, Object> argMap = buildArgMap(method, args);
 			Object result;
 			try {
-				result = invoker.invoke(locator, method.getName(), argMap);
+				result = invokerFor.apply(locator).invoke(locator, method.getName(), argMap);
 			} catch (DdsrException failure) {
 				// #59: the registered provider did not answer. Rebind away from
 				// it and retry exactly once; a second failure is the caller's.
@@ -103,7 +174,9 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 						|| !tracked.rebind(true)) {
 					throw failure;
 				}
-				result = invoker.invoke(locator, method.getName(), argMap);
+				// Asked again after the rebind: the service it bound to now
+				// may be reachable a different way than the one that failed.
+				result = invokerFor.apply(locator).invoke(locator, method.getName(), argMap);
 			}
 			return coerceReturn(method, result);
 		}
@@ -123,11 +196,11 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 
 		/**
 		 * Build the argument map by **DDSR-model** parameter names, not
-		 * Java reflection. The proxy walks
-		 * {@code locator.restFlavor().operationFlavors[*].operation.parameters}
-		 * to find the named slots for this operation; method arguments
-		 * are then placed positionally by their index. Independent of
-		 * any {@code -parameters} javac flag.
+		 * Java reflection: the named slots come from the operation the
+		 * flavor binds, or from the contract when no flavor wired the
+		 * cross-reference. Method arguments are then placed positionally
+		 * by their index, independent of any {@code -parameters} javac
+		 * flag.
 		 */
 		private Map<String, Object> buildArgMap(Method method, Object[] args) {
 			if (args == null || args.length == 0) {
@@ -152,25 +225,25 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 
 		private List<String> modelParameterNames(String operationName) {
 			// 1. Prefer the direct link if the publisher wired
-			//    RestOperationFlavor.operation → ServiceOperation.
-			RestFlavor rf = locator.restFlavor().orElse(null);
-			if (rf != null) {
-				for (ServiceOperationFlavor of : rf.getOperationFlavors()) {
-					if (!(of instanceof RestOperationFlavor)) {
-						continue;
-					}
-					ServiceOperation op = of.getOperation();
-					boolean matches = operationName.equals(of.getName())
-							|| (op != null && operationName.equals(op.getName()));
-					if (matches && op != null) {
-						return paramNames(op);
+			//    OperationFlavor.operation → ServiceOperation. Any flavor:
+			//    which transport it is decides where a call travels, not
+			//    what the call is called.
+			ServiceImplementation impl = locator.implementation();
+			if (impl != null) {
+				for (ServiceFlavor flavor : impl.getFlavors()) {
+					for (ServiceOperationFlavor of : flavor.getOperationFlavors()) {
+						ServiceOperation op = of.getOperation();
+						boolean matches = operationName.equals(of.getName())
+								|| (op != null && operationName.equals(op.getName()));
+						if (matches && op != null) {
+							return paramNames(op);
+						}
 					}
 				}
 			}
 			// 2. Fallback: walk impl.serviceInterfaces[*].operations and
 			//    look up by operation name. Works even when the publisher
 			//    skipped the operation cross-ref on the flavor.
-			ServiceImplementation impl = locator.implementation();
 			if (impl != null) {
 				for (ServiceInterface si : impl.getServiceInterfaces()) {
 					for (ServiceOperation op : si.getOperations()) {

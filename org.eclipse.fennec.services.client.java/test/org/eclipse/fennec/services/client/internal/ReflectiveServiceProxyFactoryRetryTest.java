@@ -11,7 +11,7 @@
  * Contributors:
  *     Data In Motion - initial API and implementation
  */
-package org.eclipse.fennec.services.client.rest.internal;
+package org.eclipse.fennec.services.client.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -108,7 +108,7 @@ class ReflectiveServiceProxyFactoryRetryTest {
 
 	private static Payment proxy(ScriptedInvoker invoker, ServiceLocator locator) {
 		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
-		factory.invoker = invoker;
+		factory.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
 		return factory.newProxy(Payment.class, locator);
 	}
 

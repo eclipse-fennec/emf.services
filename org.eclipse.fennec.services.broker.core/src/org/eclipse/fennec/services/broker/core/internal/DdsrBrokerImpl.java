@@ -13,64 +13,25 @@
 
 package org.eclipse.fennec.services.broker.core.internal;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.logging.Logger;
 
-import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.EReference;
-import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.util.EcoreUtil;
-import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
-import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
-import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.DiagnosticSeverity;
-import org.eclipse.fennec.services.Property;
-import org.eclipse.fennec.services.RegistryKind;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
-import org.eclipse.fennec.services.ServiceEvent;
-import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
-import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServiceRegistration;
-import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.ServicesPackage;
-import org.eclipse.fennec.services.UpdatePolicy;
-import org.eclipse.fennec.services.StringProperty;
-import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.broker.core.DdsrBroker;
-import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
-import org.eclipse.fennec.services.broker.core.exception.CatalogEntryAmbiguous;
-import org.eclipse.fennec.services.broker.core.exception.CatalogEntryNotFound;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
-import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
-import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
-import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 
 /**
  * In-memory broker implementation with synchronous XMI snapshot
@@ -80,11 +41,10 @@ import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
  */
 public final class DdsrBrokerImpl implements DdsrBroker {
 
-	private static final java.util.logging.Logger LOG =
-			java.util.logging.Logger.getLogger(DdsrBrokerImpl.class.getName());
+	private static final Logger LOG = Logger.getLogger(DdsrBrokerImpl.class.getName());
 
 	/** The index a lookup asks; fed by every publish, modify and withdraw. */
-	private final LookupBackend lookup;
+	protected final LookupBackend lookup;
 
 	/** Where an acknowledged and persisted change is announced. */
 	private final Announcements announcements;

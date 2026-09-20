@@ -19,10 +19,9 @@ import java.util.Date;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
-
 import org.eclipse.fennec.services.ServiceEvent;
-import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;

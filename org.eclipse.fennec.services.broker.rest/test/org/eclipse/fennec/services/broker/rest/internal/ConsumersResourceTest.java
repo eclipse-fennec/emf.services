@@ -26,9 +26,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import jakarta.ws.rs.WebApplicationException;
-import jakarta.ws.rs.core.Response;
-
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
@@ -40,6 +37,9 @@ import org.eclipse.fennec.services.xmi.codec.WireBody;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 
 /** PUT/GET/DELETE /consumers/{id} (#56): body shape, path-owns-identity, error mapping. */
 class ConsumersResourceTest {

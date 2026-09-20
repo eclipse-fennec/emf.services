@@ -9,6 +9,7 @@ Bundle-Description: \
 -library: enableEMF
 
 -buildpath: \
+	osgi.core;version=latest,\
 	org.osgi.service.condition;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\

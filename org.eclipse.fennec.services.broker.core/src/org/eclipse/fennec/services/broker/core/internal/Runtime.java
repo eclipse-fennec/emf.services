@@ -46,7 +46,7 @@ import org.eclipse.fennec.services.runtime.SessionDTO;
  * existed: registrations from before a withdraw and sessions from
  * after it.
  *
- * <p>The revision is the other half. It counts changes rather than
+ * <p>The changeCount is the other half. It counts changes rather than
  * describing them, which is all a watcher needs: the answer to "has
  * anything happened" is a comparison, and the answer to "what" is
  * another snapshot.
@@ -64,7 +64,7 @@ final class Runtime {
 	private final EventDelivery delivery;
 
 	/** How often the answer would have differed since this broker started. */
-	private final AtomicLong revision = new AtomicLong();
+	private final AtomicLong changeCount = new AtomicLong();
 
 	Runtime(BrokerState state, Sessions sessions, Liveness liveness, ColdCache cold, EventDelivery delivery) {
 		this.state = state;
@@ -82,15 +82,15 @@ final class Runtime {
 	 * and a runtime that reported everything except who is holding what
 	 * would be reporting the easy half.
 	 *
-	 * @return the revision after the change
+	 * @return the changeCount after the change
 	 */
 	long changed() {
-		return revision.incrementAndGet();
+		return changeCount.incrementAndGet();
 	}
 
-	/** The revision the next snapshot would carry. */
-	long revision() {
-		return revision.get();
+	/** The changeCount the next snapshot would carry. */
+	long changeCount() {
+		return changeCount.get();
 	}
 
 	BrokerRuntimeDTO snapshot() {
@@ -98,7 +98,7 @@ final class Runtime {
 		try {
 			BrokerRuntimeDTO dto = new BrokerRuntimeDTO();
 			dto.name = state.registry().getName();
-			dto.revision = revision.get();
+			dto.changeCount = changeCount.get();
 			dto.takenAt = System.currentTimeMillis();
 			dto.registrations = registrations();
 			dto.catalog = catalog();

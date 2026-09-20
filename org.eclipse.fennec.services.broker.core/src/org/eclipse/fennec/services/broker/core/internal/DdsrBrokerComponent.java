@@ -40,6 +40,8 @@ import org.eclipse.fennec.services.broker.core.DdsrBroker;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
+import org.eclipse.fennec.services.runtime.BrokerRuntime;
+import org.eclipse.fennec.services.runtime.ChangeCountPublisher;
 import org.eclipse.fennec.services.common.FrameworkShutdown;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
@@ -167,8 +169,8 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	/** Removes the JVM shutdown hook again when this component goes. */
 	private AutoCloseable cleanShutdown;
 
-	/** The runtime service and the thread that keeps its revision current. */
-	private RuntimePublisher runtime;
+	/** The runtime service and the thread that keeps its changeCount current. */
+	private ChangeCountPublisher<BrokerRuntime> runtime;
 
 	private static void closeQuietly(AutoCloseable closeable) {
 		if (closeable == null) {
@@ -247,7 +249,9 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 			// Registered separately and by hand, because its one property
 			// has to change while it is registered — which is how a
 			// watcher is told that the broker looks different now (#126).
-			this.runtime = new RuntimePublisher(context, broker);
+			this.runtime = new ChangeCountPublisher<>(context, BrokerRuntime.class,
+					(BrokerRuntime) broker::runtimeSnapshot, broker::runtimeChangeCount,
+					"broker runtime service");
 			runtime.open();
 			LOG.info("[DDSR] BrokerCore activated, snapshot=" + settings.snapshotPath().toAbsolutePath());
 		} catch (RuntimeException activationFailure) {

@@ -27,6 +27,7 @@ Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → CLI
 - [docs/EVENTING.md](docs/EVENTING.md) — SSE und MQTT, was ein Consumer garantiert sieht und was nicht
 - [docs/FINGERPRINTS.md](docs/FINGERPRINTS.md) — sd1 und im1, was einen Fingerprint bewegt
 - [docs/CODE_GENERATION.md](docs/CODE_GENERATION.md) — Ecore nach src-gen, Arbeitsteilung am Modell
+- [docs/RUNTIME.md](docs/RUNTIME.md) — die beiden Runtime-Services: was ein Knoten hält, und wie man von Änderungen erfährt
 - [docs/RSA.md](docs/RSA.md) — OSGi Remote Service Admin auf dieser Registry
 - [docs/EXAMPLE_PAYMENT.md](docs/EXAMPLE_PAYMENT.md) — das Payment-Beispiel
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Broker-Container-Image, Konfigurationsflaeche, Publish-Pipeline

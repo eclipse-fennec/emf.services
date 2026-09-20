@@ -5,9 +5,9 @@ Services: publish a service, find one, run a broker, export an ordinary
 OSGi service to another framework.
 
 Some of the documents beside this one are written for the people
-building it, and are in German. They are linked where they go deeper.
-Where a page and one of those disagree about the wire, the older
-document is the one to trust.
+building it. They are linked where they go deeper. Where a page and one
+of those disagree about the wire, the older document is the one to
+trust.
 
 Every page says what is true **today**. Where something is planned but
 not built, the page says so and names the issue.
@@ -24,6 +24,7 @@ not built, the page says so and names the issue.
 | configure REST or MQTT for your deployment | [Transports](TRANSPORTS.md) |
 | export an OSGi service to another framework | [Remote Service Admin](RSA.md) |
 | write a Java provider or consumer by hand | [Client framework](CLIENT_FRAMEWORK_GUIDE.md) |
+| watch what a broker or a client holds | [Runtime services](RUNTIME.md) |
 
 
 ## Three parties and one thing the broker does not do
@@ -175,5 +176,7 @@ to end. When a document and the harness disagree, the harness is right.
 - [Getting started](GETTING_STARTED.md) — a broker and a
   provider running, from a fresh checkout
 - [Eventing](EVENTING.md) — what a consumer is told, and when
-- [ARCHITECTURE.md](ARCHITECTURE.md) — the internal view, in
-  German, with the decision record
+- [Runtime services](RUNTIME.md) — what a node holds, and how to be
+  told when that changes
+- [ARCHITECTURE.md](ARCHITECTURE.md) — the internal view, with the
+  decision record

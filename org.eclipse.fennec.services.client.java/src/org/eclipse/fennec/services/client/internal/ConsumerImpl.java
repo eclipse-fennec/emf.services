@@ -51,6 +51,30 @@ final class ConsumerImpl implements DdsrConsumer {
 	private final Set<String> trackedInterfaces = ConcurrentHashMap.newKeySet();
 	private final DdsrServiceListener trackingListener = this::onTrackedEvent;
 
+	/** Everything currently tracked, for the runtime service (#126). */
+	List<ServiceLocatorImpl> tracked() {
+		List<ServiceLocatorImpl> all = new ArrayList<>();
+		for (List<ServiceLocatorImpl> locators : trackedByReference.values()) {
+			all.addAll(locators);
+		}
+		return all;
+	}
+
+	/** Whether the event stream is currently open (#126). */
+	boolean streamConnected() {
+		return listeners.isStreamOpen();
+	}
+
+	/** How this runtime names itself to the broker. */
+	String consumerId() {
+		return consumerId;
+	}
+
+	/** The transports it said it speaks. */
+	List<FlavorKind> supportedFlavors() {
+		return List.copyOf(supportedFlavors);
+	}
+
 	ConsumerImpl(BrokerLookup lookup, List<FlavorKind> supportedFlavors, String consumerId) {
 		this(lookup, supportedFlavors, consumerId, null);
 	}

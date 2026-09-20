@@ -39,6 +39,8 @@ import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.BrokerSessions;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -70,6 +72,10 @@ public class SseEventBridge implements EventSink {
 
 	private static final Logger LOG = Logger.getLogger(SseEventBridge.class.getName());
 
+	/** What an SSE frame now carries: a CloudEvent in the JSON format. */
+	private static final MediaType STRUCTURED_MEDIA_TYPE =
+			MediaType.valueOf(CloudEvents.STRUCTURED_MEDIA_TYPE);
+
 	@ObjectClassDefinition(name = "DDSR SSE Event Bridge",
 			description = "Distribution of broker lifecycle events over SSE")
 	public @interface Config {
@@ -80,6 +86,14 @@ public class SseEventBridge implements EventSink {
 						+ "waking up regularly — a blocked read would otherwise pin the connection "
 						+ "beyond its subscription's close — and prunes dead subscribers. 0 disables.")
 		int heartbeat_seconds() default 10;
+
+		@AttributeDefinition(
+				name = "Event source",
+				description = "The CloudEvents 'source' attribute of every event this bridge sends: "
+						+ "the context the event happened in, as a URI reference. Together with the "
+						+ "event id it is what makes an event identifiable, so a deployment running "
+						+ "more than one broker gives each its own.")
+		String event_source() default "/fennec/services/broker";
 	}
 
 	/** One connected consumer. */
@@ -122,8 +136,12 @@ public class SseEventBridge implements EventSink {
 
 	private ScheduledExecutorService heartbeat;
 
+	/** The CloudEvents {@code source} of everything this bridge sends. */
+	private volatile String eventSource = "/fennec/services/broker";
+
 	@Activate
 	void activate(Config config) {
+		eventSource = config.event_source();
 		int interval = config.heartbeat_seconds();
 		if (interval > 0) {
 			heartbeat = Executors.newSingleThreadScheduledExecutor(task -> {
@@ -298,16 +316,21 @@ public class SseEventBridge implements EventSink {
 		Set<FlavorKind> eventFlavors;
 		try {
 			eventFlavors = EventDocument.flavorsOf(event, broker);
-			payload = toXmi(event);
+			payload = toStructuredMessage(event);
 		} catch (IOException | RuntimeException failure) {
 			// Never let a distribution problem escape into the broker.
 			LOG.log(Level.WARNING, "[DDSR] could not render ServiceEvent for SSE", failure);
 			return;
 		}
 
+		// An SSE frame has no headers of its own, so the envelope travels
+		// in the data: structured mode, which is the same shape MQTT
+		// carries. The frame NAME stays what it was — it is one of the
+		// frozen wire names of #4, and it says which stream this is, not
+		// what the message inside looks like.
 		OutboundSseEvent outbound = sse.newEventBuilder()
 				.name("ddsr-service-event")
-				.mediaType(MediaType.APPLICATION_XML_TYPE)
+				.mediaType(STRUCTURED_MEDIA_TYPE)
 				.data(String.class, payload)
 				.build();
 
@@ -351,11 +374,25 @@ public class SseEventBridge implements EventSink {
 	 * shape — and the two traps in it — live in {@link EventDocument},
 	 * shared with every other transport.
 	 */
-	private String toXmi(ServiceEvent event) throws IOException {
+	/**
+	 * One event as a CloudEvents message: the self-contained XMI
+	 * document as the payload, and the envelope around it saying which
+	 * transition this is, which reference it is about and when it
+	 * happened.
+	 *
+	 * <p>The document itself is unchanged — same roots, same
+	 * cross-references, same reader on the other side. What a consumer
+	 * gains is that it no longer has to know our format to route the
+	 * message; it has to know CloudEvents and the model of {@code data}.
+	 */
+	private String toStructuredMessage(ServiceEvent event) throws IOException {
 		List<EObject> roots = EventDocument.roots(event, broker);
 
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		XmiCodec.write(out, rsObjects, roots);
-		return out.toString(StandardCharsets.UTF_8);
+		byte[] message = CloudEventCodec.writeStructured(
+				CloudEvents.envelopeFor(event, eventSource, MediaType.APPLICATION_XML),
+				out.toByteArray());
+		return new String(message, StandardCharsets.UTF_8);
 	}
 }

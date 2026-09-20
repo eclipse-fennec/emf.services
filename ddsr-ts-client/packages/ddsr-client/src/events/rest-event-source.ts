@@ -17,6 +17,7 @@ import { asRoots, firstOfClass } from '../internal/emf-util';
 import { SseParser } from './sse-parser';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from './event-source';
 import { clientOrigin, withOrigin } from '../internal/client-origin';
+import { dataAsText, lifecycleEventTypeOf, readStructured } from '../cloudevents/cloud-events';
 
 export interface RestEventSourceOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -128,7 +129,21 @@ export class RestEventSource implements DdsrEventSource {
     if (!payload.trim()) return;
     let event: ServiceEvent | undefined;
     try {
-      event = firstOfClass<ServiceEvent>(asRoots(deserializeFromXmi(payload)), 'ServiceEvent');
+      // An SSE frame has no headers, so the envelope is in the data:
+      // a CloudEvent in structured mode, carrying the document this
+      // client already knows (#101).
+      const message = readStructured(payload);
+      if (!lifecycleEventTypeOf(message.attributes.type)) {
+        this.log(`ignoring a '${message.attributes.type}' event — this stream is read for`
+          + ' lifecycle events');
+        return;
+      }
+      const document = dataAsText(message);
+      if (!document) {
+        this.log('a lifecycle event arrived without its document, ignoring');
+        return;
+      }
+      event = firstOfClass<ServiceEvent>(asRoots(deserializeFromXmi(document)), 'ServiceEvent');
     } catch (error) {
       this.log(`undecodable event payload skipped: ${String(error)}`);
       return;

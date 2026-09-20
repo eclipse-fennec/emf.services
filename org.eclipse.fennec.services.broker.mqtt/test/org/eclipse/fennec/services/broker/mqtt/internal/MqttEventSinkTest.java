@@ -37,7 +37,10 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.junit.jupiter.api.DisplayName;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.junit.jupiter.api.Test;
+
+import io.cloudevents.model.ce.CloudEvent;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
 
@@ -49,6 +52,19 @@ import org.osgi.service.component.ComponentServiceObjects;
 class MqttEventSinkTest {
 
 	private static final String NS = "http://eclipse.org/fennec/services/1.0";
+
+	/** The event document inside a published CloudEvents message. */
+	private static String documentOf(Published published) {
+		byte[] data = CloudEventCodec.readStructured(
+				published.payload().getBytes(StandardCharsets.UTF_8)).data();
+		return data == null ? "" : new String(data, StandardCharsets.UTF_8);
+	}
+
+	/** The envelope of a published message. */
+	private static CloudEvent envelopeOf(Published published) {
+		return CloudEventCodec.readStructured(
+				published.payload().getBytes(StandardCharsets.UTF_8)).attributes();
+	}
 
 	private record Published(String topic, String payload) {
 	}
@@ -112,7 +128,7 @@ class MqttEventSinkTest {
 	}
 
 	private MqttEventSink sink() {
-		return new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "ddsr/events");
+		return new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "ddsr/events", "/test/broker");
 	}
 
 	/** A registration event with a resolvable implementation. */
@@ -183,7 +199,7 @@ class MqttEventSinkTest {
 		sink().publish(event);
 
 		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/Payment");
-		assertThat(sent.get(0).payload())
+		assertThat(documentOf(sent.get(0)))
 				.contains("type=\"UNREGISTERING\"")
 				.contains("Payment");
 	}
@@ -192,7 +208,7 @@ class MqttEventSinkTest {
 	void thePayloadIsTheSameSelfContainedDocumentAsOnSse() {
 		sink().publish(registered("ref-1", "Payment"));
 
-		String payload = sent.get(0).payload();
+		String payload = documentOf(sent.get(0));
 		assertThat(payload)
 				.as("the required type must be explicit on the wire (W4)")
 				.contains("type=\"REGISTERED\"")
@@ -204,12 +220,43 @@ class MqttEventSinkTest {
 	}
 
 	@Test
+	void theEnvelopeNamesTheTransitionAndTheReference() {
+		sink().publish(registered("ref-1", "Payment"));
+
+		CloudEvent envelope = envelopeOf(sent.get(0));
+		assertThat(envelope.getSpecVersion()).isEqualTo("1.0");
+		assertThat(envelope.getType()).isEqualTo("org.eclipse.fennec.services.registered");
+		assertThat(envelope.getSource()).isEqualTo("/test/broker");
+		assertThat(envelope.getSubject())
+				.as("the reference id, so a subscriber can match an event whose topic could not"
+						+ " name the interface")
+				.isEqualTo("ref-1");
+		assertThat(envelope.getDatacontenttype())
+				.as("the payload says what it is, which is what #100 made a choice")
+				.isEqualTo("application/xml");
+		assertThat(envelope.getEventId()).isNotBlank();
+	}
+
+	@Test
+	void theResyncMessageSaysWhatItIs() {
+		sink().resyncRequired();
+
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/_resync");
+		CloudEvent envelope = envelopeOf(sent.get(0));
+		assertThat(envelope.getType()).isEqualTo("org.eclipse.fennec.services.resync");
+		assertThat(CloudEventCodec.readStructured(
+				sent.get(0).payload().getBytes(StandardCharsets.UTF_8)).data())
+				.as("there is nothing to re-read here — the snapshot is")
+				.isNull();
+	}
+
+	@Test
 	void aFailingPublisherDoesNotEscape() {
 		MqttEventSink hostile = new MqttEventSink(
 				(topic, payload) -> {
 					throw new IllegalStateException("broker unreachable");
 				},
-				lookup, new ResourceSetObjects(), "ddsr/events");
+				lookup, new ResourceSetObjects(), "ddsr/events", "/test/broker");
 
 		assertThatCode(() -> hostile.publish(registered("ref-1", "Payment")))
 				.as("an EventSink must not throw — the mutation is already committed")
@@ -218,7 +265,7 @@ class MqttEventSinkTest {
 
 	@Test
 	void theTopicPrefixIsConfigurable() {
-		MqttEventSink custom = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "acme/ddsr");
+		MqttEventSink custom = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "acme/ddsr", "/test/broker");
 
 		custom.publish(registered("ref-1", "Payment"));
 
@@ -227,7 +274,7 @@ class MqttEventSinkTest {
 
 	@Test
 	void aBlankPrefixFallsBackToTheDefault() {
-		MqttEventSink fallback = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "  ");
+		MqttEventSink fallback = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "  ", "/test/broker");
 
 		fallback.publish(registered("ref-1", "Payment"));
 
@@ -247,7 +294,7 @@ class MqttEventSinkTest {
 				throw new IllegalStateException("broker unreachable");
 			}
 			sent.add(new Published(topic, new String(payload, StandardCharsets.UTF_8)));
-		}, lookup, new ResourceSetObjects(), "ddsr/events");
+		}, lookup, new ResourceSetObjects(), "ddsr/events", "/test/broker");
 
 		sink.publish(registered("ref-1", "Payment"));
 		assertThat(sink.owesResync())
@@ -288,7 +335,7 @@ class MqttEventSinkTest {
 					public ServiceReference<ResourceSet> getServiceReference() {
 						throw new UnsupportedOperationException("not needed");
 					}
-				}, "ddsr/events");
+				}, "ddsr/events", "/test/broker");
 
 		sink.publish(registered("ref-1", "Payment"));
 
@@ -312,7 +359,7 @@ class MqttEventSinkTest {
 	void aResyncThatFailsIsRemembered() {
 		MqttEventSink sink = new MqttEventSink((topic, payload) -> {
 			throw new IllegalStateException("broker unreachable");
-		}, lookup, new ResourceSetObjects(), "ddsr/events");
+		}, lookup, new ResourceSetObjects(), "ddsr/events", "/test/broker");
 
 		sink.resyncRequired();
 
@@ -337,7 +384,7 @@ class MqttEventSinkTest {
 	@Test
 	@DisplayName("the resync topic follows the configured prefix, like everything else")
 	void theResyncTopicFollowsThePrefix() {
-		MqttEventSink custom = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "acme/ddsr");
+		MqttEventSink custom = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "acme/ddsr", "/test/broker");
 
 		custom.resyncRequired();
 
@@ -349,7 +396,7 @@ class MqttEventSinkTest {
 	void resyncRequiredDoesNotEscape() {
 		MqttEventSink hostile = new MqttEventSink((topic, payload) -> {
 			throw new IllegalStateException("broker unreachable");
-		}, lookup, new ResourceSetObjects(), "ddsr/events");
+		}, lookup, new ResourceSetObjects(), "ddsr/events", "/test/broker");
 
 		assertThatCode(hostile::resyncRequired).doesNotThrowAnyException();
 	}

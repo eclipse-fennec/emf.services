@@ -13,7 +13,9 @@
 
 import type { ServiceEvent } from '@ddsr/model';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from '@ddsr/client';
-import { asRoots, deserializeFromXmi, firstOfClass } from '@ddsr/client';
+import {
+  asRoots, dataAsText, deserializeFromXmi, firstOfClass, lifecycleEventTypeOf, readStructured,
+} from '@ddsr/client';
 
 /**
  * The slice of the mqtt.js client this source needs — injectable for
@@ -57,9 +59,10 @@ export const RESYNC_TOPIC_SEGMENT = '_resync';
  *   (documented A2 finding), routing happens in the SDK's listener
  *   registry — including the `_unknown` topic for events whose
  *   interface could not be determined.
- * - The payload is the same self-contained XMI document as on SSE; the
- *   first ServiceEvent root is delivered. Empty payloads are ignored,
- *   undecodable ones are logged and skipped.
+ * - The message is a CloudEvent in structured mode (#101), carrying the
+ *   same self-contained XMI document as on SSE; the first ServiceEvent
+ *   root is delivered. Empty payloads are ignored, undecodable ones and
+ *   events of a type that is not ours are logged and skipped.
  * - onStreamEstablished() fires after every (re)connect+subscribe —
  *   mqtt.js emits 'connect' again after its automatic reconnect, which
  *   triggers the SDK's snapshot refresh (FR-Sync-Reconnect), and it is
@@ -150,7 +153,21 @@ export class MqttEventSource implements DdsrEventSource {
     if (!text.trim()) return;
     let event: ServiceEvent | undefined;
     try {
-      event = firstOfClass<ServiceEvent>(asRoots(deserializeFromXmi(text)), 'ServiceEvent');
+      // Structured mode: the envelope and the document in one JSON
+      // message, which is what a transport carrying nothing but
+      // messages gets (#101).
+      const message = readStructured(text);
+      if (!lifecycleEventTypeOf(message.attributes.type)) {
+        this.log(`ignoring a '${message.attributes.type}' message — this subscription is for`
+          + ' lifecycle events');
+        return;
+      }
+      const document = dataAsText(message);
+      if (!document) {
+        this.log('a lifecycle event arrived without its document, ignoring');
+        return;
+      }
+      event = firstOfClass<ServiceEvent>(asRoots(deserializeFromXmi(document)), 'ServiceEvent');
     } catch (error) {
       this.log(`undecodable event payload skipped: ${String(error)}`);
       return;

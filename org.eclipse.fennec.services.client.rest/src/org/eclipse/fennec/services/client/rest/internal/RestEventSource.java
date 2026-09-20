@@ -31,6 +31,8 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.client.EventSource;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -88,8 +90,11 @@ public final class RestEventSource implements EventSource {
 	@Reference
 	private RestTransport transport;
 
+	// Package-private so a test can stand a source up without a broker,
+	// a transport or an OSGi runtime — the reading of an event is worth
+	// exercising on its own, the same way the MQTT source's is.
 	@Reference(target = "(emf.name=services)")
-	private ComponentServiceObjects<ResourceSet> rsObjects;
+	ComponentServiceObjects<ResourceSet> rsObjects;
 
 	private String flavors;
 
@@ -300,15 +305,29 @@ public final class RestEventSource implements EventSource {
 		}
 	}
 
-	private void deliver(Handler handler, String payload) {
+	void deliver(Handler handler, String payload) {
 		if (payload == null || payload.isBlank()) {
 			return;
 		}
 		try {
+			// An SSE frame carries no headers, so the envelope is in the
+			// data: a CloudEvent in structured mode, with the document
+			// this client already knows as its payload (#101).
+			CloudEventCodec.Message message = CloudEventCodec.readStructured(
+					payload.getBytes(StandardCharsets.UTF_8));
+			if (CloudEvents.eventTypeOf(message.attributes().getType()) == null) {
+				LOG.fine(() -> "[DDSR-Client] ignoring a '" + message.attributes().getType()
+						+ "' event — this stream is read for lifecycle events");
+				return;
+			}
+			if (message.data() == null) {
+				LOG.warning("[DDSR-Client] a lifecycle event arrived without its document, ignoring");
+				return;
+			}
 			// Multi-root document: the event plus the reference, provider
 			// and interfaces it needs to be self-contained.
 			XmiBundle bundle = XmiCodec.readBundle(
-					new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8)), rsObjects);
+					new ByteArrayInputStream(message.data()), rsObjects);
 			for (EObject root : bundle.roots()) {
 				if (root instanceof ServiceEvent serviceEvent) {
 					handler.onEvent(serviceEvent);

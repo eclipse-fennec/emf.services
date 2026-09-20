@@ -31,6 +31,14 @@ export type { DdsrEventSource, EventSourceHandler, EventSubscription } from './e
 export { RestEventSource } from './events/rest-event-source';
 export type { RestEventSourceOptions } from './events/rest-event-source';
 export { SseParser } from './events/sse-parser';
+export {
+  newEnvelope, writeStructured, readStructured, toHeaders, fromHeaders, dataAsText,
+  isTextual, lifecycleTypeOf, lifecycleEventTypeOf,
+  CE_SPEC_VERSION, CE_STRUCTURED_MEDIA_TYPE, CE_HEADER_PREFIX,
+  CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY, CE_TYPE_RESYNC,
+  CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO,
+} from './cloudevents/cloud-events';
+export type { CloudEventEnvelope, CloudEventMessage } from './cloudevents/cloud-events';
 export { attachShutdownHooks } from './lifecycle/shutdown-hooks';
 export type { ShutdownHookOptions } from './lifecycle/shutdown-hooks';
 export { serializeToXmi, deserializeFromXmi } from './xmi/xmi-support';

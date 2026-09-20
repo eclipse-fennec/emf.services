@@ -14,6 +14,7 @@
 import type { ServiceInterface, ServiceProvider, ServiceImplementation } from '@ddsr/model';
 import { DDSRFactory } from '@ddsr/model';
 import { serializeToXmi } from '../src/xmi/xmi-support';
+import { lifecycleTypeOf, newEnvelope, writeStructured } from '../src/cloudevents/cloud-events';
 
 const factory = DDSRFactory.eINSTANCE;
 
@@ -114,6 +115,17 @@ export function lookupResultXmi(providerName = 'payments-ts', referenceId = 'ref
     </operations>
   </services:ServiceInterface>
 </xmi:XMI>`;
+}
+
+/**
+ * One event as it travels since #101: the document inside a CloudEvent
+ * in structured mode. Built with the production writer, so a change on
+ * the writing side reaches every test that reads.
+ */
+export function lifecycleMessage(document: string, type = 'UNREGISTERING'): string {
+  const envelope = newEnvelope(lifecycleTypeOf(type), '/test/broker', 'application/xml');
+  envelope.subject = 'ref-42';
+  return new TextDecoder().decode(writeStructured(envelope, document));
 }
 
 /** The exact UNREGISTERING document shape the broker-side sink produces. */

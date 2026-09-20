@@ -61,9 +61,10 @@ class DdsrBrokerUpdatePolicyTest {
 	void setUp() {
 		snapshot = tmp.resolve("broker-state.xmi");
 		broker = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend(), sink);
+		sink.deliveredBy(broker);
 		payment = serviceInterface(INTERFACE, "charge");
 		broker.addCatalogEntry(payment, "test");
-		sink.received.clear();
+		sink.clear();
 	}
 
 	// ------------------------------------------------------------------
@@ -242,7 +243,7 @@ class DdsrBrokerUpdatePolicyTest {
 		ServiceProvider v1 = version("1.0.0");
 		broker.publishImplementation(v1, soleImpl(v1));
 		ServiceReference oldRef = referenceOf("1.0.0");
-		sink.received.clear();
+		sink.clear();
 
 		publishSuccessor("2.0.0", UpdatePolicy.DEPRECATE_AND_DRAIN, "1.0.0");
 
@@ -251,7 +252,7 @@ class DdsrBrokerUpdatePolicyTest {
 		assertThat(sink.types())
 				.as("REGISTERED first, so a consumer reacting to the hint already finds the successor")
 				.containsExactly(ServiceEventType.REGISTERED, ServiceEventType.UPGRADE_AVAILABLE);
-		assertThat(sink.received.get(1).getReference().getId()).isEqualTo(oldRef.getId());
+		assertThat(sink.received().get(1).getReference().getId()).isEqualTo(oldRef.getId());
 	}
 
 	@Test
@@ -260,7 +261,7 @@ class DdsrBrokerUpdatePolicyTest {
 		broker.publishImplementation(v1, soleImpl(v1));
 		hold("consumer-1", referenceOf("1.0.0"));
 		publishSuccessor("2.0.0", UpdatePolicy.DEPRECATE_AND_DRAIN, "1.0.0");
-		sink.received.clear();
+		sink.clear();
 
 		assertThat(broker.advanceUpdatePolicies(Instant.now())).as("a held lease blocks the retire").isZero();
 		assertThat(allVersions()).containsExactlyInAnyOrder("1.0.0", "2.0.0");
@@ -323,7 +324,7 @@ class DdsrBrokerUpdatePolicyTest {
 		soleImpl(v2).setUpdatePolicy(UpdatePolicy.HARD_CUTOVER);
 		soleImpl(v2).setCutoverGraceMillis(1_000L);
 		soleImpl(v2).setReplaces(replacesStub("1.0.0"));
-		sink.received.clear();
+		sink.clear();
 		broker.publishImplementation(v2, soleImpl(v2));
 
 		assertThat(visibleVersions()).as("phase 2: failover window, both visible")

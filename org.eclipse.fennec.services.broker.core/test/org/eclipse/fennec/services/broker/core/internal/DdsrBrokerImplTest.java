@@ -474,7 +474,7 @@ class DdsrBrokerImplTest {
 		RestFlavor liveFlavor = (RestFlavor) after.getRegistration().getImplementation().getFlavors().get(0);
 		assertThat(liveFlavor.getHost()).isEqualTo("http://elsewhere:9999");
 		assertThat(sink.signatures()).containsExactly("REGISTERED", "MODIFIED");
-		assertThat(EventDocument.interfaceNamesOf(sink.received.get(1), b)).containsExactly("Payment");
+		assertThat(EventDocument.interfaceNamesOf(sink.received().get(1), b)).containsExactly("Payment");
 		assertThat(b.getRegistry().getImplementations()).as("no second registration").hasSize(1);
 	}
 
@@ -804,6 +804,9 @@ class DdsrBrokerImplTest {
 		Path copy = tmp.resolve(name);
 		Files.copy(snapshot, copy);
 		DdsrBrokerImpl stuck = new DdsrBrokerImpl(copy, new InMemoryLookupBackend(), sink);
+		if (sink instanceof RecordingEventSink recording) {
+			recording.deliveredBy(stuck);
+		}
 		// Swap the file for a directory — the model keeps its loaded state,
 		// resource.save() from now on throws.
 		Files.delete(copy);
@@ -853,7 +856,9 @@ class DdsrBrokerImplTest {
 
 	/** Records what the broker hands to the sink, in order. */
 	private DdsrBrokerImpl brokerWith(RecordingEventSink sink) {
-		return new DdsrBrokerImpl(tmp.resolve("events.xmi"), new InMemoryLookupBackend(), sink);
+		DdsrBrokerImpl broker = new DdsrBrokerImpl(tmp.resolve("events.xmi"), new InMemoryLookupBackend(), sink);
+		sink.deliveredBy(broker);
+		return broker;
 	}
 
 	@Test
@@ -866,7 +871,7 @@ class DdsrBrokerImplTest {
 		b.publishImplementation(p, soleImpl(p));
 
 		assertThat(sink.types()).containsExactly(ServiceEventType.REGISTERED);
-		ServiceEvent event = sink.received.get(0);
+		ServiceEvent event = sink.received().get(0);
 		assertThat(event.getReference()).isNotNull();
 		assertThat(event.getReference().getProvider().getName()).isEqualTo("payments-java");
 		assertThat(event.getTimestamp()).as("timestamp is useful for stream ordering").isNotNull();
@@ -879,7 +884,7 @@ class DdsrBrokerImplTest {
 
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 
-		assertThat(sink.received)
+		assertThat(sink.received())
 				.as("catalog events are out of scope for the prototype (REQUIREMENTS §9)")
 				.isEmpty();
 	}
@@ -893,7 +898,7 @@ class DdsrBrokerImplTest {
 		ServiceProvider p = provider("payments-java", "impl", serviceInterface("NotInCatalog", "charge"));
 		b.publishImplementation(p, soleImpl(p));
 
-		assertThat(sink.received).isEmpty();
+		assertThat(sink.received()).isEmpty();
 	}
 
 	@Test
@@ -910,7 +915,7 @@ class DdsrBrokerImplTest {
 		assertThat(d.getCode())
 				.as("must fail at the save, not earlier — otherwise this tests the wrong thing")
 				.isEqualTo(DdsrDiagnostics.CODE_PERSISTENCE_FAILED);
-		assertThat(sink.received)
+		assertThat(sink.received())
 				.as("no event may escape for a change that was not persisted")
 				.isEmpty();
 	}
@@ -1017,7 +1022,7 @@ class DdsrBrokerImplTest {
 
 		b.withdrawImplementation(p, soleImpl(p));
 
-		ServiceEvent event = sink.received.get(sink.received.size() - 1);
+		ServiceEvent event = sink.received().get(sink.received().size() - 1);
 		assertThat(event.getType()).isEqualTo(ServiceEventType.UNREGISTERING);
 		// No lookup available (the impl is long gone) — the event itself
 		// must carry enough to route it.
@@ -1043,11 +1048,11 @@ class DdsrBrokerImplTest {
 		b.addCatalogEntry(serviceInterface("Payment", "charge"), "test");
 		ServiceProvider p = provider("payments-java", "impl", serviceInterface("Payment", "charge"));
 		b.publishImplementation(p, soleImpl(p));
-		String liveId = sink.received.get(0).getReference().getId();
+		String liveId = sink.received().get(0).getReference().getId();
 
 		b.withdrawImplementation(p, soleImpl(p));
 
-		assertThat(sink.received.get(1).getReference().getId())
+		assertThat(sink.received().get(1).getReference().getId())
 				.as("consumers match UNREGISTERING by reference id")
 				.isEqualTo(liveId);
 	}
@@ -1082,7 +1087,7 @@ class DdsrBrokerImplTest {
 		Diagnostic d = stuck.withdrawImplementation(liveProvider, liveImpl);
 
 		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_PERSISTENCE_FAILED);
-		assertThat(sink.received)
+		assertThat(sink.received())
 				.as("no event may be announced for a withdrawal that was not persisted")
 				.isEmpty();
 		assertThat(stuck.liveRegistry().getImplementations())

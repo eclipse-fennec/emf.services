@@ -14,11 +14,17 @@
 package org.eclipse.fennec.services.client.rest.internal;
 
 import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.telemetry.CallSpan;
+import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
@@ -30,6 +36,8 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -37,7 +45,9 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.ClientRequestFilter;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Response;
 
 /**
  * Shared Jakarta REST {@link Client} for the three proxy components.
@@ -97,6 +107,13 @@ public final class RestTransport {
 
 	@Reference
 	private ClientBuilder clientBuilder;
+
+	/**
+	 * Whoever is watching calls, if anyone is (#126). Optional and
+	 * dynamic, like everywhere else this seam is used.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	private volatile CallTracer tracer;
 
 	private static final Logger LOG = Logger.getLogger(RestTransport.class.getName());
 
@@ -207,6 +224,59 @@ public final class RestTransport {
 	 */
 	String originToken() {
 		return origin.token();
+	}
+
+	/**
+	 * One call to the broker, traced (#126).
+	 *
+	 * <p>Here rather than in a client filter, and that took a try: a
+	 * filter pair cannot close a span for a request that never reaches
+	 * a response — a refused connection is exactly the call worth
+	 * seeing, and it is the one a filter would lose. Here the span is
+	 * closed by try-with-resources whatever happens.
+	 *
+	 * <p>Here rather than in each proxy, for the reason the origin
+	 * header gives two methods up: what has to be true of every call
+	 * belongs where every call passes, not where twelve call sites can
+	 * each forget it.
+	 *
+	 * @param operation what the broker calls this, as
+	 *        {@code Contract/operation} — the same name its own
+	 *        dispatcher gives the serving half, so the two halves read
+	 *        as one call
+	 * @param request   the prepared request, before the verb
+	 * @param verb      what to do with it: {@code b -> b.post(entity)}
+	 */
+	<T> T send(String operation, Invocation.Builder request, Function<Invocation.Builder, T> verb) {
+		Map<String, String> context = new LinkedHashMap<>();
+		try (CallSpan span = tracer().calling(operation, TraceCarrier.over(context))) {
+			Invocation.Builder traced = request;
+			for (Map.Entry<String, String> field : context.entrySet()) {
+				traced = traced.header(field.getKey(), field.getValue());
+			}
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("server.address", baseUrl == null ? null : baseUrl.toString())
+					.attribute("fennec.flavor", "REST");
+			try {
+				T answer = verb.apply(traced);
+				if (answer instanceof Response response) {
+					span.attribute("http.response.status_code", String.valueOf(response.getStatus()));
+				}
+				return answer;
+			} catch (RuntimeException failed) {
+				// Connection refused, a timeout, a body that would not
+				// read: the proxies let these through as they always
+				// have, and the span says what the caller will find out
+				// by catching.
+				span.failed(failed);
+				throw failed;
+			}
+		}
+	}
+
+	private CallTracer tracer() {
+		CallTracer bound = tracer;
+		return bound == null ? CallTracer.NONE : bound;
 	}
 
 	WebTarget target() {

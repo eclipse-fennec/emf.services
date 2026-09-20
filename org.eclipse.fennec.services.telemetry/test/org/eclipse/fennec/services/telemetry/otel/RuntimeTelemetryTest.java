@@ -15,7 +15,6 @@ package org.eclipse.fennec.services.telemetry.otel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -128,7 +127,7 @@ class RuntimeTelemetryTest {
 		meters = SdkMeterProvider.builder().registerMetricReader(reader).build();
 		telemetry = new RuntimeTelemetry();
 		telemetry.meters = meters;
-		telemetry.configure(config());
+		telemetry.configure(Configs.defaults());
 	}
 
 	@AfterEach
@@ -193,23 +192,4 @@ class RuntimeTelemetryTest {
 						metric -> metric.getLongGaugeData().getPoints().iterator().next().getValue()));
 	}
 
-	private static TelemetryConfig config() {
-		return new TelemetryConfig() {
-
-			@Override
-			public Class<? extends Annotation> annotationType() {
-				return TelemetryConfig.class;
-			}
-
-			@Override
-			public String scope() {
-				return "org.eclipse.fennec.services";
-			}
-
-			@Override
-			public boolean useRegisteredPropagators() {
-				return false;
-			}
-		};
-	}
 }

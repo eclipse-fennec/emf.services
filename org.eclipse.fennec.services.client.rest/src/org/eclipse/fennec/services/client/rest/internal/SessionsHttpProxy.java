@@ -30,6 +30,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -74,25 +75,26 @@ public final class SessionsHttpProxy implements BrokerSessions {
 				roots.add(stub);
 			}
 		}
-		Response r = tx.target().path("consumers").path(session.getConsumerId())
-				.request(MediaType.APPLICATION_XML)
-				.put(Entity.entity(new XmiBundle(roots), MediaType.APPLICATION_XML));
+		Response r = tx.send("BrokerSessions/putSession",
+				tx.target().path("consumers").path(session.getConsumerId())
+						.request(MediaType.APPLICATION_XML),
+				request -> request.put(Entity.entity(new XmiBundle(roots), MediaType.APPLICATION_XML)));
 		return CatalogHttpProxy.readDiagnostic(r);
 	}
 
 	@Override
 	public Diagnostic deleteSession(String consumerId) {
-		Response r = tx.target().path("consumers").path(consumerId)
-				.request(MediaType.APPLICATION_XML)
-				.delete();
+		Response r = tx.send("BrokerSessions/deleteSession",
+				tx.target().path("consumers").path(consumerId).request(MediaType.APPLICATION_XML),
+				Invocation.Builder::delete);
 		return CatalogHttpProxy.readDiagnostic(r);
 	}
 
 	@Override
 	public Optional<SessionSnapshot> getSession(String consumerId) {
-		Response r = tx.target().path("consumers").path(consumerId)
-				.request(MediaType.APPLICATION_XML)
-				.get();
+		Response r = tx.send("BrokerSessions/getSession",
+				tx.target().path("consumers").path(consumerId).request(MediaType.APPLICATION_XML),
+				Invocation.Builder::get);
 		if (r.getStatus() == 404) {
 			r.close();
 			return Optional.empty();

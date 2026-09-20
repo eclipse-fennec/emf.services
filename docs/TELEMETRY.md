@@ -52,17 +52,26 @@ name the call it belongs to.
 
 ## What gets a span today
 
-Four places, which between them cover the four moments worth seeing:
-
 - the **REST invoker** and the **MQTT invoker** — the client half of a
   service call
 - the **REST dispatcher** and the **MQTT dispatcher** — the provider
   half, continuing the caller's trace
+- the **client transport** — every call the SDK itself makes to the
+  broker: publish, modify, withdraw, heartbeat, lookup, the session
+  PUT and DELETE, the catalogue operations
 
 Because all three broker contracts are served generically since #88,
 the broker's own lookups, publishes and withdrawals pass through the
-REST dispatcher like any other contract — so they are traced without
-anything being written for them.
+REST dispatcher like any other contract — so the two halves of, say, a
+publish carry the same name from both ends without either end being
+told about the other.
+
+The transport is one place rather than twelve for the same reason the
+origin header of #125 lives there: what has to be true of every call
+belongs where every call passes. It is also not a client filter, which
+was tried: a JAX-RS filter pair cannot close a span for a request that
+never reaches a response, and a broker that refuses the connection is
+exactly the call worth seeing.
 
 Span names are `Contract/operation`, never a path or a topic: a name
 with an id in it is a name nobody can group by.
@@ -71,6 +80,20 @@ Attributes follow the OpenTelemetry semantic conventions where they
 fit — `rpc.system`, `rpc.service`, `rpc.method`, `server.address`,
 `http.request.method`, `http.response.status_code` — plus
 `fennec.flavor`, which says REST or MQTT.
+
+## Logs
+
+This project logs with JUL by convention, and the OSGi integration
+bridges the OSGi LogService — so without a bridge of our own, nothing
+this code writes would reach a backend. `JulBridge` puts a handler on
+the root logger and forwards every record with its severity, its logger
+name, its thread and, for a failure, the exception as the three
+attributes a backend groups errors by.
+
+What it buys is correlation: a line written inside a call carries that
+call's trace id, so a failed invocation and the line the provider wrote
+about it are one thing rather than two that happened around the same
+time. `logs=false` turns it off.
 
 ## What a watcher sees of a node
 
@@ -140,15 +163,17 @@ out.
 
 ## What is not built yet
 
-- **The SDK's own calls to the broker.** A Java provider publishing, or
-  a consumer looking up, goes through the proxies in `…client.rest`
-  rather than through the service invoker, and those are not
-  instrumented. The broker end of such a call is traced; it simply
-  starts a trace instead of continuing one.
-- **`setPropagators` upstream.** Two lines in each sender bundle of the
-  OSGi integration, and then `useRegisteredPropagators` can become the
-  default and this bundle can stop bringing its own.
-- **Logs.** The integration bridges the OSGi LogService already;
-  nothing here routes JUL into it.
-
-Issue #126 stays open for these.
+- **`setPropagators` upstream.** Proposed to the OSGi Technology
+  project: `buildPropagators` on the shared base class and a
+  `propagators` attribute on both sender configurations, defaulting to
+  W3C Trace Context plus Baggage. When that is released,
+  `useRegisteredPropagators` can become the default here and this
+  bundle can stop bringing propagators of its own.
+- **The event stream.** SSE and the MQTT event subscription are
+  long-lived streams rather than calls, and a span per stream would
+  either last for days or say nothing. What a watcher wants of them is
+  in the runtime services already: whether the stream is connected, and
+  how many events the broker had to drop.
+- **A collector in the harness.** The harness proves the wire, not the
+  telemetry; nothing asserts end to end that two processes report one
+  trace. The unit tests assert exactly that across a carrier.

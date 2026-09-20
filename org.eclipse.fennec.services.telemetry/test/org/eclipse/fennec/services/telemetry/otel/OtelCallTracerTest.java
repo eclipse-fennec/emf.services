@@ -15,7 +15,6 @@ package org.eclipse.fennec.services.telemetry.otel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -86,7 +85,7 @@ class OtelCallTracerTest {
 				.build();
 		tracer = new OtelCallTracer();
 		tracer.tracers = provider;
-		tracer.configure(config());
+		tracer.configure(Configs.defaults());
 	}
 
 	@AfterEach
@@ -171,23 +170,4 @@ class OtelCallTracerTest {
 		assertThat(collected.spans.get(0).getAttributes().size()).isEqualTo(1);
 	}
 
-	private static TelemetryConfig config() {
-		return new TelemetryConfig() {
-
-			@Override
-			public Class<? extends Annotation> annotationType() {
-				return TelemetryConfig.class;
-			}
-
-			@Override
-			public String scope() {
-				return "org.eclipse.fennec.services";
-			}
-
-			@Override
-			public boolean useRegisteredPropagators() {
-				return false;
-			}
-		};
-	}
 }

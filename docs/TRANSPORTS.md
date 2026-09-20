@@ -65,7 +65,7 @@ framework and a `ResourceSet` with `emf.name=services`.
 Note that `broker.url` is only the broker. The address of an actual
 service call comes from the flavor, never from this setting.
 
-## `client.mqtt` — events over MQTT
+## `client.mqtt` — events and calls over MQTT
 
 Registers one `EventSource` with `ddsr.event.transport=mqtt`, and is
 **dormant until configured**: its configuration policy requires a
@@ -90,6 +90,33 @@ Configuring it is not enough. The SDK must be pointed at it:
 
 Without that target the SDK binds whichever event source is present,
 which in any launch that also has REST is the SSE one.
+
+The same bundle also **calls** services announced over MQTT (#98). That
+half needs no address of its own — the brokers a flavor announces are
+where it dials — and is configured only with how long to wait:
+
+`org.eclipse.fennec.services.client.mqtt.invoker`
+
+| Property | Default |
+| --- | --- |
+| `reply.timeout.seconds` | `10` |
+
+Which transport a proxy uses is not configured at all: the SDK picks by
+the flavors the service announces, in the order it announces them, from
+the invokers this runtime has. A service reachable only over a
+transport that is not installed fails with a message naming both sides
+instead of a call going out the wrong way.
+
+## `provider.mqtt` — serving a contract over topics
+
+The MQTT twin of `provider.rest`: one subscription per operation of a
+flavor, a dispatcher that reads the call, invokes the service and
+answers on the topic the call named. Nothing in it is written per
+contract.
+
+It has no configuration of its own. Where it listens is the flavor's
+own statement — the brokers it announces — and connections are pooled
+per broker URL, opened with the first export and closed with the last.
 
 ## `client.java` — the SDK
 

@@ -47,7 +47,9 @@ public final class PaymentProxyRegistrar {
 	@Reference
 	private DdsrClient client;
 
-	@Reference(target = "(ddsr.broker.transport=rest)")
+	// No target: the proxy factory is transport-agnostic since #98 and
+	// picks an invoker by the flavor the service announces.
+	@Reference
 	private ServiceProxyFactory proxyFactory;
 
 	private final List<ServiceRegistration<PaymentRemote>> registrations = new ArrayList<>();

@@ -308,26 +308,27 @@ public final class DdsrClientComponent implements DdsrClient {
 	 * the heartbeat. No transport or no delegate → silently no lease.
 	 */
 	private void renewSession() {
-		try {
-			BrokerSessions current = sessions;
-			DdsrClientImpl client = delegate;
-			if (current == null || client == null) {
-				return;
-			}
-			ConsumerSession session = ServicesFactory.eINSTANCE.createConsumerSession();
-			session.setConsumerId(consumerId);
-			ConsumerCapability capability = ServicesFactory.eINSTANCE.createConsumerCapability();
-			capability.setConsumerId(consumerId);
-			if (supportedFlavors != null) {
-				capability.getSupportedFlavors().addAll(supportedFlavors);
-			}
-			session.setCapabilities(capability);
-			current.putSession(session, client.knownReferenceIds());
-		} catch (RuntimeException renewalFailure) {
-			// Lease renewal is best-effort: the broker treats a missed
-			// renewal as any other silence (TTL), so log and carry on.
-			LOG.warning("[DDSR-Client] session renewal failed, retrying next interval: " + renewalFailure);
+		ConsumerSessionKeeper current = sessionKeeper();
+		if (current != null) {
+			current.renew();
 		}
+	}
+
+	/**
+	 * The session behaviour, built fresh from what is bound right now.
+	 *
+	 * <p>Built per call rather than held: the reference and the
+	 * delegate are both replaceable while this component lives, and a
+	 * keeper captured at activation would go on renewing a session
+	 * against a transport that is gone.
+	 */
+	private ConsumerSessionKeeper sessionKeeper() {
+		BrokerSessions current = sessions;
+		DdsrClientImpl client = delegate;
+		if (current == null || client == null) {
+			return null;
+		}
+		return new ConsumerSessionKeeper(current, consumerId, supportedFlavors, client::knownReferenceIds);
 	}
 
 	private void heartbeatRegistrations(long intervalSeconds) {
@@ -360,16 +361,8 @@ public final class DdsrClientComponent implements DdsrClient {
 		// broker releases the leases immediately instead of waiting for
 		// the TTL. Best-effort — a dead broker must not stall shutdown.
 		BrokerSessions current = sessions;
-		if (current != null && consumerId != null) {
-			try {
-				current.deleteSession(consumerId);
-				// stdout, not JUL: shutdown path — JUL's cleanup hook may
-				// already have reset the LogManager (DECISIONS_PARITY D14).
-				System.out.println("[DDSR-Client] session released at broker: " + consumerId);
-			} catch (RuntimeException deleteFailure) {
-				System.err.println("[DDSR-Client] session release failed, broker will expire it: "
-						+ deleteFailure);
-			}
+		if (current != null) {
+			new ConsumerSessionKeeper(current, consumerId, supportedFlavors, List::of).release();
 		}
 		if (delegate != null) {
 			delegate.close();

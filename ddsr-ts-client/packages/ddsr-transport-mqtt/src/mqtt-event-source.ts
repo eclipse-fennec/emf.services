@@ -42,6 +42,14 @@ export interface MqttEventSourceOptions {
 export const DEFAULT_TOPIC_PREFIX = 'ddsr/events';
 
 /**
+ * Topic segment on which the broker says an event did not reach the
+ * wire and subscribers have to take a fresh snapshot (#124). Named on
+ * the broker side in `MqttEventSink`; one string on each side of a
+ * wire, like the topic prefix itself.
+ */
+export const RESYNC_TOPIC_SEGMENT = '_resync';
+
+/**
  * MQTT implementation of the event source — the TS mirror of the Java
  * client.mqtt transport, with the same contracts:
  *
@@ -56,6 +64,9 @@ export const DEFAULT_TOPIC_PREFIX = 'ddsr/events';
  *   mqtt.js emits 'connect' again after its automatic reconnect, which
  *   triggers the SDK's snapshot refresh (FR-Sync-Reconnect), and it is
  *   awaited before messages of that connection are delivered.
+ * - A message on `<prefix>/_resync` means the broker lost an event and
+ *   the only recovery is to read everything again (#124). It fires the
+ *   same hook a reconnect does, because that is the same recovery.
  */
 export class MqttEventSource implements DdsrEventSource {
   private readonly options: MqttEventSourceOptions;
@@ -64,6 +75,11 @@ export class MqttEventSource implements DdsrEventSource {
   constructor(options: MqttEventSourceOptions) {
     this.options = options;
     this.log = options.log ?? ((m) => console.error(`[ddsr-mqtt] ${m}`));
+  }
+
+  /** Is this the topic on which the broker admits a loss? */
+  private isResync(topic: string | undefined): boolean {
+    return typeof topic === 'string' && topic.endsWith(`/${RESYNC_TOPIC_SEGMENT}`);
   }
 
   topicFilter(): string {
@@ -95,9 +111,19 @@ export class MqttEventSource implements DdsrEventSource {
           }
         });
       });
-      client.on('message', (_topic, payload) => {
+      client.on('message', (topic, payload) => {
         if (closed) return;
-        pipeline = pipeline.then(() => {
+        pipeline = pipeline.then(async () => {
+          if (this.isResync(topic)) {
+            // Something was lost between the broker and here, and there
+            // is no way to find out what: the broker keeps no per-client
+            // history and the stream carries no sequence numbers.
+            // Reading everything again is the recovery, and it is
+            // exactly what a reconnect already does.
+            this.log('the broker lost an event — taking a fresh snapshot');
+            await handler.onStreamEstablished();
+            return;
+          }
           this.deliver(payload, handler);
         });
       });

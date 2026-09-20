@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
+import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
 import org.osgi.framework.Bundle;
@@ -428,9 +429,16 @@ public class GenericRestDistribution extends Application {
 		if (dispatcher == null) {
 			return Set.of();
 		}
+		// The bundle writer is here because an answer may need siblings
+		// (#88): a value that references contracts nobody else carries
+		// travels with them, as one multi-root document. Every
+		// application brings its own providers — a whiteboard extension
+		// is never asked when an application names its own, which is
+		// what made the lookup a hand-written resource until now.
 		return Set.of(dispatcher,
 				new XmiMessageBodyReader(resourceSets),
-				new XmiMessageBodyWriter(resourceSets));
+				new XmiMessageBodyWriter(resourceSets),
+				new XmiBundleMessageBodyWriter(resourceSets));
 	}
 
 	private static RestFlavor restFlavorOf(ServiceImplementation implementation) {

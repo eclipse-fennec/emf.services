@@ -69,10 +69,13 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 		// says so the way every provider does. This is what the generic
 		// REST distribution looks it up by (#76) — one service, three
 		// contracts, because that is what it is.
+		// Two of the three, not three. The lookup's REST surface spreads
+		// a ConsumerCapability over query parameters, so the object that
+		// has the signature the contract describes is an adapter in
+		// broker.rest — and it carries the property (#88).
 		property = {
 				"ddsr.contract=BrokerCatalog",
-				"ddsr.contract=BrokerImplementations",
-				"ddsr.contract=BrokerLookup" },
+				"ddsr.contract=BrokerImplementations" },
 		configurationPid = "org.eclipse.fennec.services.broker.core",
 		immediate = true)
 @Designate(ocd = DdsrBrokerComponent.Config.class)

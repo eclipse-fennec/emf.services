@@ -34,5 +34,13 @@
 		"model.bundle": "org.eclipse.fennec.services.broker.rest",
 		"model.entry": "broker-implementations-api.xmi",
 		"osgi.jakartars.application.base": "/implementations"
+	},
+	"org.eclipse.fennec.services.provider.rest~brokerLookup":
+	{
+		"ddsr.contract": "BrokerLookup",
+		"service.filter": "(ddsr.contract=BrokerLookup)",
+		"model.bundle": "org.eclipse.fennec.services.broker.rest",
+		"model.entry": "broker-lookup-api.xmi",
+		"osgi.jakartars.application.base": "/references"
 	}
 }

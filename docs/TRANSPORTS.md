@@ -298,6 +298,32 @@ the model's primitive type names to Java, and an `eType` that is an
 `PersonStore` interface is therefore hand-written and says why — the
 template gap belongs to [#25](https://github.com/eclipse-fennec/emf.services/issues/25).
 
+## And the envelope around it
+
+Since [#101](https://github.com/eclipse-fennec/emf.services/issues/101)
+every message — a lifecycle event, a call, an answer — travels in a
+CloudEvents 1.0 envelope. The two content modes exist because the
+transports differ, and this registry uses both for exactly that reason:
+
+- **Binary mode over HTTP.** The attributes are `ce-*` headers, the
+  body is the payload in whatever encoding the contract declared. The
+  encoding is still the contract's choice, still announced as
+  `Content-Type`, still selected the way this page describes — the
+  envelope says *which* encoding was used, and changes nothing about
+  it. Nothing had to move on the REST wire, and nothing did.
+- **Structured mode where a transport carries only messages** — MQTT,
+  an SSE frame, AMQP when it arrives. Envelope and payload in one JSON
+  document. A textual encoding (XMI) rides as a JSON string; a binary
+  one (protobuf) as `data_base64`, because that is what the JSON event
+  format says to do.
+
+The MQTT call path gained more than a wrapper: its payload is now
+`ServiceInvocation` rather than a JSON bag of arguments, so a value
+keeps the type its contract gave it and a **modelled** argument is
+possible there at all — which is the same thing this page's protobuf
+example proved for REST, arriving on the transport that had no way to
+say it.
+
 ## Read next
 
 - [Eventing](EVENTING.md) — what the two event transports guarantee

@@ -107,13 +107,22 @@ The strategy is a property of `OperationChannel` (more precisely of the response
 **Status 2026-08-25 (A2 stage 2, issue #3):** exactly this
 `TOPIC_BASED` variant is implemented in the v1 model — on the TypeScript
 side as `MqttFlavorPlugin` (the consumer, a pending map over the
-correlationId plus a per-request reply topic) and `MqttOperationServer`
+correlation plus a per-request reply topic) and `MqttOperationServer`
 (the provider dispatch). Since Paho v3 speaks only MQTT 3.1.1 (no
 `response-topic`/`correlation-data` properties), both travel in the
-request envelope; the frozen convention lives in
+envelope; the frozen convention lives in
 `ddsr-ts-client/packages/ddsr-transport-mqtt/src/mqtt-rpc.ts` and is
 documented in ARCHITECTURE.md §3. The FR-P4 harness (scenario E)
 proves the invocation over a real Mosquitto.
+
+**Status 2026-09-20 (#101):** that envelope is no longer ours. A call
+is two CloudEvents — `…invoke` carrying the reply address in the
+`replyto` extension, `…invoke.reply` pointing back through
+`correlationid` — and the payload is `ServiceInvocation` /
+`ServiceInvocationResult` from the model rather than a JSON bag of
+arguments. Which is the shape this section describes in the abstract,
+arriving in the v1 model: the correlation identity is an attribute of
+the message, and the response channel is named by the request.
 
 ## 6. Capability/requirement matching
 

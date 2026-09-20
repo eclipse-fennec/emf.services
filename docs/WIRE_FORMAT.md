@@ -105,10 +105,14 @@ reason a consumer can address it at all.
 
 ## SSE event stream
 
-`GET /events` streams `ServiceEvent` documents (event name
-`ddsr-service-event`), each self-contained: the event root plus the
-reference (and provider data) it refers to — an `UNREGISTERING` must be
-routable even by a consumer that never saw the registration. A
+`GET /events` streams lifecycle events (frame name
+`ddsr-service-event`, media type `application/cloudevents+json`). Each
+frame is a CloudEvent in structured mode whose `data` is the
+self-contained event document: the event root plus the reference (and
+provider data) it refers to — an `UNREGISTERING` must be routable even
+by a consumer that never saw the registration. An SSE frame carries no
+headers of its own, which is why the envelope travels in the data here
+and not as `ce-*` (see [The envelope](#the-envelope-cloudevents-10)). A
 comment-line heartbeat every 10 s (PID
 `org.eclipse.fennec.services.broker.rest.sse`, `heartbeat.seconds`)
 keeps intermediaries from idling the connection out and bounds how long
@@ -137,14 +141,18 @@ absent when unset.
 
 ## MQTT event transport
 
-The broker publishes the same self-contained event documents to
+The broker publishes the same messages — envelope and document — to
 `ddsr/events/<interface>` (QoS 0 by default, never retained — an event
 is a transition, not a state; late subscribers snapshot instead).
 Consumers subscribe `ddsr/events/#`. Both sides are dormant OSGi
 components (`configurationPolicy = REQUIRE`) with the PIDs
 `org.eclipse.fennec.services.broker.mqtt` and
 `org.eclipse.fennec.services.client.mqtt` (`broker.url`,
-`topic.prefix`, `client.id`, `qos`). Which transport the SDK uses is
+`topic.prefix`, `client.id`, `qos`, and on the broker side
+`event.source`). A message on `<prefix>/_resync` tells subscribers to
+take a fresh snapshot; since #101 it carries an envelope of type
+`org.eclipse.fennec.services.resync` and no payload, so a transport
+without topics could say the same thing. Which transport the SDK uses is
 said in the client's own configuration — `eventSource.target` against
 the `ddsr.event.transport` property (`rest` or `mqtt`) — and
 deliberately **not** by `service.ranking`. A deployment that configures
@@ -154,31 +162,109 @@ losing whatever is published in the gap. The podman harness scenario D
 asserts that exactly one subscription exists and that it is the
 configured one.
 
+## The envelope: CloudEvents 1.0
+
+Since #101 every message this registry sends travels in a CloudEvents
+envelope — a lifecycle event, a call and an answer alike. The model is
+`io.cloudevents.model` from fennec.common.models; the Java helper is
+`org.eclipse.fennec.services.cloudevents`, the TypeScript mirror
+`@ddsr/client`'s `cloud-events.ts`.
+
+Two content modes, as the specification defines them, chosen by what
+the transport can carry:
+
+| Transport | Mode | Where the attributes are |
+|---|---|---|
+| SSE, MQTT (and AMQP when it comes) | **structured**, JSON event format | in the message, beside `data` |
+| HTTP | **binary** | `ce-*` headers, the body is the payload |
+
+The binary mode is why the REST wire did not change: the body is byte
+for byte the payload its contract declares, and the envelope is a
+handful of headers around it. `datacontenttype` is the message's own
+`Content-Type` there and is never written as a `ce-` header.
+
+In structured mode the payload is a JSON string when its encoding is
+textual (XMI is) and `data_base64` when it is not (protobuf is not) —
+the JSON event format's own rule, not ours.
+
+### The attributes this registry sets
+
+| Attribute | On an event | On a call | On an answer |
+|---|---|---|---|
+| `type` | `org.eclipse.fennec.services.<transition>` | `…invoke` | `…invoke.reply` |
+| `source` | the broker (`event.source`, default `/fennec/services/broker`) | `/consumer/<origin>` | `/provider/<contract>` |
+| `subject` | the reference id | the operation, with its contract where the caller knows it | the call's subject |
+| `time` | when the transition happened, not when it was sent | when the call was made | — |
+| `datacontenttype` | `application/xml` | what the contract declares (#100) | likewise |
+
+`<transition>` is the `ServiceEventType` literal in lower case with
+`_` as `.`: `registered`, `modified`, `unregistering`,
+`modified.endmatch`, `upgrade.available`, `retired`, plus
+`org.eclipse.fennec.services.resync` for the signal that a subscriber
+has to re-read.
+
+Two extension attributes, because CloudEvents defines neither and MQTT
+3.1.1 cannot supply them:
+
+- `replyto` — the topic an answer is expected on
+- `correlationid` — the id of the request an answer belongs to
+
+A reader that meets a `type` it does not know has an envelope it
+understands carrying something it does not. Both SDKs skip such a
+message and say so at FINE: sharing a transport with somebody else's
+events is normal, not an error.
+
 ## MQTT invocation (request/response)
 
 Peer-to-peer between consumer and provider over the MQTT broker
 announced in `MqttFlavor.brokers` — the DDSR broker is not involved
-(discovery/acquisition only). MQTT 3.1.1-compatible: correlation and
-reply address travel in the JSON envelope, not in MQTT 5 properties.
+(discovery/acquisition only). A call is **two events**: the request and
+its answer, held together by `correlationid` rather than by a
+connection.
 
 ```
 request topic:   MqttOperationFlavor.requestTopic,
                  else <MqttFlavor.requestTopic>/<operation.name>
-reply topic:     consumer-chosen <base>/<correlationId>, with base =
+reply topic:     consumer-chosen <base>/<request id>, with base =
                  MqttOperationFlavor.responseTopic
                  | MqttFlavor.responseTopic
                  | <requestTopic>/reply
-request (JSON):  {"correlationId":"<uuid>","replyTo":"<topic>","args":{…}}
-response (JSON): {"correlationId":"<uuid>","result":<value>}
-                 | {"correlationId":"<uuid>","error":"<message>"}
+request:         CloudEvent, structured mode
+                 type = org.eclipse.fennec.services.invoke
+                 replyto = the reply topic
+                 data = a ServiceInvocation document
+response:        CloudEvent, structured mode
+                 type = org.eclipse.fennec.services.invoke.reply
+                 correlationid = the request's id
+                 data = a ServiceInvocationResult document
 qos:             MqttOperationFlavor.qos | MqttFlavor.defaultQos
                  | AT_LEAST_ONCE;   retained: never
 ```
 
+The payload is the model, not a bag of JSON values.
+`ServiceInvocation` names the operation and carries one `Argument` per
+value, each in the `Property` that fits its declared type — so an `int`
+stays an `int`, and a **modelled** argument is possible at all: an
+`EObjectProperty` contains its value, and the model travels with the
+message. The answer is a `ServiceInvocationResult`: a value, or a
+`Diagnostic` that says why there is none, which is how this registry
+reports failures everywhere else.
+
+Because `ServiceInvocation` points at its operation and each `Argument`
+at its parameter — by reference, deliberately — the document carries a
+second root describing the operation being called, and the references
+resolve inside it. Self-contained, like every other document on this
+wire.
+
 One reply topic per request — a subscription never sees a foreign
-answer, and the correlationId double-checks. Provider-side handler
-failures answer with the error envelope instead of letting the consumer
+answer, and `correlationid` double-checks. A provider-side handler
+failure answers with the Diagnostic instead of letting the consumer
 time out. Reference implementation:
 `ddsr-ts-client/packages/ddsr-transport-mqtt/src/mqtt-rpc.ts`
 (consumer plugin `MqttFlavorPlugin`, provider dispatcher
-`MqttOperationServer`).
+`MqttOperationServer`), with the invocation codec in
+`@ddsr/client`'s `invocation.ts`.
+
+**Java has no MQTT invocation yet.** The transport carries events on
+both sides, but the call path exists only in TypeScript; the Java
+counterpart arrives with #98, which is what first needs one.

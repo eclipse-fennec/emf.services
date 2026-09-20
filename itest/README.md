@@ -6,7 +6,10 @@ broker. Requirements and decisions:
 
 ## Scenarios
 
-- **A — Java provider → TS consumer:** discovery, the sd1 fingerprint
+- **A — Java provider → TS consumer:** a raw tap on the event stream (a
+  curl, no SDK) asserting that the frame is a CloudEvent whose data is
+  the document and that the frozen frame name has not moved, discovery,
+  the sd1 fingerprint
   (the broker property = locally computed = the golden hash), all eight
   property types type-exact, invocation, and the FR-P3 probe: the
   UNREGISTERING reaches the consumer **before** the provider process
@@ -18,9 +21,10 @@ broker. Requirements and decisions:
   HTTP endpoint stops, and the broker no longer lists the provider
   afterwards.
 - **C (podman only) — the MQTT wire proof:** a Mosquitto container; the
-  TS `MqttEventSource` receives and decodes the broker-shaped event
-  document over real MQTT/TCP (topics `<prefix>/<interface>` and
-  `<prefix>/_unknown`).
+  TS `MqttEventSource` receives and decodes the broker-shaped message
+  over real MQTT/TCP (topics `<prefix>/<interface>` and
+  `<prefix>/_unknown`) — since #101 a CloudEvent in structured mode
+  carrying the event document.
 
 - **F — the same identity starts on a new port:** a second instance of
   the Java provider with the same `(name, version)` on port 9092, while

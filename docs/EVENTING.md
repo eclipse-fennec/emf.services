@@ -21,6 +21,14 @@ case where it is hardest — an `UNREGISTERING` is emitted when the
 implementation has already been detached, so a document that referred
 to live broker state would refer to nothing.
 
+That document travels inside a **CloudEvents 1.0 envelope** (#101), in
+structured mode on both transports. The envelope says which transition
+this is (`type`), which reference it is about (`subject`), when it
+happened (`time`) and what the payload is encoded in
+(`datacontenttype`) — so a consumer can route a message without
+knowing our format, and only has to know ours once it opens `data`.
+The attributes are listed in [Wire format](WIRE_FORMAT.md).
+
 ### The types
 
 | Type | Meaning |
@@ -68,8 +76,12 @@ GET http://localhost:8887/ddsr/rest/events
 Accept: text/event-stream
 ```
 
-- SSE event name: **`ddsr-service-event`**
-- data media type: `application/xml` (XMI)
+- SSE event name: **`ddsr-service-event`** — the name of the stream,
+  unchanged, and one of the frozen wire names
+- data media type: `application/cloudevents+json` — the frame carries a
+  CloudEvent in structured mode; an SSE frame has no headers of its
+  own, so the envelope travels in the data. The event document is its
+  `data`, still XMI (`datacontenttype: application/xml`)
 - optional `?flavors=REST,MQTT` to be sent only events for those flavor
   kinds. Unknown tokens are ignored with a warning rather than
   rejecting the connection.
@@ -106,7 +118,11 @@ until configured — their configuration policy requires a configuration.
 - when the interface cannot be determined, which is the normal case for
   `UNREGISTERING`: `ddsr/events/_unknown`
 - QoS **0** by default, **not retained**
-- payload: the same XMI document as SSE, UTF-8
+- payload: the same message as SSE — a CloudEvent in structured mode
+  carrying the XMI document, UTF-8
+- `ddsr/events/_resync` says an event did not reach the wire and
+  everything should be re-read. It carries an envelope of type
+  `org.eclipse.fennec.services.resync` and no payload
 
 Not retained is deliberate. An event describes a transition, not a
 state. A late subscriber must not be told about a registration that was

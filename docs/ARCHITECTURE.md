@@ -444,34 +444,67 @@ Java client                            TS server (192.168.1.5:9090)
 The same pattern for the Java provider, only a different `host` in the
 locator.
 
-### 3.x MQTT invocation (A2 stage 2): request/response over topics
+### 3.5 The envelope: every message is a CloudEvent (#101)
+
+Since #101 a lifecycle event, a call and an answer all travel in a
+CloudEvents 1.0 envelope. Structured mode (JSON event format) where the
+transport carries nothing but messages — SSE frames, MQTT, AMQP when it
+comes — and binary mode over HTTP, where the attributes are `ce-*`
+headers and the body stays exactly the payload its contract declares.
+
+That split is why REST did not change and MQTT did: HTTP has headers
+and MQTT does not, which is precisely the reason both modes exist in
+the specification.
+
+The envelope carries what the message itself deliberately does not.
+`ServiceInvocation`'s own documentation says it: *correlation and the
+reply address belong to the envelope, not here.* CloudEvents defines
+neither, and MQTT 3.1.1 cannot supply them either, so both travel as
+extension attributes — `replyto` and `correlationid`.
+
+The full attribute table is in [WIRE_FORMAT.md](WIRE_FORMAT.md); the
+Java side is `org.eclipse.fennec.services.cloudevents` over the
+`io.cloudevents.model` ecore, the TypeScript side `cloud-events.ts` in
+`@ddsr/client`.
+
+### 3.6 MQTT invocation: request/response over topics
 
 Frozen with the TypeScript reference implementation
-(`ddsr-transport-mqtt/src/mqtt-rpc.ts`); MQTT 3.1.1 compatible — the
-MQTT 5 properties `response-topic`/`correlation-data` do not exist in
-the paho v3 stack, so both travel in the envelope:
+(`ddsr-transport-mqtt/src/mqtt-rpc.ts`). A call is two events:
 
 ```
 request topic:   MqttOperationFlavor.requestTopic,
                  otherwise <MqttFlavor.requestTopic>/<operation.name>
-reply topic:     chosen by the CONSUMER: <base>/<correlationId> with
+reply topic:     chosen by the CONSUMER: <base>/<request id> with
                  base = MqttOperationFlavor.responseTopic
                       | MqttFlavor.responseTopic
                       | <requestTopic>/reply
-request (JSON):  {"correlationId":"<uuid>","replyTo":"<topic>","args":{…}}
-response (JSON): {"correlationId":"<uuid>","result":<value>}
-                 | {"correlationId":"<uuid>","error":"<message>"}
+request:         CloudEvent, type …invoke, replyto = the reply topic,
+                 data = a ServiceInvocation document
+response:        CloudEvent, type …invoke.reply,
+                 correlationid = the request's id,
+                 data = a ServiceInvocationResult document
 QoS:             MqttOperationFlavor.qos | MqttFlavor.defaultQos
                  | AT_LEAST_ONCE;   retained: never
 ```
 
+The payload is the model: one `Argument` per value in the `Property`
+that fits its declared type, so an `int` stays an `int` and a modelled
+argument travels inside the message (`EObjectProperty` contains its
+value). The document is self-contained — it carries a copy of the
+operation being called, so the references from the invocation to its
+operation and parameters resolve inside it.
+
 One reply topic per request: the subscription never sees somebody
-else's answer, and the correlation is still doubly secured (the
-correlationId in the envelope). The DDSR broker takes no part in the
-invocation — discovery/acquisition only (ACQUISITION.md §1); the MQTT
-broker's address comes from `MqttFlavor.brokers`, exactly like
-`RestFlavor.host` on the REST path. A handler error answers with the
-error envelope instead of a consumer timeout.
+else's answer, and `correlationid` double-checks. The DDSR broker takes
+no part in the invocation — discovery/acquisition only (ACQUISITION.md
+§1); the MQTT broker's address comes from `MqttFlavor.brokers`, exactly
+like `RestFlavor.host` on the REST path. A handler error answers with a
+`Diagnostic` instead of leaving the consumer to time out.
+
+TypeScript on both ends: the MQTT call path has only ever existed
+there. Java carries the events over MQTT but not the calls; its
+counterpart arrives with #98.
 
 ---
 

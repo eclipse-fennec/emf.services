@@ -54,12 +54,19 @@ class DdsrBrokerColdCacheTest {
 
 	private Path snapshot;
 	private DdsrBrokerImpl broker;
-	private final List<ServiceEvent> events = new ArrayList<>();
+	/**
+	 * Not a raw list: delivery is asynchronous since #124, so every read
+	 * has to cross the broker's queue first. A plain {@code events::add}
+	 * lambda looks fine and is a race — it was one, and it only showed on
+	 * a slower CI runner.
+	 */
+	private final RecordingEventSink sink = new RecordingEventSink();
 
 	@BeforeEach
 	void setUp() {
 		snapshot = tmp.resolve("broker-state.xmi");
-		broker = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend(), events::add);
+		broker = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend(), sink);
+		sink.deliveredBy(broker);
 		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
 	}
 
@@ -112,7 +119,7 @@ class DdsrBrokerColdCacheTest {
 	}
 
 	private List<ServiceEventType> eventTypes() {
-		return events.stream().map(ServiceEvent::getType).toList();
+		return sink.types();
 	}
 
 	// ------------------------------------------------------------------
@@ -120,7 +127,7 @@ class DdsrBrokerColdCacheTest {
 	@Test
 	void anIdleRegistrationMovesColdAndAnnouncesUnregistering() {
 		publish("prov-a", "impl-a");
-		events.clear();
+		sink.clear();
 
 		int moved = broker.coldifyIdle(everythingIdle());
 
@@ -130,7 +137,7 @@ class DdsrBrokerColdCacheTest {
 				.as("the hot registry no longer carries the impl")
 				.isEmpty();
 		assertThat(eventTypes()).containsExactly(ServiceEventType.UNREGISTERING);
-		assertThat(events.get(0).getReasonCode())
+		assertThat(sink.received().get(0).getReasonCode())
 				.as("the sweep announces a parked entry, not a withdrawal")
 				.isEqualTo(ServiceEventReasons.COLDIFIED);
 	}
@@ -139,7 +146,7 @@ class DdsrBrokerColdCacheTest {
 	void coldStaysDiscoverableAndRehydratesOnLookup() {
 		publish("prov-a", "impl-a");
 		broker.coldifyIdle(everythingIdle());
-		events.clear();
+		sink.clear();
 
 		List<ServiceReference> refs = broker.getServiceReferences("Payment", null, null);
 

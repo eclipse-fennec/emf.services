@@ -78,6 +78,7 @@ rm -rf "$WORK"; mkdir -p "$WORK"
 # mid-scenario (e.g. a broker torn down while a provider activates)
 podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java \
   ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
+  ddsr-rsa-export ddsr-rsa-import \
   ddsr-payment-h ddsr-probe-h \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
@@ -90,7 +91,9 @@ rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/ex
   :org.eclipse.fennec.services.broker.rest:export.broker-mqtt \
   :org.eclipse.fennec.services.examples.payment:export.payment-provider \
   :org.eclipse.fennec.services.client.java:export.client \
-  :org.eclipse.fennec.services.client.java:export.client-mqtt) >"$WORK/gradle.log" 2>&1 \
+  :org.eclipse.fennec.services.client.java:export.client-mqtt \
+  :org.eclipse.fennec.services.examples.rsa:export.rsa-example \
+  :org.eclipse.fennec.services.examples.rsa.consumer:export.rsa-consumer) >"$WORK/gradle.log" 2>&1 \
   || { tail -30 "$WORK/gradle.log"; exit 1; }
 
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=broker.jar \
@@ -103,6 +106,10 @@ podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=b
   -t ddsr/broker-mqtt "$ROOT/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=client-mqtt.jar \
   -t ddsr/client-mqtt "$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/"
+podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=rsa-example.jar \
+  -t ddsr/rsa-example "$ROOT/org.eclipse.fennec.services.examples.rsa/generated/distributions/executable/"
+podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=rsa-consumer.jar \
+  -t ddsr/rsa-consumer "$ROOT/org.eclipse.fennec.services.examples.rsa.consumer/generated/distributions/executable/"
 # --network=host: the ONLY image whose build needs the network (corepack +
 # pnpm install). Rootless podman 5.x defaults to pasta, which copies the
 # host's /etc/resolv.conf into the build netns verbatim — on hosts resolving
@@ -290,6 +297,39 @@ grep -q "✓ mqtt-invoke-getBalance" "$WORK/probe-e.log" \
 echo "Scenario E OK: Payment invoked over the announced MQTT flavor (request/response via mosquitto)"
 grep -E '  [✓✗] mqtt' "$WORK/probe-e.log" || true
 
+# ============================================================ Scenario I
+log "Scenario I: RSA over MQTT — one framework exports, another binds it with @Reference"
+# The proof #98 was written for. A plain OSGi service is exported over
+# MQTT by one framework and bound by @Reference in another: no contract
+# document, no endpoint code, no REST anywhere on the invocation path.
+#
+# Deliberately MQTT distribution with REST discovery — the pairing that
+# shows the two halves are separate. The announcement is a publish to
+# the DDSR broker as always; only the calls travel over mosquitto.
+run_container ddsr-rsa-export ddsr/rsa-example \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e RSA_DISTRIBUTION_FLAVOR=fennec.mqtt \
+  -e RSA_EXPORT_CONFIGS=fennec.mqtt \
+  -e RSA_MQTT_URL="tcp://localhost:1883"
+wait_for_log ddsr-rsa-export "exported .* over MQTT" 150
+
+run_container ddsr-rsa-import ddsr/rsa-consumer \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e RSA_FLAVOR=fennec.mqtt \
+  -e RSA_MQTT_URL="tcp://localhost:1883"
+wait_for_log ddsr-rsa-import "RSA-Consumer" 150
+
+podman logs ddsr-rsa-export >"$WORK/rsa-export.log" 2>&1
+podman logs ddsr-rsa-import >"$WORK/rsa-import.log" 2>&1
+grep -q "greetings so far, none of them local" "$WORK/rsa-import.log" \
+  || { echo "SCENARIO I FAILED: the consumer never got an answer"; cat "$WORK/rsa-import.log"; exit 1; }
+grep -q "ddsr/rpc/req/" "$WORK/rsa-export.log" \
+  || { echo "SCENARIO I FAILED: the export did not listen on the request tree"; cat "$WORK/rsa-export.log"; exit 1; }
+podman stop -t 20 ddsr-rsa-import >/dev/null 2>&1 || true
+podman stop -t 20 ddsr-rsa-export >/dev/null 2>&1 || true
+echo "Scenario I OK: an OSGi service exported over MQTT and bound by @Reference in another framework"
+grep -E "RSA-Consumer" "$WORK/rsa-import.log" | tail -2
+
 # ============================================================ Scenario F
 log "Scenario F: same identity restarts on a new port -> MODIFIED in place, consumer follows"
 run_container ddsr-payment-f1 ddsr/payment-java
@@ -366,4 +406,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + F + G + H)"

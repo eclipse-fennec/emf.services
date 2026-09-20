@@ -1,5 +1,10 @@
 {
   ":configurator:resource-version": 1,
+  "org.eclipse.fennec.services.examples.rsa.greeter": {
+    "service.exported.interfaces": "*",
+    "service.exported.configs": "$[env:RSA_EXPORT_CONFIGS;default=fennec.rest]",
+    "ddsr.provider.name": "rsa-example"
+  },
   "org.eclipse.fennec.services.rsa.provider": {
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
     "http.port": "$[env:RSA_HTTP_PORT;default=9095]",
@@ -7,6 +12,10 @@
     "context.path": "services",
     "public.host": "$[env:RSA_PUBLIC_HOST;default=localhost]",
     "registry.name": "rsa-example",
+    "distribution.flavor": "$[env:RSA_DISTRIBUTION_FLAVOR;default=]",
+    "discovery.flavor": "$[env:RSA_DISCOVERY_FLAVOR;default=]",
+    "mqtt.url": "$[env:RSA_MQTT_URL;default=tcp://localhost:1883]",
+    "topic.prefix": "$[env:RSA_TOPIC_PREFIX;default=ddsr/rpc]",
     "provider.heartbeat.seconds": "30",
     "session.interval.seconds": "0"
   }

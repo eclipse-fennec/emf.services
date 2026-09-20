@@ -405,6 +405,18 @@ class DdsrBrokerLifecycleMatrixTest {
 					.as("%s must be self-contained (interfaces determinable from the document)",
 							RecordingEventSink.signature(event))
 					.containsExactly(INTERFACE);
+			// #124: an event describes the moment it is about, not the
+			// registry as the sink happens to find it. Every row, because
+			// this is what allows the delivery to leave the write lock —
+			// a document rendered later must not depend on live state.
+			assertThat(event.getReference().getRegistration())
+					.as("%s must not carry a live registration",
+							RecordingEventSink.signature(event))
+					.isNull();
+			assertThat(event.getReference().eContainer())
+					.as("%s must not be contained in live broker state",
+							RecordingEventSink.signature(event))
+					.isNull();
 		}
 		assertThat(ctx.visible()).as("getServiceReferences").containsExactlyElementsOf(sorted(row.visible()));
 		assertThat(ctx.all()).as("getAllServiceReferences").containsExactlyElementsOf(sorted(row.all()));

@@ -591,6 +591,15 @@ final class Registrations implements Retirement, Republication {
 	 * the registrations list.
 	 */
 	public ServiceReference retire(ServiceProvider provider, ServiceImplementation oldImpl) {
+		// The event material BEFORE the detach, the same way the withdraw
+		// path builds it: afterwards the implementation is no longer in
+		// the provider, and a copy taken then carries an empty subtree —
+		// which is how the republish UNREGISTERING lost its interface
+		// names the moment events started being snapshotted at emit time.
+		ServiceRegistration dyingReg = state.registrationOf(oldImpl);
+		ServiceReference announced = dyingReg == null ? null
+				: Announcements.selfContained(provider, oldImpl, dyingReg.getReference());
+
 		provider.getImplementations().remove(oldImpl);
 		state.registry().getImplementations().remove(oldImpl);
 		ServiceRegistration deadReg = state.registrationOf(oldImpl);
@@ -608,7 +617,7 @@ final class Registrations implements Retirement, Republication {
 			lookup.serviceRemoved(oldImpl, deadReg.getReference());
 			// Returned rather than announced here: the replacement is not
 			// persisted yet, and the caller emits once it is.
-			return deadReg.getReference();
+			return announced;
 		}
 		return null;
 	}

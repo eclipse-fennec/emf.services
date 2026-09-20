@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.client.internal;
 
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.Set;
 
 import org.eclipse.fennec.services.FlavorKind;
@@ -23,6 +24,7 @@ import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrProvider;
 import org.eclipse.fennec.services.client.EventSource;
+import org.eclipse.fennec.services.runtime.ClientRuntimeDTO;
 
 /**
  * Transport-agnostic client core. Wires the provider/consumer facades
@@ -34,6 +36,9 @@ public final class DdsrClientImpl implements DdsrClient {
 	private final ProviderImpl provider;
 	private final ConsumerImpl consumer;
 
+	/** What this runtime looks like from outside (#126). */
+	private final ClientRuntimeImpl runtime;
+
 	public DdsrClientImpl(BrokerImplementations implementations, BrokerLookup lookup,
 			List<FlavorKind> supportedFlavors, String consumerId, EventSource eventSource) {
 		this(implementations, lookup, supportedFlavors, consumerId, eventSource, false);
@@ -41,9 +46,36 @@ public final class DdsrClientImpl implements DdsrClient {
 
 	public DdsrClientImpl(BrokerImplementations implementations, BrokerLookup lookup,
 			List<FlavorKind> supportedFlavors, String consumerId, EventSource eventSource, boolean greedyRebind) {
+		this(implementations, lookup, supportedFlavors, consumerId, eventSource, greedyRebind, () -> null);
+	}
+
+	/**
+	 * @param eventTransport which transport the event source is, asked
+	 *        rather than held: the source is a dynamic reference, and a
+	 *        value read once at construction would name whichever one
+	 *        happened to be bound then (#126)
+	 */
+	public DdsrClientImpl(BrokerImplementations implementations, BrokerLookup lookup,
+			List<FlavorKind> supportedFlavors, String consumerId, EventSource eventSource, boolean greedyRebind,
+			Supplier<String> eventTransport) {
 		this.provider = new ProviderImpl(implementations, lookup);
 		this.consumer = new ConsumerImpl(lookup, supportedFlavors, consumerId, eventSource, greedyRebind);
+		this.runtime = new ClientRuntimeImpl(provider, consumer, consumer::streamConnected, eventTransport);
 	}
+
+	/** What this runtime holds, for anything that wants to watch it (#126). */
+	public ClientRuntimeDTO runtimeSnapshot() {
+		return runtime.snapshot();
+	}
+
+	public long runtimeChangeCount() {
+		return runtime.changeCount();
+	}
+
+	/**
+	 * Which snapshot the next answer would be — derived from the state,
+	 * not counted, so no call site can forget to report a change.
+	 */
 
 	@Override
 	public DdsrProvider provider() {

@@ -13,6 +13,8 @@
 
 package org.eclipse.fennec.services.runtime;
 
+import org.osgi.framework.Constants;
+
 /**
  * What the broker currently holds, for anything that wants to watch it.
  *
@@ -23,8 +25,8 @@ package org.eclipse.fennec.services.runtime;
  * reach into the broker to get it.
  *
  * <p><strong>How to be told about change.</strong> The service carries
- * {@link #REVISION_PROPERTY}, and its value changes whenever the
- * snapshot would differ. A consumer binds it dynamically and gets a
+ * {@link Constants#SERVICE_CHANGECOUNT}, and its value changes whenever
+ * the snapshot would differ. A consumer binds it dynamically and gets a
  * {@code modified} callback:
  *
  * <pre>
@@ -35,17 +37,16 @@ package org.eclipse.fennec.services.runtime;
  * </pre>
  *
  * <p>That is the whole contract — no listener to register, no lifecycle
- * to know. It is also why the revision is a service property and not
- * only a field: a property change is something the component runtime
- * already delivers.
+ * to know. It is also why the change count is a service property and
+ * not only a field: a property change is something the component
+ * runtime already delivers.
+ *
+ * <p>The property is the standard one rather than one of ours. OSGi
+ * already has a name for "this service's answer has changed", every
+ * whiteboard runtime uses it, and a watcher that knows the idiom needs
+ * to be told nothing about us to use it.
  */
 public interface BrokerRuntime {
-
-	/**
-	 * Which snapshot this service would answer with, as a service
-	 * property. It changes when the answer would.
-	 */
-	String REVISION_PROPERTY = "ddsr.runtime.revision";
 
 	/**
 	 * What the broker holds now.

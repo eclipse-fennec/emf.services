@@ -243,8 +243,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	}
 
 	/** Which snapshot the next answer would be. */
-	public long runtimeRevision() {
-		return runtime.revision();
+	public long runtimeChangeCount() {
+		return runtime.changeCount();
 	}
 
 	// ============================================================

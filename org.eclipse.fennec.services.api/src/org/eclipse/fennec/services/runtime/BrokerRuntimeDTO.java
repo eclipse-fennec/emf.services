@@ -25,8 +25,8 @@ import org.osgi.dto.DTO;
  * to carry EMF to read one. Everything here is a copy of state that
  * went on living the moment this was built.
  *
- * <p>{@link #revision} is the number that also travels as the runtime
- * service's {@code ddsr.runtime.revision} property. A consumer bound
+ * <p>{@link #changeCount} is the number that also travels as the runtime
+ * service's {@code service.changecount} property. A consumer bound
  * with a dynamic reference is told when it changes, which is the whole
  * of the "something happened, ask again" protocol — see
  * {@link BrokerRuntime}.
@@ -37,7 +37,7 @@ public class BrokerRuntimeDTO extends DTO {
 	public String name;
 
 	/** How often this snapshot has changed since the broker started. */
-	public long revision;
+	public long changeCount;
 
 	/** When this snapshot was taken, in epoch milliseconds. */
 	public long takenAt;

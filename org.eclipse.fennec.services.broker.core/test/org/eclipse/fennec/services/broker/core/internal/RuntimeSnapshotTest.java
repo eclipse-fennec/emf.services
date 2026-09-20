@@ -41,7 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
  *
  * <p>Two things are worth testing and the rest is plumbing: that the
  * snapshot reports the things nobody else can see — who holds a lease,
- * what the event delivery owes — and that the revision moves when the
+ * what the event delivery owes — and that the changeCount moves when the
  * state does, because that number is the whole of the "ask again"
  * protocol.
  */
@@ -138,26 +138,26 @@ class RuntimeSnapshotTest {
 	}
 
 	@Test
-	@DisplayName("the revision moves when the state does, and only then")
-	void revisionMovesWithTheState() {
-		long start = broker.runtimeRevision();
+	@DisplayName("the changeCount moves when the state does, and only then")
+	void changeCountMovesWithTheState() {
+		long start = broker.runtimeChangeCount();
 
 		broker.runtimeSnapshot();
-		assertThat(broker.runtimeRevision())
+		assertThat(broker.runtimeChangeCount())
 			.as("reading is not a change")
 			.isEqualTo(start);
 
 		broker.addCatalogEntry(contract(), "test");
-		long afterCatalog = broker.runtimeRevision();
+		long afterCatalog = broker.runtimeChangeCount();
 		assertThat(afterCatalog).isGreaterThan(start);
 
 		ServiceProvider provider = provider("payments", "payments-rest");
 		broker.publishImplementation(provider, provider.getImplementations().get(0));
-		assertThat(broker.runtimeRevision()).isGreaterThan(afterCatalog);
+		assertThat(broker.runtimeChangeCount()).isGreaterThan(afterCatalog);
 
-		long beforeSweep = broker.runtimeRevision();
+		long beforeSweep = broker.runtimeChangeCount();
 		broker.expireSessions(Instant.now());
-		assertThat(broker.runtimeRevision())
+		assertThat(broker.runtimeChangeCount())
 			.as("a sweep that found nothing still passed through the state, and says so")
 			.isGreaterThan(beforeSweep);
 	}

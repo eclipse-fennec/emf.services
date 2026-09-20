@@ -49,6 +49,11 @@ final class ProviderImpl implements DdsrProvider {
 	/** Every handle this provider issued and has not seen withdrawn — the heartbeat's work list (#52). */
 	private final List<RegistrationImpl> registrations = new CopyOnWriteArrayList<>();
 
+	/** What this runtime published, for the runtime service (#126). */
+	List<RegistrationImpl> published() {
+		return List.copyOf(registrations);
+	}
+
 	ProviderImpl(BrokerImplementations implementations, BrokerLookup lookup) {
 		this.implementations = implementations;
 		this.lookup = lookup;

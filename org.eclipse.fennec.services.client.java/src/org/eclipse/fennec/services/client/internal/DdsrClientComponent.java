@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.client.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -32,6 +33,8 @@ import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrProvider;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.common.FrameworkShutdown;
+import org.eclipse.fennec.services.runtime.ClientRuntime;
+import org.eclipse.fennec.services.runtime.ChangeCountPublisher;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -125,8 +128,37 @@ public final class DdsrClientComponent implements DdsrClient {
 	 * mid-flight, and nothing ever asked for it; only our own test setup
 	 * ranked one source above the other to make the switch happen.
 	 */
-	@Reference
-	private EventSource eventSource;
+	private volatile EventSource eventSource;
+
+	/**
+	 * Which transport that source is, as it says so itself.
+	 *
+	 * <p>Read off the service property rather than the class name: the
+	 * property is what a deployment selects the source by
+	 * ({@code eventSource.target}), so it is also the honest answer to
+	 * "which one am I listening over" (#126).
+	 */
+	private volatile String eventTransport;
+
+	/** The runtime service and the thread that keeps its changeCount current. */
+	private ChangeCountPublisher<ClientRuntime> runtime;
+
+	/**
+	 * Bound by method, not by field, because the properties are wanted
+	 * with it.
+	 *
+	 * <p>The reference name is stated rather than derived. DS would
+	 * derive {@code EventSource} from the method name, and every
+	 * deployment that selects a transport writes {@code eventSource.target}
+	 * — a silently unmatched target would give a node that asked for
+	 * MQTT the SSE stream, with nothing to show for it.
+	 */
+	@Reference(name = "eventSource")
+	void bindEventSource(EventSource source, Map<String, Object> properties) {
+		this.eventSource = source;
+		Object transport = properties.get("ddsr.event.transport");
+		this.eventTransport = transport == null ? null : String.valueOf(transport);
+	}
 
 	@Reference(target = "(ddsr.broker.transport=rest)")
 	private BrokerImplementations implementations;
@@ -186,7 +218,7 @@ public final class DdsrClientComponent implements DdsrClient {
 			// whatever happened to be bound at that moment — the same
 			// mistake the broker side avoids with its fan-out.
 			this.delegate = new DdsrClientImpl(implementations, lookup, flavors, consumerId,
-					eventStreams, config.greedy_rebind());
+					eventStreams, config.greedy_rebind(), () -> eventTransport);
 			long renewalSeconds = config.session_interval_seconds();
 			long heartbeatSeconds = config.provider_heartbeat_seconds();
 			if (renewalSeconds > 0 || heartbeatSeconds > 0) {
@@ -209,6 +241,14 @@ public final class DdsrClientComponent implements DdsrClient {
 				sessionRenewal.scheduleAtFixedRate(() -> heartbeatRegistrations(heartbeatSeconds),
 						Math.min(heartbeatSeconds, 5), heartbeatSeconds, TimeUnit.SECONDS);
 			}
+			// What this runtime holds, for anything that wants to watch
+			// it (#126). Registered by hand for the same reason the
+			// broker's is: its one property has to change while it is
+			// registered.
+			this.runtime = new ChangeCountPublisher<>(context, ClientRuntime.class,
+					(ClientRuntime) delegate::runtimeSnapshot, delegate::runtimeChangeCount,
+					"client runtime service");
+			runtime.open();
 			LOG.info("[DDSR-Client] activated, flavors=" + flavors + ", consumerId=" + consumerId);
 		} catch (Throwable t) {
 			LOG.log(Level.WARNING, "[DDSR-Client] activation FAILED", t);
@@ -341,6 +381,10 @@ public final class DdsrClientComponent implements DdsrClient {
 
 	@Deactivate
 	void deactivate() {
+		if (runtime != null) {
+			runtime.close();
+			runtime = null;
+		}
 		if (cleanShutdown != null) {
 			try {
 				cleanShutdown.close();

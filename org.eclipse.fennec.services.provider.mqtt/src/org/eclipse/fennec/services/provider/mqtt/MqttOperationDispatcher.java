@@ -30,6 +30,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttOperationFlavor;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceInvocation;
 import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -38,6 +39,9 @@ import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.flavor.mqtt.MqttFlavors;
 import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.telemetry.CallSpan;
+import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -79,11 +83,24 @@ public final class MqttOperationDispatcher {
 
 	private final Publisher publisher;
 
+	private final CallTracer tracer;
+
 	/** Which operation flavor answers on which request topic. */
 	private final Map<String, MqttOperationFlavor> byTopic = new LinkedHashMap<>();
 
 	public MqttOperationDispatcher(MqttFlavor flavor, Supplier<Object> service, String source,
 			ComponentServiceObjects<ResourceSet> resourceSets, Publisher publisher) {
+		this(flavor, service, source, resourceSets, publisher, CallTracer.NONE);
+	}
+
+	/**
+	 * @param tracer whoever is watching calls (#126). A dispatcher built
+	 *        without one is built with {@link CallTracer#NONE}: serving a
+	 *        contract over topics has never required telemetry.
+	 */
+	public MqttOperationDispatcher(MqttFlavor flavor, Supplier<Object> service, String source,
+			ComponentServiceObjects<ResourceSet> resourceSets, Publisher publisher, CallTracer tracer) {
+		this.tracer = tracer == null ? CallTracer.NONE : tracer;
 		this.flavor = flavor;
 		this.service = service;
 		this.source = source;
@@ -139,15 +156,42 @@ public final class MqttOperationDispatcher {
 			return;
 		}
 
-		ServiceInvocationResult result;
-		try {
-			result = Invocations.result(invoke(operationFlavor, invocation));
-		} catch (InvocationTargetException failed) {
-			result = Invocations.failure(String.valueOf(failed.getCause()), 0);
-		} catch (Exception failed) {
-			result = Invocations.failure(String.valueOf(failed), 0);
+		// The caller's trace, continued here (#126). It travelled in the
+		// envelope's extensions, which is where CloudEvents puts it and
+		// the only place it could travel on MQTT 3.
+		try (CallSpan span = tracer.serving(spanNameOf(operationFlavor),
+				TraceCarrier.over(request.getExtensions().map()))) {
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("server.address", topic)
+					.attribute("fennec.flavor", "MQTT");
+			ServiceInvocationResult result;
+			try {
+				result = Invocations.result(invoke(operationFlavor, invocation));
+			} catch (InvocationTargetException failed) {
+				span.failed(failed.getCause());
+				result = Invocations.failure(String.valueOf(failed.getCause()), 0);
+			} catch (Exception failed) {
+				span.failed(failed);
+				result = Invocations.failure(String.valueOf(failed), 0);
+			}
+			answer(request, replyTo, operationFlavor, result);
 		}
-		answer(request, replyTo, operationFlavor, result);
+	}
+
+	/**
+	 * What to call this call in a trace: the contract and the operation,
+	 * which is what a reader groups by — never the topic, which carries
+	 * the same two facts in a shape nobody outside this project reads.
+	 */
+	private static String spanNameOf(MqttOperationFlavor operationFlavor) {
+		ServiceOperation operation = operationFlavor.getOperation();
+		if (operation == null) {
+			return operationFlavor.getName();
+		}
+		if (operation.eContainer() instanceof ServiceInterface contract && contract.getName() != null) {
+			return contract.getName() + "/" + operation.getName();
+		}
+		return operation.getName();
 	}
 
 	private Object invoke(MqttOperationFlavor operationFlavor, ServiceInvocation invocation)

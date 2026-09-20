@@ -1,0 +1,26 @@
+Bundle-Name: Fennec Services Telemetry
+Bundle-Description: \
+	OpenTelemetry behind the two seams this project has for it: \
+	CallTracer, which makes a remote call one trace across two \
+	processes, and the runtime services, which say what a node holds. \
+	Optional in both directions — nothing in the call path requires \
+	this bundle, and this bundle requires no part of the call path. \
+	\
+	It supplies its own W3C propagators rather than using the published \
+	ContextPropagators service, which the OSGi OpenTelemetry \
+	integration currently registers as a no-op (#126).
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.osgi-technology.opentelemetry.repack;version=latest
+
+# The SDK comes from the same repack bundle as the API, so a test can
+# build a real tracer provider with a collecting exporter and assert on
+# spans rather than on a mock's interactions.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

@@ -55,7 +55,7 @@ void setRuntime(BrokerRuntime runtime, Map<String, Object> properties) {
     report();
 }
 
-void modifiedRuntime(BrokerRuntime runtime, Map<String, Object> properties) {
+void updatedRuntime(BrokerRuntime runtime, Map<String, Object> properties) {
     report();                       // the count moved; ask again
 }
 
@@ -73,9 +73,13 @@ The number itself is deliberately dumb. It counts changes rather than
 describing them: the answer to *has anything happened* is a comparison,
 and the answer to *what* is another snapshot.
 
-**Method injection is required.** A field-injected reference never
-receives the properties, and DS calls `modified` only for a reference
-that is bound by method.
+**Two details DS will not warn you about.** The callback is
+`updated<Name>`, not `modified<Name>`: DS calls the first when a *bound
+service's* properties change and the second when the *component's own
+configuration* does, so a watcher that writes `modified` compiles,
+binds, and is never told anything. And the properties have to be a
+method parameter — a field-injected reference never receives them, and
+a reference bound by field gets no callback at all.
 
 ### What it costs
 
@@ -158,6 +162,9 @@ This tells an *operator* what a node holds. A consumer that used the
 runtime service to notice a new provider would be watching the wrong
 thing — it would see the broker it happens to share a framework with,
 and nothing else.
+
+A bundle that turns these into metrics already exists —
+see [Telemetry](TELEMETRY.md).
 
 It is also not remote. Both services are OSGi services in their own
 framework. Exposing a broker's runtime over REST is a different

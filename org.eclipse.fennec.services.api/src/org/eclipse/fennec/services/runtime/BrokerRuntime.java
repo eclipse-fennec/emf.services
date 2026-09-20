@@ -32,9 +32,16 @@ import org.osgi.framework.Constants;
  * <pre>
  * &#64;Reference(policy = DYNAMIC, cardinality = OPTIONAL)
  * void setRuntime(BrokerRuntime runtime, Map&lt;String, Object&gt; properties) { … }
- * void modifiedRuntime(BrokerRuntime runtime, Map&lt;String, Object&gt; properties) { … }
+ * void updatedRuntime(BrokerRuntime runtime, Map&lt;String, Object&gt; properties) { … }
  * void unsetRuntime(BrokerRuntime runtime) { … }
  * </pre>
+ *
+ * <p>{@code updated}, not {@code modified}: DS calls the first when a
+ * bound service's properties change and the second when the
+ * component's own configuration does. A watcher that writes
+ * {@code modified} here compiles, binds, and is never told anything.
+ * The properties must be taken as a method parameter for the same
+ * reason — a field-injected reference never receives them.
  *
  * <p>That is the whole contract — no listener to register, no lifecycle
  * to know. It is also why the change count is a service property and

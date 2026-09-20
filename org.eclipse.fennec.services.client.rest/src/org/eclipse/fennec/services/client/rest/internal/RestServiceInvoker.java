@@ -13,6 +13,7 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 import java.util.Optional;
@@ -29,9 +30,14 @@ import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.flavor.rest.RestPlacement;
+import org.eclipse.fennec.services.telemetry.CallSpan;
+import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
 import jakarta.ws.rs.ProcessingException;
@@ -69,6 +75,19 @@ public final class RestServiceInvoker implements ServiceInvoker {
 
 	@Reference
 	private RestTransport tx;
+
+	/**
+	 * Whoever is watching calls, if anyone is (#126). Optional and
+	 * dynamic: a deployment without telemetry installs nothing and this
+	 * invoker notices nothing.
+	 */
+	@Reference(policy = ReferencePolicy.DYNAMIC, cardinality = ReferenceCardinality.OPTIONAL)
+	private volatile CallTracer tracer;
+
+	private CallTracer tracer() {
+		CallTracer bound = tracer;
+		return bound == null ? CallTracer.NONE : bound;
+	}
 
 	@Override
 	public Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args) {
@@ -108,20 +127,37 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		// not read the headers reads the same request it always did.
 		CloudEvent envelope = CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE,
 				tx.originReference(), null);
-		envelope.setSubject(subjectOf(op, operationName));
+		String subject = subjectOf(op, operationName);
+		envelope.setSubject(subject);
+
+		// The envelope's headers and the trace context share one map, and
+		// the trace context is written into it by the span — after the
+		// span exists, because what travels must name THIS call. Native
+		// `traceparent` rather than a ce- attribute: over HTTP that is
+		// the header every instrumented server already extracts.
+		Map<String, String> headers = new LinkedHashMap<>(CloudEventCodec.toHeaders(envelope));
 		Response response;
-		try {
-			response = send(target, method, RestPlacement.of(op, safeArgs), accept, contentType,
-					CloudEventCodec.toHeaders(envelope));
-		} catch (ProcessingException unreachable) {
-			// Connect refused, connect/read timeout, reset: the provider is
-			// registered but not answering. Marked as a transport failure so
-			// the proxy can rebind and retry once (#59).
-			throw DdsrException.transport("invoking " + operationName + " at " + url + " failed: "
-					+ unreachable.getMessage(), unreachable);
+		try (CallSpan span = tracer().calling(subject, TraceCarrier.over(headers))) {
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("rpc.method", operationName)
+					.attribute("server.address", url)
+					.attribute("fennec.flavor", "REST");
+			try {
+				response = send(target, method, RestPlacement.of(op, safeArgs), accept, contentType,
+						headers);
+			} catch (ProcessingException unreachable) {
+				// Connect refused, connect/read timeout, reset: the provider is
+				// registered but not answering. Marked as a transport failure so
+				// the proxy can rebind and retry once (#59).
+				DdsrException failed = DdsrException.transport("invoking " + operationName + " at " + url
+						+ " failed: " + unreachable.getMessage(), unreachable);
+				span.failed(failed);
+				throw failed;
+			}
+			span.attribute("http.response.status_code", String.valueOf(response.getStatus()));
+			checkCorrelation(envelope, response, operationName);
+			return readResponse(response);
 		}
-		checkCorrelation(envelope, response, operationName);
-		return readResponse(response);
 	}
 
 	/**

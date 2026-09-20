@@ -16,14 +16,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RestFlavor;
-import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;

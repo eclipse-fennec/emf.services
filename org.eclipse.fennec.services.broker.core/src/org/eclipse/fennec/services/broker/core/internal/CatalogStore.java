@@ -30,9 +30,9 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
-import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.broker.core.exception.CatalogEntryAmbiguous;
 import org.eclipse.fennec.services.broker.core.exception.CatalogEntryNotFound;
+import org.eclipse.fennec.services.common.CallOrigin;
 
 /**
  * The contracts the broker knows, and what a publish is measured

@@ -28,6 +28,17 @@ import java.util.Map;
 public interface ServiceInvoker {
 
 	/**
+	 * Which flavor an invoker speaks, as a service property — the value
+	 * is a {@code FlavorKind} name, {@code REST} or {@code MQTT}.
+	 *
+	 * <p>The proxy factory reads it to pick the invoker for a service
+	 * from the flavors that service announces. An invoker that declares
+	 * nothing is never picked, which is the safe direction: calling the
+	 * wrong way is worse than not calling.
+	 */
+	String FLAVOR_PROPERTY = "ddsr.flavor";
+
+	/**
 	 * Invoke {@code operationName} on the service identified by
 	 * {@code locator}, passing the named arguments. The flavor module
 	 * is responsible for translating arguments into the wire

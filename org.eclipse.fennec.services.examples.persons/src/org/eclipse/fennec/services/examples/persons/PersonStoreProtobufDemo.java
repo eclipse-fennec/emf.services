@@ -53,7 +53,10 @@ public final class PersonStoreProtobufDemo {
 	@Reference
 	private DdsrClient client;
 
-	@Reference(target = "(ddsr.broker.transport=rest)")
+	// No target any more: the proxy factory is transport-agnostic since
+	// #98 and there is one of it, picking an invoker by the flavor the
+	// service announces.
+	@Reference
 	private ServiceProxyFactory proxyFactory;
 
 	@Activate

@@ -11,6 +11,7 @@ Bundle-Description: \
 -buildpath: \
 	org.osgi.service.condition;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\

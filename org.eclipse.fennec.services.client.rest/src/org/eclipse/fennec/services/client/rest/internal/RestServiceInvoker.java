@@ -58,7 +58,10 @@ import io.cloudevents.model.ce.CloudEvent;
  */
 @Component(
 		service = ServiceInvoker.class,
-		property = "ddsr.broker.transport=rest")
+		// Two properties, two different questions. The transport one says
+		// which broker this talks to; the flavor one says how it calls a
+		// service, and that is what the proxy factory picks by.
+		property = { "ddsr.broker.transport=rest", ServiceInvoker.FLAVOR_PROPERTY + "=REST" })
 @ServiceDescription("DDSR REST-flavor reflective service invoker")
 public final class RestServiceInvoker implements ServiceInvoker {
 

@@ -1,0 +1,29 @@
+Bundle-Name: Fennec Services RSA MQTT Distribution
+Bundle-Description: \
+	Makes an exported service reachable over the MQTT flavor: the contract \
+	is derived from the interface, a flavor is built that says which topics \
+	answer for it, and the generic MQTT distribution answers calls by \
+	invoking the service. Selected by the RSA configuration type \
+	fennec.mqtt. The second implementation of the same SPI the REST one \
+	implements — and the point of there being an SPI at all.
+
+-library: enableEMF
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.provider.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.rsa;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.eclipse.fennec.services.api;version=snapshot
+
+# What the Remote Service Admin specification asks a distribution provider
+# to say about itself (122.10): which configuration types it exports with.
+Provide-Capability: \
+	osgi.remoteserviceadmin.distribution;configs:List<String>="fennec.mqtt";version:Version="1.1"

@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.rsa.discovery.rest;
+package org.eclipse.fennec.services.rsa.discovery;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -47,7 +47,7 @@ import org.osgi.service.component.ComponentServiceObjects;
  *     the originals.</li>
  * </ul>
  */
-final class Announcements {
+public final class Announcements {
 
 	private Announcements() {
 	}
@@ -64,7 +64,7 @@ final class Announcements {
 	 *
 	 * @param providerName what the provider is called in the registry
 	 */
-	static Announced publish(DdsrClient client, ComponentServiceObjects<ResourceSet> resourceSets,
+	public static Announced publish(DdsrClient client, ComponentServiceObjects<ResourceSet> resourceSets,
 			String brokerUrl, ServiceInterface contract, ServiceImplementation implementation,
 			String providerName) {
 		ResourceSet resourceSet = resourceSets.getService();
@@ -94,7 +94,7 @@ final class Announcements {
 	 * One live announcement: what the broker knows, the document it was
 	 * said with, and the borrowed ResourceSet that holds it.
 	 */
-	static final class Announced {
+	public static final class Announced {
 
 		private final Registration registration;
 		private final ServiceImplementation published;
@@ -108,12 +108,12 @@ final class Announcements {
 		}
 
 		/** The implementation as the broker holds it — mutate, then {@link #update()}. */
-		ServiceImplementation implementation() {
+		public ServiceImplementation implementation() {
 			return published;
 		}
 
 		/** Say it anew, keeping the identity the broker knows it by. */
-		void update() {
+		public void update() {
 			registration.update();
 		}
 
@@ -121,7 +121,7 @@ final class Announcements {
 		 * Withdraw and give the ResourceSet back. Idempotent: closing an
 		 * announcement twice is something a lifecycle does, not a fault.
 		 */
-		void close() {
+		public void close() {
 			if (!open.compareAndSet(true, false)) {
 				return;
 			}

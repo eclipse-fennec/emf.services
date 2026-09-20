@@ -27,8 +27,9 @@ import {
   decodeResponse,
   encodeRequest,
   qosFor,
-  replyBaseFor,
+  replySubtreeFor,
   requestTopicFor,
+  topicSegment,
 } from './mqtt-rpc';
 
 export interface MqttFlavorPluginOptions {
@@ -65,6 +66,7 @@ export class MqttFlavorPlugin implements FlavorPlugin {
   private readonly log: (message: string) => void;
   private readonly clientsByUrl = new Map<string, Promise<MqttRpcClientLike>>();
   private readonly pending = new Map<string, (payload: Uint8Array) => void>();
+  private readonly subscribed = new Set<string>();
 
   constructor(options: MqttFlavorPluginOptions = {}) {
     this.options = options;
@@ -92,15 +94,21 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     const qos = qosFor(mqttFlavor, mqttOp);
     const timeoutMs = this.options.timeoutMs ?? 10_000;
     // The reply topic is chosen before the request exists, because the
-    // request has to carry it. The event id is what the answer
-    // correlates with, so the two are built together.
-    const replyBase = replyBaseFor(mqttFlavor, mqttOp);
+    // request has to carry it — and it sits under THIS consumer's
+    // subtree, so a broker can be told who may read what. An id alone
+    // separates by obscurity, which is not a separation a deployment
+    // can enforce.
+    const consumer = topicSegment(this.options.originLabel ?? 'ts');
+    const subtree = replySubtreeFor(mqttFlavor, mqttOp, consumer);
     const source = `/consumer/${this.options.originLabel ?? 'ts'}`;
     const provisional = randomUUID();
-    const replyTo = `${replyBase}/${provisional}`;
+    const replyTo = `${subtree}/${provisional}`;
     const request = encodeRequest(operation, params, replyTo, source, mqttOp);
 
-    await client.subscribeAsync(replyTo, { qos });
+    // Subscribed once for every call this consumer will make on this
+    // subtree; which answer belongs to which call is the envelope's
+    // business, not the topic's.
+    await this.listenOn(client, subtree, qos);
     try {
       const answer = new Promise<Uint8Array>((resolve, reject) => {
         this.pending.set(request.id, resolve);
@@ -119,13 +127,27 @@ export class MqttFlavorPlugin implements FlavorPlugin {
       }
       return response.value;
     } finally {
+      // The subscription stays: it is the consumer's inbox, not this
+      // call's. What goes is the expectation of an answer.
       this.pending.delete(request.id);
-      await client.unsubscribeAsync(replyTo).catch(() => undefined);
+    }
+  }
+
+  /** One subscription per reply subtree, taken the first time it is needed. */
+  private async listenOn(client: MqttRpcClientLike, subtree: string, qos: 0 | 1 | 2): Promise<void> {
+    if (this.subscribed.has(subtree)) return;
+    this.subscribed.add(subtree);
+    try {
+      await client.subscribeAsync(`${subtree}/#`, { qos });
+    } catch (error) {
+      this.subscribed.delete(subtree);
+      throw error;
     }
   }
 
   /** Closes every broker connection this plugin opened. */
   async close(): Promise<void> {
+    this.subscribed.clear();
     for (const clientPromise of this.clientsByUrl.values()) {
       const client = await clientPromise.catch(() => undefined);
       await client?.endAsync().catch(() => undefined);

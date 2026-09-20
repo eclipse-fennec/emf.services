@@ -32,6 +32,7 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.ServiceLocator;
+import org.eclipse.fennec.services.rsa.discovery.Announcements;
 import org.eclipse.fennec.services.rsa.spi.EndpointScopes;
 import org.eclipse.fennec.services.rsa.spi.OsgiProperties;
 import org.osgi.framework.BundleContext;

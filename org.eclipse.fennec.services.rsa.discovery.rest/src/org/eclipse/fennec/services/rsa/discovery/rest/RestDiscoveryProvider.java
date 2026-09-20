@@ -13,22 +13,12 @@
 
 package org.eclipse.fennec.services.rsa.discovery.rest;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.DiagnosticSeverity;
-import org.eclipse.fennec.services.ServiceEvent;
-import org.eclipse.fennec.services.ServiceEventType;
-import org.eclipse.fennec.services.ServiceImplementation;
-import org.eclipse.fennec.services.ServiceInterface;
-import org.eclipse.fennec.services.ServiceProvider;
-import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
-import org.eclipse.fennec.services.client.ServiceLocator;
+import org.eclipse.fennec.services.rsa.discovery.BrokerDiscovery;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -42,7 +32,8 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 /**
- * Discovery over the broker's REST surface.
+ * Discovery over the broker, named by the {@code fennec.rest}
+ * configuration type.
  *
  * <p>Announcing is a publish: the contract goes into the catalog and the
  * implementation is registered, which is what makes it findable — the
@@ -116,91 +107,27 @@ public class RestDiscoveryProvider implements ServiceDiscovery {
 
 	@Override
 	public String[] supportedConfigs() {
-		return new String[] { CONFIG_TYPE };
+		return discovery().supportedConfigs();
 	}
 
 	@Override
 	public AutoCloseable announce(ExportedEndpoint endpoint) {
-		ServiceInterface contract = endpoint.contract();
-		ServiceImplementation implementation = endpoint.implementation();
-
-		Diagnostic added = catalog.addCatalogEntry(contract, implementation.getName());
-		if (added.getSeverity() == DiagnosticSeverity.ERROR) {
-			throw new IllegalStateException("the broker refused " + contract.getName() + ": " + added.getMessage()
-					+ " (code " + added.getCode() + ")");
-		}
-
-		Announcements.Announced announcement = Announcements.publish(client, resourceSets, config.broker_url(),
-				contract, implementation, implementation.getName());
-		LOG.info("[DDSR] announced " + contract.getName() + " as " + implementation.getImplementationId());
-
-		AtomicBoolean announced = new AtomicBoolean(true);
-		return () -> {
-			if (announced.compareAndSet(true, false)) {
-				announcement.close();
-				LOG.info("[DDSR] withdrew " + contract.getName());
-			}
-		};
+		return discovery().announce(endpoint);
 	}
 
 	@Override
 	public AutoCloseable watch(String contractName, DiscoveryListener listener) {
-		// What is there now, then what changes — in that order, so a
-		// registration that already existed is not missed in the gap
-		// between asking and subscribing. A duplicate report is harmless;
-		// a missed one is a service nobody ever sees.
-		for (ServiceLocator known : client.consumer().find(contractName, null)) {
-			listener.appeared(referenceId(known), known.implementation());
-		}
-		return client.consumer().addServiceListener(contractName, null,
-				event -> report(event, contractName, listener));
+		return discovery().watch(contractName, listener);
 	}
 
-	private void report(ServiceEvent event, String contractName, DiscoveryListener listener) {
-		ServiceReference reference = event.getReference();
-		String id = reference == null ? null : reference.getId();
-		if (id == null) {
-			return;
-		}
-		ServiceEventType type = event.getType();
-		if (type != ServiceEventType.REGISTERED && type != ServiceEventType.MODIFIED) {
-			// UNREGISTERING, RETIRED, PROVIDER_LOST: whatever the reason,
-			// the answer for a consumer is the same — stop using it.
-			listener.gone(id);
-			return;
-		}
-		ServiceImplementation implementation = implementationOf(reference);
-		if (implementation == null) {
-			// The event document did not carry it. Ask, rather than
-			// report half an arrival.
-			implementation = client.consumer().find(contractName, null).stream()
-					.filter(locator -> id.equals(referenceId(locator)))
-					.map(ServiceLocator::implementation)
-					.findFirst()
-					.orElse(null);
-		}
-		if (implementation == null) {
-			LOG.log(Level.FINE, () -> "[DDSR] " + type + " for " + id
-                    + " carried no implementation and none was found — ignored");
-			return;
-		}
-		if (type == ServiceEventType.REGISTERED) {
-			listener.appeared(id, implementation);
-		} else {
-			listener.changed(id, implementation);
-		}
-	}
-
-	private static String referenceId(ServiceLocator locator) {
-		return locator.reference() == null ? null : locator.reference().getId();
-	}
-
-	/** The implementation an event's reference points at, when it travelled with it. */
-	private static ServiceImplementation implementationOf(ServiceReference reference) {
-		ServiceProvider provider = reference.getProvider();
-		if (provider == null || provider.eIsProxy() || provider.getImplementations().isEmpty()) {
-			return null;
-		}
-		return provider.getImplementations().get(0);
+	/**
+	 * Built per call rather than held, because the configuration may
+	 * change under it and the broker URL it names is read at publish
+	 * time. What discovery over the broker means lives in
+	 * {@link BrokerDiscovery} — this component is which configuration
+	 * type answers to it.
+	 */
+	private BrokerDiscovery discovery() {
+		return new BrokerDiscovery(CONFIG_TYPE, client, catalog, resourceSets, config.broker_url());
 	}
 }

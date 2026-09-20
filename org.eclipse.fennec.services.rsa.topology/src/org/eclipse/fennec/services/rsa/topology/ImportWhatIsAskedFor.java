@@ -26,9 +26,12 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.fennec.services.Property;
+import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.rsa.spi.RsaProperties;
 import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
+import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.framework.hooks.service.ListenerHook;
 import org.osgi.service.component.annotations.Activate;
@@ -141,8 +144,12 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 
 	private volatile boolean manual;
 
+	/** This framework, so that its own exports can be told apart. */
+	private String frameworkUuid;
+
 	@Activate
-	void activate(TopologyPolicy policy) {
+	void activate(BundleContext context, TopologyPolicy policy) {
+		this.frameworkUuid = context.getProperty(Constants.FRAMEWORK_UUID);
 		apply(policy);
 	}
 
@@ -256,6 +263,15 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			if (imports.containsKey(referenceId)) {
 				return;
 			}
+			if (ours(implementation)) {
+				// This framework's own export, heard back through the
+				// registry. Importing it would send a local call out over
+				// the network and back to the service it started from —
+				// and would hide the local one behind a proxy while doing
+				// it.
+				LOG.fine(() -> "[DDSR] not importing " + referenceId + ": this framework exported it");
+				return;
+			}
 			// Claimed before the slow part. A discovery replays what it
 			// already knows and then subscribes, so the replay thread and
 			// the event thread overlap by design — both used to import,
@@ -358,7 +374,31 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			if (implementation.getImplementationId() != null) {
 				properties.put(RsaProperties.IMPLEMENTATION, implementation.getImplementationId());
 			}
+			String origin = frameworkOf(implementation);
+			if (origin != null) {
+				// Carried through, so that everything downstream — an
+				// admin, a listener, a log — can see where this came from
+				// under the name the specification gives it.
+				properties.put(RemoteConstants.ENDPOINT_FRAMEWORK_UUID, origin);
+			}
 			return new EndpointDescription(properties);
+		}
+
+		/** Whether this framework is the one that exported it. */
+		private boolean ours(ServiceImplementation implementation) {
+			String origin = frameworkOf(implementation);
+			return origin != null && origin.equals(frameworkUuid);
+		}
+
+		/** Which framework announced it, when it said. */
+		private static String frameworkOf(ServiceImplementation implementation) {
+			for (Property property : implementation.getProperties()) {
+				if (RsaProperties.FRAMEWORK_UUID.equals(property.getName())
+						&& property instanceof StringProperty origin) {
+					return origin.getValue();
+				}
+			}
+			return null;
 		}
 
 		private static String configTypeOf(ServiceImplementation implementation) {

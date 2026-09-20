@@ -27,4 +27,6 @@ Bundle-Description: \
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
-	org.glassfish.jersey.core.jersey-common;version=latest
+	org.glassfish.jersey.core.jersey-common;version=latest,\
+	org.eclipse.fennec.protobuf;version=latest,\
+	com.google.protobuf;version=latest

@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.broker.mqtt.internal;
 
 import java.util.logging.Logger;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -67,6 +68,14 @@ public final class MqttEventTransport implements EventSink {
 		@AttributeDefinition(name = "QoS",
 				description = "0 fits a stream whose consumers re-snapshot on reconnect anyway.")
 		int qos() default 0;
+
+		@AttributeDefinition(name = "Publish timeout (ms)",
+				description = "How long to wait for the MQTT client to accept an event before"
+						+ " treating it as lost (#124). Without a wait, a publish that fails after"
+						+ " the call — a dropped connection, the in-flight limit — is never noticed"
+						+ " at all. Costs delivery latency, never broker availability: this runs on"
+						+ " the broker's delivery thread, not under its lock.")
+		long publish_timeout_millis() default 5000;
 	}
 
 	@Reference
@@ -81,9 +90,12 @@ public final class MqttEventTransport implements EventSink {
 
 	private int qos;
 
+	private long publishTimeoutMillis;
+
 	@Activate
 	void activate(Config config) throws Exception {
 		this.qos = config.qos();
+		this.publishTimeoutMillis = config.publish_timeout_millis();
 		this.client = new MqttAsyncClient(config.broker_url(), config.client_id(), new MemoryPersistence());
 		MqttConnectOptions options = new MqttConnectOptions();
 		options.setCleanSession(true);
@@ -102,7 +114,16 @@ public final class MqttEventTransport implements EventSink {
 		// long been withdrawn — it pulls a snapshot instead
 		// (FR-Sync-Reconnect).
 		message.setRetained(false);
-		client.publish(topic, message);
+		// Waited on, not fired and forgotten. An async publish reports
+		// almost nothing: with the connection down or the in-flight limit
+		// reached, the failure happens after the call returns and used to
+		// be invisible to everyone, broker and consumers alike. Waiting
+		// turns it into an exception the sink can act on, and it is
+		// affordable because this thread is the delivery thread (#124).
+		IMqttDeliveryToken token = client.publish(topic, message);
+		if (publishTimeoutMillis > 0) {
+			token.waitForCompletion(publishTimeoutMillis);
+		}
 	}
 
 	@Override

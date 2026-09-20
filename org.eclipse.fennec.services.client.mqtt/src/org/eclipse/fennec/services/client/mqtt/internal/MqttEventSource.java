@@ -83,7 +83,7 @@ public final class MqttEventSource implements EventSource {
 	public AutoCloseable open(Handler handler) {
 		try {
 			AutoCloseable subscription = subscriber.subscribe(topicPrefix + "/#",
-					(topic, payload) -> deliver(handler, payload));
+					(topic, payload) -> deliver(handler, topic, payload));
 			LOG.info("[DDSR-MQTT] subscribed to " + topicPrefix + "/#");
 			// The subscription being live is what "established" means here.
 			// Paho reconnects on its own and re-subscribes, and each time it
@@ -100,7 +100,25 @@ public final class MqttEventSource implements EventSource {
 		}
 	}
 
-	private void deliver(Handler handler, byte[] payload) {
+	/**
+	 * Topic segment on which the broker says an event did not reach the
+	 * wire and subscribers have to take a fresh snapshot (#124). Named
+	 * on the broker side in {@code MqttEventSink}; one string on each
+	 * side of a wire, like the topic prefix itself.
+	 */
+	static final String RESYNC_TOPIC_SEGMENT = "_resync";
+
+	private void deliver(Handler handler, String topic, byte[] payload) {
+		if (topic != null && topic.endsWith("/" + RESYNC_TOPIC_SEGMENT)) {
+			// Something was lost between the broker and here, and there is
+			// no way to find out what: the broker keeps no per-client
+			// history and the stream carries no sequence numbers. Reading
+			// everything again is the recovery, and it is exactly what a
+			// reconnect already does.
+			LOG.info("[DDSR-MQTT] the broker lost an event — taking a fresh snapshot");
+			handler.onStreamEstablished();
+			return;
+		}
 		if (payload == null || payload.length == 0) {
 			return;
 		}

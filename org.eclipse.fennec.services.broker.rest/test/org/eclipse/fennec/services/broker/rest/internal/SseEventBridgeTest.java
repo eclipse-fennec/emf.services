@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.broker.rest.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.eclipse.fennec.services.broker.rest.internal.RestTestSupport.event;
 import static org.eclipse.fennec.services.broker.rest.internal.RestTestSupport.payment;
 import static org.eclipse.fennec.services.broker.rest.internal.RestTestSupport.provider;
@@ -308,5 +309,83 @@ class SseEventBridgeTest {
 		subscribe("consumer-a");
 
 		assertThat(presence.connected).containsExactly("consumer-a");
+	}
+
+	// ------------------------------------------------------------------
+	// When the broker lost an event (#124)
+	// ------------------------------------------------------------------
+
+	@Test
+	@DisplayName("a lost event ends the streams, because a reconnect is how a consumer re-reads")
+	void aLostEventEndsTheStreams() {
+		FakeSse.Sink one = subscribe();
+		FakeSse.Sink two = subscribe();
+
+		bridge.resyncRequired();
+
+		assertThat(one.closed).isTrue();
+		assertThat(two.closed).isTrue();
+		assertThat(bridge.subscriberCount())
+				.as("and the bridge forgets them, rather than writing into dead sinks")
+				.isZero();
+	}
+
+	@Test
+	@DisplayName("a consumer whose stream was ended counts as disconnected, like any other drop")
+	void endingAStreamReportsTheConsumerGone() {
+		subscribe("consumer-7");
+
+		bridge.resyncRequired();
+
+		assertThat(presence.marked).contains("consumer-7");
+	}
+
+	@Test
+	@DisplayName("with nobody listening there is nothing to end and nothing to report")
+	void withoutSubscribersItIsANoOp() {
+		assertThatCode(() -> bridge.resyncRequired()).doesNotThrowAnyException();
+
+		assertThat(bridge.subscriberCount()).isZero();
+	}
+
+	@Test
+	@DisplayName("a sink that throws on close does not save the others from being ended")
+	void oneHostileSinkDoesNotStopTheRest() {
+		jakarta.ws.rs.sse.SseEventSink hostile = new jakarta.ws.rs.sse.SseEventSink() {
+
+			@Override
+			public boolean isClosed() {
+				return false;
+			}
+
+			@Override
+			public java.util.concurrent.CompletionStage<?> send(jakarta.ws.rs.sse.OutboundSseEvent event) {
+				return java.util.concurrent.CompletableFuture.completedFuture(null);
+			}
+
+			@Override
+			public void close() {
+				throw new IllegalStateException("already gone");
+			}
+		};
+		bridge.subscribe(sse, hostile, EnumSet.noneOf(FlavorKind.class), null);
+		FakeSse.Sink healthy = subscribe();
+
+		bridge.resyncRequired();
+
+		assertThat(healthy.closed).isTrue();
+		assertThat(bridge.subscriberCount()).isZero();
+	}
+
+	@Test
+	@DisplayName("events after the reset go to whoever subscribed since")
+	void deliveryContinuesAfterAReset() {
+		subscribe();
+		bridge.resyncRequired();
+
+		FakeSse.Sink fresh = subscribe();
+		bridge.publish(registered("ref-1", FlavorKind.REST));
+
+		assertThat(fresh.sent).isNotEmpty();
 	}
 }

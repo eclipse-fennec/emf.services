@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -35,6 +36,7 @@ import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -229,6 +231,137 @@ class MqttEventSinkTest {
 
 		fallback.publish(registered("ref-1", "Payment"));
 
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/Payment");
+	}
+
+	// ------------------------------------------------------------------
+	// Loss, and saying so (#124)
+	// ------------------------------------------------------------------
+
+	@Test
+	@DisplayName("a publish that failed is not just logged — the subscribers get told to re-read")
+	void aFailedPublishOwesAResync() {
+		AtomicBoolean broken = new AtomicBoolean(true);
+		MqttEventSink sink = new MqttEventSink((topic, payload) -> {
+			if (broken.get()) {
+				throw new IllegalStateException("broker unreachable");
+			}
+			sent.add(new Published(topic, new String(payload, StandardCharsets.UTF_8)));
+		}, lookup, new ResourceSetObjects(), "ddsr/events");
+
+		sink.publish(registered("ref-1", "Payment"));
+		assertThat(sink.owesResync())
+				.as("the loss is remembered, because saying it now would fail too")
+				.isTrue();
+
+		// The connection comes back. The debt is paid BEFORE the next
+		// event, so a consumer re-reads and then applies what follows.
+		broken.set(false);
+		sink.publish(registered("ref-2", "Payment"));
+
+		assertThat(sent).extracting(Published::topic)
+				.containsExactly("ddsr/events/_resync", "ddsr/events/Payment");
+		assertThat(sink.owesResync()).isFalse();
+	}
+
+	@Test
+	@DisplayName("an event that cannot even be rendered is a loss like any other")
+	void anUnrenderableEventOwesAResync() {
+		// Not a malformed event — one with no reference still renders and
+		// goes out on the _unknown topic, which is deliberate. What
+		// cannot be rendered is an event whose codec is unavailable, and
+		// from a consumer's side that is indistinguishable from an event
+		// it simply never received.
+		MqttEventSink sink = new MqttEventSink(publisher, lookup,
+				new ComponentServiceObjects<ResourceSet>() {
+
+					@Override
+					public ResourceSet getService() {
+						throw new IllegalStateException("no ResourceSet to render with");
+					}
+
+					@Override
+					public void ungetService(ResourceSet service) {
+					}
+
+					@Override
+					public ServiceReference<ResourceSet> getServiceReference() {
+						throw new UnsupportedOperationException("not needed");
+					}
+				}, "ddsr/events");
+
+		sink.publish(registered("ref-1", "Payment"));
+
+		assertThat(sent).as("nothing reached the wire").isEmpty();
+		assertThat(sink.owesResync()).isTrue();
+	}
+
+	@Test
+	@DisplayName("being told to resync sends the marker straight away when the transport is fine")
+	void aResyncIsSentImmediatelyWhenItCan() {
+		MqttEventSink sink = sink();
+
+		sink.resyncRequired();
+
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/_resync");
+		assertThat(sink.owesResync()).isFalse();
+	}
+
+	@Test
+	@DisplayName("a resync that cannot be sent is kept, not lost")
+	void aResyncThatFailsIsRemembered() {
+		MqttEventSink sink = new MqttEventSink((topic, payload) -> {
+			throw new IllegalStateException("broker unreachable");
+		}, lookup, new ResourceSetObjects(), "ddsr/events");
+
+		sink.resyncRequired();
+
+		assertThat(sink.owesResync())
+				.as("a transport that cannot publish an event cannot publish the warning either")
+				.isTrue();
+	}
+
+	@Test
+	@DisplayName("one resync per loss, not one per event afterwards")
+	void theResyncIsSentOnce() {
+		MqttEventSink sink = sink();
+
+		sink.resyncRequired();
+		sink.publish(registered("ref-1", "Payment"));
+		sink.publish(registered("ref-2", "Payment"));
+
+		assertThat(sent).extracting(Published::topic)
+				.containsExactly("ddsr/events/_resync", "ddsr/events/Payment", "ddsr/events/Payment");
+	}
+
+	@Test
+	@DisplayName("the resync topic follows the configured prefix, like everything else")
+	void theResyncTopicFollowsThePrefix() {
+		MqttEventSink custom = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "acme/ddsr");
+
+		custom.resyncRequired();
+
+		assertThat(sent).extracting(Published::topic).containsExactly("acme/ddsr/_resync");
+	}
+
+	@Test
+	@DisplayName("being told to resync must not throw either — it is still a sink call")
+	void resyncRequiredDoesNotEscape() {
+		MqttEventSink hostile = new MqttEventSink((topic, payload) -> {
+			throw new IllegalStateException("broker unreachable");
+		}, lookup, new ResourceSetObjects(), "ddsr/events");
+
+		assertThatCode(hostile::resyncRequired).doesNotThrowAnyException();
+	}
+
+	@Test
+	@DisplayName("a healthy sink owes nothing")
+	void nothingIsOwedOnTheNormalPath() {
+		MqttEventSink sink = sink();
+
+		sink.publish(registered("ref-1", "Payment"));
+
+		assertThat(sink.owesResync()).isFalse();
 		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/Payment");
 	}
 }

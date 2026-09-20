@@ -17,6 +17,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -108,6 +109,12 @@ public final class MqttEventSink implements EventSink {
 	/** Topic segment for events whose interface is not knowable. */
 	static final String UNKNOWN_INTERFACE = "_unknown";
 
+	/** Topic on which subscribers are told to take a fresh snapshot. */
+	static final String RESYNC_TOPIC_SEGMENT = "_resync";
+
+	/** Set while this sink still owes its subscribers a resync signal. */
+	private final AtomicBoolean pendingResync = new AtomicBoolean();
+
 	@Override
 	public void publish(ServiceEvent event) {
 		byte[] payload;
@@ -116,19 +123,65 @@ public final class MqttEventSink implements EventSink {
 			payload = toXmi(event);
 			topics = topicsFor(topicPrefix, EventDocument.interfaceNamesOf(event, lookup));
 		} catch (Exception renderFailure) {
+			// Nothing was put on the wire, and a consumer cannot tell the
+			// difference between an event it never got and one that never
+			// existed. It owes them a re-read either way.
 			LOG.warning("[DDSR-MQTT] could not render ServiceEvent: " + renderFailure);
+			pendingResync.set(true);
 			return;
 		}
+		// Before the event, so a consumer re-reads and then applies what
+		// follows, rather than applying first and undoing it afterwards.
+		sendPendingResync();
 		for (String topic : topics) {
 			try {
 				publisher.publish(topic, payload);
 			} catch (Exception publishFailure) {
 				// Contract: a sink must not throw. The broker has already
 				// committed and persisted this change; a transport that
-				// cannot deliver may not turn that into a failure.
-				LOG.warning("[DDSR-MQTT] publishing to " + topic + " failed: " + publishFailure);
+				// cannot deliver may not turn that into a failure. What it
+				// must not do either is stay quiet about it.
+				LOG.warning("[DDSR-MQTT] publishing to " + topic + " failed, subscribers will be"
+						+ " told to re-snapshot: " + publishFailure);
+				pendingResync.set(true);
 			}
 		}
+	}
+
+	/**
+	 * Remembers that subscribers have to re-read, and tries to say so.
+	 *
+	 * <p>Trying immediately is worth it — the loss may have been the
+	 * broker's delivery queue rather than this transport, and then the
+	 * connection is fine. When it is this transport that is failing, the
+	 * attempt fails too and the debt survives: it is paid before the
+	 * next event that gets through, which is the first moment a
+	 * subscriber could have heard it anyway.
+	 */
+	@Override
+	public void resyncRequired() {
+		pendingResync.set(true);
+		sendPendingResync();
+	}
+
+	private void sendPendingResync() {
+		if (!pendingResync.get()) {
+			return;
+		}
+		String topic = topicPrefix + "/" + RESYNC_TOPIC_SEGMENT;
+		try {
+			publisher.publish(topic, new byte[0]);
+			pendingResync.set(false);
+			LOG.info("[DDSR-MQTT] told subscribers on " + topic + " to take a fresh snapshot");
+		} catch (Exception stillFailing) {
+			LOG.fine(() -> "[DDSR-MQTT] still cannot signal a resync on " + topic
+					+ ", will retry before the next event: " + stillFailing);
+		}
+	}
+
+	/** Test seam: does this sink still owe its subscribers a resync? */
+	boolean owesResync() {
+		return pendingResync.get();
 	}
 
 	private byte[] toXmi(ServiceEvent event) throws IOException {

@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.broker.core.internal;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -86,6 +87,9 @@ final class EventDelivery implements AutoCloseable {
 
 	private final AtomicLong dropped = new AtomicLong();
 
+	/** Set when something was lost; cleared once the sinks have been told. */
+	private final AtomicBoolean owesResync = new AtomicBoolean();
+
 	private volatile Thread dispatcher;
 
 	private volatile boolean closed;
@@ -108,9 +112,12 @@ final class EventDelivery implements AutoCloseable {
 		submitted.incrementAndGet();
 		if (!queue.offer(event)) {
 			long total = dropped.incrementAndGet();
+			// The subscribers cannot notice this by themselves, so the
+			// broker owes them the one recovery there is: re-read.
+			owesResync.set(true);
 			LOG.warning("[DDSR] event queue full (" + CAPACITY + ") — dropped "
 					+ event.getType().getLiteral() + ", " + total + " dropped so far."
-					+ " A subscriber is not reading; consumers recover on their next reconnect.");
+					+ " A subscriber is not reading; they will be told to re-snapshot.");
 		}
 	}
 
@@ -135,6 +142,29 @@ final class EventDelivery implements AutoCloseable {
 
 	long droppedCount() {
 		return dropped.get();
+	}
+
+	boolean owesResync() {
+		return owesResync.get();
+	}
+
+	/**
+	 * Tells the sink to have its subscribers re-read, once per loss.
+	 *
+	 * <p>The flag is cleared BEFORE the call, not after: a sink that
+	 * fails to pass the signal on is expected to remember it itself, and
+	 * clearing afterwards would mean a sink that throws here gets asked
+	 * again on every single event from then on.
+	 */
+	private void tellThemToResync() {
+		if (!owesResync.compareAndSet(true, false)) {
+			return;
+		}
+		try {
+			sink.resyncRequired();
+		} catch (RuntimeException sinkFailure) {
+			LOG.log(Level.WARNING, "[DDSR] a sink threw while being told to resync", sinkFailure);
+		}
 	}
 
 	private synchronized void start() {
@@ -162,6 +192,11 @@ final class EventDelivery implements AutoCloseable {
 				return;
 			}
 			try {
+				// Before the next event, not after: a consumer that
+				// re-reads and then applies what follows ends up correct,
+				// one that applies first and re-reads afterwards can undo
+				// what it just learned.
+				tellThemToResync();
 				sink.publish(event);
 			} catch (RuntimeException sinkFailure) {
 				// A sink must not throw, and we do not trust it to keep

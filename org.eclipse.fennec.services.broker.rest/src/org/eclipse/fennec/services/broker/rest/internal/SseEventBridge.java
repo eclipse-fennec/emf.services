@@ -251,6 +251,39 @@ public class SseEventBridge implements EventSink {
 		return subscriptions.size();
 	}
 
+	/**
+	 * Tells every subscriber to take a fresh snapshot, by ending their
+	 * streams (#124).
+	 *
+	 * <p>Closing rather than sending a new kind of frame, and that is
+	 * the cheaper truth: a consumer already re-reads everything when its
+	 * stream comes up (FR-Sync-Reconnect), on both language tracks, so
+	 * the recovery exists and is tested. A new frame type would have to
+	 * be parsed here, in the Java client and in the TypeScript one, for
+	 * a signal that means exactly what a reconnect already means.
+	 *
+	 * <p>It hits every subscriber, not only the one that missed
+	 * something. That is not sloppiness: when the delivery queue drops
+	 * an event the broker does not know whose it was, and a consumer
+	 * that re-reads for nothing is correct, just briefly busy.
+	 */
+	@Override
+	public void resyncRequired() {
+		if (subscriptions.isEmpty()) {
+			return;
+		}
+		LOG.warning("[DDSR] an event did not reach the wire — ending "
+				+ subscriptions.size() + " stream(s) so consumers re-snapshot");
+		for (Subscription s : List.copyOf(subscriptions)) {
+			try {
+				s.sink.close();
+			} catch (RuntimeException ignored) {
+				// Already gone; dropping it below is the same outcome.
+			}
+			drop(s);
+		}
+	}
+
 	@Override
 	public void publish(ServiceEvent event) {
 		if (subscriptions.isEmpty() || sse == null) {

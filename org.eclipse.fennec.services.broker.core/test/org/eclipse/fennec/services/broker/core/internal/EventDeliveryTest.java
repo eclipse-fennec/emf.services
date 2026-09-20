@@ -308,6 +308,147 @@ class EventDeliveryTest {
 	}
 
 	// ------------------------------------------------------------------
+	// Saying that something was lost
+	// ------------------------------------------------------------------
+
+	@Test
+	@DisplayName("a drop is not silent: the sink is told to have its subscribers re-read")
+	void aDropTellsTheSinkToResync() throws InterruptedException {
+		CountDownLatch inSink = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		List<String> calls = Collections.synchronizedList(new ArrayList<>());
+		delivery = new EventDelivery(new EventSink() {
+
+			@Override
+			public void publish(ServiceEvent event) {
+				if (calls.isEmpty()) {
+					calls.add("publish");
+					inSink.countDown();
+					await(release);
+					return;
+				}
+				calls.add("publish");
+			}
+
+			@Override
+			public void resyncRequired() {
+				calls.add("resync");
+			}
+		});
+
+		delivery.submit(event(ServiceEventType.REGISTERED));
+		inSink.await();
+		for (int i = 0; i < EventDelivery.CAPACITY + 5; i++) {
+			delivery.submit(event(ServiceEventType.MODIFIED));
+		}
+		release.countDown();
+		delivery.awaitIdle();
+
+		assertThat(calls).contains("resync");
+		assertThat(calls.indexOf("resync"))
+				.as("the warning comes BEFORE the next event: re-read, then apply what follows")
+				.isLessThan(calls.lastIndexOf("publish"));
+	}
+
+	@Test
+	@DisplayName("one warning per loss, not one per event afterwards")
+	void theSinkIsToldOncePerLoss() throws InterruptedException {
+		CountDownLatch inSink = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicInteger resyncs = new java.util.concurrent.atomic.AtomicInteger();
+		delivery = new EventDelivery(new EventSink() {
+
+			private boolean first = true;
+
+			@Override
+			public void publish(ServiceEvent event) {
+				if (first) {
+					first = false;
+					inSink.countDown();
+					await(release);
+				}
+			}
+
+			@Override
+			public void resyncRequired() {
+				resyncs.incrementAndGet();
+			}
+		});
+
+		delivery.submit(event(ServiceEventType.REGISTERED));
+		inSink.await();
+		for (int i = 0; i < EventDelivery.CAPACITY + 5; i++) {
+			delivery.submit(event(ServiceEventType.MODIFIED));
+		}
+		release.countDown();
+		delivery.awaitIdle();
+
+		assertThat(resyncs.get()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("nothing lost, nothing said")
+	void aHealthyDeliveryNeverAsksForAResync() {
+		java.util.concurrent.atomic.AtomicInteger resyncs = new java.util.concurrent.atomic.AtomicInteger();
+		delivery = new EventDelivery(new EventSink() {
+
+			@Override
+			public void publish(ServiceEvent event) {
+			}
+
+			@Override
+			public void resyncRequired() {
+				resyncs.incrementAndGet();
+			}
+		});
+
+		for (int i = 0; i < 100; i++) {
+			delivery.submit(event(ServiceEventType.REGISTERED));
+		}
+		delivery.awaitIdle();
+
+		assertThat(resyncs.get()).isZero();
+		assertThat(delivery.owesResync()).isFalse();
+	}
+
+	@Test
+	@DisplayName("a sink that throws while being told does not stop the events after it")
+	void aThrowingResyncDoesNotStopDelivery() throws InterruptedException {
+		CountDownLatch inSink = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		List<ServiceEventType> seen = Collections.synchronizedList(new ArrayList<>());
+		delivery = new EventDelivery(new EventSink() {
+
+			private boolean first = true;
+
+			@Override
+			public void publish(ServiceEvent event) {
+				if (first) {
+					first = false;
+					inSink.countDown();
+					await(release);
+				}
+				seen.add(event.getType());
+			}
+
+			@Override
+			public void resyncRequired() {
+				throw new IllegalStateException("a subscriber that breaks this contract too");
+			}
+		});
+
+		delivery.submit(event(ServiceEventType.REGISTERED));
+		inSink.await();
+		for (int i = 0; i < EventDelivery.CAPACITY + 5; i++) {
+			delivery.submit(event(ServiceEventType.MODIFIED));
+		}
+		release.countDown();
+		delivery.awaitIdle();
+
+		assertThat(seen).as("delivery continued past the failed warning").isNotEmpty();
+	}
+
+	// ------------------------------------------------------------------
 	// Nothing, null, twice, and after the end
 	// ------------------------------------------------------------------
 

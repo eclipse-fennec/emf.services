@@ -17,7 +17,7 @@ Maven groupId: `org.eclipse.fennec.services` (Quelle: `gradle.properties`, Singl
 
 Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → CLIENT_FRAMEWORK_GUIDE**; die Harness schlägt beide, weil sie den Zustand tatsächlich ausführt.
 
-**Alles in `docs/` ist englisch** (Konvention des Users, 2026-09-20). Nur diese Datei hier darf deutsch bleiben. Noch nicht uebersetzt und eine eigene Welle wert: `ACQUISITION.md`, `ARCHITECTURE.md`, `WIRE_CHANNELS.md`, `UPDATE_POLICY.md`.
+**Alles in `docs/` ist englisch** (Konvention des Users, 2026-09-20), ebenso `itest/README.md` und die Modell-Spezifikation. Nur diese Datei hier darf deutsch bleiben.
 
 **Benutzer-Guide** — fuer jemanden, der Fennec Services *benutzen* will:
 

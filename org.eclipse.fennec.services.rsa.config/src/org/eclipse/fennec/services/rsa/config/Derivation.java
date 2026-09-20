@@ -52,6 +52,14 @@ public final class Derivation {
 
 	static final String DISCOVERY_PID = "org.eclipse.fennec.services.rsa.discovery.rest";
 
+	/** The same two, for a node that serves or hears over MQTT (#98). */
+	static final String DISTRIBUTION_MQTT_PID = "org.eclipse.fennec.services.rsa.distribution.mqtt";
+
+	static final String DISCOVERY_MQTT_PID = "org.eclipse.fennec.services.rsa.discovery.mqtt";
+
+	/** The transport that carries the broker's events to an MQTT-hearing node. */
+	static final String CLIENT_MQTT_PID = "org.eclipse.fennec.services.client.mqtt";
+
 	static final String ADMIN_FACTORY = "org.eclipse.fennec.services.rsa";
 
 	static final String TOPOLOGY_PID = "org.eclipse.fennec.services.rsa.topology";
@@ -68,7 +76,10 @@ public final class Derivation {
 	 */
 	public static List<DerivedConfiguration> forProvider(RsaSettings settings) {
 		List<DerivedConfiguration> plan = new ArrayList<>();
-		if (settings.manageHttp()) {
+		// An HTTP stack only where something is served over HTTP. A node
+		// that exports over MQTT talks to the broker as a client and
+		// needs no server of its own.
+		if (settings.manageHttp() && settings.servesOverRest()) {
 			plan.add(DerivedConfiguration.ofFactory(FELIX_HTTP_FACTORY, settings.httpId(), Map.of(
 					"org.osgi.service.http.port", String.valueOf(settings.httpPort()),
 					"org.osgi.service.http.host", settings.httpHost(),
@@ -81,11 +92,9 @@ public final class Derivation {
 		}
 		contracts(plan, settings);
 		client(plan, settings);
-		plan.add(DerivedConfiguration.of(DISTRIBUTION_PID, Map.of(
-				"public.url", settings.effectivePublicUrl())));
-		plan.add(DerivedConfiguration.of(DISCOVERY_PID, Map.of(
-				"broker.url", settings.brokerUrl())));
-		plan.add(admin(settings, "(ddsr.rsa.flavor=" + settings.flavor() + ")"));
+		distribution(plan, settings);
+		discovery(plan, settings);
+		plan.add(admin(settings, "(ddsr.rsa.flavor=" + settings.effectiveDistributionFlavor() + ")"));
 		plan.add(topology(settings));
 		return List.copyOf(plan);
 	}
@@ -102,8 +111,7 @@ public final class Derivation {
 		List<DerivedConfiguration> plan = new ArrayList<>();
 		contracts(plan, settings);
 		client(plan, settings);
-		plan.add(DerivedConfiguration.of(DISCOVERY_PID, Map.of(
-				"broker.url", settings.brokerUrl())));
+		discovery(plan, settings);
 		plan.add(admin(settings, NO_DISTRIBUTION));
 		plan.add(topology(settings));
 		return List.copyOf(plan);
@@ -124,6 +132,8 @@ public final class Derivation {
 		Map<String, Object> client = new LinkedHashMap<>();
 		client.put("provider.heartbeat.seconds", String.valueOf(settings.heartbeatSeconds()));
 		client.put("session.interval.seconds", String.valueOf(settings.sessionIntervalSeconds()));
+		client.put("eventSource.target", "(ddsr.event.transport="
+				+ (settings.hearsOverMqtt() ? "mqtt" : "rest") + ")");
 		if (!settings.consumerId().isBlank()) {
 			client.put("consumer.id", settings.consumerId());
 		}
@@ -136,10 +146,55 @@ public final class Derivation {
 	 * change to the admin.
 	 */
 	private static DerivedConfiguration admin(RsaSettings settings, String distributionTarget) {
-		return DerivedConfiguration.ofFactory(ADMIN_FACTORY, factoryName(settings.flavor()), Map.of(
-				"remote.configs.supported", settings.flavor(),
+		// The type an admin speaks is the one it exports with — an
+		// endpoint's configuration type is a fact about how it is
+		// reached, not about how it was announced. Discovery is pointed
+		// at separately for exactly that reason.
+		String type = settings.effectiveDistributionFlavor();
+		return DerivedConfiguration.ofFactory(ADMIN_FACTORY, factoryName(type), Map.of(
+				"remote.configs.supported", type,
 				"distribution.target", distributionTarget,
-				"discovery.target", "(ddsr.rsa.flavor=" + settings.flavor() + ")"));
+				"discovery.target", "(ddsr.rsa.flavor=" + settings.effectiveDiscoveryFlavor() + ")"));
+	}
+
+	/**
+	 * Where this node serves, in the terms of the transport it serves
+	 * over. One line per flavor, which is what #109 promised a second
+	 * flavor would cost.
+	 */
+	private static void distribution(List<DerivedConfiguration> plan, RsaSettings settings) {
+		if (RsaSettings.MQTT.equals(settings.effectiveDistributionFlavor())) {
+			plan.add(DerivedConfiguration.of(DISTRIBUTION_MQTT_PID, Map.of(
+					"broker.url", settings.mqttUrl(),
+					"topic.prefix", settings.topicPrefix())));
+			return;
+		}
+		plan.add(DerivedConfiguration.of(DISTRIBUTION_PID, Map.of(
+				"public.url", settings.effectivePublicUrl())));
+	}
+
+	/**
+	 * How this node announces and hears.
+	 *
+	 * <p>Announcing is a publish to the broker either way — that is the
+	 * one API it has. What the MQTT variant changes is where the events
+	 * come from, so it brings the event transport with it and points the
+	 * client at it. Writing both here is the point of a role
+	 * configuration: a node that hears over MQTT while its client
+	 * listens over SSE is two facts disagreeing, and nobody should have
+	 * to keep them in step by hand.
+	 */
+	private static void discovery(List<DerivedConfiguration> plan, RsaSettings settings) {
+		if (!settings.hearsOverMqtt()) {
+			plan.add(DerivedConfiguration.of(DISCOVERY_PID, Map.of(
+					"broker.url", settings.brokerUrl())));
+			return;
+		}
+		plan.add(DerivedConfiguration.of(CLIENT_MQTT_PID, Map.of(
+				"broker.url", settings.mqttUrl(),
+				"topic.prefix", "ddsr/events")));
+		plan.add(DerivedConfiguration.of(DISCOVERY_MQTT_PID, Map.of(
+				"broker.url", settings.brokerUrl())));
 	}
 
 	/**

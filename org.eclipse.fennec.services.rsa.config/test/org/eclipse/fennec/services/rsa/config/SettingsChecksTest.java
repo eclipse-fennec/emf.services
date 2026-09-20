@@ -26,7 +26,7 @@ class SettingsChecksTest {
 
 	private static RsaSettings with(String brokerUrl, String policy, String registryName) {
 		return new RsaSettings(brokerUrl, "", "", 9095, "0.0.0.0", "services", true, "ddsrHttp",
-				registryName, "1.0.0", "fennec.rest", policy, "promiscuous", 30, 0, "");
+				registryName, "1.0.0", "fennec.rest", policy, "promiscuous", 30, 0, "", "tcp://localhost:1883", "ddsr/rpc", "", "");
 	}
 
 	@Test
@@ -61,7 +61,7 @@ class SettingsChecksTest {
 	@DisplayName("a consumer is not asked about ports it does not open")
 	void consumerHasNoPort() {
 		RsaSettings consumer = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",
-				false, "", "node-b", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "node-b");
+				false, "", "node-b", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "node-b", "tcp://localhost:1883", "ddsr/rpc", "", "");
 
 		assertThat(SettingsChecks.problems(consumer, false)).isEmpty();
 	}
@@ -71,7 +71,7 @@ class SettingsChecksTest {
 	void mismatchIsMentioned() {
 		RsaSettings proxied = new RsaSettings("http://broker:8887/ddsr/rest",
 				"https://edge.example.org:443/api", "", 9095, "0.0.0.0", "services", true, "ddsrHttp",
-				"node-a", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "");
+				"node-a", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "", "tcp://localhost:1883", "ddsr/rpc", "", "");
 
 		assertThat(SettingsChecks.problems(proxied, true)).isEmpty();
 		assertThat(SettingsChecks.mismatches(proxied))

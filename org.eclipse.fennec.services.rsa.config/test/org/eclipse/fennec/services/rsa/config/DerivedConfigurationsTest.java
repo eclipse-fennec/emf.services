@@ -117,7 +117,7 @@ class DerivedConfigurationsTest {
 		FakeConfigurationAdmin admin = new FakeConfigurationAdmin();
 		RsaSettings settings = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095, "0.0.0.0",
 				"services", true, "ddsrHttp", "node-a", "1.0.0", "fennec.rest", "promiscuous",
-				"promiscuous", 30, 0, "");
+				"promiscuous", 30, 0, "", "tcp://localhost:1883", "ddsr/rpc", "", "");
 
 		DerivedConfigurations derived = new DerivedConfigurations(admin, "RSA provider");
 		derived.apply(Derivation.forProvider(settings));

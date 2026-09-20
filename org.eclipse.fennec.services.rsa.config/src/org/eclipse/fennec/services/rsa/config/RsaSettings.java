@@ -57,7 +57,44 @@ public record RsaSettings(
 		String importPolicy,
 		long heartbeatSeconds,
 		long sessionIntervalSeconds,
-		String consumerId) {
+		String consumerId,
+		String mqttUrl,
+		String topicPrefix,
+		String distributionFlavor,
+		String discoveryFlavor) {
+
+	/** The configuration types this node knows how to serve over. */
+	public static final String REST = "fennec.rest";
+
+	/** And the second one (#98). */
+	public static final String MQTT = "fennec.mqtt";
+
+	/**
+	 * Which transport this node <em>serves</em> over, and which it
+	 * <em>announces</em> over. Two questions, because they are two
+	 * halves — a deployment may serve over MQTT and announce over REST,
+	 * and that pairing is the honest test of the seam between them. Each
+	 * falls back to {@link #flavor()}, so a node that speaks one
+	 * transport says it once.
+	 */
+	public String effectiveDistributionFlavor() {
+		return distributionFlavor == null || distributionFlavor.isBlank() ? flavor : distributionFlavor.strip();
+	}
+
+	/** @see #effectiveDistributionFlavor() */
+	public String effectiveDiscoveryFlavor() {
+		return discoveryFlavor == null || discoveryFlavor.isBlank() ? flavor : discoveryFlavor.strip();
+	}
+
+	/** Whether this node serves over HTTP and therefore needs one. */
+	public boolean servesOverRest() {
+		return REST.equals(effectiveDistributionFlavor());
+	}
+
+	/** Whether the broker's events reach this node over MQTT. */
+	public boolean hearsOverMqtt() {
+		return MQTT.equals(effectiveDiscoveryFlavor());
+	}
 
 	/**
 	 * The address this node tells consumers to dial.

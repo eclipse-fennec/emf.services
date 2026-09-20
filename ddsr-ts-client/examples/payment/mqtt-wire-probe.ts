@@ -14,8 +14,9 @@
 /**
  * MQTT wire proof (A2/D11): against a REAL MQTT broker (MQTT_URL,
  * default mqtt://localhost:1883), subscribe via MqttEventSource and
- * publish the exact self-contained event document the Java broker-side
- * sink produces — once on <prefix>/<interface>, once on
+ * publish the exact message the Java broker-side sink produces — since
+ * #101 a CloudEvent in structured mode carrying the self-contained
+ * event document — once on <prefix>/<interface>, once on
  * <prefix>/_unknown. Asserts both arrive decoded over TCP.
  *
  * Output contract: MQTT_PROBE_OK / MQTT_PROBE_FAIL <reason>.
@@ -24,6 +25,7 @@
 import { connectAsync } from 'mqtt';
 import type { ServiceEvent } from '@ddsr/model';
 import { MqttEventSource } from '@ddsr/transport-mqtt';
+import { lifecycleTypeOf, newEnvelope, writeStructured } from '@ddsr/client';
 
 const MQTT_URL = process.env.MQTT_URL ?? 'mqtt://localhost:1883';
 const PREFIX = process.env.TOPIC_PREFIX ?? 'ddsr/events';
@@ -33,6 +35,14 @@ const EVENT_XMI = `<?xml version="1.0" encoding="UTF-8"?>
   <services:ServiceEvent type="UNREGISTERING" reference="/1"/>
   <services:ServiceReference id="ref-42"/>
 </xmi:XMI>`;
+
+/** The event document in the envelope the broker puts it in. */
+function message(): Uint8Array {
+  const envelope = newEnvelope(lifecycleTypeOf('UNREGISTERING'), '/fennec/services/broker',
+    'application/xml');
+  envelope.subject = 'ref-42';
+  return writeStructured(envelope, EVENT_XMI);
+}
 
 function fail(reason: string): never {
   console.log(`MQTT_PROBE_FAIL ${reason}`);
@@ -63,8 +73,8 @@ async function main(): Promise<void> {
   if (!established) fail('no MQTT connection within 10s');
 
   const publisher = await connectAsync(MQTT_URL, { clientId: 'ddsr-mqtt-probe-pub' });
-  await publisher.publishAsync(`${PREFIX}/Payment`, EVENT_XMI, { qos: 0, retain: false });
-  await publisher.publishAsync(`${PREFIX}/_unknown`, EVENT_XMI, { qos: 0, retain: false });
+  await publisher.publishAsync(`${PREFIX}/Payment`, Buffer.from(message()), { qos: 0, retain: false });
+  await publisher.publishAsync(`${PREFIX}/_unknown`, Buffer.from(message()), { qos: 0, retain: false });
   await publisher.endAsync();
 
   for (let waited = 0; waited < 10000 && received.length < 2; waited += 100) {

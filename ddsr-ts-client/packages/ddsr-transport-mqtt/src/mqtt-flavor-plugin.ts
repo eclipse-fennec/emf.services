@@ -44,14 +44,16 @@ export interface MqttFlavorPluginOptions {
   timeoutMs?: number;
   /** Injectable client factory (tests). Defaults to mqtt.js. */
   clientFactory?: (url: string, clientId: string) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  /** Which system this is, for the CloudEvents `source` of every call (#101). */
+  originLabel?: string;
   log?: (message: string) => void;
 }
 
 /**
- * MQTT FlavorPlugin (A2 Etappe 2): translates ServiceOperation
- * invocations into the request/response convention of mqtt-rpc.ts —
- * subscribe the per-request reply topic FIRST, publish the request
- * envelope, await exactly the matching correlationId, unsubscribe.
+ * MQTT FlavorPlugin: translates ServiceOperation invocations into the
+ * request/response convention of mqtt-rpc.ts — subscribe the
+ * per-request reply topic FIRST, publish the call as a CloudEvent,
+ * await exactly the answer that correlates with it, unsubscribe.
  * The invocation path is peer-to-peer between consumer and provider
  * over the MQTT broker the flavor announces; the DDSR broker is not
  * involved (Discovery/Acquisition only — ACQUISITION.md §1).
@@ -86,34 +88,38 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     const mqttOp = operationFlavor as MqttOperationFlavor;
     const client = await this.clientFor(mqttFlavor);
 
-    const correlationId = randomUUID();
     const requestTopic = requestTopicFor(mqttFlavor, mqttOp);
-    const replyTo = `${replyBaseFor(mqttFlavor, mqttOp)}/${correlationId}`;
     const qos = qosFor(mqttFlavor, mqttOp);
     const timeoutMs = this.options.timeoutMs ?? 10_000;
+    // The reply topic is chosen before the request exists, because the
+    // request has to carry it. The event id is what the answer
+    // correlates with, so the two are built together.
+    const replyBase = replyBaseFor(mqttFlavor, mqttOp);
+    const source = `/consumer/${this.options.originLabel ?? 'ts'}`;
+    const provisional = randomUUID();
+    const replyTo = `${replyBase}/${provisional}`;
+    const request = encodeRequest(operation, params, replyTo, source);
 
     await client.subscribeAsync(replyTo, { qos });
     try {
       const answer = new Promise<Uint8Array>((resolve, reject) => {
-        this.pending.set(correlationId, resolve);
+        this.pending.set(request.id, resolve);
         setTimeout(() => {
-          if (this.pending.delete(correlationId)) {
+          if (this.pending.delete(request.id)) {
             reject(new Error(
               `MQTT call timed out after ${timeoutMs}ms: ${operation.name} via ${requestTopic}`));
           }
         }, timeoutMs).unref?.();
       });
-      await client.publishAsync(requestTopic,
-        encodeRequest({ correlationId, replyTo, args: params }),
-        { qos, retain: false });
+      await client.publishAsync(requestTopic, request.payload, { qos, retain: false });
       const payload = await answer;
       const response = decodeResponse(payload);
       if (response.error !== undefined) {
         throw new Error(`MQTT call failed: ${operation.name} — ${response.error}`);
       }
-      return response.result;
+      return response.value;
     } finally {
-      this.pending.delete(correlationId);
+      this.pending.delete(request.id);
       await client.unsubscribeAsync(replyTo).catch(() => undefined);
     }
   }

@@ -12,41 +12,62 @@
  ********************************************************************/
 
 /**
- * The MQTT request/response convention (A2 Etappe 2, WIRE_CHANNELS.md).
+ * The MQTT request/response convention (WIRE_CHANNELS.md).
  * FROZEN once cross-language — the consumer plugin and the provider
  * dispatcher on any side must agree byte-for-byte.
  *
- * MQTT 3.1.1 has no response-topic or correlation-data properties
- * (they arrive with MQTT 5, which the Java paho v3 client does not
- * speak), so both travel IN the request envelope:
+ * Since #101 a call is two CloudEvents. The envelope carries what the
+ * transport cannot: MQTT 3.1.1 has no response-topic and no
+ * correlation-data (they arrive with MQTT 5, which the Java paho v3
+ * client does not speak), so the reply address is the `replyto`
+ * extension and the answer points back through `correlationid`. The
+ * payload is the call itself — `ServiceInvocation`, and
+ * `ServiceInvocationResult` coming back — which is what gives a
+ * message-only transport typed arguments and modelled ones at all.
  *
  * - request topic:  MqttOperationFlavor.requestTopic, else
  *                   `<MqttFlavor.requestTopic>/<operation.name>`
- * - reply topic:    chosen by the CONSUMER as `<base>/<correlationId>`
+ * - reply topic:    chosen by the CONSUMER as `<base>/<event id>`
  *                   with base = MqttOperationFlavor.responseTopic, else
  *                   MqttFlavor.responseTopic, else
  *                   `<requestTopic>/reply` — one topic per request, so
- *                   a subscription never sees a foreign answer
- * - request JSON:   {"correlationId":"<uuid>","replyTo":"<topic>",
- *                    "args":{<named parameters>}}
- * - response JSON:  {"correlationId":"<uuid>","result":<value>} on
- *                   success, {"correlationId":"<uuid>","error":"<msg>"}
- *                   on failure
+ *                   a subscription never sees a foreign answer, and the
+ *                   correlation is still checked in the envelope
+ * - request:        CloudEvent, structured mode, `type` …invoke,
+ *                   `replyto` = the reply topic, data = the invocation
+ * - response:       CloudEvent, `type` …invoke.reply, `correlationid` =
+ *                   the request's id, data = the result (a value, or a
+ *                   Diagnostic that says why there is none)
  * - qos:            MqttOperationFlavor.qos, else MqttFlavor.defaultQos,
  *                   else AT_LEAST_ONCE (the model default)
  * - retained:       never — a request/response is a transition, not a
  *                   state (same argument as for lifecycle events)
  */
 
+import type { ServiceOperation } from '@ddsr/model';
+import {
+  CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO, CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
+  dataAsText, decodeInvocation, decodeResult, encodeFailure, encodeInvocation, encodeResult,
+  newEnvelope, readStructured, writeStructured,
+} from '@ddsr/client';
+
+/** What the payload of a call is encoded in. XMI, as everywhere else. */
+const INVOCATION_CONTENT_TYPE = 'application/xml';
+
+/** A decoded request: who asked, what they asked for, where the answer goes. */
 export interface MqttRpcRequest {
-  correlationId: string;
+  /** The request event's id — what the answer correlates with. */
+  id: string;
   replyTo: string;
+  operation: string;
   args: Record<string, unknown>;
+  source: string;
 }
 
+/** A decoded answer: which call it answers, and what it says. */
 export interface MqttRpcResponse {
   correlationId: string;
-  result?: unknown;
+  value?: unknown;
   error?: string;
 }
 
@@ -113,28 +134,60 @@ export function qosFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): 0 | 1
   }
 }
 
-export function encodeRequest(request: MqttRpcRequest): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(request));
+/**
+ * One call, as the message that travels: the envelope says where the
+ * answer goes, the payload says what is being called with what.
+ */
+export function encodeRequest(
+  operation: ServiceOperation, args: Record<string, unknown>, replyTo: string, source: string,
+): { payload: Uint8Array; id: string } {
+  const envelope = newEnvelope(CE_TYPE_INVOKE, source, INVOCATION_CONTENT_TYPE);
+  envelope.subject = operation.name ?? undefined;
+  envelope.extensions[CE_EXTENSION_REPLY_TO] = replyTo;
+  return {
+    payload: writeStructured(envelope, encodeInvocation(operation, args)),
+    id: envelope.id,
+  };
 }
 
+/** The inverse, for the provider side. */
 export function decodeRequest(payload: Uint8Array): MqttRpcRequest {
-  const parsed = JSON.parse(new TextDecoder().decode(payload)) as Partial<MqttRpcRequest>;
-  if (!parsed.correlationId || !parsed.replyTo) {
-    throw new Error('request envelope without correlationId/replyTo');
+  const message = readStructured(payload);
+  const replyTo = message.attributes.extensions[CE_EXTENSION_REPLY_TO];
+  if (message.attributes.type !== CE_TYPE_INVOKE) {
+    throw new Error(`not a call: ${message.attributes.type}`);
   }
-  return { correlationId: parsed.correlationId, replyTo: parsed.replyTo, args: parsed.args ?? {} };
+  if (!replyTo) {
+    throw new Error('a call without a reply address cannot be answered');
+  }
+  const invocation = decodeInvocation(dataAsText(message));
+  return {
+    id: message.attributes.id,
+    replyTo,
+    operation: invocation.operation,
+    args: invocation.args,
+    source: message.attributes.source,
+  };
 }
 
-export function encodeResponse(response: MqttRpcResponse): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(response));
+/** The answer to a call: a second event, correlated by the request's id. */
+export function encodeResponse(
+  requestId: string, source: string, value: unknown, failure?: string,
+): Uint8Array {
+  const envelope = newEnvelope(CE_TYPE_INVOKE_REPLY, source, INVOCATION_CONTENT_TYPE);
+  envelope.extensions[CE_EXTENSION_CORRELATION_ID] = requestId;
+  const document = failure !== undefined ? encodeFailure(failure) : encodeResult(value);
+  return writeStructured(envelope, document);
 }
 
+/** The inverse, for the consumer side. */
 export function decodeResponse(payload: Uint8Array): MqttRpcResponse {
-  const parsed = JSON.parse(new TextDecoder().decode(payload)) as Partial<MqttRpcResponse>;
-  if (!parsed.correlationId) {
-    throw new Error('response envelope without correlationId');
+  const message = readStructured(payload);
+  const correlationId = message.attributes.extensions[CE_EXTENSION_CORRELATION_ID];
+  if (!correlationId) {
+    throw new Error('an answer that names no call cannot be delivered to one');
   }
-  return parsed as MqttRpcResponse;
+  return { correlationId, ...decodeResult(dataAsText(message)) };
 }
 
 /**

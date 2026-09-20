@@ -42,6 +42,11 @@ export type { CloudEventEnvelope, CloudEventMessage } from './cloudevents/cloud-
 export { attachShutdownHooks } from './lifecycle/shutdown-hooks';
 export type { ShutdownHookOptions } from './lifecycle/shutdown-hooks';
 export { serializeToXmi, deserializeFromXmi } from './xmi/xmi-support';
+export {
+  encodeInvocation, decodeInvocation, encodeResult, encodeFailure, decodeResult,
+  propertyFor, valueOf,
+} from './invocation/invocation';
+export type { DecodedInvocation, DecodedResult } from './invocation/invocation';
 export { propertyValue, propertiesOf, propertyOf, props, FINGERPRINT_PROPERTY } from './properties';
 export { fingerprint, canonicalForm, FINGERPRINT_SCHEME } from './fingerprint/service-description-fingerprint';
 export { implementationFingerprint, implementationCanonicalForm, IMPL_FINGERPRINT_SCHEME } from './fingerprint/service-implementation-fingerprint';

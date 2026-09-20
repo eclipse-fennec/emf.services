@@ -38,10 +38,29 @@ BROKER_PID=$!
 for _ in $(seq 1 60); do curl -sf -o /dev/null http://localhost:8887/ddsr/rest/catalog && break; sleep 1; done
 curl -sf -o /dev/null http://localhost:8887/ddsr/rest/catalog || { echo "broker did not come up"; exit 1; }
 
+REPORTS="$ROOT/org.eclipse.fennec.services.rsa.tck/generated/test-reports"
+
 echo "=== run the TCK ==="
+# --rerun, and the old reports out of the way first. Without this the
+# task can be UP-TO-DATE, and then the script reports success without a
+# single test having run — which happened, and looks exactly like a
+# green run from the outside.
+rm -rf "$REPORTS"
 set +e
-( cd "$ROOT" && ./gradlew :org.eclipse.fennec.services.rsa.tck:testrun.rsa-tck ) 2>&1 | tee "$WORK/tck.log"
+( cd "$ROOT" && ./gradlew :org.eclipse.fennec.services.rsa.tck:testrun.rsa-tck --rerun ) 2>&1 | tee "$WORK/tck.log"
 RC=${PIPESTATUS[0]}
 set -e
-echo "=== TCK exit $RC — reports under org.eclipse.fennec.services.rsa.tck/generated/test-reports ==="
+
+# A green exit code is not the evidence; the report is. Nothing written
+# means nothing ran, and that must not pass.
+SUMMARY=$(grep -ho 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' \
+          "$REPORTS"/*/*.xml 2>/dev/null || true)
+if [ -z "$SUMMARY" ]; then
+  echo "=== TCK produced no test report — treating this as a failure ==="
+  exit 1
+fi
+echo "=== TCK exit $RC — $SUMMARY ==="
+case "$SUMMARY" in
+  *'tests="0"'*) echo "=== zero tests ran — treating this as a failure ==="; exit 1 ;;
+esac
 exit "$RC"

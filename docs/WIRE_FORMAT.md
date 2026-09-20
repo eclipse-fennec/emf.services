@@ -162,6 +162,40 @@ losing whatever is published in the gap. The podman harness scenario D
 asserts that exactly one subscription exists and that it is the
 configured one.
 
+## What travels with an answer
+
+An operation's contract says what it returns. It cannot say "and
+whatever that value needs in order to be readable" — and a lookup
+answer is exactly that case: the envelope's implementations point at
+the contracts they serve, and a document carrying only the envelope
+leaves those references pointing nowhere (#88).
+
+So the wire says it, by a rule rather than a declaration:
+
+> An answer travels with every object it references that belongs to
+> nobody — no container and no resource — and, from those, with
+> everything they reference on the same terms.
+
+Both halves of "belongs to nobody" carry weight:
+
+- **No container and no resource** describes a copy made for this
+  answer. The lookup copies its hits precisely so that nothing live can
+  be reached from the wire, and those copies are what would otherwise
+  be lost.
+- **Anything contained or in a resource** belongs to something that did
+  not ask to travel. A live catalog entry sits in the broker's
+  registry, so `GET /catalog/{name}` answers with one contract and not
+  with the registry behind it.
+
+A proxy is never followed. A cross-document href says the target lives
+elsewhere and is not to be resolved here — the publish convention is
+built on exactly that.
+
+An answer that needs nothing stays a single root, byte for byte what it
+was before the rule existed. One that needs something becomes a
+multi-root document whose **first root is the answer**, which is what
+both SDKs already read.
+
 ## The envelope: CloudEvents 1.0
 
 Since #101 every message this registry sends travels in a CloudEvents

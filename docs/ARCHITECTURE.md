@@ -135,9 +135,13 @@ org.eclipse.fennec.services.broker.rest         # JAX-RS endpoints
                                    #     API documents, puts every contract into
                                    #     the catalog and publishes the
                                    #     implementation — no flavor in code any more
-                                   #   LookupResource + EventsResource stay
-                                   #     hand-written: the lookup answer is
-                                   #     multi-root (#88), SSE is not a call
+                                   #   /references is generic too since #88: the
+                                   #     rule for what travels with an answer
+                                   #     makes a multi-root answer describable,
+                                   #     and BrokerLookupRest is the adapter with
+                                   #     the signature the contract states
+                                   #   EventsResource stays hand-written: SSE is
+                                   #     not a call
 
 org.eclipse.fennec.services.xmi.codec           # shared: server and client side
                                    #   XmiCodec (CSO<ResourceSet>)
@@ -418,8 +422,10 @@ The wire body of `POST /implementations`:
 
 Multi-root with a `LocalServiceRegistry` envelope (refs + the provider
 tree by containment) plus the referenced ServiceInterfaces as sibling
-roots — see LookupResource. This shape keeps the cross-refs
-intra-document.
+roots. The siblings are not listed anywhere: they are what the answer
+references and nobody else owns, which is the rule of #88 — see
+[What travels with an answer](WIRE_FORMAT.md#what-travels-with-an-answer).
+The shape keeps the cross-references intra-document.
 
 ### 3.4 A cross-language call
 
@@ -539,7 +545,7 @@ host as in the container — see [DEPLOYMENT.md](DEPLOYMENT.md).
 | Topic | Status |
 |---|---|
 | Model: possibly put iD back on selected classes (ServiceInterface, ServiceProvider) — if global uniqueness is wanted | open |
-| The `/registry` response: providers as sibling roots (instead of cross-document hrefs) | done (the XmiBundle pattern in LookupResource) |
+| The `/registry` response: providers as sibling roots (instead of cross-document hrefs) | done (the XmiBundle pattern, and since #88 a rule rather than a hand-written answer) |
 | Operation / parameter marshalling for complex payloads (e.g. a nested DTO as JSON or XMI) | partly — the generic distribution reads a body by the type the contract declares (EClass → XMI, otherwise text); there is no JSON |
 | Ordering in the headless provider: the publish goes out before the whiteboard has mounted the application, and on deactivation the endpoint dies before the withdraw (DS takes the service away before `deactivate`) | open — whoever needs FR-P3 publishes from a component of their own |
 | Service health / reachability probing in the client (filtering dead locators) | open — today `PaymentProxyRegistrar` picks every provider, callers filter via `ddsr.provider.name` |

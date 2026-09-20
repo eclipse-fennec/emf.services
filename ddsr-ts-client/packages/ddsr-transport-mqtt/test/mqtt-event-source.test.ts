@@ -200,4 +200,87 @@ describe('MqttEventSource', () => {
     await settle();
     expect(events).toHaveLength(0);
   });
+
+  // ------------------------------------------------------------------
+  // The broker admitting a loss (#124)
+  // ------------------------------------------------------------------
+
+  it('a message on <prefix>/_resync asks for a fresh snapshot, not for decoding', async () => {
+    const client = new FakeMqttClient();
+    const seen: string[] = [];
+    const subscription = sourceWith(client).open({
+      onStreamEstablished: () => seen.push('snapshot'),
+      onEvent: () => seen.push('event'),
+    });
+    await settle();
+    client.emit('connect');
+    await settle();
+    seen.length = 0;
+
+    client.emit('message', 'ddsr/events/_resync', new Uint8Array(0));
+    await settle();
+
+    expect(seen).toEqual(['snapshot']);
+    await subscription.close();
+  });
+
+  it('the resync topic follows the configured prefix', async () => {
+    const client = new FakeMqttClient();
+    const seen: string[] = [];
+    const subscription = sourceWith(client, 'acme/ddsr').open({
+      onStreamEstablished: () => seen.push('snapshot'),
+      onEvent: () => seen.push('event'),
+    });
+    await settle();
+    client.emit('connect');
+    await settle();
+    seen.length = 0;
+
+    client.emit('message', 'acme/ddsr/_resync', new Uint8Array(0));
+    await settle();
+
+    expect(seen).toEqual(['snapshot']);
+    await subscription.close();
+  });
+
+  it('an interface that merely ends in _resync is not the resync topic', async () => {
+    const client = new FakeMqttClient();
+    const seen: string[] = [];
+    const subscription = sourceWith(client).open({
+      onStreamEstablished: () => seen.push('snapshot'),
+      onEvent: () => seen.push('event'),
+    });
+    await settle();
+    client.emit('connect');
+    await settle();
+    seen.length = 0;
+
+    // A contract named "Payment_resync" is a service, not a signal. The
+    // segment has to be the whole last one.
+    client.emit('message', 'ddsr/events/Payment_resync', new TextEncoder().encode(EVENT_XMI));
+    await settle();
+
+    expect(seen).toEqual(['event']);
+    await subscription.close();
+  });
+
+  it('events after a resync keep flowing — a loss is not a shutdown', async () => {
+    const client = new FakeMqttClient();
+    const seen: string[] = [];
+    const subscription = sourceWith(client).open({
+      onStreamEstablished: () => seen.push('snapshot'),
+      onEvent: () => seen.push('event'),
+    });
+    await settle();
+    client.emit('connect');
+    await settle();
+    seen.length = 0;
+
+    client.emit('message', 'ddsr/events/_resync', new Uint8Array(0));
+    client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(EVENT_XMI));
+    await settle();
+
+    expect(seen).toEqual(['snapshot', 'event']);
+    await subscription.close();
+  });
 });

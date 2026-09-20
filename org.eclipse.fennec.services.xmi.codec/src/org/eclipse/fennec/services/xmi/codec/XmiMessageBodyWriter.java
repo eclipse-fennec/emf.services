@@ -43,7 +43,8 @@ import jakarta.ws.rs.ext.Provider;
 @JakartarsExtension
 @JakartarsName("ddsr-xmi-writer")
 @Provider
-@Produces(MediaType.APPLICATION_XML)
+// See the reader: XML plus whatever the deployment registered (#100).
+@Produces({ MediaType.APPLICATION_XML, MediaType.WILDCARD })
 public class XmiMessageBodyWriter implements MessageBodyWriter<EObject> {
 
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
@@ -55,13 +56,14 @@ public class XmiMessageBodyWriter implements MessageBodyWriter<EObject> {
 
 	@Override
 	public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
-		return EObject.class.isAssignableFrom(type);
+		return EObject.class.isAssignableFrom(type)
+				&& XmiCodec.canDecode(rsObjects, XmiMessageBodyReader.contentTypeOf(mediaType));
 	}
 
 	@Override
 	public void writeTo(EObject eo, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType,
 			MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream)
 			throws IOException, WebApplicationException {
-		XmiCodec.write(entityStream, rsObjects, eo);
+		XmiCodec.write(entityStream, rsObjects, XmiMessageBodyReader.contentTypeOf(mediaType), java.util.List.of(eo));
 	}
 }

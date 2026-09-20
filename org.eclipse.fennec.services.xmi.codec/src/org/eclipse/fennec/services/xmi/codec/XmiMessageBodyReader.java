@@ -47,7 +47,11 @@ import jakarta.ws.rs.ext.Provider;
 @JakartarsExtension
 @JakartarsName("ddsr-xmi-reader")
 @Provider
-@Consumes(MediaType.APPLICATION_XML)
+// XML by default and whatever else a deployment registered an encoding
+// for (#100). Widened rather than duplicated per media type: which
+// encodings exist is a property of the ResourceSet, not of this class,
+// and isReadable is where that question gets asked.
+@Consumes({ MediaType.APPLICATION_XML, MediaType.WILDCARD })
 public class XmiMessageBodyReader implements MessageBodyReader<EObject> {
 
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
@@ -59,7 +63,7 @@ public class XmiMessageBodyReader implements MessageBodyReader<EObject> {
 
 	@Override
 	public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
-		return EObject.class.isAssignableFrom(type);
+		return EObject.class.isAssignableFrom(type) && XmiCodec.canDecode(rsObjects, contentTypeOf(mediaType));
 	}
 
 	@Override
@@ -68,7 +72,7 @@ public class XmiMessageBodyReader implements MessageBodyReader<EObject> {
 			throws IOException, WebApplicationException {
 		EObject root;
 		try {
-			root = XmiCodec.read(entityStream, rsObjects);
+			root = XmiCodec.read(entityStream, rsObjects, contentTypeOf(mediaType));
 		} catch (XmiCodecException refusal) {
 			throw XmiHttpErrors.toHttp(refusal);
 		}
@@ -78,5 +82,10 @@ public class XmiMessageBodyReader implements MessageBodyReader<EObject> {
 					Response.Status.BAD_REQUEST);
 		}
 		return root;
+	}
+
+	/** The media type without its parameters, or {@code null} for XMI. */
+	static String contentTypeOf(MediaType mediaType) {
+		return mediaType == null ? null : mediaType.getType() + "/" + mediaType.getSubtype();
 	}
 }

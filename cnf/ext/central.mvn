@@ -248,3 +248,9 @@ org.bndtools:org.bndtools.templates.osgi:7.0.0
 org.slf4j:slf4j-api:2.0.16
 org.slf4j:slf4j-simple:2.0.16
 org.eclipse.fennec.mcp:org.eclipse.fennec.mcp.workspace.library:0.1.0-SNAPSHOT
+
+# EMF <-> Protobuf resource factory (Eclipse Fennec emf.util). Pulled in so the
+# content-type choice of #100 is demonstrated against a real second encoding
+# rather than a test double: the factory registers itself for a content type,
+# which is exactly the mechanism the codec now uses.
+org.eclipse.fennec.util:org.eclipse.fennec.protobuf:1.0.0-SNAPSHOT

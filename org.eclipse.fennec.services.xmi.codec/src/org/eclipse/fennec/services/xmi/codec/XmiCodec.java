@@ -34,6 +34,7 @@ import org.eclipse.emf.ecore.resource.URIHandler;
 import org.eclipse.emf.ecore.resource.impl.URIHandlerImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.XMIResource;
+import org.eclipse.emf.ecore.xmi.XMLResource;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.osgi.service.component.ComponentServiceObjects;
 
@@ -63,6 +64,30 @@ import org.osgi.service.component.ComponentServiceObjects;
  * and {@code resolveLiveOperation}, and ARCHITECTURE.md §2.4).
  * Same-document references are resolved by the parser at load time and
  * are unaffected.
+ *
+ * <h2>The encoding is a choice, not an assumption (#100)</h2>
+ *
+ * Every entry point takes a content type. XMI answers when nothing
+ * else does, which is what every caller got before and still gets by
+ * passing {@code null}; anything else is looked up in the
+ * ResourceSet's factory registry, so an encoding is available exactly
+ * when someone registered a {@code Resource.Factory} for it — EMF's
+ * own mechanism, no abstraction of ours on top. A content type nobody
+ * registered is refused rather than silently served as XMI: a provider
+ * that declared one encoding and got another would be a wire bug that
+ * only shows up at the far end.
+ *
+ * <p><b>The hardening moves with the format.</b> The size cap applies
+ * to every read, whatever the encoding, and so does the refusal to
+ * fetch anything a document points at — both are about what a body may
+ * cost and reach, not about XML. The parser features are XML's own and
+ * are set only for an XML resource. A new format brings its own
+ * exposure and has to bring its own answer; dropping the XML
+ * protections along with the XML is not the same as being safe.
+ *
+ * <p>The class name is now too narrow. It stays for the moment because
+ * renaming it touches eighteen files for no behavioural gain, and the
+ * bundle may move to emf.osgi anyway.
  */
 public final class XmiCodec {
 
@@ -146,9 +171,22 @@ public final class XmiCodec {
 
 	public static void write(OutputStream out, ComponentServiceObjects<ResourceSet> rsObjects,
 			Collection<? extends EObject> roots) throws IOException {
+		write(out, rsObjects, null, roots);
+	}
+
+	/**
+	 * Writes the roots in the encoding the content type names.
+	 *
+	 * @param contentType the encoding to write, or {@code null} for XMI
+	 * @throws XmiCodecException when nothing is registered for that
+	 *         content type — better than quietly writing XMI under
+	 *         another name
+	 */
+	public static void write(OutputStream out, ComponentServiceObjects<ResourceSet> rsObjects,
+			String contentType, Collection<? extends EObject> roots) throws IOException {
 		ResourceSet rs = rsObjects.getService();
 		try {
-			Resource res = new WireResource(URI.createURI("ddsr-wire.xmi"));
+			Resource res = wireResource(rs, contentType);
 			rs.getResources().add(res);
 			for (EObject eo : roots) {
 				// Containment is exclusive — if the caller hands us a live
@@ -157,14 +195,20 @@ public final class XmiCodec {
 				// added directly.
 				res.getContents().add(eo.eResource() == null ? eo : EcoreUtil.copy(eo));
 			}
-			res.save(out, Map.of(XMIResource.OPTION_ENCODING, "UTF-8"));
+			res.save(out, res instanceof XMIResource ? Map.of(XMIResource.OPTION_ENCODING, "UTF-8") : Map.of());
 		} finally {
 			rsObjects.ungetService(rs);
 		}
 	}
 
 	public static EObject read(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects) throws IOException {
-		return readGuarded(in, rsObjects, res -> {
+		return read(in, rsObjects, null);
+	}
+
+	/** Reads one root in the encoding the content type names; {@code null} is XMI. */
+	public static EObject read(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects, String contentType)
+			throws IOException {
+		return readGuarded(in, rsObjects, contentType, res -> {
 			if (res.getContents().isEmpty()) {
 				throw new XmiCodecException(XmiCodecException.Reason.EMPTY, "XMI body is empty");
 			}
@@ -190,7 +234,13 @@ public final class XmiCodec {
 	 */
 	public static XmiBundle readBundle(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects)
 			throws IOException {
-		return readGuarded(in, rsObjects, res -> {
+		return readBundle(in, rsObjects, null);
+	}
+
+	/** Reads the envelope in the encoding the content type names; {@code null} is XMI. */
+	public static XmiBundle readBundle(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects,
+			String contentType) throws IOException {
+		return readGuarded(in, rsObjects, contentType, res -> {
 			// resolveAll settles proxies that can be reached without I/O.
 			// The deny-all URI handler is still installed at this point, so
 			// every external fetch fails and EcoreUtil leaves such a
@@ -219,7 +269,7 @@ public final class XmiCodec {
 	 * points at.
 	 */
 	private static <T> T readGuarded(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects,
-			ResourceReader<T> reader) throws IOException {
+			String contentType, ResourceReader<T> reader) throws IOException {
 		ResourceSet rs = rsObjects.getService();
 		// Front of the list so it shadows the file:/http: handlers. The
 		// ResourceSet is a prototype instance, but we still restore the
@@ -229,26 +279,109 @@ public final class XmiCodec {
 		URIHandler denyAll = new DenyExternalAccess();
 		handlers.add(0, denyAll);
 		try {
-			Resource res = rs.createResource(URI.createURI("ddsr-wire.xmi"));
+			Resource res = wireResource(rs, contentType);
+			rs.getResources().add(res);
 			try {
 				// Size cap (S7) sits here so every parse path is covered:
 				// the resources that take a raw InputStream as well as the
 				// ones that go through a MessageBodyReader.
-				res.load(WireBody.limited(in), secureLoadOptions());
+				// The size cap covers every encoding; the parser features
+				// are XML's own and would mean nothing to another format.
+				res.load(WireBody.limited(in), res instanceof XMLResource ? secureLoadOptions() : Map.of());
 			} catch (IOException parseError) {
 				// Malformed or unacceptable XMI is a client problem — 400,
 				// not 500. The parser message stays in the log: it can carry
 				// local paths or the URI a rejected entity pointed at, and
 				// echoing that back would hand an attacker a probing
 				// oracle (S5).
-				LOG.log(Level.WARNING, "rejected XMI body", parseError);
-				throw new XmiCodecException(XmiCodecException.Reason.MALFORMED, "malformed or unacceptable XMI body");
+				LOG.log(Level.WARNING, "rejected wire body", parseError);
+				throw new XmiCodecException(XmiCodecException.Reason.MALFORMED,
+						"malformed or unacceptable request body");
 			}
 			return reader.read(res);
 		} finally {
 			handlers.remove(denyAll);
 			rsObjects.ungetService(rs);
 		}
+	}
+
+	/**
+	 * Whether this deployment can speak the named encoding.
+	 *
+	 * <p>Asked by the JAX-RS providers before they claim a media type.
+	 * They are registered for the wildcard so a deployment that adds an
+	 * encoding needs no new provider — but claiming a media type nobody
+	 * registered would take it away from whoever could actually serve
+	 * it, so the claim is made only when the answer is yes.
+	 */
+	public static boolean canDecode(ComponentServiceObjects<ResourceSet> rsObjects, String contentType) {
+		if (contentType == null || contentType.isBlank() || isXml(contentType)
+				|| MediaTypes.WILDCARD.equals(contentType)) {
+			return true;
+		}
+		ResourceSet rs = rsObjects.getService();
+		try {
+			wireResource(rs, contentType);
+			return true;
+		} catch (XmiCodecException unsupported) {
+			return false;
+		} finally {
+			rsObjects.ungetService(rs);
+		}
+	}
+
+	/** Spellings this codec has to recognise without dragging in JAX-RS. */
+	private static final class MediaTypes {
+		static final String WILDCARD = "*/*";
+
+		private MediaTypes() {
+		}
+	}
+
+	/**
+	 * The resource the wire document is read from or written to.
+	 *
+	 * <p>Nothing said, or XML said, means the hardened {@link
+	 * WireResource} — the path-only fragments and the XMI behaviour
+	 * every caller had before. Anything else is looked up in the
+	 * ResourceSet's content-type registry, which is EMF's own mechanism
+	 * and the reason this needs no serializer abstraction of its own: an
+	 * encoding exists exactly when someone registered a factory for it.
+	 *
+	 * <p>An unregistered content type is refused. Falling back to XMI
+	 * would be worse than failing: the body would be written under a
+	 * name that does not describe it, and the mismatch would surface at
+	 * the far end as a parse error with no clue where it came from.
+	 */
+	private static Resource wireResource(ResourceSet rs, String contentType) {
+		if (contentType == null || contentType.isBlank() || isXml(contentType)) {
+			return new WireResource(URI.createURI("ddsr-wire.xmi"));
+		}
+		Object registered = rs.getResourceFactoryRegistry().getContentTypeToFactoryMap().get(contentType);
+		if (registered == null) {
+			registered = Resource.Factory.Registry.INSTANCE.getContentTypeToFactoryMap().get(contentType);
+		}
+		// The registry map is Object-valued: EMF allows a descriptor that
+		// creates the factory lazily as well as the factory itself.
+		Resource.Factory factory = registered instanceof Resource.Factory ready ? ready
+				: registered instanceof Resource.Factory.Descriptor descriptor ? descriptor.createFactory()
+				: null;
+		if (factory == null) {
+			throw new XmiCodecException(XmiCodecException.Reason.MALFORMED,
+					"no encoding is registered for content type '" + contentType + "'");
+		}
+		Resource res = factory.createResource(URI.createURI("ddsr-wire"));
+		return res;
+	}
+
+	/** XML in any of its spellings, including the +xml suffix family. */
+	private static boolean isXml(String contentType) {
+		String type = contentType.toLowerCase(java.util.Locale.ROOT);
+		int parameters = type.indexOf(';');
+		if (parameters >= 0) {
+			type = type.substring(0, parameters).trim();
+		}
+		return type.equals("application/xml") || type.equals("text/xml") || type.endsWith("+xml");
 	}
 
 	/**

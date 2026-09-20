@@ -124,8 +124,14 @@ log "Scenario A: Java provider -> TS consumer"
 # contract AND announces it from the same document (#84). A provider
 # that is a configuration and a service, with no code of its own.
 export PAYMENTS_PUBLISH_BINDING_PROBE=true
+# And PersonStore, whose argument and result are MODELS and whose
+# contract declares protobuf (#100). Same mechanism as the probe: a
+# factory configuration of the generic distribution serves it and
+# announces it from the same document, with no endpoint code anywhere.
+export PAYMENTS_PUBLISH_PERSON_STORE=true
 start_jar payment-java "$PROVIDER_JAR" "$WORK/payment-java"
 unset PAYMENTS_PUBLISH_BINDING_PROBE
+unset PAYMENTS_PUBLISH_PERSON_STORE
 PROVIDER_PID=$LAST_PID
 wait_for_line "$WORK/payment-java.log" "published payments-java" 60
 
@@ -136,6 +142,26 @@ PROBE_PID=$!
 PIDS+=("$PROBE_PID")
 
 wait_for_line "$WORK/probe-a.log" "PROBE_READY" 90
+
+# --------------------------------------------------- Scenario P (protobuf)
+log "Scenario P: Java provider -> Java consumer, body encoded as protobuf"
+# The one call in this harness whose payload is neither XMI nor
+# hand-rolled JSON. PersonStore takes a Person and returns a Person, and
+# its contract says consumes/produces = application/x-protobuf (#100);
+# nothing in the provider or the consumer mentions an encoding.
+#
+# Java on both ends on purpose: the TypeScript track has no
+# protobuf-to-EMF binding, so this contract is one a TS consumer cannot
+# read. That is why it runs here, while the Java provider from scenario
+# A is still up, and not as a cross-language scenario.
+start_jar client-protobuf "$CLIENT_JAR" "$WORK/client-protobuf"
+PROTOBUF_CLIENT_PID=$LAST_PID
+wait_for_line "$WORK/client-protobuf.log" "travelled as protobuf" 90
+grep -E "\[DDSR-Protobuf\]" "$WORK/client-protobuf.log" | tail -2
+kill "$PROTOBUF_CLIENT_PID" 2>/dev/null || true
+wait "$PROTOBUF_CLIENT_PID" 2>/dev/null || true
+echo "  ✓ protobuf-invocation: a modelled argument and result travelled in the declared encoding"
+
 log "Scenario A: stopping the Java provider (SIGTERM)"
 kill "$PROVIDER_PID"
 wait "$PROVIDER_PID" 2>/dev/null || true

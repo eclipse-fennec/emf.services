@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.client.internal;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.osgi.service.component.annotations.Activate;

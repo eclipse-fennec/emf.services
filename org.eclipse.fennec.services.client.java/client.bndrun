@@ -25,7 +25,8 @@ jersey.deps:
 	bnd.identity;id='org.apache.felix.configurator',\
 	bnd.identity;id='org.apache.felix.gogo.command',\
 	bnd.identity;id='org.apache.felix.gogo.shell',\
-	bnd.identity;id='org.eclipse.osgitech.rest.sse'
+	bnd.identity;id='org.eclipse.osgitech.rest.sse',\
+	bnd.identity;id='org.eclipse.fennec.services.examples.persons'
 # Project-local runtime bundles. broker.rest is server-only and pulls
 # mcp.gogo — keep it out of the client launch. The HTTP client side
 # is satisfied by org.eclipse.osgitech.rest.client (Jersey-client) via
@@ -53,6 +54,8 @@ jersey.deps:
 	org.eclipse.emf.common;version='[2.44.0,2.44.1)',\
 	org.eclipse.emf.ecore;version='[2.41.0,2.41.1)',\
 	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\
+	org.eclipse.fennec.services.examples.model;version=snapshot,\
+	org.eclipse.fennec.services.examples.persons;version=snapshot,\
 	org.eclipse.fennec.protobuf;version='[1.0.0,1.0.1)',\
 	org.eclipse.fennec.protobuf.osgi;version='[1.0.0,1.0.1)',\
 	com.google.protobuf;version='[4.35.1,4.35.2)',\

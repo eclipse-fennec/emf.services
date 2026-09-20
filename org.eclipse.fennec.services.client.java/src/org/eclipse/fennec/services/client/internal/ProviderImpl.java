@@ -20,16 +20,7 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
-import org.eclipse.fennec.services.broker.core.BrokerImplementations;
-import org.eclipse.fennec.services.broker.core.BrokerLookup;
-import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
-import org.eclipse.fennec.services.client.DdsrException;
-import org.eclipse.fennec.services.client.DdsrProvider;
-import org.eclipse.fennec.services.client.Registration;
-import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
-import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 import org.eclipse.fennec.services.ConsumerCapability;
-import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.FlavorKind;
@@ -38,7 +29,16 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
+import org.eclipse.fennec.services.broker.core.BrokerImplementations;
+import org.eclipse.fennec.services.broker.core.BrokerLookup;
+import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
+import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.DdsrProvider;
+import org.eclipse.fennec.services.client.Registration;
+import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
+import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 
 final class ProviderImpl implements DdsrProvider {
 

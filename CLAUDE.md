@@ -17,41 +17,41 @@ Maven groupId: `org.eclipse.fennec.services` (Quelle: `gradle.properties`, Singl
 
 Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → CLIENT_FRAMEWORK_GUIDE**; die Harness schlägt beide, weil sie den Zustand tatsächlich ausführt.
 
-**Benutzer-Guide** (englisch, neu mit #111) — für jemanden, der Fennec Services *benutzen* will:
+**Alles in `docs/` ist englisch** (Konvention des Users, 2026-09-20). Nur diese Datei hier darf deutsch bleiben. Noch nicht uebersetzt und eine eigene Welle wert: `ACQUISITION.md`, `ARCHITECTURE.md`, `WIRE_CHANNELS.md`, `UPDATE_POLICY.md`.
 
-- [docs/guide/README.md](docs/guide/README.md) — Einstieg: welche Seite für welche Aufgabe
-- [docs/guide/01-architecture.md](docs/guide/01-architecture.md) — die drei Parteien, warum das Modell der Vertrag ist, Bundle-Landkarte
-- [docs/guide/02-eventing.md](docs/guide/02-eventing.md) — SSE und MQTT, was ein Consumer garantiert sieht und was nicht
-- [docs/guide/03-fingerprints.md](docs/guide/03-fingerprints.md) — sd1 und im1, was einen Fingerprint ändert
-- [docs/guide/04-code-generation.md](docs/guide/04-code-generation.md) — Ecore nach src-gen, Arbeitsteilung am Modell
-- [docs/guide/05-transports.md](docs/guide/05-transports.md) — was mitgeliefert wird und was ein Deployment konfigurieren muss
-- [docs/guide/06-rsa.md](docs/guide/06-rsa.md) — OSGi Remote Service Admin auf dieser Registry
+**Benutzer-Guide** — fuer jemanden, der Fennec Services *benutzen* will:
 
-**Interne Dokumente** — für uns geschrieben, deutsch:
+- [docs/OVERVIEW.md](docs/OVERVIEW.md) — Einstieg: welche Seite fuer welche Aufgabe
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) — vom frischen Checkout zu Broker, Provider und Consumer
+- [docs/TRANSPORTS.md](docs/TRANSPORTS.md) — was mitgeliefert wird, was ein Deployment konfigurieren muss, und seit #100: wie der Vertrag die Payload-Kodierung waehlt
+- [docs/EVENTING.md](docs/EVENTING.md) — SSE und MQTT, was ein Consumer garantiert sieht und was nicht
+- [docs/FINGERPRINTS.md](docs/FINGERPRINTS.md) — sd1 und im1, was einen Fingerprint bewegt
+- [docs/CODE_GENERATION.md](docs/CODE_GENERATION.md) — Ecore nach src-gen, Arbeitsteilung am Modell
+- [docs/RSA.md](docs/RSA.md) — OSGi Remote Service Admin auf dieser Registry
+- [docs/EXAMPLE_PAYMENT.md](docs/EXAMPLE_PAYMENT.md) — das Payment-Beispiel
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Broker-Container-Image, Konfigurationsflaeche, Publish-Pipeline
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Bundle-Layout, Wire-Format, Architektur-Entscheidungen, Demo-Reproduktion
+**Vertiefung:**
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Bundle-Layout, Architektur-Entscheidungen, Demo-Reproduktion
 - [docs/CLIENT_FRAMEWORK_GUIDE.md](docs/CLIENT_FRAMEWORK_GUIDE.md) — Java-Provider/-Consumer schreiben
 - [docs/ACQUISITION.md](docs/ACQUISITION.md) — Discovery/Acquisition/Invocation, ConsumerSession/Lease-Modell, im1/Cold-Cache
-- [docs/UPDATE_POLICY.md](docs/UPDATE_POLICY.md) — Update-Policies, Heartbeat (präzisiert durch ACQUISITION.md)
-- [docs/WIRE_FORMAT.md](docs/WIRE_FORMAT.md) — Draht-Dokumente und ihre Felder
+- [docs/UPDATE_POLICY.md](docs/UPDATE_POLICY.md) — Update-Policies, Heartbeat (praezisiert durch ACQUISITION.md)
+- [docs/WIRE_FORMAT.md](docs/WIRE_FORMAT.md) — Draht-Dokumente, ihre Felder und die Payload-Kodierung
 - [docs/WIRE_CHANNELS.md](docs/WIRE_CHANNELS.md) — Channel-Modell (v2-Design)
-- [docs/FINGERPRINTS.md](docs/FINGERPRINTS.md) — sd1/im1 im Detail
-- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) — vom frischen Checkout zu Broker, Provider und Consumer
-- [docs/EXAMPLE_PAYMENT.md](docs/EXAMPLE_PAYMENT.md) — das Payment-Beispiel
 - [docs/HARNESS.md](docs/HARNESS.md) / [itest/README.md](itest/README.md) — Cross-Language-Harness (Host + Podman + Mosquitto)
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Broker-Container-Image, Konfigurationsfläche, Publish-Pipeline
 
 ## Module
 
 - `org.eclipse.fennec.services.model` — EMF-Codegen aus `model/services.ecore` nach **`src-gen`** (fennecEMF `-generate`; das persistierte GenModel wird NICHT auto-reconciled — bei Ecore-Änderungen manuell mitpflegen)
 - `org.eclipse.fennec.services.api` — der Vertrag, auf den sich alles andere einigt: vier Rollen-Interfaces, Diagnostics, EventSink/EventDocument, LookupBackend, Exceptions, dazu die sd1/im1-Fingerprints, die Flavor-Konvention und `JavaContracts` (Vertrag aus einem Java-Interface ableiten, deterministisch). Keine Komponenten, keine Konfiguration. Bewusst **ohne** den XMI-Codec: ein Fingerprint wird über dem Modell im Speicher gerechnet, nie über serialisierten Bytes — und genau das erlaubt, den Codec nach emf.osgi zu spenden, ohne die eingefrorenen Draht-Schemata mitzugeben. `FrameworkShutdown.installFor` liegt hier als Hilfsklasse; installiert wird der Hook von den zwei Komponenten, die ohnehin einen Lebenszyklus führen (Broker und Client)
 - `org.eclipse.fennec.services.broker.core` / `broker.rest` / `broker.mqtt` — der Broker selbst, JAX-RS/SSE, MQTT-EventSink. `DdsrBrokerImpl` ist seit #110 nur noch Fassade; dahinter je ein Belang (`BrokerState`, `Registrations`, `CatalogStore`, `Lookups`, `UpdatePolicies`, `Liveness`, `Sessions`, `ColdCache`, `Announcements`), und `Retirement`/`Republication` sind die zwei Nähte, über die sie einander aufrufen
-- `org.eclipse.fennec.services.xmi.codec` — XMI-Wire-Codec + `…services.fingerprint` (sd1)
+- `org.eclipse.fennec.services.xmi.codec` — Wire-Codec: die Kodierung wird seit #100 per Content-Type aus der ResourceSet-Factory-Registry gewählt (XMI als Vorgabe, Protobuf über emf.util), ein nicht registrierter Content-Type wird abgelehnt statt still als XMI geschrieben; die Härtung hängt am Format, nicht am Codepfad. Der Klassenname ist zu eng und bleibt vorerst
 - `org.eclipse.fennec.services.client.java` / `client.rest` / `client.mqtt` — transport-agnostisches SDK + Transporte
 - `org.eclipse.fennec.services.rsa` / `rsa.distribution.rest` / `rsa.discovery.rest` / `rsa.discovery.local` / `rsa.topology` / `rsa.config` — OSGi Remote Service Admin auf DDSR (#24); der OSGi-RSA-TCK läuft grün (`org.eclipse.fennec.services.rsa.tck`, `./itest/run-tck.sh`): Kern mit zwei SPIs (`FlavorDistribution`, `ServiceDiscovery`), je Flavor ein Provider über RSA-Config-Types, lokale Service-Registry auf der EObject-Registry; `examples.rsa.api` / `examples.rsa` / `examples.rsa.consumer` sind der Beweis: ein simpler OSGi-Service, in einem Framework exportiert und in einem anderen per `@Reference` gebunden — ohne Vertragsdokument. Importierte Proxies registriert ein leeres Host-Bundle (`ProxyHost`), nicht das RSA-Bundle: das scheiterte am Class-Space-Check. Konfiguriert wird ein Knoten über **eine** Rolle (`rsa.config`: PID `…rsa.provider` bzw. `…rsa.consumer`), aus der eine Konfigurationskomponente die einzelnen PIDs ableitet, prüft, in fester Reihenfolge schreibt und in der Gegenrichtung abräumt (#109) — die neun handgeschriebenen Konfigurationen sind damit Implementierungsdetail
 - `org.eclipse.fennec.services.flavor.rest` — die REST-Platzierungsregeln, geteilt von Consumer, Dispatcher und Template (kein JAX-RS)
 - `org.eclipse.fennec.services.provider.rest` — generische REST-Distribution: eine Factory-Konfiguration serviert einen Vertrag aus seinem Modell und meldet ihn optional selbst an (#84)
-- `org.eclipse.fennec.services.examples.payment` / `examples.model` — Demo-Provider + Beispielmodell
+- `org.eclipse.fennec.services.examples.payment` / `examples.model` / `examples.persons` — Demo-Provider + Beispielmodell + der Consumer des `PersonStore`-Vertrags, dessen Rumpf ein Modell ist und dessen Kodierung Protobuf (#100); eigenes Bundle, weil das SDK nicht von einem Beispielmodell abhängen darf und der Provider seine Konfiguration mitbringt
 - `ddsr-ts-client/` — TypeScript-Track (pnpm-Workspace; in `gradle.properties` via `bnd_exclude` vom bnd-Build ausgenommen, ebenso `itest`)
 - `itest/` — Harness: `run-harness.sh` (Host) und `run-harness-podman.sh` (Container inkl. Mosquitto für den MQTT-Drahtnachweis)
 - `docker/broker/` — Build-Kontext des deploybaren Broker-Images (`Dockerfile` + `prepareDocker`-Staging); in `gradle.properties` via `bnd_exclude` vom bnd-Build ausgenommen. Gebaut und gepusht von `.github/workflows/reusable-container.yml` (siehe [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))

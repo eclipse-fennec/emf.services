@@ -39,6 +39,7 @@ under `itest/work-podman/`.
 | **B** | TS provider → Java consumer | reflective REST invocation from Java; withdraw is confirmed by the broker before the TS endpoint stops; the broker no longer lists the provider afterwards |
 | **C** | TS MQTT wire probe | a broker-shaped event document is delivered and decoded over a real Mosquitto TCP connection |
 | **D** | Java broker sink + Java client source over Mosquitto | lifecycle events (REGISTERED + UNREGISTERING) delivered over real MQTT/TCP; ordering control pins the events onto the MQTT path (the last stream (re)open before the events is the MQTT subscription — the SDK hands the stream over when a higher-ranked transport appears) |
+| **P** | Java provider → Java consumer, protobuf body | a modelled argument and a modelled result travel in the encoding the contract declares (#100): `PersonStore` says `consumes`/`produces` = `application/x-protobuf`, and neither side mentions an encoding in code. **Java on both ends on purpose** — the TypeScript track has no protobuf-to-EMF binding, so this contract is one a TS consumer cannot read |
 | **E** | TS provider announces `MqttFlavor` beside `RestFlavor`; probe invokes over MQTT | the DoD's "same interface, different transports": `getBalance` is invoked over the announced MQTT flavor, broker address taken from `MqttFlavor.brokers`, request/response via the frozen envelope ([WIRE_FORMAT.md](WIRE_FORMAT.md)) |
 
 Scenario D runs the `-mqtt` launch variants: the MQTT transports ship

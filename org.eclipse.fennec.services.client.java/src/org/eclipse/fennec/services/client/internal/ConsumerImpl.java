@@ -16,24 +16,24 @@ package org.eclipse.fennec.services.client.internal;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import org.eclipse.fennec.services.ServiceEvent;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.ConsumerCapability;
+import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.ServiceImplementation;
+import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrServiceListener;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.client.ServiceLocator;
-import org.eclipse.fennec.services.ConsumerCapability;
-import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.ServiceImplementation;
-import org.eclipse.fennec.services.ServiceInterface;
-import org.eclipse.fennec.services.ServiceReference;
 
 final class ConsumerImpl implements DdsrConsumer {
 

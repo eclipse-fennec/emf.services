@@ -42,6 +42,23 @@ export interface DdsrConsumer {
   getService<T>(interfaceName: string, filter?: string): Promise<T | undefined>;
 
   /**
+   * Says that this consumer no longer uses a reference.
+   *
+   * A lookup makes the client claim the references it found, and the
+   * session it renews carries those claims. A claim is what a
+   * `DEPRECATE_AND_DRAIN` handover waits for: the predecessor stays
+   * alive until the last consumer has let go. This is how to let go.
+   *
+   * Not calling it is safe and simply means the claim lasts until the
+   * service disappears; the cost is a handover that waits for a
+   * consumer which has in truth already moved on.
+   *
+   * @param referenceId the id of the reference, as
+   *   `ServiceLocator.reference` reports it
+   */
+  release(referenceId: string): void;
+
+  /**
    * Register a listener for lifecycle events of an interface. The event
    * stream opens lazily with the first listener; on every (re)connect a
    * snapshot is pulled before events flow (FR-Sync-Reconnect). Events

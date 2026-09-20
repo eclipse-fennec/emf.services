@@ -97,6 +97,21 @@ export class ServiceListenerRegistry {
   }
 
   /** Remember which interfaces a reference serves (from lookup results). */
+  /**
+   * Stops claiming a reference this consumer no longer uses.
+   *
+   * The note is what the session protocol sends as an acquisition, so
+   * dropping it is how a consumer lets go. Until this existed, the only
+   * thing that ever removed a claim was the service going away — which
+   * is the wrong way round for a drain, because a drain is waiting for
+   * consumers to let go before it takes the service away.
+   */
+  forgetReference(referenceId: string | undefined): void {
+    if (referenceId) {
+      this.interfacesByReference.delete(referenceId);
+    }
+  }
+
   noteReference(referenceId: string | undefined, interfaceNames: string[]): void {
     if (!referenceId || interfaceNames.length === 0) return;
     this.interfacesByReference.set(referenceId, new Set(interfaceNames));

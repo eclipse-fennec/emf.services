@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
+import { dataAsText, readStructured } from '@ddsr/client';
 import type { MqttFlavor, MqttOperationFlavor, ServiceOperation } from '@ddsr/model';
 import { MqttFlavorPlugin } from '../src/mqtt-flavor-plugin';
 import { MqttOperationServer } from '../src/mqtt-operation-server';
@@ -34,11 +35,19 @@ function firstOpFlavor(flavor: MqttFlavor): MqttOperationFlavor {
 class FakeBroker {
   private readonly subscriptions = new Map<string, Set<FakeClient>>();
 
+  private readonly watchers: Array<(topic: string, payload: Uint8Array) => void> = [];
+
   connect(): FakeClient {
     return new FakeClient(this);
   }
 
+  /** Everything that is published, delivered or not — what the wire sees. */
+  onPublish(watcher: (topic: string, payload: Uint8Array) => void): void {
+    this.watchers.push(watcher);
+  }
+
   route(topic: string, payload: Uint8Array): void {
+    for (const watcher of this.watchers) watcher(topic, payload);
     for (const client of this.subscriptions.get(topic) ?? []) {
       client.deliver(topic, payload);
     }
@@ -136,6 +145,39 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     // reads back as AT_MOST_ONCE because the model has no way to say
     // "unset" (#81) — qosFor treats that as silence.
     expect(qosFor(flavor, opFlavor)).toBe(1);
+  });
+
+  it('puts the call on the wire as a CloudEvent carrying a ServiceInvocation', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const amount = factory.createParameter();
+    amount.name = 'amount';
+    amount.type = 'int';
+    amount.index = 0;
+    charge.parameters.push(amount);
+    const { broker, clientFactory } = testHarness();
+    const published: Array<{ topic: string; payload: Uint8Array }> = [];
+    broker.onPublish((topic, payload) => published.push({ topic, payload }));
+
+    const plugin = new MqttFlavorPlugin({
+      clientFactory, log: () => undefined, timeoutMs: 40, originLabel: 'probe',
+    });
+    await plugin.invoke(charge, { amount: 12 }, flavor, firstOpFlavor(flavor))
+      .catch(() => undefined); // nobody answers; the request is the point
+
+    const request = published.find(p => p.topic === 'ddsr/rpc/payments/charge');
+    expect(request).toBeDefined();
+    const message = readStructured(request!.payload);
+    expect(message.attributes.type).toBe('org.eclipse.fennec.services.invoke');
+    expect(message.attributes.source).toBe('/consumer/probe');
+    expect(message.attributes.subject).toBe('charge');
+    expect(message.attributes.datacontenttype).toBe('application/xml');
+    expect(message.attributes.extensions.replyto)
+      .toMatch(/^ddsr\/rpc\/payments\/charge\/reply\/.+/);
+    const document = dataAsText(message);
+    expect(document).toContain('services:ServiceInvocation');
+    expect(document)
+      .toContain('xsi:type="services:IntProperty" name="amount" value="12"');
+    await plugin.close();
   });
 
   it('round-trips an invocation: consumer plugin -> provider server -> answer', async () => {

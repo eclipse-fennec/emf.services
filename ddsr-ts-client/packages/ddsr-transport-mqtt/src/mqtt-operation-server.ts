@@ -31,17 +31,20 @@ export interface MqttOperationServerOptions {
   brokerUrl?: string;
   clientId?: string;
   clientFactory?: (url: string, clientId: string) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  /** Which system this is, for the CloudEvents `source` of every answer (#101). */
+  originLabel?: string;
   log?: (message: string) => void;
 }
 
 /**
- * The provider side of the MQTT request/response convention (A2
- * Etappe 2): subscribes each operation's request topic of the given
- * MqttFlavor, dispatches to the matching handler, and publishes the
- * response envelope to the per-request replyTo. A handler failure
- * answers with the error envelope — the consumer sees the failure
- * instead of a timeout. Requests without a decodable envelope are
- * logged and dropped (nothing to answer to).
+ * The provider side of the MQTT request/response convention:
+ * subscribes each operation's request topic of the given MqttFlavor,
+ * dispatches to the matching handler, and publishes the answer — a
+ * CloudEvent of its own, correlated with the call — to the reply topic
+ * the call named. A handler failure answers with a Diagnostic, so the
+ * consumer sees the failure instead of a timeout. A message that is
+ * not a readable call is logged and dropped: there is nothing to
+ * answer to.
  */
 export class MqttOperationServer {
   private readonly flavor: MqttFlavor;
@@ -101,17 +104,20 @@ export class MqttOperationServer {
       this.log(`undecodable request on ${topic} dropped: ${String(error)}`);
       return;
     }
-    let response;
+    const source = `/provider/${this.options.originLabel ?? operationName}`;
+    let answer: Uint8Array;
     try {
       const result = await this.handlers[operationName](request.args);
-      response = { correlationId: request.correlationId, result };
+      answer = encodeResponse(request.id, source, result);
     } catch (error) {
-      response = { correlationId: request.correlationId, error: String(error) };
+      // A failure is an answer: the consumer sees why, instead of
+      // waiting out its timeout for a message that never comes.
+      answer = encodeResponse(request.id, source, undefined, String(error));
     }
     try {
-      await client.publishAsync(request.replyTo, encodeResponse(response), { retain: false });
+      await client.publishAsync(request.replyTo, answer, { retain: false });
     } catch (error) {
-      this.log(`could not answer ${request.correlationId} on ${request.replyTo}: ${String(error)}`);
+      this.log(`could not answer ${request.id} on ${request.replyTo}: ${String(error)}`);
     }
   }
 }

@@ -114,6 +114,15 @@ BROKER_PID=$LAST_PID
 wait_for_url "$BROKER_URL/catalog" 60
 echo "broker up (pid $BROKER_PID)"
 
+# A raw tap on the event stream, opened before anything publishes: no
+# SDK, no model, just what a curl sees. The envelope is a cross-language
+# contract (#101), and the honest proof that it is on the wire is one
+# that reads the wire.
+curl -sN --max-time 300 -H 'Accept: text/event-stream' "$BROKER_URL/events" \
+  >"$WORK/sse-tap.log" 2>&1 &
+SSE_TAP_PID=$!
+PIDS+=("$SSE_TAP_PID")
+
 # ============================================================ Scenario A
 log "Scenario A: Java provider -> TS consumer"
 # Only this scenario's provider also announces BindingProbe: its one
@@ -134,6 +143,22 @@ unset PAYMENTS_PUBLISH_BINDING_PROBE
 unset PAYMENTS_PUBLISH_PERSON_STORE
 PROVIDER_PID=$LAST_PID
 wait_for_line "$WORK/payment-java.log" "published payments-java" 60
+
+# --------------------------------------------------- the frame on the wire
+wait_for_line "$WORK/sse-tap.log" "specversion" 60
+SSE_FRAME=$(grep -m1 '^data: ' "$WORK/sse-tap.log" | sed 's/^data: //')
+for expected in '"specversion":"1.0"' \
+                '"type":"org.eclipse.fennec.services.registered"' \
+                '"datacontenttype":"application/xml"' \
+                '"data":'; do
+  case "$SSE_FRAME" in
+    *"$expected"*) ;;
+    *) echo "SCENARIO A FAILED: the SSE frame carries no $expected"; echo "$SSE_FRAME"; exit 1 ;;
+  esac
+done
+grep -q "^event: ddsr-service-event" "$WORK/sse-tap.log" \
+  || { echo "SCENARIO A FAILED: the frozen SSE event name is gone"; exit 1; }
+echo "  ✓ sse-frame-is-a-cloud-event: $(echo "$SSE_FRAME" | cut -c1-96)…"
 
 (cd "$TS/examples/payment" \
   && BROKER_URL="$BROKER_URL" EXPECT_LANG=java EXPECT_BINDINGS=1 corepack pnpm exec tsx harness-probe.ts) \

@@ -14,7 +14,7 @@ Bundle-Description: \
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
-	org.eclipse.fennec.services.broker.api;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot
 
 # Plain JUnit, no OSGi runtime — the listener registry takes its event

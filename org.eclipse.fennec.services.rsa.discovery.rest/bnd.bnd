@@ -15,7 +15,7 @@ Bundle-Description: \
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.osgi.service.remoteserviceadmin;version=latest,\
-	org.eclipse.fennec.services.broker.api;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.rsa;version=snapshot
 
 -testpath: \

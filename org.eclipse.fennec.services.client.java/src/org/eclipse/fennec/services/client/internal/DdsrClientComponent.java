@@ -30,10 +30,12 @@ import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.client.DdsrClient;
+import org.eclipse.fennec.services.common.FrameworkShutdown;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrProvider;
 import org.eclipse.fennec.services.FlavorKind;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
@@ -157,11 +159,23 @@ public final class DdsrClientComponent implements DdsrClient {
 
 	private DdsrClientImpl delegate;
 
+	/** Removes the JVM shutdown hook again when this component goes. */
+	private AutoCloseable cleanShutdown;
+
+	/** Kept so a configuration change can rebuild without a fresh activation. */
+	private BundleContext context;
+
 	/** What the running client was built from, to tell a real change from a repeat. */
 	private Config config;
 
 	@Activate
-	void activate(Config config) {
+	void activate(BundleContext context, Config config) {
+		this.context = context;
+		// A provider that is killed with SIGTERM must still withdraw, and
+		// a consumer must still release its session (FR-P3). Neither
+		// happens unless something stops the framework first, and the bnd
+		// launcher installs no hook of its own.
+		this.cleanShutdown = FrameworkShutdown.installFor(context);
 		this.config = config;
 		try {
 			List<FlavorKind> flavors = parseFlavors(config.supported_flavors());
@@ -228,8 +242,9 @@ public final class DdsrClientComponent implements DdsrClient {
 			return;
 		}
 		LOG.info("[DDSR-Client] configuration changed — rebuilding the client");
+		BundleContext current = this.context;
 		deactivate();
-		activate(config);
+		activate(current, config);
 	}
 
 	/** Whether two configurations would build the same client. */
@@ -328,6 +343,15 @@ public final class DdsrClientComponent implements DdsrClient {
 
 	@Deactivate
 	void deactivate() {
+		if (cleanShutdown != null) {
+			try {
+				cleanShutdown.close();
+			} catch (Exception removalFailure) {
+				// The JVM may already be shutting down, in which case the
+				// hook is running and cannot be removed. Nothing to do.
+			}
+			cleanShutdown = null;
+		}
 		if (sessionRenewal != null) {
 			sessionRenewal.shutdownNow();
 			sessionRenewal = null;

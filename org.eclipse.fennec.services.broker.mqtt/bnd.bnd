@@ -13,7 +13,7 @@ Bundle-Description: \
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.eclipse.paho.client.mqttv3;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
-	org.eclipse.fennec.services.broker.api;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot
 
 # Plain JUnit: the sink takes its MQTT client as a constructor argument,

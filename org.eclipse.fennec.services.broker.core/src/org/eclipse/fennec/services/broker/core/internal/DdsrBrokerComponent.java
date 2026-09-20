@@ -37,9 +37,11 @@ import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.BrokerSessions;
 import org.eclipse.fennec.services.broker.core.DdsrBroker;
+import org.eclipse.fennec.services.common.FrameworkShutdown;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -159,6 +161,20 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	 */
 	private volatile DdsrBrokerImpl delegate;
 
+	/** Removes the JVM shutdown hook again when this component goes. */
+	private AutoCloseable cleanShutdown;
+
+	private static void closeQuietly(AutoCloseable closeable) {
+		if (closeable == null) {
+			return;
+		}
+		try {
+			closeable.close();
+		} catch (Exception removalFailure) {
+			LOG.log(Level.FINE, "[DDSR] removing the shutdown hook failed", removalFailure);
+		}
+	}
+
 	private DdsrBrokerImpl required() {
 		DdsrBrokerImpl current = delegate;
 		if (current == null) {
@@ -197,8 +213,14 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	}
 
 	@Activate
-	void activate(Config config) {
+	void activate(BundleContext context, Config config) {
 		try {
+			// Every launch that must shut down cleanly needs this, and a
+			// component that already owns a lifecycle is the natural place
+			// to install it: a plain SIGTERM otherwise kills the JVM
+			// without running a single @Deactivate, so the final snapshot
+			// and every subscriber close are skipped.
+			this.cleanShutdown = FrameworkShutdown.installFor(context);
 			// Everything below this line is behaviour, so none of it is
 			// decided here: the component turns a configuration into
 			// settings and hands them over. A broker embedded in a plain
@@ -224,6 +246,8 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	}
 
 	void deactivate() {
+		closeQuietly(cleanShutdown);
+		cleanShutdown = null;
 		DdsrBrokerImpl broker = delegate;
 		delegate = null;
 		if (broker != null) {

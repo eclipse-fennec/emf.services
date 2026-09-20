@@ -11,13 +11,10 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.shutdown;
+package org.eclipse.fennec.services.common;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.launch.Framework;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
 
 /**
  * Stops the OSGi framework cleanly when the JVM is terminated from the
@@ -33,39 +30,47 @@ import org.osgi.service.component.annotations.Deactivate;
  * complete, which runs the whole DS deactivation chain synchronously
  * before the JVM exits.
  * <p>
- * It lives in a bundle of its own because it is not about the broker,
- * the client or any one role: every launch that must shut down cleanly
- * needs it. It used to sit in broker.core, where it quietly did this
- * job for any launch that happened to drag that bundle in. Removing
- * that accidental dependency (#105) took the hook away from the
- * provider launches with it, and the harness said so immediately: a
- * SIGTERM'd provider never withdrew, and no consumer was told.
+ * <p>
+ * Not a component, and that is the point. It used to be one, first in
+ * broker.core where it quietly served any launch that happened to drag
+ * that bundle in, then in a bundle of its own holding nothing else. A
+ * hook is not a contract, so it does not belong in an API bundle as a
+ * component — but installing one is something a component that already
+ * owns a lifecycle can simply do. The broker's and the client's
+ * components each call this; between them they cover every launch we
+ * ship.
  */
-@Component(immediate = true)
-public class FrameworkShutdownHook {
+public final class FrameworkShutdown {
 
 	/** Upper bound for the framework stop on JVM shutdown. */
 	private static final long STOP_TIMEOUT_MILLIS = 15_000L;
 
-	private Thread hook;
-
-	@Activate
-	void activate(BundleContext context) {
-		Framework framework = (Framework) context.getBundle(0);
-		hook = new Thread(() -> stopFramework(framework), "ddsr-clean-shutdown");
-		Runtime.getRuntime().addShutdownHook(hook);
+	private FrameworkShutdown() {
 	}
 
-	@Deactivate
-	void deactivate() {
-		if (hook != null) {
+	/**
+	 * Installs the hook and hands back the way to remove it again.
+	 *
+	 * <p>Installing it twice in one framework is harmless: the second
+	 * hook finds the framework already stopping and returns. Closing the
+	 * handle during JVM shutdown is equally harmless — the hook is
+	 * already running by then.
+	 *
+	 * @param context any bundle's context; only the system bundle is
+	 *        taken from it
+	 * @return a handle that removes the hook, for the caller's deactivate
+	 */
+	public static AutoCloseable installFor(BundleContext context) {
+		Framework framework = (Framework) context.getBundle(0);
+		Thread hook = new Thread(() -> stopFramework(framework), "ddsr-clean-shutdown");
+		Runtime.getRuntime().addShutdownHook(hook);
+		return () -> {
 			try {
 				Runtime.getRuntime().removeShutdownHook(hook);
 			} catch (IllegalStateException alreadyShuttingDown) {
 				// JVM shutdown in progress — the hook is running, fine.
 			}
-			hook = null;
-		}
+		};
 	}
 
 	private static void stopFramework(Framework framework) {

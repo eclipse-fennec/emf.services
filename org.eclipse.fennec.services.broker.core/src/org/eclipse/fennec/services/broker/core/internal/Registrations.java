@@ -39,9 +39,9 @@ import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
-import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
+import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
 

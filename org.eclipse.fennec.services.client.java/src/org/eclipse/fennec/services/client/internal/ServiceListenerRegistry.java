@@ -226,18 +226,31 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 		if (reference == null) {
 			return Set.of();
 		}
+		String referenceId = reference.getId();
 		Set<String> fromDocument = fromDocument(reference);
+		// Read what we remember BEFORE forgetting it: for a withdrawal
+		// this map may be the only thing that can still name the
+		// interfaces, and the caller needs them to route the event.
+		Set<String> remembered = referenceId == null ? null : interfacesByReference.get(referenceId);
+
+		// The service is gone; stop remembering it — whether or not the
+		// document happened to carry its interfaces. Forgetting used to
+		// sit after an early return that a self-contained UNREGISTERING
+		// always took, which is every withdrawal the broker sends. The
+		// map therefore only ever grew, and since it IS the session's
+		// acquisition list (ACQUISITION.md §4), a long-lived consumer
+		// kept claiming leases on services that had been gone for hours
+		// (#124).
+		if ((event.getType() == ServiceEventType.UNREGISTERING || event.getType() == ServiceEventType.RETIRED)
+				&& referenceId != null) {
+			interfacesByReference.remove(referenceId);
+		}
+
 		if (!fromDocument.isEmpty()) {
 			if (event.getType() == ServiceEventType.REGISTERED || event.getType() == ServiceEventType.MODIFIED) {
-				noteReference(reference.getId(), fromDocument);
+				noteReference(referenceId, fromDocument);
 			}
 			return fromDocument;
-		}
-		Set<String> remembered = interfacesByReference.get(reference.getId());
-		if ((event.getType() == ServiceEventType.UNREGISTERING || event.getType() == ServiceEventType.RETIRED)
-				&& reference.getId() != null) {
-			// The service is gone; stop remembering it.
-			interfacesByReference.remove(reference.getId());
 		}
 		return remembered != null ? remembered : Set.of();
 	}

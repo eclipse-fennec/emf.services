@@ -103,6 +103,96 @@ class ServiceListenerRegistryTest {
 		return event;
 	}
 
+	/**
+	 * An UNREGISTERING as the broker actually sends it since #124: a
+	 * detached copy whose provider subtree still carries the withdrawn
+	 * implementation, so the document names its interfaces by itself.
+	 */
+	private static ServiceEvent selfContainedUnregisteringEvent(String refId, String interfaceName) {
+		ServiceEvent event = registeredEvent(refId, interfaceName);
+		event.setType(ServiceEventType.UNREGISTERING);
+		return event;
+	}
+
+	// --- the acquisition list must shrink too (#124) -------------------
+
+	@Test
+	void aWithdrawalIsForgottenEvenWhenTheDocumentNamesItsInterfaces() {
+		ServiceListenerRegistry r = registry();
+		r.add("Payment", null, event -> {
+		});
+
+		source.handler.onEvent(registeredEvent("ref-1", "Payment"));
+		assertThat(r.knownReferenceIds()).containsExactly("ref-1");
+
+		source.handler.onEvent(selfContainedUnregisteringEvent("ref-1", "Payment"));
+
+		assertThat(r.knownReferenceIds())
+				.as("this list IS what the session claims as leases — it may not grow forever")
+				.isEmpty();
+	}
+
+	@Test
+	void aRetiredReferenceIsForgottenToo() {
+		ServiceListenerRegistry r = registry();
+		r.add("Payment", null, event -> {
+		});
+		source.handler.onEvent(registeredEvent("ref-1", "Payment"));
+
+		ServiceEvent retired = registeredEvent("ref-1", "Payment");
+		retired.setType(ServiceEventType.RETIRED);
+		source.handler.onEvent(retired);
+
+		assertThat(r.knownReferenceIds()).isEmpty();
+	}
+
+	@Test
+	void aWithdrawalStillRoutesToTheRightListenerWhileBeingForgotten() {
+		ServiceListenerRegistry r = registry();
+		List<String> payment = new ArrayList<>();
+		List<String> shipping = new ArrayList<>();
+		r.add("Payment", null, event -> payment.add(event.getType().getLiteral()));
+		r.add("Shipping", null, event -> shipping.add(event.getType().getLiteral()));
+		source.handler.onEvent(registeredEvent("ref-1", "Payment"));
+		payment.clear();
+
+		// The bare shape, where the remembered mapping is the ONLY thing
+		// that can name the interface — reading it must happen before
+		// forgetting it, or the withdrawal goes to everyone.
+		source.handler.onEvent(unregisteringEvent("ref-1"));
+
+		assertThat(payment).containsExactly("UNREGISTERING");
+		assertThat(shipping).as("not delivered to an interface this reference never served").isEmpty();
+		assertThat(r.knownReferenceIds()).isEmpty();
+	}
+
+	@Test
+	void awithdrawalOfSomethingNeverSeenIsHarmless() {
+		ServiceListenerRegistry r = registry();
+		r.add("Payment", null, event -> {
+		});
+
+		source.handler.onEvent(unregisteringEvent("never-heard-of-it"));
+
+		assertThat(r.knownReferenceIds()).isEmpty();
+	}
+
+	@Test
+	void manyLifecyclesLeaveNothingBehind() {
+		ServiceListenerRegistry r = registry();
+		r.add("Payment", null, event -> {
+		});
+
+		for (int i = 0; i < 500; i++) {
+			source.handler.onEvent(registeredEvent("ref-" + i, "Payment"));
+			source.handler.onEvent(selfContainedUnregisteringEvent("ref-" + i, "Payment"));
+		}
+
+		assertThat(r.knownReferenceIds())
+				.as("a long-lived consumer must not accumulate the dead")
+				.isEmpty();
+	}
+
 	// --- stream lifecycle ---------------------------------------------
 
 	@Test

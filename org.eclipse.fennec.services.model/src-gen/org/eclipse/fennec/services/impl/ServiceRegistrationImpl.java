@@ -42,6 +42,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getProvider <em>Provider</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getImplementation <em>Implementation</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getUsingSessions <em>Using Sessions</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getPublishedBy <em>Published By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getConsumerCount <em>Consumer Count</em>}</li>
  * </ul>
  *
@@ -107,6 +108,26 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 	 * @ordered
 	 */
 	protected EList<ConsumerSession> usingSessions;
+
+	/**
+	 * The default value of the '{@link #getPublishedBy() <em>Published By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getPublishedBy()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final String PUBLISHED_BY_EDEFAULT = null;
+
+	/**
+	 * The cached value of the '{@link #getPublishedBy() <em>Published By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getPublishedBy()
+	 * @generated
+	 * @ordered
+	 */
+	protected String publishedBy = PUBLISHED_BY_EDEFAULT;
 
 	/**
 	 * The cached setting delegate for the '{@link #getConsumerCount() <em>Consumer Count</em>}' attribute.
@@ -321,6 +342,29 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 	 * @generated
 	 */
 	@Override
+	public String getPublishedBy() {
+		return publishedBy;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setPublishedBy(String newPublishedBy) {
+		String oldPublishedBy = publishedBy;
+		publishedBy = newPublishedBy;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY, oldPublishedBy, publishedBy));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public int getConsumerCount() {
 		return (Integer)CONSUMER_COUNT__ESETTING_DELEGATE.dynamicGet(this, null, 0, true, false);
 	}
@@ -405,6 +449,8 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				return basicGetImplementation();
 			case ServicesPackage.SERVICE_REGISTRATION__USING_SESSIONS:
 				return getUsingSessions();
+			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
+				return getPublishedBy();
 			case ServicesPackage.SERVICE_REGISTRATION__CONSUMER_COUNT:
 				return getConsumerCount();
 		}
@@ -436,6 +482,9 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				getUsingSessions().clear();
 				getUsingSessions().addAll((Collection<? extends ConsumerSession>)newValue);
 				return;
+			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
+				setPublishedBy((String)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -463,6 +512,9 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 			case ServicesPackage.SERVICE_REGISTRATION__USING_SESSIONS:
 				getUsingSessions().clear();
 				return;
+			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
+				setPublishedBy(PUBLISHED_BY_EDEFAULT);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -485,6 +537,8 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				return implementation != null;
 			case ServicesPackage.SERVICE_REGISTRATION__USING_SESSIONS:
 				return usingSessions != null && !usingSessions.isEmpty();
+			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
+				return PUBLISHED_BY_EDEFAULT == null ? publishedBy != null : !PUBLISHED_BY_EDEFAULT.equals(publishedBy);
 			case ServicesPackage.SERVICE_REGISTRATION__CONSUMER_COUNT:
 				return CONSUMER_COUNT__ESETTING_DELEGATE.dynamicIsSet(this, null, 0);
 		}
@@ -522,6 +576,8 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 		StringBuilder result = new StringBuilder(super.toString());
 		result.append(" (unregistered: ");
 		result.append(unregistered);
+		result.append(", publishedBy: ");
+		result.append(publishedBy);
 		result.append(')');
 		return result.toString();
 	}

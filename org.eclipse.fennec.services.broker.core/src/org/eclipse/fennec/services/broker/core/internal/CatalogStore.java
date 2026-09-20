@@ -30,6 +30,7 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
+import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.broker.core.exception.CatalogEntryAmbiguous;
 import org.eclipse.fennec.services.broker.core.exception.CatalogEntryNotFound;
 
@@ -81,6 +82,12 @@ final class CatalogStore {
 							+ sd1);
 				}
 			}
+			// Who put it there (#125). Set after the fingerprint
+			// comparison above, though sd1 excludes it either way — the
+			// canonical form names its fields rather than walking
+			// attributes, which is why an audit field cannot move a
+			// catalog address.
+			serviceInterface.setAddedBy(CallOrigin.requestor(requestor));
 			state.registry().getCatalog().add(serviceInterface);
 			Diagnostic d = state.persist();
 			if (DdsrDiagnostics.isError(d)) {
@@ -124,8 +131,10 @@ final class CatalogStore {
 			CatalogStatus previousStatus = inCatalog.getStatus();
 			String previousReason = inCatalog.getDeprecationReason();
 			ServiceInterface previousReplacedBy = inCatalog.getReplacedBy();
+			String previousDeprecatedBy = inCatalog.getDeprecatedBy();
 
 			inCatalog.setStatus(CatalogStatus.DEPRECATED);
+			inCatalog.setDeprecatedBy(CallOrigin.requestor(requestor));
 			if (reason != null) {
 				inCatalog.setDeprecationReason(reason);
 			}
@@ -138,6 +147,7 @@ final class CatalogStore {
 				inCatalog.setStatus(previousStatus);
 				inCatalog.setDeprecationReason(previousReason);
 				inCatalog.setReplacedBy(previousReplacedBy);
+				inCatalog.setDeprecatedBy(previousDeprecatedBy);
 			}
 			return d;
 		} finally {
@@ -188,7 +198,13 @@ final class CatalogStore {
 			Diagnostic d = state.persist();
 			if (DdsrDiagnostics.isError(d)) {
 				state.registry().getCatalog().add(previousIndex, inCatalog);
+				return d;
 			}
+			// The one audit record a removal can leave. There is no
+			// removedBy field and there cannot be one: the object that
+			// would carry it is what just went away (#125).
+			LOG.info("[DDSR] catalog entry '" + inCatalog.getName() + "' removed by "
+					+ CallOrigin.requestor(requestor));
 			return d;
 		} finally {
 			state.writeLock().unlock();

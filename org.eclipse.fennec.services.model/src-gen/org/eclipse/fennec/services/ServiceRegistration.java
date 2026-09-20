@@ -26,6 +26,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getProvider <em>Provider</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getImplementation <em>Implementation</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getUsingSessions <em>Using Sessions</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getPublishedBy <em>Published By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getConsumerCount <em>Consumer Count</em>}</li>
  * </ul>
  *
@@ -155,6 +156,31 @@ public interface ServiceRegistration extends EObject {
 	 * @generated
 	 */
 	EList<ConsumerSession> getUsingSessions();
+
+	/**
+	 * Returns the value of the '<em><b>Published By</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Which system published this registration, as the client origin token 'label/runtimeId' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Persistent, unlike usingSessions/consumerCount: after a broker restart the snapshot should still be able to say where a registration came from. A withdraw has no counterpart here — the registration is gone with it, and only the broker log keeps that.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Published By</em>' attribute.
+	 * @see #setPublishedBy(String)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceRegistration_PublishedBy()
+	 * @model
+	 * @generated
+	 */
+	String getPublishedBy();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceRegistration#getPublishedBy <em>Published By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Published By</em>' attribute.
+	 * @see #getPublishedBy()
+	 * @generated
+	 */
+	void setPublishedBy(String value);
 
 	/**
 	 * Returns the value of the '<em><b>Consumer Count</b></em>' attribute.

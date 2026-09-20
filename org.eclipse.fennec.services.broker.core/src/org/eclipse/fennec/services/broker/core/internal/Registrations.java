@@ -39,6 +39,7 @@ import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
+import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
@@ -122,6 +123,10 @@ final class Registrations implements Retirement, Republication {
 			reg.setUnregistered(false);
 			reg.setProvider(provider);
 			reg.setImplementation(impl);
+			// Which system this came from (#125). An in-process caller
+			// carries no call origin, and then this records "anonymous" —
+			// which is honest: nothing crossed a system boundary.
+			reg.setPublishedBy(CallOrigin.requestor(null));
 			ref.setRegistration(reg);
 			state.registrations().add(reg);
 			decorateReference(ref, impl);
@@ -238,6 +243,7 @@ final class Registrations implements Retirement, Republication {
 			reg.setUnregistered(false);
 			reg.setProvider(provider);
 			reg.setImplementation(implementation);
+			reg.setPublishedBy(CallOrigin.requestor(null));
 			ref.setRegistration(reg);
 			state.registrations().add(reg);
 			cold.touch(reg);
@@ -320,6 +326,12 @@ final class Registrations implements Retirement, Republication {
 			ServiceImplementation before = EcoreUtil.copy(liveImpl);
 			ServiceReference reference = registration.getReference();
 			List<Property> decorationBefore = new ArrayList<>(reference.getProperties());
+			// The registration survives a modify, so its origin has to
+			// move with it: the field names the system responsible for
+			// what is registered NOW, not for what was registered once
+			// (#125). Restored with everything else if the save fails.
+			String publishedByBefore = registration.getPublishedBy();
+			registration.setPublishedBy(CallOrigin.requestor(null));
 			applyModification(liveImpl, implementation);
 			reference.getProperties().clear();
 			decorateReference(reference, liveImpl);
@@ -328,6 +340,7 @@ final class Registrations implements Retirement, Republication {
 			Diagnostic d = state.persist();
 			if (DdsrDiagnostics.isError(d)) {
 				applyModification(liveImpl, before);
+				registration.setPublishedBy(publishedByBefore);
 				reference.getProperties().clear();
 				reference.getProperties().addAll(decorationBefore);
 				lookup.serviceModified(liveImpl, reference);
@@ -470,8 +483,10 @@ final class Registrations implements Retirement, Republication {
 			// After the save, never before: a withdrawal that could not
 			// be persisted must not be announced.
 			announcements.emit(ServiceEventType.UNREGISTERING, eventReference, ServiceEventReasons.WITHDRAWN);
+			// Like a catalog removal, a withdraw leaves no object to carry
+			// who did it — the registration is what went away (#125).
 			LOG.info("[DDSR] withdrew " + liveImpl.getName() + "/" + liveImpl.getVersion()
-					+ " of " + liveProvider.getName());
+					+ " of " + liveProvider.getName() + " by " + CallOrigin.requestor(null));
 			return d;
 		} finally {
 			state.writeLock().unlock();
@@ -628,6 +643,19 @@ final class Registrations implements Retirement, Republication {
 			StringProperty property = ServicesFactory.eINSTANCE.createStringProperty();
 			property.setName("ddsr.impl.fingerprint");
 			property.setValue(implFingerprint);
+			reference.getProperties().add(property);
+		}
+		// The origin, projected from the registration onto the reference
+		// (#125). The registration itself is runtime state — it is in no
+		// snapshot and in no wire document — so the field alone could be
+		// written but never read back. Consumers read properties from the
+		// reference, so this is where an auditor and an event can see it,
+		// and there is still exactly one source: the field.
+		ServiceRegistration registration = reference.getRegistration();
+		if (registration != null && registration.getPublishedBy() != null) {
+			StringProperty property = ServicesFactory.eINSTANCE.createStringProperty();
+			property.setName("ddsr.origin");
+			property.setValue(registration.getPublishedBy());
 			reference.getProperties().add(property);
 		}
 	}

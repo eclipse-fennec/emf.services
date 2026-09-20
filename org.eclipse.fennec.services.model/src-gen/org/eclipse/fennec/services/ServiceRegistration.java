@@ -162,7 +162,7 @@ public interface ServiceRegistration extends EObject {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Which system published this registration, as the client origin token 'label/runtimeId' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Persistent, unlike usingSessions/consumerCount: after a broker restart the snapshot should still be able to say where a registration came from. A withdraw has no counterpart here — the registration is gone with it, and only the broker log keeps that.
+	 * Which system published this registration, as the client origin token 'label/runtimeId' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Runtime state, like the registration itself: registrations are in no snapshot and in no wire document, so this field alone could be written but never read back. It is therefore PROJECTED onto the reference as the property ddsr.origin, which is where a lookup, an event and an auditor can see it — one source, one projection. After a broker restart the providers re-publish and the field is written again. A withdraw has no counterpart here: the registration is gone with it, and only the broker log keeps that.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Published By</em>' attribute.
 	 * @see #setPublishedBy(String)

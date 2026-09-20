@@ -14,31 +14,21 @@
 package org.eclipse.fennec.services.broker.core.internal;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
-import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.EcoreUtil;
-import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
-import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.exception.CatalogEntryAmbiguous;
 import org.eclipse.fennec.services.broker.core.exception.CatalogEntryNotFound;
-import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 
 /**
  * The contracts the broker knows, and what a publish is measured

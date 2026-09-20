@@ -26,9 +26,9 @@ import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
-import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -236,7 +236,7 @@ class SseEventBridgeTest {
 	@Test
 	@DisplayName("a subscriber that stays anonymous is served and reported as nobody")
 	void anonymousSubscribersAreStillServed() {
-		FakeSse.Sink sink = subscribe();
+		subscribe();
 
 		assertThat(bridge.subscriberCount()).isEqualTo(1);
 		assertThat(presence.connected).containsExactly((String) null);

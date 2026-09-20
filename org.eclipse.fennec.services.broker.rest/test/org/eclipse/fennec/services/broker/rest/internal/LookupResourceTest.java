@@ -20,26 +20,26 @@ import static org.eclipse.fennec.services.broker.rest.internal.RestTestSupport.r
 
 import java.util.List;
 
-import jakarta.ws.rs.core.Response;
-
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.ConsumerCapability;
+import org.eclipse.fennec.services.Diagnostic;
+import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.LocalServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
-import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
-import org.eclipse.fennec.services.ServiceRegistration;
-import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.DiagnosticSeverity;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import jakarta.ws.rs.core.Response;
 
 /** GET /references (#56): query parsing into a ConsumerCapability and the lookup-result envelope. */
 class LookupResourceTest {

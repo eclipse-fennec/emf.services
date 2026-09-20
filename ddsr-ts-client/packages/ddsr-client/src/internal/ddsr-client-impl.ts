@@ -29,6 +29,14 @@ export interface DdsrClientOptions {
   flavorPlugins?: FlavorPlugin[];
   /** X-DDSR-Requestor for catalog operations (audit). */
   requestor?: string;
+  /**
+   * Which system this deployment is, for the X-DDSR-Origin header every
+   * broker call carries (#132): a name such as payments-prod-eu. The
+   * other half of the origin is a per-process id from the runtime.
+   * Deliberately not a host name — name the system, not the machine.
+   * Without it the broker records this client as "unnamed".
+   */
+  originLabel?: string;
   /** consumerId sent with lookups and used for the broker session. */
   consumerId?: string;
   /**
@@ -105,10 +113,12 @@ export class DdsrClientImpl implements DdsrClient {
     const broker = new BrokerHttp({
       brokerUrl: options.brokerUrl,
       requestor: options.requestor,
+      originLabel: options.originLabel,
       fetchFn: options.fetchFn,
     });
     const eventSource = options.eventSource ?? new RestEventSource({
       brokerUrl: options.brokerUrl,
+      originLabel: options.originLabel,
       flavors: options.eventFlavors ?? 'REST',
       reconnectSeconds: options.reconnectSeconds,
       fetchFn: options.fetchFn,

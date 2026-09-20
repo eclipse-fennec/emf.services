@@ -192,6 +192,17 @@ if ! grep -q 'binding="PATH"' <<<"$TS_LOOKUP" || ! grep -q 'parameter="' <<<"$TS
   exit 1
 fi
 echo "  ✓ ts-bindings-survive-the-broker: PATH + parameter references present in the lookup"
+# Cross-language origin (#132): the broker records where a registration
+# came from, and until the TypeScript client sent X-DDSR-Origin every TS
+# publish was written down as "anonymous". Read it back off the wire —
+# a cross-language claim is only worth what the other language proves.
+TS_ORIGIN=$(grep -o 'name="ddsr.origin" value="[^"]*"' <<<"$TS_LOOKUP" | head -1)
+if ! grep -q 'payments-ts-harness/' <<<"$TS_ORIGIN"; then
+  echo "SCENARIO B FAILED: the TS provider's registration carries no origin of its own"
+  echo "  got: ${TS_ORIGIN:-<nothing>}"
+  exit 1
+fi
+echo "  ✓ ts-origin-reaches-the-broker: $TS_ORIGIN"
 
 log "Scenario B: stopping the TS provider (SIGTERM) — FR-P3 order check"
 kill "$TS_PROVIDER_PID"

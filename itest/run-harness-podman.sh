@@ -168,6 +168,18 @@ wait_for_log ddsr-client-java 'ts.charge(10.0, "EUR") =' 150
 echo "Java consumer called the TS provider:"
 podman logs ddsr-client-java 2>&1 | grep -E 'ts\.(getBalance|charge)'
 
+# Cross-language origin (#132), checked here too: this run is the one
+# that crosses real container boundaries, so it is the one where "the
+# broker can say which system published this" actually means something.
+TS_ORIGIN=$(curl -sf "$BROKER_URL/references?interface=Payment" \
+  | grep -o 'name="ddsr.origin" value="[^"]*"' | head -1)
+if ! grep -q 'payments-ts-harness/' <<<"$TS_ORIGIN"; then
+  echo "SCENARIO B FAILED: the TS provider's registration carries no origin of its own"
+  echo "  got: ${TS_ORIGIN:-<nothing>}"
+  exit 1
+fi
+echo "  ✓ ts-origin-reaches-the-broker: $TS_ORIGIN"
+
 log "Scenario B: stopping the TS provider — FR-P3 order check"
 podman stop -t 20 ddsr-provider-ts >/dev/null
 ts_rc=$(podman wait ddsr-provider-ts)

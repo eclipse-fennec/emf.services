@@ -168,6 +168,36 @@ export interface RecordedRequest {
  * A scripted fetch: routes are matched in order by method + URL
  * substring; every request is recorded.
  */
+/**
+ * Records request headers the way a real fetch would see them,
+ * whichever shape the caller used.
+ *
+ * A plain object used to be enough, until the client started wrapping
+ * its fetch to stamp X-DDSR-Origin on every request (#132) and handed
+ * over a `Headers` instance — which spreads to `{}` and made every
+ * header assertion here silently pass on nothing. Names are recorded
+ * under both their original spelling and lower case, so assertions can
+ * keep using the canonical one while `Headers` normalisation is not in
+ * the way.
+ */
+function recordHeaders(headers: unknown): Record<string, string> {
+  const recorded: Record<string, string> = {};
+  const put = (name: string, value: string) => {
+    recorded[name] = value;
+    recorded[name.toLowerCase()] = value;
+  };
+  if (headers instanceof Headers) {
+    headers.forEach((value, name) => put(name, value));
+  } else if (Array.isArray(headers)) {
+    for (const [name, value] of headers) put(String(name), String(value));
+  } else if (headers && typeof headers === 'object') {
+    for (const [name, value] of Object.entries(headers as Record<string, string>)) {
+      put(name, String(value));
+    }
+  }
+  return recorded;
+}
+
 export function fakeFetch(
   routes: Array<{ method?: string; urlIncludes: string; status?: number; body?: string; contentType?: string }>
 ): { fetchFn: typeof fetch; requests: RecordedRequest[] } {
@@ -178,7 +208,7 @@ export function fakeFetch(
     requests.push({
       url,
       method,
-      headers: { ...(init?.headers ?? {}) },
+      headers: recordHeaders(init?.headers),
       body: init?.body === undefined ? undefined : String(init.body),
     });
     const route = routes.find(

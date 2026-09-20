@@ -22,9 +22,11 @@ import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import io.cloudevents.model.ce.CloudEvent;
 import io.cloudevents.model.ce.CloudEventsFactory;
@@ -264,6 +266,44 @@ public final class CloudEventCodec {
 			}
 		}
 		return envelope;
+	}
+
+	/** The extension attributes this registry names itself. */
+	private static final Set<String> KNOWN_EXTENSIONS = Set.of(
+			CloudEvents.EXTENSION_CORRELATION_ID, CloudEvents.EXTENSION_REPLY_TO);
+
+	/**
+	 * The same as {@link #fromHeaders(Map, String)} for a caller that can
+	 * only ask for headers by name — a JAX-RS dispatcher, say, which is
+	 * handed a lookup rather than the map.
+	 *
+	 * <p>The difference is what cannot be done: a lookup cannot be
+	 * enumerated, so an extension this registry does not name is invisible
+	 * here. The specification's own attributes and
+	 * {@link #KNOWN_EXTENSIONS} are read; anything else a peer sent is
+	 * neither rejected nor preserved, which is the honest price of the
+	 * narrower interface.
+	 */
+	public static CloudEvent fromHeaders(UnaryOperator<String> headerLookup, String contentType) {
+		String id = headerLookup.apply(CloudEvents.HEADER_PREFIX + ID);
+		if (id == null || id.isBlank()) {
+			return null;
+		}
+		Map<String, String> headers = new LinkedHashMap<>();
+		headers.put(CloudEvents.HEADER_PREFIX + ID, id);
+		for (String name : List.of(SPECVERSION, SOURCE, TYPE, DATASCHEMA, SUBJECT, TIME)) {
+			String value = headerLookup.apply(CloudEvents.HEADER_PREFIX + name);
+			if (value != null) {
+				headers.put(CloudEvents.HEADER_PREFIX + name, value);
+			}
+		}
+		for (String extension : KNOWN_EXTENSIONS) {
+			String value = headerLookup.apply(CloudEvents.HEADER_PREFIX + extension);
+			if (value != null) {
+				headers.put(CloudEvents.HEADER_PREFIX + extension, value);
+			}
+		}
+		return fromHeaders(headers, contentType);
 	}
 
 	/**

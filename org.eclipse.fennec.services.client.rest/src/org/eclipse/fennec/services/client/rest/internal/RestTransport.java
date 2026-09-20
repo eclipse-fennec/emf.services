@@ -181,6 +181,17 @@ public final class RestTransport {
 				.build();
 	}
 
+	/**
+	 * Who this runtime is, as the URI reference a CloudEvents
+	 * {@code source} has to be (#101). The same identity the origin
+	 * header carries — one answer to "who is calling", worn twice
+	 * because the two readers are different: the header is read by this
+	 * registry, the attribute by anything that reads CloudEvents.
+	 */
+	String originReference() {
+		return "/consumer/" + (origin != null ? origin.token() : ClientOrigin.ANONYMOUS);
+	}
+
 	@Deactivate
 	void deactivate() {
 		if (client != null) {

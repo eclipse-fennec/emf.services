@@ -14,15 +14,20 @@
 package org.eclipse.fennec.services.client.rest.internal;
 
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.Optional;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.client.DdsrException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.osgi.service.component.annotations.Component;
@@ -35,6 +40,8 @@ import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import io.cloudevents.model.ce.CloudEvent;
 
 /**
  * REST-flavor implementation of {@link ServiceInvoker}.
@@ -54,6 +61,8 @@ import jakarta.ws.rs.core.Response;
 		property = "ddsr.broker.transport=rest")
 @ServiceDescription("DDSR REST-flavor reflective service invoker")
 public final class RestServiceInvoker implements ServiceInvoker {
+
+	private static final Logger LOG = Logger.getLogger(RestServiceInvoker.class.getName());
 
 	@Reference
 	private RestTransport tx;
@@ -90,9 +99,17 @@ public final class RestServiceInvoker implements ServiceInvoker {
 				: MediaType.APPLICATION_XML;
 
 		HttpMethod method = op.getMethod() != null ? op.getMethod() : HttpMethod.GET;
+		// Binary mode (#101): the attributes ride as ce-* headers and the
+		// body stays exactly the payload it was. That is why this is
+		// additive over HTTP and breaking nowhere — a provider that does
+		// not read the headers reads the same request it always did.
+		CloudEvent envelope = CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE,
+				tx.originReference(), null);
+		envelope.setSubject(subjectOf(op, operationName));
 		Response response;
 		try {
-			response = send(target, method, RestPlacement.of(op, safeArgs), accept, contentType);
+			response = send(target, method, RestPlacement.of(op, safeArgs), accept, contentType,
+					CloudEventCodec.toHeaders(envelope));
 		} catch (ProcessingException unreachable) {
 			// Connect refused, connect/read timeout, reset: the provider is
 			// registered but not answering. Marked as a transport failure so
@@ -100,7 +117,43 @@ public final class RestServiceInvoker implements ServiceInvoker {
 			throw DdsrException.transport("invoking " + operationName + " at " + url + " failed: "
 					+ unreachable.getMessage(), unreachable);
 		}
+		checkCorrelation(envelope, response, operationName);
 		return readResponse(response);
+	}
+
+	/**
+	 * What the call is about: the contract and the operation, which is
+	 * what a reader of the attribute wants and what a trace can group
+	 * by. Falls back to the operation name when the flavor's operation
+	 * is not resolvable — an envelope with a thinner subject is still
+	 * better than no envelope.
+	 */
+	private static String subjectOf(RestOperationFlavor op, String operationName) {
+		ServiceOperation operation = op.getOperation();
+		if (operation != null && operation.eContainer() instanceof ServiceInterface contract
+				&& contract.getName() != null) {
+			return contract.getName() + "/" + operation.getName();
+		}
+		return operationName;
+	}
+
+	/**
+	 * An answer says which call it answers. Over HTTP the connection
+	 * already said it, so a mismatch cannot normally happen — which is
+	 * precisely why it is worth a line: if it ever does, something
+	 * between here and the provider is handing out somebody else's
+	 * answer, and that is not a thing to discover from the values.
+	 *
+	 * <p>A missing envelope is not a mismatch. Binary mode is additive
+	 * and a provider is free not to have gained it.
+	 */
+	private static void checkCorrelation(CloudEvent request, Response response, String operationName) {
+		String correlation = response.getHeaderString(
+				CloudEvents.HEADER_PREFIX + CloudEvents.EXTENSION_CORRELATION_ID);
+		if (correlation != null && !correlation.equals(request.getEventId())) {
+			LOG.warning("[DDSR-Client] the answer to " + operationName + " correlates with "
+					+ correlation + ", not with the request " + request.getEventId());
+		}
 	}
 
 	/**
@@ -121,7 +174,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 	}
 
 	private static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept,
-			String contentType) {
+			String contentType, Map<String, String> envelopeHeaders) {
 		// The body first: it decides whether an undeclared argument was
 		// consumed as the payload or still has to travel as a query
 		// parameter.
@@ -137,6 +190,12 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		}
 
 		Invocation.Builder request = target.request(accept);
+		for (Map.Entry<String, String> e : envelopeHeaders.entrySet()) {
+			request = request.header(e.getKey(), e.getValue());
+		}
+		// After the envelope, so a contract that binds a parameter to a
+		// header wins over it: the call is what the contract says, and
+		// the envelope is what carries it.
 		for (Map.Entry<String, Object> e : placement.header().entrySet()) {
 			request = request.header(e.getKey(), e.getValue());
 		}

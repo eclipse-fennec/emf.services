@@ -13,6 +13,8 @@ Bundle-Description: \
 	org.osgi.service.component;version=latest,\
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.osgi.service.jakartars;version=latest,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	io.cloudevents.model;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
@@ -24,6 +26,8 @@ Bundle-Description: \
 # framework. jersey-common supplies the JAX-RS RuntimeDelegate that
 # building a Response needs.
 -testpath: \
+	jakarta.json-api;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest,\
 	${junit},\
 	junit-platform-launcher;version=latest,\
 	org.glassfish.jersey.core.jersey-common;version=latest

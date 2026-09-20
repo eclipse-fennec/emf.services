@@ -38,6 +38,8 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceOperation;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
@@ -58,6 +60,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
+import io.cloudevents.model.ce.CloudEvent;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -160,10 +163,40 @@ public class RestDispatcher {
 		// thread cannot carry a previous caller's origin.
 		CallOrigin.set(ClientOrigin.parse(headerValue.apply(ClientOrigin.HEADER)));
 		try {
-			return dispatchBound(httpMethod, path, queryValues, headerValue, entity);
+			CloudEvent request = CloudEventCodec.fromHeaders(headerValue::apply,
+					headerValue.apply(HttpHeaders.CONTENT_TYPE));
+			return withReplyEnvelope(dispatchBound(httpMethod, path, queryValues, headerValue, entity),
+					request);
 		} finally {
 			CallOrigin.clear();
 		}
+	}
+
+	/**
+	 * The answer, as the second event of the pair (#101): its own id, the
+	 * reply type, and the request's id in the correlation extension.
+	 *
+	 * <p>Answered even when the request carried no envelope, because
+	 * binary mode is additive in both directions: what a caller does not
+	 * read costs it nothing, and a provider whose answers depend on
+	 * which caller asked is harder to reason about than one whose
+	 * answers are the same shape every time.
+	 *
+	 * <p>The body is untouched — headers around exactly the payload the
+	 * contract declares, which is what made the envelope free over HTTP.
+	 */
+	private Response withReplyEnvelope(Response answer, CloudEvent request) {
+		CloudEvent reply = request != null
+				? CloudEvents.replyTo(request, "/provider/" + contract, null)
+				: CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE_REPLY, "/provider/" + contract, null);
+		if (request != null && request.getSubject() != null) {
+			reply.setSubject(request.getSubject());
+		}
+		Response.ResponseBuilder builder = Response.fromResponse(answer);
+		for (Map.Entry<String, String> header : CloudEventCodec.toHeaders(reply).entrySet()) {
+			builder.header(header.getKey(), header.getValue());
+		}
+		return builder.build();
 	}
 
 	private Response dispatchBound(String httpMethod, String path, Function<String, List<String>> queryValues,

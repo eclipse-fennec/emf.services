@@ -24,6 +24,12 @@ jersey.deps:
 	bnd.identity;id='org.eclipse.fennec.services.rsa.config',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.distribution.rest',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.discovery.rest',\
+	bnd.identity;id='org.eclipse.fennec.services.rsa.distribution.mqtt',\
+	bnd.identity;id='org.eclipse.fennec.services.rsa.discovery.mqtt',\
+	bnd.identity;id='org.eclipse.fennec.services.provider.mqtt',\
+	bnd.identity;id='org.eclipse.fennec.services.flavor.mqtt',\
+	bnd.identity;id='org.eclipse.fennec.services.client.mqtt',\
+	bnd.identity;id='org.eclipse.fennec.services.cloudevents',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.topology',\
 	bnd.identity;id='org.eclipse.fennec.emf.osgi.eobject.registry',\
 	bnd.identity;id='org.eclipse.fennec.services.client.java',\
@@ -82,6 +88,14 @@ jersey.deps:
 	org.eclipse.fennec.services.rsa.config;version=snapshot,\
 	org.eclipse.fennec.services.rsa.distribution.rest;version=snapshot,\
 	org.eclipse.fennec.services.rsa.discovery.rest;version=snapshot,\
+	org.eclipse.fennec.services.rsa.distribution.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.rsa.discovery.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.provider.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.client.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	org.eclipse.paho.client.mqttv3;version='[1.2.5,1.2.6)',\
+	io.cloudevents.model;version='[1.0.2,1.0.3)',\
 	org.eclipse.fennec.services.rsa.topology;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\

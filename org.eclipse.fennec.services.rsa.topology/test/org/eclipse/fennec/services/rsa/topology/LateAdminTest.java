@@ -120,7 +120,7 @@ class LateAdminTest {
 		assertThat(atFirst).as("nobody could export it yet").isEmpty();
 
 		WillingAdmin admin = new WillingAdmin();
-		topology.addAdmin(admin);
+		topology.addAdmin(admin, Map.of("remote.configs.supported", "fennec.rest"));
 
 		assertThat(admin.exportedServices).as("the admin is asked about what was already waiting")
 				.containsExactly(asked);
@@ -132,11 +132,11 @@ class LateAdminTest {
 	void noDoubleExport() {
 		ExportEverythingAsked topology = new ExportEverythingAsked();
 		WillingAdmin first = new WillingAdmin();
-		topology.addAdmin(first);
+		topology.addAdmin(first, Map.of("remote.configs.supported", "fennec.rest"));
 
 		ServiceReference<Object> asked = Fakes.serviceReference();
 		topology.addingService(asked);
-		topology.addAdmin(new WillingAdmin());
+		topology.addAdmin(new WillingAdmin(), Map.of("remote.configs.supported", "fennec.rest"));
 
 		assertThat(first.exportedServices).as("the first admin saw it when it registered, and not again")
 				.containsExactly(asked);

@@ -13,6 +13,7 @@
 
 package org.eclipse.fennec.services.rsa.topology;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -70,14 +71,24 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	 * than something it reads out of a field by luck.
 	 */
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
-	void addAdmin(RemoteServiceAdmin admin) {
+	void addAdmin(RemoteServiceAdmin admin, Map<String, Object> properties) {
 		admins.add(admin);
+		Object supported = properties.get("remote.configs.supported");
+		spokenByAdmin.put(admin, supported == null ? admin.getClass().getSimpleName()
+				: String.valueOf(supported));
 		exportThrough(admin);
 	}
 
 	void removeAdmin(RemoteServiceAdmin admin) {
 		admins.remove(admin);
+		spokenByAdmin.remove(admin);
 	}
+
+	/**
+	 * What each admin says it speaks, kept for the one message that
+	 * needs it: a service nobody exported, and why.
+	 */
+	private final Map<RemoteServiceAdmin, String> spokenByAdmin = new ConcurrentHashMap<>();
 
 	private final List<RemoteServiceAdmin> admins = new CopyOnWriteArrayList<>();
 
@@ -167,11 +178,32 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 			// for. It stays tracked all the same, because an admin is a
 			// component like any other and may simply not be up yet; when
 			// one arrives, addAdmin comes back to it.
-			LOG.info("[DDSR] nothing exports " + reference + " yet");
+			//
+			// Both sides in the message, because the two ways this ends
+			// badly look identical without them: an admin that is not up
+			// yet (fine, it will be asked) and a service asking for a
+			// type nobody here will ever speak (not fine, and invisible
+			// until someone wonders why nothing happened).
+			LOG.info("[DDSR] nothing exports " + reference + " yet — it asks for "
+					+ asksFor(reference) + ", and " + spoken() + " is here");
 		} else {
 			LOG.info("[DDSR] exported " + reference);
 		}
 		return registrations;
+	}
+
+	/** Which configuration types a service asks to be exported over. */
+	private static String asksFor(ServiceReference<Object> reference) {
+		Object configs = reference.getProperty(RemoteConstants.SERVICE_EXPORTED_CONFIGS);
+		if (configs == null) {
+			return "any type";
+		}
+		return configs instanceof Object[] several ? Arrays.toString(several) : String.valueOf(configs);
+	}
+
+	/** Which types the admins in this runtime actually speak. */
+	private String spoken() {
+		return spokenByAdmin.isEmpty() ? "no admin" : List.copyOf(spokenByAdmin.values()).toString();
 	}
 
 	/**
@@ -186,7 +218,17 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	 * showed it because the TCK exports by hand.
 	 */
 	private void exportThrough(RemoteServiceAdmin admin) {
-		exported.forEach((reference, registrations) -> exportThrough(admin, reference, registrations));
+		exported.forEach((reference, registrations) -> {
+			boolean wasWaiting = registrations.isEmpty();
+			exportThrough(admin, reference, registrations);
+			if (wasWaiting && !registrations.isEmpty()) {
+				// Said out loud, because the message before it was
+				// "nothing exports this yet" and a reader is owed the
+				// other half. Without it the only sign that the wait
+				// ended is the absence of further complaints.
+				LOG.info("[DDSR] exported " + reference + " — the admin it was waiting for is here");
+			}
+		});
 	}
 
 	private void exportThrough(RemoteServiceAdmin admin, ServiceReference<Object> reference,
@@ -209,6 +251,27 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	@Override
 	public void modifiedService(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
+		if (registrations.isEmpty()) {
+			// Nothing is exported yet, and the change may be exactly what
+			// makes it exportable: a service that named a configuration
+			// type nobody here spoke, reconfigured to one that is up.
+			// Every admin was already asked once and said no — that
+			// answer was about the old properties, so the claims go and
+			// the question is put again.
+			//
+			// Found with #98: the example provider asks to be exported
+			// over the transport its deployment names, which arrives as
+			// a configuration after the service is registered. Without
+			// this, it was never exported at all and nothing said why.
+			alreadyAsked.removeIf(asked -> asked.reference().equals(reference));
+			for (RemoteServiceAdmin admin : admins) {
+				exportThrough(admin, reference, registrations);
+			}
+			if (!registrations.isEmpty()) {
+				LOG.info("[DDSR] exported " + reference + " after it changed what it asks for");
+			}
+			return;
+		}
 		// Properties changed. Re-exporting would mean closing and opening
 		// the endpoint, which a consumer would see as the service going
 		// away and coming back. Saying the endpoint anew is what

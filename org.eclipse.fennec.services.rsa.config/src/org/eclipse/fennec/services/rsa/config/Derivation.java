@@ -132,6 +132,7 @@ public final class Derivation {
 		Map<String, Object> client = new LinkedHashMap<>();
 		client.put("provider.heartbeat.seconds", String.valueOf(settings.heartbeatSeconds()));
 		client.put("session.interval.seconds", String.valueOf(settings.sessionIntervalSeconds()));
+		client.put("supported.flavors", settings.supportedFlavors());
 		client.put("eventSource.target", "(ddsr.event.transport="
 				+ (settings.hearsOverMqtt() ? "mqtt" : "rest") + ")");
 		if (!settings.consumerId().isBlank()) {

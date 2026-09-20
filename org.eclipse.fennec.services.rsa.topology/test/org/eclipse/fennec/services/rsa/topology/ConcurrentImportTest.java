@@ -186,7 +186,7 @@ class ConcurrentImportTest {
 		// guard itself instead of pretending to hit the window. Both
 		// paths end in exportThrough, and this is what they must not do
 		// twice.
-		topology.addAdmin(admin);
+		topology.addAdmin(admin, Map.of("remote.configs.supported", "fennec.rest"));
 		topology.addingService(asked);
 		topology.addingService(asked);
 

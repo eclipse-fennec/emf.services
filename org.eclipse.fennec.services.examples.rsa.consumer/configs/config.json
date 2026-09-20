@@ -3,6 +3,10 @@
   "org.eclipse.fennec.services.rsa.consumer": {
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
     "registry.name": "rsa-example-consumer",
+    "flavor": "$[env:RSA_FLAVOR;default=fennec.rest]",
+    "discovery.flavor": "$[env:RSA_DISCOVERY_FLAVOR;default=]",
+    "mqtt.url": "$[env:RSA_MQTT_URL;default=tcp://localhost:1883]",
+    "topic.prefix": "$[env:RSA_TOPIC_PREFIX;default=ddsr/rpc]",
     "consumer.id": "rsa-example-consumer",
     "provider.heartbeat.seconds": "30",
     "session.interval.seconds": "0"

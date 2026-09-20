@@ -13,6 +13,9 @@
 
 package org.eclipse.fennec.services.rsa.config;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 /**
  * What a node states about itself, as a value a test can build
  * without a running framework.
@@ -94,6 +97,33 @@ public record RsaSettings(
 	/** Whether the broker's events reach this node over MQTT. */
 	public boolean hearsOverMqtt() {
 		return MQTT.equals(effectiveDiscoveryFlavor());
+	}
+
+	/**
+	 * The flavors this node tells the broker it speaks, as the client
+	 * wants them.
+	 *
+	 * <p>Not a detail: a lookup filters by what the consumer says it can
+	 * speak, so a node that says REST is never shown a service reachable
+	 * only over MQTT — and nothing anywhere reports that, because from
+	 * the broker's side nothing went wrong. The union of what this node
+	 * serves and announces over is what it can actually reach, which
+	 * makes the mixed pairing work without saying it a third time.
+	 */
+	public String supportedFlavors() {
+		Set<String> kinds = new LinkedHashSet<>();
+		kinds.add(kindOf(effectiveDistributionFlavor()));
+		kinds.add(kindOf(effectiveDiscoveryFlavor()));
+		kinds.remove(null);
+		return kinds.isEmpty() ? "REST" : String.join(",", kinds);
+	}
+
+	/** The model's name for a configuration type, or null for one we have none for. */
+	private static String kindOf(String configType) {
+		if (REST.equals(configType)) {
+			return "REST";
+		}
+		return MQTT.equals(configType) ? "MQTT" : null;
 	}
 
 	/**

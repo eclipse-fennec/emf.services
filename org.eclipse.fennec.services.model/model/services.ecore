@@ -1083,14 +1083,16 @@
         <details key="documentation" value="Overrides MqttFlavor.responseTopic for this operation."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="qos" eType="#//MqttQos">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="qos" unsettable="true"
+        eType="#//MqttQos">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Overrides MqttFlavor.defaultQos for this operation."/>
+        <details key="documentation" value="Overrides MqttFlavor.defaultQos for this operation. Unsettable, and that is what makes the override expressible at all (issue #81): without it EMF reports the enum's first literal, AT_MOST_ONCE, for an operation that states nothing, so every operation looks like an override and defaultQos can never apply. Ask isSetQos() before getQos(). The XMI is unchanged either way — an unset attribute is simply absent."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retained" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retained" unsettable="true"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Overrides MqttFlavor.defaultRetained for this operation."/>
+        <details key="documentation" value="Overrides MqttFlavor.defaultRetained for this operation. Unsettable for the same reason as qos (issue #81): a boolean without it reports false for an operation that states nothing, so defaultRetained could never apply. Ask isSetRetained() before isRetained(). correlation needs none of this — there is no MqttFlavor.defaultCorrelation, so there is no precedence to express."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="correlation" lowerBound="1"

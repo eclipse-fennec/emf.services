@@ -4656,8 +4656,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(mqttOperationFlavorEClass, MqttOperationFlavor.class, "MqttOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getMqttOperationFlavor_RequestTopic(), ecorePackage.getEString(), "requestTopic", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getMqttOperationFlavor_ResponseTopic(), ecorePackage.getEString(), "responseTopic", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttOperationFlavor_Qos(), this.getMqttQos(), "qos", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttOperationFlavor_Retained(), ecorePackage.getEBoolean(), "retained", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMqttOperationFlavor_Qos(), this.getMqttQos(), "qos", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMqttOperationFlavor_Retained(), ecorePackage.getEBoolean(), "retained", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getMqttOperationFlavor_Correlation(), ecorePackage.getEBoolean(), "correlation", "true", 1, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getMqttOperationFlavor_ReturnPath(), ecorePackage.getEString(), "returnPath", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
@@ -6084,13 +6084,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getMqttOperationFlavor_Qos(),
 		   source,
 		   new String[] {
-			   "documentation", "Overrides MqttFlavor.defaultQos for this operation."
+			   "documentation", "Overrides MqttFlavor.defaultQos for this operation. Unsettable, and that is what makes the override expressible at all (issue #81): without it EMF reports the enum\'s first literal, AT_MOST_ONCE, for an operation that states nothing, so every operation looks like an override and defaultQos can never apply. Ask isSetQos() before getQos(). The XMI is unchanged either way \u2014 an unset attribute is simply absent."
 		   });
 		addAnnotation
 		  (getMqttOperationFlavor_Retained(),
 		   source,
 		   new String[] {
-			   "documentation", "Overrides MqttFlavor.defaultRetained for this operation."
+			   "documentation", "Overrides MqttFlavor.defaultRetained for this operation. Unsettable for the same reason as qos (issue #81): a boolean without it reports false for an operation that states nothing, so defaultRetained could never apply. Ask isSetRetained() before isRetained(). correlation needs none of this \u2014 there is no MqttFlavor.defaultCorrelation, so there is no precedence to express."
 		   });
 		addAnnotation
 		  (getMqttOperationFlavor_Correlation(),

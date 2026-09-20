@@ -92,8 +92,16 @@ export function replyBaseFor(flavor: FlavorLike, opFlavor: OperationFlavorLike):
  * documents.
  *
  * The price: an operation cannot deliberately step DOWN to at-most-once
- * under a higher flavor default. Removing that limitation needs the
- * model to be able to express "unset" — see issue #81.
+ * under a higher flavor default.
+ *
+ * #81 made `qos` unsettable, which fixed this on the Java side —
+ * `isSetQos()` there is real state. It does NOT fix it here, and the
+ * generated code says why: `@emfts/codegen` initialises the field to
+ * the type default and derives "is set" from the value,
+ * `this._qos !== MqttQos.AT_MOST_ONCE`. That is the same conflation
+ * this function works around, one layer down, so the workaround stays
+ * and stays exact. Lifting it needs unset state in the TypeScript
+ * codegen, not another change to the model.
  */
 export function qosFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): 0 | 1 | 2 {
   const stated = opFlavor.qos === 'AT_MOST_ONCE' ? undefined : opFlavor.qos;

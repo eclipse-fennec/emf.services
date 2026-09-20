@@ -87,13 +87,15 @@ public interface MqttOperationFlavor extends ServiceOperationFlavor {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Overrides MqttFlavor.defaultQos for this operation.
+	 * Overrides MqttFlavor.defaultQos for this operation. Unsettable, and that is what makes the override expressible at all (issue #81): without it EMF reports the enum's first literal, AT_MOST_ONCE, for an operation that states nothing, so every operation looks like an override and defaultQos can never apply. Ask isSetQos() before getQos(). The XMI is unchanged either way — an unset attribute is simply absent.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Qos</em>' attribute.
 	 * @see org.eclipse.fennec.services.MqttQos
+	 * @see #isSetQos()
+	 * @see #unsetQos()
 	 * @see #setQos(MqttQos)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getMqttOperationFlavor_Qos()
-	 * @model
+	 * @model unsettable="true"
 	 * @generated
 	 */
 	MqttQos getQos();
@@ -104,22 +106,49 @@ public interface MqttOperationFlavor extends ServiceOperationFlavor {
 	 * <!-- end-user-doc -->
 	 * @param value the new value of the '<em>Qos</em>' attribute.
 	 * @see org.eclipse.fennec.services.MqttQos
+	 * @see #isSetQos()
+	 * @see #unsetQos()
 	 * @see #getQos()
 	 * @generated
 	 */
 	void setQos(MqttQos value);
 
 	/**
+	 * Unsets the value of the '{@link org.eclipse.fennec.services.MqttOperationFlavor#getQos <em>Qos</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isSetQos()
+	 * @see #getQos()
+	 * @see #setQos(MqttQos)
+	 * @generated
+	 */
+	void unsetQos();
+
+	/**
+	 * Returns whether the value of the '{@link org.eclipse.fennec.services.MqttOperationFlavor#getQos <em>Qos</em>}' attribute is set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return whether the value of the '<em>Qos</em>' attribute is set.
+	 * @see #unsetQos()
+	 * @see #getQos()
+	 * @see #setQos(MqttQos)
+	 * @generated
+	 */
+	boolean isSetQos();
+
+	/**
 	 * Returns the value of the '<em><b>Retained</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Overrides MqttFlavor.defaultRetained for this operation.
+	 * Overrides MqttFlavor.defaultRetained for this operation. Unsettable for the same reason as qos (issue #81): a boolean without it reports false for an operation that states nothing, so defaultRetained could never apply. Ask isSetRetained() before isRetained(). correlation needs none of this — there is no MqttFlavor.defaultCorrelation, so there is no precedence to express.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Retained</em>' attribute.
+	 * @see #isSetRetained()
+	 * @see #unsetRetained()
 	 * @see #setRetained(boolean)
 	 * @see org.eclipse.fennec.services.ServicesPackage#getMqttOperationFlavor_Retained()
-	 * @model
+	 * @model unsettable="true"
 	 * @generated
 	 */
 	boolean isRetained();
@@ -129,10 +158,35 @@ public interface MqttOperationFlavor extends ServiceOperationFlavor {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @param value the new value of the '<em>Retained</em>' attribute.
+	 * @see #isSetRetained()
+	 * @see #unsetRetained()
 	 * @see #isRetained()
 	 * @generated
 	 */
 	void setRetained(boolean value);
+
+	/**
+	 * Unsets the value of the '{@link org.eclipse.fennec.services.MqttOperationFlavor#isRetained <em>Retained</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #isSetRetained()
+	 * @see #isRetained()
+	 * @see #setRetained(boolean)
+	 * @generated
+	 */
+	void unsetRetained();
+
+	/**
+	 * Returns whether the value of the '{@link org.eclipse.fennec.services.MqttOperationFlavor#isRetained <em>Retained</em>}' attribute is set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return whether the value of the '<em>Retained</em>' attribute is set.
+	 * @see #unsetRetained()
+	 * @see #isRetained()
+	 * @see #setRetained(boolean)
+	 * @generated
+	 */
+	boolean isSetRetained();
 
 	/**
 	 * Returns the value of the '<em><b>Correlation</b></em>' attribute.

@@ -25,6 +25,8 @@ export interface ServiceInterface extends NamedElement, VersionedElement {
   invariants: EList<Invariant>;
   status: CatalogStatus;
   deprecationReason?: string;
+  addedBy?: string;
+  deprecatedBy?: string;
   replacedBy?: ServiceInterface;
   updatePolicy: UpdatePolicy;
 

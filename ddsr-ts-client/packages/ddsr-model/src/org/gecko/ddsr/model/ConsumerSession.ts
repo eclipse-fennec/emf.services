@@ -15,6 +15,7 @@ import type { ServiceRegistration } from './ServiceRegistration.js';
  */
 export interface ConsumerSession extends EObject {
   consumerId: string;
+  origin?: string;
   lastRenewal?: Date;
   capabilities?: ConsumerCapability;
   acquisitions: EList<ServiceRegistration>;

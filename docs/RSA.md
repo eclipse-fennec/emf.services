@@ -204,9 +204,14 @@ speaks.
 ## Limits worth knowing
 
 - **Two flavors ship**, `fennec.rest` and `fennec.mqtt`, and a node may
-  use one for serving and the other for announcing (see below).
-- **Intents are not enforced.** `service.exported.intents` is carried
-  but nothing checks that the transport provides them.
+  use one for serving and the other for announcing — see
+  [Two transports](#two-transports-and-splitting-them).
+- **Intents are checked at export, not verified in flight.** A service
+  asking for an intent the transport does not promise is not exported,
+  which is the safe direction: a consumer relying on that intent would
+  otherwise be told a lie. What nothing checks is that a transport
+  promising `osgi.basic` actually behaves that way — only that it
+  promised.
 - **A contract derived from a Java interface** covers what reflection
   can see. Generics beyond the simple cases, and anything depending on
   parameter names at runtime, are the places to look first when a

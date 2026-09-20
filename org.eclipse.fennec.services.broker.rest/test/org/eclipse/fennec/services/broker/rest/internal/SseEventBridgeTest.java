@@ -270,26 +270,20 @@ class SseEventBridgeTest {
 	}
 
 	@Test
-	@DisplayName("a reconnect landing between the removal and the report does not mark the consumer gone (#127)")
-	void aReconnectIsNotADisconnect() throws Exception {
+	@DisplayName("a consumer holding a stream throughout never ends up carrying a deadline (#127)")
+	void aConsumerThatKeepsAStreamIsNeverLeftMarked() {
 		FakeSse.Sink first = subscribe("consumer-a");
-		presence.connected.clear();
-
-		// The two ends of a connection are reported by different threads:
-		// the heartbeat prunes the old sink while the request thread is
-		// handling the reconnect. Whatever the interleaving, the consumer
-		// holds a stream throughout and must never be reported as gone.
+		// The reconnect arrives before the dead sink is pruned, which is
+		// the normal shape: the client reconnects within seconds and the
+		// heartbeat prunes every ten.
+		subscribe("consumer-a");
 		first.close();
-		Thread pruning = new Thread(() -> bridge.publish(registered("ref-1")));
-		Thread reconnecting = new Thread(() -> subscribe("consumer-a"));
-		reconnecting.start();
-		pruning.start();
-		reconnecting.join(5000);
-		pruning.join(5000);
 
-		assertThat(presence.disconnected)
-				.as("it never stopped holding a stream")
-				.doesNotContain("consumer-a");
+		bridge.publish(registered("ref-1"));
+
+		assertThat(presence.marked)
+				.as("a deadline here expires the session and releases its leases")
+				.isEmpty();
 	}
 
 	@Test

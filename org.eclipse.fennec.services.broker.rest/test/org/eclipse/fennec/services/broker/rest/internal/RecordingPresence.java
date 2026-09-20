@@ -16,7 +16,9 @@ package org.eclipse.fennec.services.broker.rest.internal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 
 import org.eclipse.fennec.services.ConsumerSession;
@@ -35,14 +37,28 @@ final class RecordingPresence implements BrokerSessions {
 
 	final List<String> disconnected = new ArrayList<>();
 
+	/**
+	 * Who currently carries a disconnect deadline, the way the broker's
+	 * session registry holds it.
+	 *
+	 * <p>This is the state that matters. A disconnect followed by a
+	 * reconnect is harmless — the deadline is cleared again. What must
+	 * never happen is a consumer left marked while it holds a stream,
+	 * because that expires its session and releases its leases
+	 * underneath it (#127).
+	 */
+	final Set<String> marked = new LinkedHashSet<>();
+
 	@Override
 	public void consumerConnected(String consumerId) {
 		connected.add(consumerId);
+		marked.remove(consumerId);
 	}
 
 	@Override
 	public void consumerDisconnected(String consumerId) {
 		disconnected.add(consumerId);
+		marked.add(consumerId);
 	}
 
 	@Override

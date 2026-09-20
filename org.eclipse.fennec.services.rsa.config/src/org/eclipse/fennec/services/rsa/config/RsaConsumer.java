@@ -85,6 +85,22 @@ public class RsaConsumer extends NodeConfiguration {
 		@AttributeDefinition(name = "Consumer id",
 				description = "How this node names itself to the broker.")
 		String consumer_id() default "";
+
+		@AttributeDefinition(name = "Discovery flavor",
+				description = "Which transport this node ANNOUNCES and HEARS over, when that is not the "
+						+ "flavor above. The announcement is a publish to the broker either way; what this "
+						+ "changes is where the events come from.")
+		String discovery_flavor() default "";
+
+		@AttributeDefinition(name = "MQTT broker URL",
+				description = "The MQTT broker used by the MQTT flavor — for calling services announced "
+						+ "over it, for hearing events, or both. Ignored by a node that speaks only REST.")
+		String mqtt_url() default "tcp://localhost:1883";
+
+		@AttributeDefinition(name = "MQTT topic prefix",
+				description = "The prefix calls served over MQTT use. It has to match the providers' own.")
+		String topic_prefix() default "ddsr/rpc";
+
 	}
 
 	@Reference
@@ -124,6 +140,7 @@ public class RsaConsumer extends NodeConfiguration {
 		return new RsaSettings(config.broker_url(), "", "", 0, "", "", false, "",
 				config.registry_name(), config.default_version(), config.flavor(),
 				config.policy(), config.import_policy(), config.provider_heartbeat_seconds(),
-				config.session_interval_seconds(), config.consumer_id());
+				config.session_interval_seconds(), config.consumer_id(), config.mqtt_url(),
+				config.topic_prefix(), "", config.discovery_flavor());
 	}
 }

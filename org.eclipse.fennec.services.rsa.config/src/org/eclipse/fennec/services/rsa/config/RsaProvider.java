@@ -125,6 +125,30 @@ public class RsaProvider extends NodeConfiguration {
 		@AttributeDefinition(name = "Consumer id",
 				description = "How this node names itself to the broker. Empty lets the client choose.")
 		String consumer_id() default "";
+
+		@AttributeDefinition(name = "Distribution flavor",
+				description = "Which transport this node SERVES over, when that is not the flavor above. "
+						+ "Serving and announcing are two halves and a deployment may split them — MQTT "
+						+ "distribution with REST discovery, or the reverse.")
+		String distribution_flavor() default "";
+
+		@AttributeDefinition(name = "Discovery flavor",
+				description = "Which transport this node ANNOUNCES and HEARS over, when that is not the "
+						+ "flavor above. The announcement is a publish to the broker either way; what this "
+						+ "changes is where the events come from.")
+		String discovery_flavor() default "";
+
+		@AttributeDefinition(name = "MQTT broker URL",
+				description = "The MQTT broker used by the MQTT flavor, e.g. tcp://localhost:1883 — for "
+						+ "serving calls, for hearing events, or both. Ignored by a node that speaks only "
+						+ "REST.")
+		String mqtt_url() default "tcp://localhost:1883";
+
+		@AttributeDefinition(name = "MQTT topic prefix",
+				description = "Calls served over MQTT arrive under <prefix>/req/… and are answered under "
+						+ "<prefix>/res/…. One prefix per deployment keeps two of them on one broker apart.")
+		String topic_prefix() default "ddsr/rpc";
+
 	}
 
 	@Reference
@@ -165,6 +189,7 @@ public class RsaProvider extends NodeConfiguration {
 				config.http_port(), config.http_host(), config.context_path(), config.manage_http(),
 				config.http_id(), config.registry_name(), config.default_version(), config.flavor(),
 				config.policy(), config.import_policy(), config.provider_heartbeat_seconds(),
-				config.session_interval_seconds(), config.consumer_id());
+				config.session_interval_seconds(), config.consumer_id(), config.mqtt_url(),
+				config.topic_prefix(), config.distribution_flavor(), config.discovery_flavor());
 	}
 }

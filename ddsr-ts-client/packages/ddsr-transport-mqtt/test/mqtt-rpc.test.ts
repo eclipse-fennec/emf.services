@@ -261,3 +261,62 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     expect(plugin.canHandle(rest)).toBe(false);
   });
 });
+
+/**
+ * #100 on the MQTT path: the encoding is the contract's choice there
+ * too, and a declaration this side cannot honour is refused rather
+ * than quietly ignored. The failure mode it prevents is the quiet one:
+ * both ends writing XMI for a contract that says protobuf, agreeing
+ * with each other and with nothing else.
+ */
+describe('MQTT invocation honours the declared encoding', () => {
+  it('writes the encoding the contract declares when it can', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const opFlavor = firstOpFlavor(flavor);
+    opFlavor.consumes.push('application/xml');
+    const { broker, clientFactory } = testHarness();
+    const published: Array<{ topic: string; payload: Uint8Array }> = [];
+    broker.onPublish((topic, payload) => published.push({ topic, payload }));
+
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined, timeoutMs: 30 });
+    await plugin.invoke(charge, { amount: 1 }, flavor, opFlavor).catch(() => undefined);
+
+    const request = published.find(p => p.topic === 'ddsr/rpc/payments/charge');
+    expect(readStructured(request!.payload).attributes.datacontenttype).toBe('application/xml');
+    await plugin.close();
+  });
+
+  it('refuses a call it would have to lie about', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const opFlavor = firstOpFlavor(flavor);
+    opFlavor.consumes.push('application/x-protobuf');
+    const { clientFactory } = testHarness();
+
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined, timeoutMs: 30 });
+
+    await expect(plugin.invoke(charge, { amount: 1 }, flavor, opFlavor))
+      .rejects.toThrow(/x-protobuf.*can only write application\/xml/s);
+    await plugin.close();
+  });
+
+  it('tells the caller when it cannot answer in what the contract declares', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const opFlavor = firstOpFlavor(flavor);
+    opFlavor.produces.push('application/x-protobuf');
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, { charge: () => 1 },
+      { clientFactory, log: () => undefined });
+    await server.start();
+
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined, timeoutMs: 200 });
+
+    // The Diagnostic itself travels as XMI: it is not the operation's
+    // declared result, and a caller that learns why beats one that
+    // waits out its timer.
+    await expect(plugin.invoke(charge, { amount: 1 }, flavor, opFlavor))
+      .rejects.toThrow(/x-protobuf/);
+
+    await plugin.close();
+    await server.stop();
+  });
+});

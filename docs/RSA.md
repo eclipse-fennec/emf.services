@@ -101,22 +101,69 @@ console, on `RsaProvider.Config` and `RsaConsumer.Config`.
 | --- | --- |
 | `…rsa` | the `RemoteServiceAdmin` itself, and two SPIs |
 | `…rsa.distribution.rest` | serving an exported service over REST |
+| `…rsa.distribution.mqtt` | the same over MQTT (#98) |
 | `…rsa.discovery.rest` | announcing and finding endpoints via the broker |
+| `…rsa.discovery.mqtt` | the same, with the broker's events heard over MQTT |
 | `…rsa.discovery.local` | endpoints declared in a bundle (122.6.2 XML) |
 | `…rsa.topology` | deciding what gets exported and imported |
 | `…rsa.config` | one configuration per role |
 
 The two SPIs are the extension points. **`FlavorDistribution`** knows
 how to serve a contract over one flavor; **`ServiceDiscovery`** knows
-how to announce and find one. Adding MQTT as a second flavor (#98)
-means a second pair of these and a second configuration, not a change
-to the admin.
+how to announce and find one. MQTT arrived as a second pair of these
+and two configuration lines (#98), and the admin did not change —
+which is what the SPIs were for.
 
 An admin serves exactly one configuration type, named by
 `remote.configs.supported`, and its distribution and discovery are
 selected by target filter from its configuration. A node that exports
 nothing says so, by pointing its distribution at the one that exports
 nothing, rather than being left with a reference that finds nobody.
+
+## Two transports, and splitting them
+
+`fennec.mqtt` is the second configuration type. A service asks for it
+the way it asks for anything:
+
+```java
+property = { "service.exported.interfaces=*",
+             "service.exported.configs=fennec.mqtt" }
+```
+
+Calls then travel over MQTT: `<prefix>/req/<provider>/<contract>/<op>`
+carries the call, `<prefix>/res/<provider>/<contract>/<consumer>/<call>`
+carries the answer, both as CloudEvents with a `ServiceInvocation`
+inside (#101). The two trees are separate so that a broker ACL can say
+who may call and who may read — [Wire format](WIRE_FORMAT.md) has the
+rules and a sketch of the ACL.
+
+**Serving and announcing are two halves, and a node may split them.**
+The role configuration takes `distribution.flavor` and
+`discovery.flavor`, each falling back to `flavor`:
+
+```json
+"org.eclipse.fennec.services.rsa.provider": {
+  "distribution.flavor": "fennec.mqtt",
+  "mqtt.url": "tcp://localhost:1883",
+  "broker.url": "http://localhost:8887/ddsr/rest"
+}
+```
+
+That node serves over MQTT and announces over REST — which is the
+pairing that shows the two SPIs are really independent, and what the
+harness runs as scenario I.
+
+Three things the role configuration keeps in step, each of which is a
+silent failure when done by hand:
+
+- a node hearing over MQTT gets the event transport configured and its
+  client pointed at it;
+- a node serving over MQTT gets no HTTP stack, because an export that
+  answers on topics needs no server;
+- the client's `supported.flavors` follows what the node actually
+  speaks. A lookup filters by it, so a node that says REST is never
+  shown a service reachable only over MQTT — and nothing reports that,
+  because from the broker's side nothing went wrong.
 
 ## Topology
 
@@ -156,8 +203,8 @@ speaks.
 
 ## Limits worth knowing
 
-- **One flavor ships.** `fennec.rest` is the only configuration type
-  today. MQTT is #98.
+- **Two flavors ship**, `fennec.rest` and `fennec.mqtt`, and a node may
+  use one for serving and the other for announcing (see below).
 - **Intents are not enforced.** `service.exported.intents` is carried
   but nothing checks that the transport provides them.
 - **A contract derived from a Java interface** covers what reflection

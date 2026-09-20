@@ -38,6 +38,12 @@ broker. Requirements and decisions:
   predecessor keeps answering, and after `DELETE /consumers/{id}` the
   policy sweep retires it (`UNREGISTERING/REPLACED` + `RETIRED`) and the
   locator switches over (#45, #58).
+- **I (podman only) — RSA over MQTT:** a plain OSGi service is exported
+  over MQTT by one framework and bound with `@Reference` in another —
+  no contract document, no endpoint code, and no REST on the
+  invocation path. Deliberately MQTT distribution with REST discovery:
+  the announcement is a publish to the broker as always, only the calls
+  travel over mosquitto (#98).
 - **H — provider liveness:** the Java provider heartbeats every 2 s
   (`DDSR_PROVIDER_HEARTBEAT_SECONDS=2`) and is killed with SIGKILL — no
   withdraw, no shutdown hook. Expected: the broker retires the
@@ -60,7 +66,7 @@ drain in scenario G.
 
 ```bash
 ./itest/run-harness.sh          # host processes (no podman needed): A + B + F + G + H
-./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + F + G + H
+./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + F + G + H
 ```
 
 Both build first (`./gradlew build` + the bnd exports, `pnpm install` +

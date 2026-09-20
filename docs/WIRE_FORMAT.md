@@ -241,7 +241,7 @@ connection.
 ```
 request topic:   MqttOperationFlavor.requestTopic,
                  else <MqttFlavor.requestTopic>/<operation.name>
-reply topic:     consumer-chosen <base>/<request id>, with base =
+reply topic:     <base>/<consumer>/<request id>, with base =
                  MqttOperationFlavor.responseTopic
                  | MqttFlavor.responseTopic
                  | <requestTopic>/reply
@@ -282,8 +282,39 @@ second root describing the operation being called, and the references
 resolve inside it. Self-contained, like every other document on this
 wire.
 
-One reply topic per request — a subscription never sees a foreign
-answer, and `correlationid` double-checks. A provider-side handler
+### Who may read what
+
+The consumer's own segment in the reply topic is what makes the
+separation enforceable. A topic separated only by an unguessable id
+keeps peers apart by obscurity: a broker cannot be told who may read
+what, because there is no name to write the rule against. With the
+segment, an ACL is two lines:
+
+```
+consumer:  publish   <prefix>/req/#
+           subscribe <prefix>/res/+/+/<me>/#
+provider:  subscribe <prefix>/req/<its own name>/#
+           publish   <prefix>/res/#
+```
+
+Requests and answers live in **separate trees** for the same reason —
+"may call this provider" and "may read what it answered" are two
+permissions, and nesting the answers under the request topic would make
+them one. The RSA distribution names both (`<prefix>/req/…`,
+`<prefix>/res/…`); a hand-written flavor that names only a request
+topic gets `<requestTopic>/reply` as before, which works and cannot be
+separated by an ACL.
+
+A name is sanitised before it becomes a topic level: `/`, `+` and `#`
+are replaced, so a consumer calling itself `a/#` cannot name a subtree
+it was never given.
+
+One subtree per consumer, not one topic per request: a caller
+subscribes once and `correlationid` tells its calls apart, which is
+also what lets several be in flight at once.
+
+A subscription never sees a foreign answer, and `correlationid`
+double-checks. A provider-side handler
 failure answers with the Diagnostic instead of letting the consumer
 time out. Reference implementation:
 `ddsr-ts-client/packages/ddsr-transport-mqtt/src/mqtt-rpc.ts`
@@ -291,6 +322,8 @@ time out. Reference implementation:
 `MqttOperationServer`), with the invocation codec in
 `@ddsr/client`'s `invocation.ts`.
 
-**Java has no MQTT invocation yet.** The transport carries events on
-both sides, but the call path exists only in TypeScript; the Java
-counterpart arrives with #98, which is what first needs one.
+Both languages speak this path since #98. What differs is what each can
+encode: the Java codec is content-type driven (#100), so a Java end
+honours a contract declaring protobuf; the TypeScript end can write only
+XMI on MQTT and **refuses** a contract that declares anything else
+rather than sending XMI under another name.

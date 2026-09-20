@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.broker.core.DdsrBroker;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
+import org.eclipse.fennec.services.runtime.BrokerRuntimeDTO;
 
 /**
  * The broker: an in-memory registry with synchronous XMI snapshot
@@ -80,6 +81,17 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	/** The registry, the lock that guards it and the file it lives in. */
 	private final BrokerState state;
 
+	/**
+	 * What this broker looks like from outside (#126).
+	 *
+	 * <p>A concern like the others, and the only one that changes
+	 * nothing. It is told after every mutation rather than deriving the
+	 * fact from the event stream, because leases and sessions raise no
+	 * service events — a runtime that reported everything except who
+	 * holds what would report the easy half.
+	 */
+	private final Runtime runtime;
+
 	/** The work the broker does on its own, on a clock. */
 	private final Maintenance maintenance;
 
@@ -116,6 +128,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 		this.catalog = new CatalogStore(state, cold);
 		this.lookups = new Lookups(state, lookup, cold, policies);
 		this.registrations = new Registrations(state, lookup, announcements, catalog, cold, policies, liveness);
+		this.runtime = new Runtime(state, sessions, liveness, cold, delivery);
 		if (state.rehydrated()) {
 			// The providers and implementations came back from the
 			// snapshot, but the reference and registration pairs and the
@@ -185,22 +198,53 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	@Override
 	public Diagnostic publishImplementation(ServiceProvider provider, ServiceImplementation implementation) {
-		return registrations.publishImplementation(provider, implementation);
+		return changed(registrations.publishImplementation(provider, implementation));
 	}
 
 	@Override
 	public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
-		return registrations.modifyImplementation(provider, implementation);
+		return changed(registrations.modifyImplementation(provider, implementation));
 	}
 
 	@Override
 	public Diagnostic withdrawImplementation(ServiceProvider provider, ServiceImplementation implementation) {
-		return registrations.withdrawImplementation(provider, implementation);
+		return changed(registrations.withdrawImplementation(provider, implementation));
 	}
 
 	@Override
 	public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
-		return registrations.registerService(provider, implementation);
+		return changed(registrations.registerService(provider, implementation));
+	}
+
+	/**
+	 * Report that the broker's state may look different now, and hand
+	 * the caller's value back.
+	 *
+	 * <p>After the mutation, not before, so a watcher that re-reads
+	 * immediately sees what happened rather than what was about to.
+	 *
+	 * <p>Unconditionally, including for a mutation that was refused: a
+	 * watcher woken for nothing re-reads and finds nothing different,
+	 * which is correct and briefly wasteful — the same trade the event
+	 * stream makes when it tells everyone to re-snapshot.
+	 */
+	private <T> T changed(T result) {
+		runtime.changed();
+		return result;
+	}
+
+	// ============================================================
+	// Introspection — see Runtime
+	// ============================================================
+
+	/** What this broker holds, for anything that wants to watch it (#126). */
+	public BrokerRuntimeDTO runtimeSnapshot() {
+		return runtime.snapshot();
+	}
+
+	/** Which snapshot the next answer would be. */
+	public long runtimeRevision() {
+		return runtime.revision();
 	}
 
 	// ============================================================
@@ -249,26 +293,26 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	@Override
 	public Diagnostic addCatalogEntry(ServiceInterface serviceInterface, String requestor) {
-		return catalog.addCatalogEntry(serviceInterface, requestor);
+		return changed(catalog.addCatalogEntry(serviceInterface, requestor));
 	}
 
 	@Override
 	public Diagnostic deprecateCatalogEntry(ServiceInterface serviceInterface, String requestor) {
-		return catalog.deprecateCatalogEntry(serviceInterface, requestor);
+		return changed(catalog.deprecateCatalogEntry(serviceInterface, requestor));
 	}
 
 	@Override
 	public Diagnostic removeCatalogEntry(ServiceInterface serviceInterface, String requestor) {
-		return catalog.removeCatalogEntry(serviceInterface, requestor);
+		return changed(catalog.removeCatalogEntry(serviceInterface, requestor));
 	}
 
 	public Diagnostic deprecateCatalogEntry(String name, String fingerprint, ServiceInterface governance,
 			String requestor) {
-		return catalog.deprecateCatalogEntry(name, fingerprint, governance, requestor);
+		return changed(catalog.deprecateCatalogEntry(name, fingerprint, governance, requestor));
 	}
 
 	public Diagnostic removeCatalogEntry(String name, String fingerprint, String requestor) {
-		return catalog.removeCatalogEntry(name, fingerprint, requestor);
+		return changed(catalog.removeCatalogEntry(name, fingerprint, requestor));
 	}
 
 	public ServiceInterface getCatalogEntry(String name, String fingerprint) {
@@ -286,7 +330,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	/** Parks registrations nobody has looked at since the cutoff. */
 	public int coldifyIdle(Instant cutoff) {
-		return cold.coldifyIdle(cutoff);
+		return changed(cold.coldifyIdle(cutoff));
 	}
 
 	/** How many registrations are parked; for tests and diagnostics. */
@@ -310,7 +354,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	/** Advances every armed handover; driven by the component's scheduler. */
 	public int advanceUpdatePolicies(Instant now) {
-		return policies.advanceUpdatePolicies(now);
+		return changed(policies.advanceUpdatePolicies(now));
 	}
 
 	// ============================================================
@@ -319,12 +363,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	@Override
 	public Diagnostic heartbeat(String referenceId, long intervalSeconds) {
-		return liveness.heartbeat(referenceId, intervalSeconds);
+		return changed(liveness.heartbeat(referenceId, intervalSeconds));
 	}
 
 	/** Sweeps the leases; driven by the component's scheduler, not by the wire. */
 	public int retireLostProviders(Instant now) {
-		return liveness.retireLostProviders(now);
+		return changed(liveness.retireLostProviders(now));
 	}
 
 	/** How many registrations are being watched; for tests and diagnostics. */
@@ -338,12 +382,12 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	@Override
 	public Diagnostic putSession(ConsumerSession session, Collection<String> acquiredReferenceIds) {
-		return sessions.putSession(session, acquiredReferenceIds);
+		return changed(sessions.putSession(session, acquiredReferenceIds));
 	}
 
 	@Override
 	public Diagnostic deleteSession(String consumerId) {
-		return sessions.deleteSession(consumerId);
+		return changed(sessions.deleteSession(consumerId));
 	}
 
 	@Override
@@ -353,7 +397,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	@Override
 	public int expireSessions(Instant cutoff) {
-		return sessions.expireSessions(cutoff);
+		return changed(sessions.expireSessions(cutoff));
 	}
 
 	@Override

@@ -167,6 +167,9 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	/** Removes the JVM shutdown hook again when this component goes. */
 	private AutoCloseable cleanShutdown;
 
+	/** The runtime service and the thread that keeps its revision current. */
+	private RuntimePublisher runtime;
+
 	private static void closeQuietly(AutoCloseable closeable) {
 		if (closeable == null) {
 			return;
@@ -241,6 +244,11 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 			DdsrBrokerImpl broker = new DdsrBrokerImpl(settings, externalLookup, this::fanOut);
 			this.delegate = broker;
 			broker.activate();
+			// Registered separately and by hand, because its one property
+			// has to change while it is registered — which is how a
+			// watcher is told that the broker looks different now (#126).
+			this.runtime = new RuntimePublisher(context, broker);
+			runtime.open();
 			LOG.info("[DDSR] BrokerCore activated, snapshot=" + settings.snapshotPath().toAbsolutePath());
 		} catch (RuntimeException activationFailure) {
 			LOG.log(Level.SEVERE, "[DDSR] BrokerCore could not be activated", activationFailure);
@@ -249,6 +257,8 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	}
 
 	void deactivate() {
+		closeQuietly(runtime);
+		runtime = null;
 		closeQuietly(cleanShutdown);
 		cleanShutdown = null;
 		DdsrBrokerImpl broker = delegate;

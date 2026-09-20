@@ -167,6 +167,23 @@ final class Liveness {
 			state.writeLock().unlock();
 		}
 	}
+	/**
+	 * The lease on one registration, or {@code null} for a provider that
+	 * does not heartbeat.
+	 *
+	 * <p>Absence is an answer here, not a gap: heartbeating is opt-in,
+	 * so a registration without a lease is one nobody promised to
+	 * supervise.
+	 */
+	ProviderLease leaseOf(ServiceRegistration registration) {
+		state.readLock().lock();
+		try {
+			return providerLeases.get(registration);
+		} finally {
+			state.readLock().unlock();
+		}
+	}
+
 	/** Number of registrations currently under liveness supervision. */
 	int providerLeaseCount() {
 		state.readLock().lock();

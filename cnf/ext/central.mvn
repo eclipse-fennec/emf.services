@@ -254,3 +254,6 @@ org.eclipse.fennec.mcp:org.eclipse.fennec.mcp.workspace.library:0.1.0-SNAPSHOT
 # rather than a test double: the factory registers itself for a content type,
 # which is exactly the mechanism the codec now uses.
 org.eclipse.fennec.util:org.eclipse.fennec.protobuf:1.0.0-SNAPSHOT
+# The @EMFConfigurator component that registers the factory on the emf.osgi
+# ResourceSet. Runtime half of the above: added to the invocation runs only.
+org.eclipse.fennec.util:org.eclipse.fennec.protobuf.osgi:1.0.0-SNAPSHOT

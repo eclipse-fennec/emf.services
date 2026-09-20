@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.rsa.topology;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
@@ -89,6 +90,19 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	 */
 	private final Map<ServiceReference<Object>, Collection<ExportRegistration>> exported = new ConcurrentHashMap<>();
 
+	/**
+	 * Which admin has already been asked about which service.
+	 *
+	 * <p>Two threads reach the export path routinely: a service
+	 * registering, and an admin arriving and being offered everything
+	 * that was waiting. Asking twice means exporting twice.
+	 */
+	private final Set<Asked> alreadyAsked = ConcurrentHashMap.newKeySet();
+
+	/** One admin's question about one service. */
+	private record Asked(RemoteServiceAdmin admin, ServiceReference<Object> reference) {
+	}
+
 	private ServiceTracker<Object, Collection<ExportRegistration>> tracker;
 
 	private BundleContext context;
@@ -135,6 +149,7 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 		}
 		exported.values().forEach(ExportEverythingAsked::close);
 		exported.clear();
+		alreadyAsked.clear();
 	}
 
 	@Override
@@ -176,6 +191,13 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	private void exportThrough(RemoteServiceAdmin admin, ServiceReference<Object> reference,
 			Collection<ExportRegistration> registrations) {
+		// One admin exports one service once. Without the claim, a service
+		// registering while an admin arrives was exported twice through the
+		// same admin — two endpoints and two announcements for one service
+		// (#124).
+		if (!alreadyAsked.add(new Asked(admin, reference))) {
+			return;
+		}
 		try {
 			registrations.addAll(admin.exportService(reference, null));
 		} catch (RuntimeException failure) {
@@ -204,6 +226,7 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	@Override
 	public void removedService(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
 		exported.remove(reference);
+		alreadyAsked.removeIf(asked -> asked.reference().equals(reference));
 		close(registrations);
 		LOG.info("[DDSR] withdrew " + reference);
 	}

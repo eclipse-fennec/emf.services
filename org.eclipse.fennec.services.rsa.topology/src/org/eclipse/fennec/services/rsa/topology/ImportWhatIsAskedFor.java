@@ -18,7 +18,9 @@ import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -180,8 +182,13 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 				if (NEVER_REMOTE.stream().anyMatch(interfaceName::startsWith)) {
 					continue;
 				}
+				// The increment belongs with the lookup, not after it: the
+				// count decides when a watch and every import under it are
+				// closed, and a lost increment closed them under a live
+				// consumer (#124).
 				watches.computeIfAbsent(interfaceName,
-						name -> new Watch(name, contractNameOf(listener.getFilter(), name))).listeners++;
+						name -> new Watch(name, contractNameOf(listener.getFilter(), name)))
+						.listeners.incrementAndGet();
 			}
 		}
 	}
@@ -195,7 +202,7 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			Matcher interfaces = OBJECT_CLASS.matcher(listener.getFilter());
 			while (interfaces.find()) {
 				Watch watch = watches.get(interfaces.group(1));
-				if (watch != null && --watch.listeners <= 0) {
+				if (watch != null && watch.listeners.decrementAndGet() <= 0) {
 					// Nobody is waiting for it any more. What was imported
 					// for them goes too — an imported service without a
 					// consumer is only a proxy that will never be called.
@@ -229,12 +236,12 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 
 		final String interfaceName;
 		final String contractName;
-		int listeners;
+		final AtomicInteger listeners = new AtomicInteger();
 		private final Map<String, ImportRegistration> imports = new ConcurrentHashMap<>();
 		/** What appeared while no admin could take it. */
 		private final Map<String, ServiceImplementation> waiting = new ConcurrentHashMap<>();
 		/** One subscription per discovery: each may know a different provider. */
-		private final List<AutoCloseable> subscriptions = new ArrayList<>();
+		private final List<AutoCloseable> subscriptions = new CopyOnWriteArrayList<>();
 
 		Watch(String interfaceName, String contractName) {
 			this.interfaceName = interfaceName;
@@ -250,20 +257,53 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			if (imports.containsKey(referenceId)) {
 				return;
 			}
-			// Whichever admin speaks this endpoint's configuration type
-			// takes it; the others answer null.
-			for (RemoteServiceAdmin admin : admins) {
-				ImportRegistration imported = admin.importService(describe(referenceId, implementation));
-				if (imported != null) {
-					waiting.remove(referenceId);
-					imports.put(referenceId, imported);
-					return;
-				}
+			// Claimed before the slow part. A discovery replays what it
+			// already knows and then subscribes, so the replay thread and
+			// the event thread overlap by design — both used to import,
+			// and the loser's registration became a proxy nothing could
+			// close (#124).
+			if (!importing.add(referenceId)) {
+				return;
 			}
-			// Nobody could, for now. Remembered rather than dropped: the
-			// admin for this flavor is a component like any other and may
-			// still be bringing its transports up.
-			waiting.put(referenceId, implementation);
+			try {
+				// Whichever admin speaks this endpoint's configuration type
+				// takes it; the others answer null.
+				for (RemoteServiceAdmin admin : admins) {
+					ImportRegistration imported = admin.importService(describe(referenceId, implementation));
+					if (imported != null) {
+						waiting.remove(referenceId);
+						if (withdrawnWhileImporting.remove(referenceId)) {
+							// It went away while we were importing it, and
+							// discovery says a provider is gone only once.
+							closeQuietly(referenceId, imported);
+							return;
+						}
+						imports.put(referenceId, imported);
+						return;
+					}
+				}
+				// Nobody could, for now. Remembered rather than dropped: the
+				// admin for this flavor is a component like any other and may
+				// still be bringing its transports up.
+				waiting.put(referenceId, implementation);
+			} finally {
+				importing.remove(referenceId);
+			}
+		}
+
+		/** Reference ids currently being imported by this watch. */
+		private final Set<String> importing = ConcurrentHashMap.newKeySet();
+
+		/** Ids reported gone while their import was still in flight. */
+		private final Set<String> withdrawnWhileImporting = ConcurrentHashMap.newKeySet();
+
+		private void closeQuietly(String referenceId, ImportRegistration imported) {
+			try {
+				imported.close();
+				LOG.fine(() -> "[DDSR] " + referenceId + " went away while it was being imported");
+			} catch (RuntimeException failure) {
+				LOG.log(Level.WARNING, "[DDSR] closing the import of " + referenceId + " failed", failure);
+			}
 		}
 
 		/** Offer everything that is still waiting to the admins there are now. */
@@ -292,6 +332,9 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 		@Override
 		public void gone(String referenceId) {
 			waiting.remove(referenceId);
+			if (importing.contains(referenceId)) {
+				withdrawnWhileImporting.add(referenceId);
+			}
 			ImportRegistration imported = imports.remove(referenceId);
 			if (imported != null) {
 				imported.close();

@@ -234,12 +234,13 @@ class SseEventBridgeTest {
 	}
 
 	@Test
-	@DisplayName("a subscriber that stays anonymous is served and reported as nobody")
+	@DisplayName("a subscriber that stays anonymous is served, and nothing is reported about it")
 	void anonymousSubscribersAreStillServed() {
 		subscribe();
 
 		assertThat(bridge.subscriberCount()).isEqualTo(1);
-		assertThat(presence.connected).containsExactly((String) null);
+		assertThat(presence.connected)
+				.as("there is no identity to report presence for").isEmpty();
 		assertThat(presence.disconnected).isEmpty();
 	}
 
@@ -266,5 +267,52 @@ class SseEventBridgeTest {
 		assertThat(presence.disconnected)
 				.as("the consumer is demonstrably still there on its other stream")
 				.isEmpty();
+	}
+
+	@Test
+	@DisplayName("a reconnect landing between the removal and the report does not mark the consumer gone (#127)")
+	void aReconnectIsNotADisconnect() throws Exception {
+		FakeSse.Sink first = subscribe("consumer-a");
+		presence.connected.clear();
+
+		// The two ends of a connection are reported by different threads:
+		// the heartbeat prunes the old sink while the request thread is
+		// handling the reconnect. Whatever the interleaving, the consumer
+		// holds a stream throughout and must never be reported as gone.
+		first.close();
+		Thread pruning = new Thread(() -> bridge.publish(registered("ref-1")));
+		Thread reconnecting = new Thread(() -> subscribe("consumer-a"));
+		reconnecting.start();
+		pruning.start();
+		reconnecting.join(5000);
+		pruning.join(5000);
+
+		assertThat(presence.disconnected)
+				.as("it never stopped holding a stream")
+				.doesNotContain("consumer-a");
+	}
+
+	@Test
+	@DisplayName("the last stream ending reports the consumer gone exactly once")
+	void theLastStreamReportsOnce() {
+		FakeSse.Sink first = subscribe("consumer-a");
+		FakeSse.Sink second = subscribe("consumer-a");
+
+		first.close();
+		bridge.publish(registered("ref-1"));
+		assertThat(presence.disconnected).as("one stream left").isEmpty();
+
+		second.close();
+		bridge.publish(registered("ref-2"));
+		assertThat(presence.disconnected).containsExactly("consumer-a");
+	}
+
+	@Test
+	@DisplayName("the first stream reports the consumer present, a second does not repeat it")
+	void onlyTheFirstStreamReportsPresence() {
+		subscribe("consumer-a");
+		subscribe("consumer-a");
+
+		assertThat(presence.connected).containsExactly("consumer-a");
 	}
 }

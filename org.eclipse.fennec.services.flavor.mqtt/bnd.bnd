@@ -1,0 +1,23 @@
+Bundle-Name: Fennec Services MQTT Flavor Rules
+Bundle-Description: \
+	Where a call travels on an MQTT wire and what its message looks like. \
+	Shared by the consumer, which publishes a request, and by the \
+	provider side, which answers it — the two must not develop their own \
+	reading of the same flavor. The topic and QoS rules are the frozen \
+	convention; the message is a CloudEvent (#101) carrying a \
+	ServiceInvocation. No Paho, no client: this bundle decides, it does \
+	not connect.
+
+-library: enableEMF
+
+-buildpath: \
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	io.cloudevents.model;version=latest
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	jakarta.json-api;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest

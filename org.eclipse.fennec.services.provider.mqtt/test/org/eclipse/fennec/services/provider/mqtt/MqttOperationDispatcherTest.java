@@ -40,6 +40,9 @@ import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.telemetry.CallSpan;
+import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.junit.jupiter.api.Test;
@@ -126,6 +129,99 @@ class MqttOperationDispatcherTest {
 	private MqttOperationDispatcher dispatcher(MqttFlavor flavor) {
 		return new MqttOperationDispatcher(flavor, Payments::new, "/provider/Payment", resourceSets,
 				(topic, payload, qos) -> sent.add(new Published(topic, payload, qos)));
+	}
+
+	private MqttOperationDispatcher dispatcher(MqttFlavor flavor, CallTracer tracer) {
+		return new MqttOperationDispatcher(flavor, Payments::new, "/provider/Payment", resourceSets,
+				(topic, payload, qos) -> sent.add(new Published(topic, payload, qos)), tracer);
+	}
+
+	/**
+	 * A tracer that remembers what it was told. Enough to answer the one
+	 * question this side owns: does the caller's context reach it.
+	 */
+	private static final class Watching implements CallTracer {
+
+		private final List<String> served = new ArrayList<>();
+
+		private String sawTraceparent;
+
+		private String failure;
+
+		@Override
+		public CallSpan calling(String operation, TraceCarrier outbound) {
+			throw new AssertionError("a dispatcher serves, it does not call");
+		}
+
+		@Override
+		public CallSpan serving(String operation, TraceCarrier inbound) {
+			served.add(operation);
+			sawTraceparent = inbound.get("traceparent");
+			return new CallSpan() {
+
+				@Override
+				public CallSpan attribute(String name, String value) {
+					return this;
+				}
+
+				@Override
+				public void failed(Throwable error) {
+					failure = String.valueOf(error.getMessage());
+				}
+
+				@Override
+				public void close() {
+					// nothing to close in a fake
+				}
+			};
+		}
+	}
+
+	/** The same call, with a caller's trace context in the envelope. */
+	private byte[] tracedCall(MqttFlavor flavor, String replyTo, double amount, String traceparent)
+			throws Exception {
+		ServiceOperation operation = ((MqttOperationFlavor) flavor.getOperationFlavors().get(0))
+				.getOperation();
+		ServiceInvocation invocation = Invocations.invocation(operation, Map.of("amount", amount));
+		ByteArrayOutputStream document = new ByteArrayOutputStream();
+		XmiCodec.write(document, resourceSets, Invocations.roots(invocation));
+		CloudEvent envelope = MqttMessages.request("/consumer/probe", "charge", replyTo, "application/xml");
+		envelope.getExtensions().put("traceparent", traceparent);
+		return MqttMessages.write(envelope, document.toByteArray());
+	}
+
+	@Test
+	void the_callers_trace_travels_in_the_envelope() throws Exception {
+		MqttFlavor flavor = payments();
+		Watching watching = new Watching();
+
+		dispatcher(flavor, watching).onMessage("ddsr/rpc/payments/charge",
+				tracedCall(flavor, "ddsr/rpc/payments/charge/reply/11", 12.5,
+						"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"));
+
+		assertThat(watching.served)
+			.as("named by contract and operation, which is what a reader groups by")
+			.containsExactly("Payment/charge");
+		assertThat(watching.sawTraceparent)
+			.as("MQTT 3 has no user properties, so the extensions are the only place it can ride")
+			.isEqualTo("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+		assertThat(sent)
+			.as("and the call was served as it always was")
+			.hasSize(1);
+	}
+
+	@Test
+	void a_failing_call_is_marked_on_the_span_as_well_as_answered() throws Exception {
+		MqttFlavor flavor = payments();
+		Watching watching = new Watching();
+
+		dispatcher(flavor, watching).onMessage("ddsr/rpc/payments/charge",
+				call(flavor, "ddsr/rpc/payments/charge/reply/12", 500));
+
+		assertThat(watching.failure).contains("insufficient funds");
+		assertThat(answerIn(sent.get(0)).getDiagnostic())
+			.as("the consumer is still told, which is the answer that matters")
+			.isNotNull();
 	}
 
 	/** A call, as a consumer would put it on the wire. */

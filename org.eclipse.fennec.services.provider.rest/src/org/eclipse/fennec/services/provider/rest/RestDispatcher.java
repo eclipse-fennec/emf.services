@@ -44,6 +44,9 @@ import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.invocation.ResultDocument;
+import org.eclipse.fennec.services.telemetry.CallSpan;
+import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestRoute;
 import org.eclipse.fennec.services.xmi.codec.WireBody;
@@ -99,6 +102,7 @@ public class RestDispatcher {
 	private final Supplier<ServiceObjects<Object>> implementations;
 	private final String contract;
 	private final ComponentServiceObjects<ResourceSet> resourceSets;
+	private final CallTracer tracer;
 
 	/**
 	 * @param implementations where the service behind the contract comes
@@ -109,10 +113,22 @@ public class RestDispatcher {
 	 */
 	RestDispatcher(RestFlavor flavor, Supplier<ServiceObjects<Object>> implementations, String contract,
 			ComponentServiceObjects<ResourceSet> resourceSets) {
+		this(flavor, implementations, contract, resourceSets, CallTracer.NONE);
+	}
+
+	/**
+	 * @param tracer whoever is watching calls (#126). A dispatcher built
+	 *        without one is built with {@link CallTracer#NONE}, which is
+	 *        why the four-argument constructor still exists: serving a
+	 *        contract has never required telemetry and still does not.
+	 */
+	RestDispatcher(RestFlavor flavor, Supplier<ServiceObjects<Object>> implementations, String contract,
+			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer) {
 		this.flavor = flavor;
 		this.implementations = implementations;
 		this.contract = contract;
 		this.resourceSets = resourceSets;
+		this.tracer = tracer == null ? CallTracer.NONE : tracer;
 	}
 
 	@GET
@@ -164,14 +180,45 @@ public class RestDispatcher {
 		// them. Unconditional, including the absent case, so a pooled
 		// thread cannot carry a previous caller's origin.
 		CallOrigin.set(ClientOrigin.parse(headerValue.apply(ClientOrigin.HEADER)));
-		try {
+		// The caller's trace, continued here rather than started here
+		// (#126). The same place and the same reason as the origin above:
+		// every dispatched call passes through, and the headers are
+		// already in hand. A request that carries no context begins a
+		// trace here, which is the right answer for a caller nobody
+		// instrumented.
+		try (CallSpan span = tracer.serving(spanName(httpMethod, path),
+				TraceCarrier.reading(headerValue::apply))) {
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("rpc.service", contract)
+					.attribute("http.request.method", httpMethod)
+					.attribute("fennec.flavor", "REST");
 			CloudEvent request = CloudEventCodec.fromHeaders(headerValue::apply,
 					headerValue.apply(HttpHeaders.CONTENT_TYPE));
-			return withReplyEnvelope(dispatchBound(httpMethod, path, queryValues, headerValue, entity),
-					request);
+			Response answer = withReplyEnvelope(
+					dispatchBound(httpMethod, path, queryValues, headerValue, entity), request);
+			span.attribute("http.response.status_code", String.valueOf(answer.getStatus()));
+			return answer;
 		} finally {
 			CallOrigin.clear();
 		}
+	}
+
+	/**
+	 * What to call this call in a trace.
+	 *
+	 * <p>The contract and the operation, which is what a reader wants to
+	 * group by — never the path, whose variables would make every call a
+	 * name of its own. The route is matched again inside; matching is a
+	 * pure function of the flavor and costs a walk over the operation
+	 * flavors, and paying it twice is better than threading a name
+	 * through the dispatch.
+	 */
+	private String spanName(String httpMethod, String path) {
+		return RestRoute.match(flavor, httpMethod, path)
+				.map(route -> route.operationFlavor().getOperation())
+				.filter(operation -> operation != null && operation.getName() != null)
+				.map(operation -> contract + "/" + operation.getName())
+				.orElse(contract + " " + httpMethod);
 	}
 
 	/**

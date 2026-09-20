@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import jakarta.ws.rs.core.Application;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
@@ -33,6 +34,8 @@ import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
 import org.osgi.service.jakartars.runtime.dto.ApplicationDTO;
 import org.osgi.service.jakartars.runtime.dto.FailedApplicationDTO;
@@ -101,6 +104,14 @@ public class RestDistributionComponent implements RestDistribution {
 	@Reference(name = "runtime")
 	private JakartarsServiceRuntime runtime;
 
+	/**
+	 * Whoever is watching calls, if anyone is (#126). Read per call
+	 * through {@link CallTracer#deferred}, because what this component
+	 * serves outlives the telemetry bundle in both directions.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	private volatile CallTracer tracer;
+
 	private BundleContext context;
 
 	@Activate
@@ -116,7 +127,7 @@ public class RestDistributionComponent implements RestDistribution {
 		String base = flavor.getBasePath() == null || flavor.getBasePath().isBlank() ? "/" : flavor.getBasePath();
 
 		RestDispatcher dispatcher = new RestDispatcher(flavor, () -> new SingleService(service),
-				name == null ? base : name, resourceSets);
+				name == null ? base : name, resourceSets, CallTracer.deferred(() -> tracer));
 
 		Dictionary<String, Object> properties = new Hashtable<>();
 		properties.put("osgi.jakartars.application.base", base);

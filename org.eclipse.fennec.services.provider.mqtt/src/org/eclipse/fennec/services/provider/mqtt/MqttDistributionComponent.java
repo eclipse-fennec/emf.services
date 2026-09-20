@@ -23,6 +23,7 @@ import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MqttFlavor;
+import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -32,6 +33,8 @@ import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 
 /**
  * The connection behind {@link MqttDistribution}: one Paho client per
@@ -56,6 +59,14 @@ public class MqttDistributionComponent implements MqttDistribution {
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> resourceSets;
 
+	/**
+	 * Whoever is watching calls, if anyone is (#126). Read per call
+	 * through {@link CallTracer#deferred}, because an export outlives
+	 * the telemetry bundle in both directions.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	private volatile CallTracer tracer;
+
 	/** One connection per broker, and how many exports hold it. */
 	private final Map<String, Connection> connections = new LinkedHashMap<>();
 
@@ -72,7 +83,7 @@ public class MqttDistributionComponent implements MqttDistribution {
 		Connection connection = connect(url);
 		MqttOperationDispatcher dispatcher = new MqttOperationDispatcher(flavor, () -> service,
 				"/provider/" + (name == null ? flavor.getName() : name), resourceSets,
-				connection::publish);
+				connection::publish, CallTracer.deferred(() -> tracer));
 
 		List<String> subscribed = new ArrayList<>();
 		try {

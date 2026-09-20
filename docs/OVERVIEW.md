@@ -25,6 +25,7 @@ not built, the page says so and names the issue.
 | export an OSGi service to another framework | [Remote Service Admin](RSA.md) |
 | write a Java provider or consumer by hand | [Client framework](CLIENT_FRAMEWORK_GUIDE.md) |
 | watch what a broker or a client holds | [Runtime services](RUNTIME.md) |
+| trace a call across consumer, broker and provider | [Telemetry](TELEMETRY.md) |
 
 
 ## Three parties and one thing the broker does not do
@@ -156,6 +157,10 @@ never edit them by hand.
 - `…rsa`, `…rsa.distribution.rest`, `…rsa.discovery.rest`,
   `…rsa.discovery.local`, `…rsa.topology`, `…rsa.config`
 
+**Watching**
+- `…telemetry` — OpenTelemetry behind the `CallTracer` seam and the
+  runtime services (#126)
+
 **Examples and tests**
 - `…examples.payment`, `…examples.model`, `…examples.rsa*`
 - `…rsa.tck` — the OSGi RSA TCK as a launch
@@ -178,5 +183,6 @@ to end. When a document and the harness disagree, the harness is right.
 - [Eventing](EVENTING.md) — what a consumer is told, and when
 - [Runtime services](RUNTIME.md) — what a node holds, and how to be
   told when that changes
+- [Telemetry](TELEMETRY.md) — one trace across the three parties
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the internal view, with the
   decision record

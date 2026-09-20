@@ -30,6 +30,7 @@ import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInvocation;
 import org.eclipse.fennec.services.ServiceInvocationResult;
+import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.client.DdsrException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
@@ -40,6 +41,9 @@ import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.mqtt.MqttFlavors;
 import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.telemetry.CallSpan;
+import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
@@ -54,6 +58,8 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -100,6 +106,19 @@ public class MqttServiceInvoker implements ServiceInvoker {
 
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> resourceSets;
+
+	/**
+	 * Whoever is watching calls, if anyone is (#126). Optional and
+	 * dynamic: a deployment without telemetry installs nothing and this
+	 * invoker notices nothing.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	private volatile CallTracer tracer;
+
+	private CallTracer tracer() {
+		CallTracer bound = tracer;
+		return bound == null ? CallTracer.NONE : bound;
+	}
 
 	private final Map<String, MqttAsyncClient> clientsByUrl = new LinkedHashMap<>();
 
@@ -154,12 +173,12 @@ public class MqttServiceInvoker implements ServiceInvoker {
 		String consumes = MqttFlavors.consumes(operationFlavor);
 
 		CloudEvent request;
-		byte[] message;
+		byte[] document;
 		String replyTopic;
 		try {
 			ServiceInvocation invocation = Invocations.invocation(operation,
 					args == null ? Map.of() : args);
-			byte[] document = write(Invocations.roots(invocation), consumes);
+			document = write(Invocations.roots(invocation), consumes);
 			// The reply topic has to be known before the call exists,
 			// because the call carries it — so the envelope is built
 			// first and its own id names the topic it answers on.
@@ -171,7 +190,6 @@ public class MqttServiceInvoker implements ServiceInvoker {
 					request.getEventId());
 			request.setSubject(operation.getName());
 			request.getExtensions().put(CloudEvents.EXTENSION_REPLY_TO, replyTopic);
-			message = MqttMessages.write(request, document);
 		} catch (Exception unwritable) {
 			throw new DdsrException("could not write the call to " + operationName + ": "
 					+ unwritable.getMessage(), unwritable);
@@ -181,33 +199,64 @@ public class MqttServiceInvoker implements ServiceInvoker {
 		String subtree = MqttFlavors.replySubtree(flavor, operationFlavor, consumerSegment);
 		ReplyInbox inbox = inboxFor(client, subtree, qos);
 		inbox.expect(request.getEventId());
-		try {
-			MqttMessage published = new MqttMessage(message);
-			published.setQos(qos);
-			published.setRetained(MqttFlavors.retained());
-			client.publish(requestTopic, published).waitForCompletion();
+		// The trace context travels in the envelope's extensions, which is
+		// where CloudEvents puts it and the only place it can go here:
+		// this is MQTT 3, which has no user properties (#126). Written
+		// before the message is serialised and after the span exists,
+		// because what travels must name THIS call. `map()` is a view on
+		// the EMap, so writing through it writes the extension.
+		try (CallSpan span = tracer().calling(spanNameOf(operation, operationName),
+				TraceCarrier.over(request.getExtensions().map()))) {
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("rpc.method", operationName)
+					.attribute("server.address", requestTopic)
+					.attribute("fennec.flavor", "MQTT");
+			try {
+				MqttMessage published = new MqttMessage(MqttMessages.write(request, document));
+				published.setQos(qos);
+				published.setRetained(MqttFlavors.retained());
+				client.publish(requestTopic, published).waitForCompletion();
 
-			byte[] answer = inbox.await(request.getEventId(), config.reply_timeout_seconds(),
-					TimeUnit.SECONDS);
-			if (answer == null) {
-				throw DdsrException.transport("no answer to " + operationName + " on " + replyTopic
-						+ " within " + config.reply_timeout_seconds() + "s", null);
+				byte[] answer = inbox.await(request.getEventId(), config.reply_timeout_seconds(),
+						TimeUnit.SECONDS);
+				if (answer == null) {
+					throw DdsrException.transport("no answer to " + operationName + " on " + replyTopic
+							+ " within " + config.reply_timeout_seconds() + "s", null);
+				}
+				return valueOf(answer, request, operationName);
+			} catch (InterruptedException interrupted) {
+				Thread.currentThread().interrupt();
+				DdsrException failed = DdsrException.transport("waiting for the answer to "
+						+ operationName + " was interrupted", interrupted);
+				span.failed(failed);
+				throw failed;
+			} catch (DdsrException alreadyOurs) {
+				span.failed(alreadyOurs);
+				throw alreadyOurs;
+			} catch (Exception failed) {
+				DdsrException transport = DdsrException.transport("calling " + operationName
+						+ " over MQTT failed: " + failed.getMessage(), failed);
+				span.failed(transport);
+				throw transport;
+			} finally {
+				// The subscription stays: it is this consumer's inbox, not
+				// this call's. What goes is the expectation of an answer.
+				inbox.forget(request.getEventId());
 			}
-			return valueOf(answer, request, operationName);
-		} catch (InterruptedException interrupted) {
-			Thread.currentThread().interrupt();
-			throw DdsrException.transport("waiting for the answer to " + operationName
-					+ " was interrupted", interrupted);
-		} catch (DdsrException alreadyOurs) {
-			throw alreadyOurs;
-		} catch (Exception failed) {
-			throw DdsrException.transport("calling " + operationName + " over MQTT failed: "
-					+ failed.getMessage(), failed);
-		} finally {
-			// The subscription stays: it is this consumer's inbox, not
-			// this call's. What goes is the expectation of an answer.
-			inbox.forget(request.getEventId());
 		}
+	}
+
+	/**
+	 * What to call this call in a trace: the contract and the operation,
+	 * so a reader can group by it. The subject on the envelope is the
+	 * operation alone, because that is what the MQTT wire has always
+	 * said and renaming it would be a wire change for a trace's sake.
+	 */
+	private static String spanNameOf(ServiceOperation operation, String operationName) {
+		if (operation.eContainer() instanceof ServiceInterface contract && contract.getName() != null) {
+			return contract.getName() + "/" + operation.getName();
+		}
+		return operationName;
 	}
 
 	/**

@@ -1,0 +1,85 @@
+# A framework with a broker, this bundle and an OpenTelemetry SDK, and
+# nothing else (#126). Not a demo of the wire — the harness is that —
+# but the proof that the wiring holds in a real framework: that the
+# OSGi OpenTelemetry integration hands us a TracerProvider and a
+# MeterProvider, that our components find them, and that the runtime
+# service of a live broker is bound and watched.
+#
+# The logging exporter rather than OTLP: a proof should not need a
+# collector, and the sender the SDK uses is the deployment's decision
+# anyway.
+
+-runfw: org.apache.felix.framework
+
+-runee: JavaSE-21
+
+-runsystemcapabilities: ${native_capability}
+
+-resolve.effective: active;skip:="osgi.service"
+
+-runrequires: \
+	bnd.identity;id='org.eclipse.fennec.services.telemetry',\
+	bnd.identity;id='org.eclipse.fennec.services.broker.core',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.sender.logging',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.commons',\
+	bnd.identity;id='org.apache.felix.configurator',\
+	bnd.identity;id='org.apache.felix.gogo.command',\
+	bnd.identity;id='org.apache.felix.gogo.shell'
+
+-runblacklist: \
+	bnd.identity;id='org.osgi.service.cm',\
+	bnd.identity;id='org.apache.aries.spifly.dynamic.framework.extension'
+
+# The bundle form of SPI Fly, not the framework extension: the extension
+# embeds an ASM that newer JVMs reject, and every other launch here pins
+# the same pair for the same reason.
+-runrequires.spifly: \
+	bnd.identity;id='org.apache.aries.spifly.dynamic.bundle'
+
+# WHAT THIS LAUNCH DOES NOT BRING: a configuration for the exporter.
+# The SDK components take ConfigurationPolicy.REQUIRE, so the sender
+# registers no OpenTelemetry service until something configures it, and
+# until then this bundle's components wait for a TracerProvider that
+# never arrives. Configuration reaches a framework here the way it does
+# everywhere in this workspace — a bundle carrying `OSGI-INF/configurator/`
+# (see broker.rest/bnd.bnd). `configurator.initial` is not a shortcut:
+# Felix reads it before the JSON provider is up and reports the document
+# as invalid whatever it contains.
+#
+# So a deployment adds, to its own configuration:
+#
+#   "org.eclipse.osgi.technology.opentelemetry.core.sender.logging": {
+#       "serviceName": "whatever-this-node-is"
+#   }
+#
+# and swaps `sender.logging` for `sender.http` when it has a collector.
+-runbundles: \
+	org.apache.aries.spifly.dynamic.bundle;version='[1.3.7,1.3.8)',\
+	org.apache.felix.cm.json;version='[2.0.6,2.0.7)',\
+	org.apache.felix.configadmin;version='[1.9.26,1.9.27)',\
+	org.apache.felix.configurator;version='[1.0.18,1.0.19)',\
+	org.apache.felix.gogo.command;version='[1.1.2,1.1.3)',\
+	org.apache.felix.gogo.runtime;version='[1.1.6,1.1.7)',\
+	org.apache.felix.gogo.shell;version='[1.1.4,1.1.5)',\
+	org.apache.felix.scr;version='[2.2.12,2.2.13)',\
+	org.eclipse.emf.common;version='[2.44.0,2.44.1)',\
+	org.eclipse.emf.ecore;version='[2.41.0,2.41.1)',\
+	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\
+	org.eclipse.fennec.emf.osgi.component.minimal;version='[1.1.0,1.1.1)',\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.telemetry;version=snapshot,\
+	org.eclipse.osgi-technology.opentelemetry.core.commons;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.core.sender.logging;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.repack;version='[0.1.0,0.1.1)',\
+	org.eclipse.parsson.jakarta.json;version='[1.1.7,1.1.8)',\
+	org.objectweb.asm;version='[9.10.1,9.10.2)',\
+	org.objectweb.asm.commons;version='[9.10.1,9.10.2)',\
+	org.objectweb.asm.tree;version='[9.10.1,9.10.2)',\
+	org.objectweb.asm.tree.analysis;version='[9.10.1,9.10.2)',\
+	org.objectweb.asm.util;version='[9.10.1,9.10.2)',\
+	org.osgi.service.component;version='[1.5.1,1.5.2)',\
+	org.osgi.util.converter;version='[1.0.9,1.0.10)',\
+	org.osgi.util.function;version='[1.2.0,1.2.1)',\
+	org.osgi.util.promise;version='[1.3.0,1.3.1)'

@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
+import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
@@ -165,6 +166,14 @@ public class GenericRestDistribution extends Application {
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> resourceSets;
 
+	/**
+	 * Whoever is watching calls, if anyone is (#126). Optional and
+	 * dynamic, and read per call through {@link CallTracer#deferred}:
+	 * this component outlives the telemetry bundle in both directions.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	private volatile CallTracer tracer;
+
 	private volatile DdsrClient client;
 
 	private volatile BrokerCatalog catalog;
@@ -244,7 +253,8 @@ public class GenericRestDistribution extends Application {
 		String contract = implementation.getServiceInterfaces().get(0).getName();
 
 		this.dispatcher = new RestDispatcher(flavor,
-				() -> implementation(context, config.service_filter(), self), contract, resourceSets);
+				() -> implementation(context, config.service_filter(), self), contract, resourceSets,
+				CallTracer.deferred(() -> tracer));
 		LOG.info("[DDSR] serving " + contract + " generically at " + flavor.getBasePath());
 
 		// Under the same monitor announceIfReady takes: a binding on

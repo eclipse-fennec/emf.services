@@ -257,3 +257,13 @@ org.eclipse.fennec.util:org.eclipse.fennec.protobuf:1.0.0-SNAPSHOT
 # The @EMFConfigurator component that registers the factory on the emf.osgi
 # ResourceSet. Runtime half of the above: added to the invocation runs only.
 org.eclipse.fennec.util:org.eclipse.fennec.protobuf.osgi:1.0.0-SNAPSHOT
+
+# OpenTelemetry for OSGi (#126). The OSGi Technology project publishes the
+# SDK, the OTLP/HTTP sender and the framework integrations as ordinary
+# bundles; `repack` carries the OpenTelemetry API and SDK packages. Only the
+# API half is on a buildpath here — our telemetry bundle talks to the
+# published services and knows nothing about which exporter is installed.
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.repack:0.1.0-SNAPSHOT
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.core.commons:0.1.0-SNAPSHOT
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.core.sender.http:0.1.0-SNAPSHOT
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.core.sender.logging:0.1.0-SNAPSHOT

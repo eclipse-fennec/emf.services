@@ -59,16 +59,17 @@ class DdsrBrokerLivenessTest {
 	@BeforeEach
 	void setUp() {
 		broker = new DdsrBrokerImpl(tmp.resolve("broker-state.xmi"), new InMemoryLookupBackend(), sink);
+		sink.deliveredBy(broker);
 		payment = serviceInterface(INTERFACE, "charge");
 		broker.addCatalogEntry(payment, "test");
-		sink.received.clear();
+		sink.clear();
 	}
 
 	@Test
 	void twoMissedHeartbeatsRetireTheRegistrationWithProviderLost() {
 		publish("1.0.0");
 		String referenceId = soleReferenceId();
-		sink.received.clear();
+		sink.clear();
 
 		Instant armed = Instant.now();
 		Diagnostic d = broker.heartbeat(referenceId, 2);
@@ -76,12 +77,12 @@ class DdsrBrokerLivenessTest {
 		assertThat(broker.providerLeaseCount()).isEqualTo(1);
 
 		assertThat(broker.retireLostProviders(armed.plusSeconds(3))).as("one missed heartbeat is not lost").isZero();
-		assertThat(sink.received).isEmpty();
+		assertThat(sink.received()).isEmpty();
 
 		assertThat(broker.retireLostProviders(armed.plusSeconds(5))).as("2 × interval of silence").isEqualTo(1);
 		assertThat(sink.types()).containsExactly(ServiceEventType.UNREGISTERING, ServiceEventType.RETIRED);
 		assertThat(sink.reasons()).containsExactly(ServiceEventReasons.PROVIDER_LOST, ServiceEventReasons.PROVIDER_LOST);
-		assertThat(sink.received.get(0).getReference().getId()).isEqualTo(referenceId);
+		assertThat(sink.received().get(0).getReference().getId()).isEqualTo(referenceId);
 		assertThat(broker.getServiceReferences(INTERFACE, null, null)).isEmpty();
 		assertThat(broker.getRegistry().getImplementations()).isEmpty();
 		assertThat(broker.providerLeaseCount()).isZero();
@@ -91,9 +92,9 @@ class DdsrBrokerLivenessTest {
 	@Test
 	void aRegistrationThatNeverHeartbeatsIsNeverRetiredForSilence() {
 		publish("1.0.0");
-		sink.received.clear();
+		sink.clear();
 		assertThat(broker.retireLostProviders(Instant.now().plus(Duration.ofDays(365)))).isZero();
-		assertThat(sink.received).isEmpty();
+		assertThat(sink.received()).isEmpty();
 		assertThat(broker.getServiceReferences(INTERFACE, null, null)).hasSize(1);
 	}
 
@@ -126,7 +127,7 @@ class DdsrBrokerLivenessTest {
 	void aWithdrawnRegistrationIsNoLongerSupervised() {
 		ServiceProvider provider = publish("1.0.0");
 		broker.heartbeat(soleReferenceId(), 1);
-		sink.received.clear();
+		sink.clear();
 
 		broker.withdrawImplementation(provider, soleImpl(provider));
 		assertThat(broker.providerLeaseCount()).isZero();
@@ -154,13 +155,13 @@ class DdsrBrokerLivenessTest {
 		publishSuccessor("2.0.0", UpdatePolicy.DEPRECATE_AND_DRAIN, "1.0.0");
 		assertThat(visibleVersions()).as("draining predecessor is hidden").containsExactly("2.0.0");
 		String successorId = referenceOf("2.0.0").getId();
-		sink.received.clear();
+		sink.clear();
 
 		broker.heartbeat(successorId, 1);
 		assertThat(broker.retireLostProviders(Instant.now().plusSeconds(10))).isEqualTo(1);
 
 		assertThat(sink.reasons()).containsExactly(ServiceEventReasons.PROVIDER_LOST, ServiceEventReasons.PROVIDER_LOST);
-		assertThat(sink.received.get(0).getReference().getId()).isEqualTo(successorId);
+		assertThat(sink.received().get(0).getReference().getId()).isEqualTo(successorId);
 		assertThat(visibleVersions()).as("drain cancelled").containsExactly("1.0.0");
 		assertThat(broker.advanceUpdatePolicies(Instant.now().plus(Duration.ofDays(1)))).isZero();
 	}
@@ -171,7 +172,7 @@ class DdsrBrokerLivenessTest {
 		String predecessorId = soleReferenceId();
 		hold("consumer-1", predecessorId);
 		ServiceProvider successor = publishSuccessor("2.0.0", UpdatePolicy.DEPRECATE_AND_DRAIN, "1.0.0");
-		sink.received.clear();
+		sink.clear();
 
 		broker.heartbeat(predecessorId, 1);
 		assertThat(broker.retireLostProviders(Instant.now().plusSeconds(10))).isEqualTo(1);
@@ -179,7 +180,7 @@ class DdsrBrokerLivenessTest {
 		assertThat(sink.types()).containsExactly(ServiceEventType.UNREGISTERING, ServiceEventType.RETIRED);
 		assertThat(sink.reasons()).as("lost, not replaced — the consumer learns the true cause")
 				.containsExactly(ServiceEventReasons.PROVIDER_LOST, ServiceEventReasons.PROVIDER_LOST);
-		assertThat(sink.received.get(0).getReference().getId()).isEqualTo(predecessorId);
+		assertThat(sink.received().get(0).getReference().getId()).isEqualTo(predecessorId);
 		assertThat(soleImpl(successor).getReplaces()).as("nothing dangles in the snapshot").isNull();
 		assertThat(allVersions()).containsExactly("2.0.0");
 		assertThat(broker.advanceUpdatePolicies(Instant.now().plus(Duration.ofDays(1)))).isZero();

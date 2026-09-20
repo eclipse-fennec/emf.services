@@ -70,9 +70,10 @@ class BrokerHardeningTest {
 	@BeforeEach
 	void setUp() {
 		broker = new DdsrBrokerImpl(tmp.resolve("broker-state.xmi"), new InMemoryLookupBackend(), sink);
+		sink.deliveredBy(broker);
 		payment = serviceInterface(INTERFACE);
 		broker.addCatalogEntry(payment, "test");
-		sink.received.clear();
+		sink.clear();
 	}
 
 	// ------------------------------------------------------------------
@@ -175,6 +176,7 @@ class BrokerHardeningTest {
 				""");
 
 		DdsrBrokerImpl restarted = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend(), sink);
+		sink.deliveredBy(restarted);
 
 		assertThat(restarted.getRegistry()).as("it came up at all").isNotNull();
 		assertThat(restarted.getServiceReferences(INTERFACE, null, null)).isEmpty();

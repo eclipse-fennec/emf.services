@@ -96,6 +96,7 @@ class DdsrBrokerLifecycleMatrixTest {
 		Ctx(Path snapshot) {
 			this.snapshot = snapshot;
 			this.broker = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend(), sink);
+			sink.deliveredBy(this.broker);
 			this.payment = serviceInterface(INTERFACE, "charge", "getBalance");
 			broker.addCatalogEntry(payment, "matrix");
 			sink.clear();
@@ -165,6 +166,7 @@ class DdsrBrokerLifecycleMatrixTest {
 		void restart() {
 			sink.clear();
 			broker = new DdsrBrokerImpl(snapshot, new InMemoryLookupBackend(), sink);
+			sink.deliveredBy(broker);
 		}
 
 		ServiceReference referenceOf(String identity) {
@@ -234,7 +236,7 @@ class DdsrBrokerLifecycleMatrixTest {
 				List.of("UNREGISTERING/REPLACED", "REGISTERED"),
 				List.of("impl-a/1.0.0"), List.of("impl-a/1.0.0"), Map.of("impl-a/1.0.0", List.of()),
 				ctx -> {
-					assertThat(ctx.sink.received.get(0).getReference().getId())
+					assertThat(ctx.sink.received().get(0).getReference().getId())
 							.as("the UNREGISTERING names the old reference")
 							.isEqualTo(ctx.referenceIdBefore.get("impl-a/1.0.0"));
 					assertThat(ctx.referenceOf("impl-a/1.0.0").getId())
@@ -400,7 +402,7 @@ class DdsrBrokerLifecycleMatrixTest {
 		row.when().accept(ctx);
 
 		assertThat(ctx.sink.signatures()).as("event sequence").containsExactlyElementsOf(row.events());
-		for (ServiceEvent event : ctx.sink.received) {
+		for (ServiceEvent event : ctx.sink.received()) {
 			assertThat(EventDocument.interfaceNamesOf(event, ctx.broker))
 					.as("%s must be self-contained (interfaces determinable from the document)",
 							RecordingEventSink.signature(event))

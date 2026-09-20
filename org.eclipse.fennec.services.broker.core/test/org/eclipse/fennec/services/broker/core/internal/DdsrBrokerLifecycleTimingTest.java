@@ -58,6 +58,7 @@ class DdsrBrokerLifecycleTimingTest {
 	void setUp() {
 		sink = new RecordingEventSink();
 		broker = new DdsrBrokerImpl(tmp.resolve("broker-state.xmi"), new InMemoryLookupBackend(), sink);
+		sink.deliveredBy(broker);
 		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
 	}
 
@@ -117,8 +118,8 @@ class DdsrBrokerLifecycleTimingTest {
 		// BOTH events of the republish are self-contained: the interface
 		// names are determinable from the event document alone — that is
 		// what keeps MQTT off the _unknown topic and SSE routing precise.
-		ServiceEvent unregistering = sink.received.get(1);
-		ServiceEvent registered = sink.received.get(2);
+		ServiceEvent unregistering = sink.received().get(1);
+		ServiceEvent registered = sink.received().get(2);
 		assertThat(EventDocument.interfaceNamesOf(unregistering, broker))
 				.as("UNREGISTERING must name its interfaces")
 				.containsExactly("Payment");
@@ -142,7 +143,7 @@ class DdsrBrokerLifecycleTimingTest {
 
 		broker.withdrawImplementation(p, soleImpl(p));
 
-		ServiceEvent unregistering = sink.received.get(sink.received.size() - 1);
+		ServiceEvent unregistering = sink.received().get(sink.received().size() - 1);
 		assertThat(unregistering.getType()).isEqualTo(ServiceEventType.UNREGISTERING);
 		assertThat(unregistering.getReasonCode()).isEqualTo(ServiceEventReasons.WITHDRAWN);
 		assertThat(EventDocument.interfaceNamesOf(unregistering, broker))
@@ -161,7 +162,7 @@ class DdsrBrokerLifecycleTimingTest {
 		Diagnostic d = broker.withdrawImplementation(p, soleImpl(p));
 
 		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED);
-		assertThat(sink.received).isEmpty();
+		assertThat(sink.received()).isEmpty();
 		assertThat(broker.liveRegistry().getImplementations()).isEmpty();
 	}
 

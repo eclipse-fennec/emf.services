@@ -256,9 +256,11 @@ public class SseEventBridge implements EventSink {
 		if (subscriptions.isEmpty() || sse == null) {
 			return;
 		}
-		// Serialize once for all subscribers. This runs on the broker's
-		// mutating thread while it holds the write lock, so it stays
-		// in-memory: no I/O, no waiting. The actual send is asynchronous.
+		// Serialize once for all subscribers. Since #124 this runs on the
+		// broker's delivery thread, not on its mutating thread under the
+		// write lock — so taking a moment here no longer stops the
+		// registry. It still does no I/O: the send itself is what may
+		// block, and blocking it is now this bridge's problem alone.
 		String payload;
 		Set<FlavorKind> eventFlavors;
 		try {

@@ -26,7 +26,6 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.broker.core.EventSink;
 
 /**
  * How the broker says what happened.
@@ -58,10 +57,10 @@ import org.eclipse.fennec.services.broker.core.EventSink;
  */
 final class Announcements {
 
-	private final EventSink sink;
+	private final EventDelivery delivery;
 
-	Announcements(EventSink sink) {
-		this.sink = sink != null ? sink : EventSink.NOOP;
+	Announcements(EventDelivery delivery) {
+		this.delivery = delivery;
 	}
 
 	void emit(ServiceEventType type, ServiceReference reference) {
@@ -71,9 +70,10 @@ final class Announcements {
 	/**
 	 * Hands one lifecycle event to the sink.
 	 *
-	 * <p>A sink must not throw, but we do not trust it to keep that
-	 * promise: a misbehaving subscriber may not undo a change the broker
-	 * has already committed and saved.
+	 * <p>Handed over, not delivered: {@link EventDelivery} decides the
+	 * position here, under the write lock, and carries it out afterwards
+	 * on its own thread. What a sink then does, including throwing, can
+	 * no longer reach the change this event is about.
 	 */
 	void emit(ServiceEventType type, ServiceReference reference, String reason) {
 		if (reference == null) {
@@ -84,11 +84,7 @@ final class Announcements {
 		event.setReference(snapshot(reference));
 		event.setTimestamp(new Date());
 		event.setReasonCode(reason);
-		try {
-			sink.publish(event);
-		} catch (RuntimeException sinkFailure) {
-			// Swallowed deliberately: see the class comment.
-		}
+		delivery.submit(event);
 	}
 
 	/**

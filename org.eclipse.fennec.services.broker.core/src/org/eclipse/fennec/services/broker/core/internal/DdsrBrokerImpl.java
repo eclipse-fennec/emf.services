@@ -52,6 +52,8 @@ import org.eclipse.fennec.services.broker.core.LookupBackend;
 public final class DdsrBrokerImpl implements DdsrBroker {
 
 	/** Where an acknowledged and persisted change is announced. */
+	private final EventDelivery delivery;
+
 	private final Announcements announcements;
 
 	/** Who has acquired what. */
@@ -100,7 +102,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	public DdsrBrokerImpl(BrokerSettings settings, LookupBackend lookup, EventSink events) {
 		this.maintenance = new Maintenance(settings);
 		this.state = new BrokerState(settings.snapshotPath());
-		this.announcements = new Announcements(events);
+		this.delivery = new EventDelivery(events);
+		this.announcements = new Announcements(delivery);
 		this.sessions = new Sessions(state);
 		// The four below need a way to take a registration away, and the
 		// cold cache needs a way to put one back. Both live in
@@ -146,6 +149,26 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	public void close() {
 		maintenance.close();
 		snapshot();
+		// After the snapshot: what is still queued is about changes that
+		// are already saved, and a subscriber still connected during a
+		// shutdown has every right to hear about them.
+		delivery.close();
+	}
+
+	/**
+	 * Blocks until every event emitted so far has reached the sink.
+	 *
+	 * <p>Delivery is asynchronous since #124, so "the call returned"
+	 * and "the subscribers were told" are two moments. Tests need the
+	 * second one, and they need it without sleeping.
+	 */
+	void awaitEventsDelivered() {
+		delivery.awaitIdle();
+	}
+
+	/** How many events were dropped because a subscriber stopped reading. */
+	long droppedEventCount() {
+		return delivery.droppedCount();
 	}
 
 	private ServiceReference retire(ServiceProvider provider, ServiceImplementation implementation) {

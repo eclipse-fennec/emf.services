@@ -1,0 +1,31 @@
+Bundle-Name: Fennec Services Generic MQTT Distribution
+Bundle-Description: \
+	Serves a contract over MQTT without generated code: one subscription \
+	per operation of a configured flavor, a dispatcher that reads the \
+	call, invokes the service behind it and answers on the topic the \
+	call named. The model is the only source — nothing here is written \
+	per contract, which is what the REST distribution (#84) already \
+	demonstrated and what makes a second transport a bundle rather than \
+	a rewrite.
+
+-library: enableEMF
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.paho.client.mqttv3;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	io.cloudevents.model;version=latest,\
+	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+# Plain JUnit 5: the dispatcher takes its publisher and its service as
+# seams, so what it decides is exercised without a broker.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	jakarta.json-api;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest

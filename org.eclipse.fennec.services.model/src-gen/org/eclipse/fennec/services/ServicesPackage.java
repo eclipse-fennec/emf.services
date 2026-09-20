@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:a9f29f0414f89eb2b2026a36ed19b7b1c28c6caa794bc063047f6777a60760ef", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:1bdb843ca97a3709eb7eaf7446c2abd271420922461bb0b1bbbd2ad3314ff0b4", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1346,13 +1346,31 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int SERVICE_INTERFACE__DEPRECATION_REASON = NAMED_ELEMENT_FEATURE_COUNT + 6;
 
 	/**
+	 * The feature id for the '<em><b>Added By</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SERVICE_INTERFACE__ADDED_BY = NAMED_ELEMENT_FEATURE_COUNT + 7;
+
+	/**
+	 * The feature id for the '<em><b>Deprecated By</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SERVICE_INTERFACE__DEPRECATED_BY = NAMED_ELEMENT_FEATURE_COUNT + 8;
+
+	/**
 	 * The feature id for the '<em><b>Replaced By</b></em>' reference.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_INTERFACE__REPLACED_BY = NAMED_ELEMENT_FEATURE_COUNT + 7;
+	int SERVICE_INTERFACE__REPLACED_BY = NAMED_ELEMENT_FEATURE_COUNT + 9;
 
 	/**
 	 * The feature id for the '<em><b>Update Policy</b></em>' attribute.
@@ -1361,7 +1379,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_INTERFACE__UPDATE_POLICY = NAMED_ELEMENT_FEATURE_COUNT + 8;
+	int SERVICE_INTERFACE__UPDATE_POLICY = NAMED_ELEMENT_FEATURE_COUNT + 10;
 
 	/**
 	 * The number of structural features of the '<em>Service Interface</em>' class.
@@ -1370,7 +1388,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_INTERFACE_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 9;
+	int SERVICE_INTERFACE_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 11;
 
 	/**
 	 * The number of operations of the '<em>Service Interface</em>' class.
@@ -2766,13 +2784,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int SERVICE_REGISTRATION__USING_SESSIONS = 4;
 
 	/**
+	 * The feature id for the '<em><b>Published By</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SERVICE_REGISTRATION__PUBLISHED_BY = 5;
+
+	/**
 	 * The feature id for the '<em><b>Consumer Count</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_REGISTRATION__CONSUMER_COUNT = 5;
+	int SERVICE_REGISTRATION__CONSUMER_COUNT = 6;
 
 	/**
 	 * The number of structural features of the '<em>Service Registration</em>' class.
@@ -2781,7 +2808,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_REGISTRATION_FEATURE_COUNT = 6;
+	int SERVICE_REGISTRATION_FEATURE_COUNT = 7;
 
 	/**
 	 * The operation id for the '<em>Unregister</em>' operation.
@@ -2830,13 +2857,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int CONSUMER_SESSION__CONSUMER_ID = 0;
 
 	/**
+	 * The feature id for the '<em><b>Origin</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int CONSUMER_SESSION__ORIGIN = 1;
+
+	/**
 	 * The feature id for the '<em><b>Last Renewal</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int CONSUMER_SESSION__LAST_RENEWAL = 1;
+	int CONSUMER_SESSION__LAST_RENEWAL = 2;
 
 	/**
 	 * The feature id for the '<em><b>Capabilities</b></em>' containment reference.
@@ -2845,7 +2881,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int CONSUMER_SESSION__CAPABILITIES = 2;
+	int CONSUMER_SESSION__CAPABILITIES = 3;
 
 	/**
 	 * The feature id for the '<em><b>Acquisitions</b></em>' reference list.
@@ -2854,7 +2890,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int CONSUMER_SESSION__ACQUISITIONS = 3;
+	int CONSUMER_SESSION__ACQUISITIONS = 4;
 
 	/**
 	 * The number of structural features of the '<em>Consumer Session</em>' class.
@@ -2863,7 +2899,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int CONSUMER_SESSION_FEATURE_COUNT = 4;
+	int CONSUMER_SESSION_FEATURE_COUNT = 5;
 
 	/**
 	 * The number of operations of the '<em>Consumer Session</em>' class.
@@ -5721,6 +5757,28 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getServiceInterface_DeprecationReason();
 
 	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ServiceInterface#getAddedBy <em>Added By</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Added By</em>'.
+	 * @see org.eclipse.fennec.services.ServiceInterface#getAddedBy()
+	 * @see #getServiceInterface()
+	 * @generated
+	 */
+	EAttribute getServiceInterface_AddedBy();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ServiceInterface#getDeprecatedBy <em>Deprecated By</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Deprecated By</em>'.
+	 * @see org.eclipse.fennec.services.ServiceInterface#getDeprecatedBy()
+	 * @see #getServiceInterface()
+	 * @generated
+	 */
+	EAttribute getServiceInterface_DeprecatedBy();
+
+	/**
 	 * Returns the meta object for the reference '{@link org.eclipse.fennec.services.ServiceInterface#getReplacedBy <em>Replaced By</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -6781,6 +6839,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getServiceRegistration_UsingSessions();
 
 	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ServiceRegistration#getPublishedBy <em>Published By</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Published By</em>'.
+	 * @see org.eclipse.fennec.services.ServiceRegistration#getPublishedBy()
+	 * @see #getServiceRegistration()
+	 * @generated
+	 */
+	EAttribute getServiceRegistration_PublishedBy();
+
+	/**
 	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ServiceRegistration#getConsumerCount <em>Consumer Count</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -6831,6 +6900,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getConsumerSession_ConsumerId();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ConsumerSession#getOrigin <em>Origin</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Origin</em>'.
+	 * @see org.eclipse.fennec.services.ConsumerSession#getOrigin()
+	 * @see #getConsumerSession()
+	 * @generated
+	 */
+	EAttribute getConsumerSession_Origin();
 
 	/**
 	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.ConsumerSession#getLastRenewal <em>Last Renewal</em>}'.
@@ -8934,6 +9014,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EAttribute SERVICE_INTERFACE__DEPRECATION_REASON = eINSTANCE.getServiceInterface_DeprecationReason();
 
 		/**
+		 * The meta object literal for the '<em><b>Added By</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute SERVICE_INTERFACE__ADDED_BY = eINSTANCE.getServiceInterface_AddedBy();
+
+		/**
+		 * The meta object literal for the '<em><b>Deprecated By</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute SERVICE_INTERFACE__DEPRECATED_BY = eINSTANCE.getServiceInterface_DeprecatedBy();
+
+		/**
 		 * The meta object literal for the '<em><b>Replaced By</b></em>' reference feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -9750,6 +9846,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference SERVICE_REGISTRATION__USING_SESSIONS = eINSTANCE.getServiceRegistration_UsingSessions();
 
 		/**
+		 * The meta object literal for the '<em><b>Published By</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute SERVICE_REGISTRATION__PUBLISHED_BY = eINSTANCE.getServiceRegistration_PublishedBy();
+
+		/**
 		 * The meta object literal for the '<em><b>Consumer Count</b></em>' attribute feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -9790,6 +9894,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute CONSUMER_SESSION__CONSUMER_ID = eINSTANCE.getConsumerSession_ConsumerId();
+
+		/**
+		 * The meta object literal for the '<em><b>Origin</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute CONSUMER_SESSION__ORIGIN = eINSTANCE.getConsumerSession_Origin();
 
 		/**
 		 * The meta object literal for the '<em><b>Last Renewal</b></em>' attribute feature.

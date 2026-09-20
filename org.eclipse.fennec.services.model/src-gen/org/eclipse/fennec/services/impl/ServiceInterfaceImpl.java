@@ -43,6 +43,8 @@ import org.eclipse.fennec.services.VersionedElement;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getInvariants <em>Invariants</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getStatus <em>Status</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getDeprecationReason <em>Deprecation Reason</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getAddedBy <em>Added By</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getDeprecatedBy <em>Deprecated By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getReplacedBy <em>Replaced By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getUpdatePolicy <em>Update Policy</em>}</li>
  * </ul>
@@ -179,6 +181,46 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @ordered
 	 */
 	protected String deprecationReason = DEPRECATION_REASON_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getAddedBy() <em>Added By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getAddedBy()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final String ADDED_BY_EDEFAULT = null;
+
+	/**
+	 * The cached value of the '{@link #getAddedBy() <em>Added By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getAddedBy()
+	 * @generated
+	 * @ordered
+	 */
+	protected String addedBy = ADDED_BY_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getDeprecatedBy() <em>Deprecated By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDeprecatedBy()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final String DEPRECATED_BY_EDEFAULT = null;
+
+	/**
+	 * The cached value of the '{@link #getDeprecatedBy() <em>Deprecated By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDeprecatedBy()
+	 * @generated
+	 * @ordered
+	 */
+	protected String deprecatedBy = DEPRECATED_BY_EDEFAULT;
 
 	/**
 	 * The cached value of the '{@link #getReplacedBy() <em>Replaced By</em>}' reference.
@@ -389,6 +431,52 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @generated
 	 */
 	@Override
+	public String getAddedBy() {
+		return addedBy;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setAddedBy(String newAddedBy) {
+		String oldAddedBy = addedBy;
+		addedBy = newAddedBy;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_INTERFACE__ADDED_BY, oldAddedBy, addedBy));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public String getDeprecatedBy() {
+		return deprecatedBy;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setDeprecatedBy(String newDeprecatedBy) {
+		String oldDeprecatedBy = deprecatedBy;
+		deprecatedBy = newDeprecatedBy;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_INTERFACE__DEPRECATED_BY, oldDeprecatedBy, deprecatedBy));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public ServiceInterface getReplacedBy() {
 		if (replacedBy != null && replacedBy.eIsProxy()) {
 			InternalEObject oldReplacedBy = (InternalEObject)replacedBy;
@@ -488,6 +576,10 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return getStatus();
 			case ServicesPackage.SERVICE_INTERFACE__DEPRECATION_REASON:
 				return getDeprecationReason();
+			case ServicesPackage.SERVICE_INTERFACE__ADDED_BY:
+				return getAddedBy();
+			case ServicesPackage.SERVICE_INTERFACE__DEPRECATED_BY:
+				return getDeprecatedBy();
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				if (resolve) return getReplacedBy();
 				return basicGetReplacedBy();
@@ -533,6 +625,12 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__DEPRECATION_REASON:
 				setDeprecationReason((String)newValue);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__ADDED_BY:
+				setAddedBy((String)newValue);
+				return;
+			case ServicesPackage.SERVICE_INTERFACE__DEPRECATED_BY:
+				setDeprecatedBy((String)newValue);
+				return;
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				setReplacedBy((ServiceInterface)newValue);
 				return;
@@ -575,6 +673,12 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__DEPRECATION_REASON:
 				setDeprecationReason(DEPRECATION_REASON_EDEFAULT);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__ADDED_BY:
+				setAddedBy(ADDED_BY_EDEFAULT);
+				return;
+			case ServicesPackage.SERVICE_INTERFACE__DEPRECATED_BY:
+				setDeprecatedBy(DEPRECATED_BY_EDEFAULT);
+				return;
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				setReplacedBy((ServiceInterface)null);
 				return;
@@ -609,6 +713,10 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return status != STATUS_EDEFAULT;
 			case ServicesPackage.SERVICE_INTERFACE__DEPRECATION_REASON:
 				return DEPRECATION_REASON_EDEFAULT == null ? deprecationReason != null : !DEPRECATION_REASON_EDEFAULT.equals(deprecationReason);
+			case ServicesPackage.SERVICE_INTERFACE__ADDED_BY:
+				return ADDED_BY_EDEFAULT == null ? addedBy != null : !ADDED_BY_EDEFAULT.equals(addedBy);
+			case ServicesPackage.SERVICE_INTERFACE__DEPRECATED_BY:
+				return DEPRECATED_BY_EDEFAULT == null ? deprecatedBy != null : !DEPRECATED_BY_EDEFAULT.equals(deprecatedBy);
 			case ServicesPackage.SERVICE_INTERFACE__REPLACED_BY:
 				return replacedBy != null;
 			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
@@ -669,6 +777,10 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 		result.append(status);
 		result.append(", deprecationReason: ");
 		result.append(deprecationReason);
+		result.append(", addedBy: ");
+		result.append(addedBy);
+		result.append(", deprecatedBy: ");
+		result.append(deprecatedBy);
 		result.append(", updatePolicy: ");
 		result.append(updatePolicy);
 		result.append(')');

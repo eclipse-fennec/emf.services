@@ -24,6 +24,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.services.ConsumerSession#getConsumerId <em>Consumer Id</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ConsumerSession#getOrigin <em>Origin</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ConsumerSession#getLastRenewal <em>Last Renewal</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ConsumerSession#getCapabilities <em>Capabilities</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ConsumerSession#getAcquisitions <em>Acquisitions</em>}</li>
@@ -59,6 +60,31 @@ public interface ConsumerSession extends EObject {
 	 * @generated
 	 */
 	void setConsumerId(String value);
+
+	/**
+	 * Returns the value of the '<em><b>Origin</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Where the consumer behind this session came from, as the client origin token 'label/runtimeId' (issue #125). The consumerId says WHO claims to be calling and is chosen by the client; this says which deployment and which run of it the call actually reached the broker from. Session-scoped by construction: the runtime id half is the framework UUID, so it is new after every restart and identifies no person and no durable machine.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Origin</em>' attribute.
+	 * @see #setOrigin(String)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getConsumerSession_Origin()
+	 * @model
+	 * @generated
+	 */
+	String getOrigin();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ConsumerSession#getOrigin <em>Origin</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Origin</em>' attribute.
+	 * @see #getOrigin()
+	 * @generated
+	 */
+	void setOrigin(String value);
 
 	/**
 	 * Returns the value of the '<em><b>Last Renewal</b></em>' attribute.

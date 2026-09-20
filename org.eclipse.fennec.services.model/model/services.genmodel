@@ -223,6 +223,8 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/invariants"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/status"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/deprecationReason"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/addedBy"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/deprecatedBy"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/replacedBy"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/updatePolicy"/>
     </genClasses>
@@ -339,6 +341,7 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/provider"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/implementation"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/usingSessions"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceRegistration/publishedBy"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceRegistration/consumerCount"/>
       <genOperations ecoreOperation="services.ecore#//ServiceRegistration/unregister"/>
       <genOperations ecoreOperation="services.ecore#//ServiceRegistration/setProperties">
@@ -347,6 +350,7 @@
     </genClasses>
     <genClasses ecoreClass="services.ecore#//ConsumerSession">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerSession/consumerId"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerSession/origin"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerSession/lastRenewal"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ConsumerSession/capabilities"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ConsumerSession/acquisitions"/>

@@ -38,6 +38,8 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceOperation;
+import org.eclipse.fennec.services.common.CallOrigin;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestRoute;
@@ -146,6 +148,25 @@ public class RestDispatcher {
 	 * these terms.
 	 */
 	Response dispatch(String httpMethod, String path, Function<String, List<String>> queryValues,
+			Function<String, String> headerValue, InputStream entity) {
+		// Where this call came from, bound for the length of it (#125).
+		// Here rather than in a whiteboard filter, and that was a lesson:
+		// this component registers ONE named JAX-RS application per served
+		// contract, each bringing its own providers, so an extension
+		// registered against the whiteboard is never asked. The dispatcher
+		// is the one place every dispatched call passes through, and it
+		// already has the headers because HEADER-bound parameters need
+		// them. Unconditional, including the absent case, so a pooled
+		// thread cannot carry a previous caller's origin.
+		CallOrigin.set(ClientOrigin.parse(headerValue.apply(ClientOrigin.HEADER)));
+		try {
+			return dispatchBound(httpMethod, path, queryValues, headerValue, entity);
+		} finally {
+			CallOrigin.clear();
+		}
+	}
+
+	private Response dispatchBound(String httpMethod, String path, Function<String, List<String>> queryValues,
 			Function<String, String> headerValue, InputStream entity) {
 		// The path arrives without its leading slash from the annotated
 		// methods and with one from anywhere else; the route rule

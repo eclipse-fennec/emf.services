@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerSessions.SessionSnapshot;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
+import org.eclipse.fennec.services.common.CallOrigin;
 
 /**
  * Who has acquired what, and for how long.
@@ -77,6 +78,12 @@ final class Sessions {
 				releaseAcquisitions(previous);
 			}
 			session.setLastRenewal(new Date());
+			// Where the session actually came from (#125). The consumerId
+			// is what the client CALLS itself and it chooses that freely;
+			// this is which deployment and which run of it the call
+			// reached the broker from. Written on every renewal, so a
+			// session that moved to a restarted runtime says so.
+			session.setOrigin(CallOrigin.requestor(null));
 			int accepted = 0;
 			List<String> unknown = new ArrayList<>();
 			if (acquiredReferenceIds != null) {
@@ -141,6 +148,7 @@ final class Sessions {
 			ConsumerSession view = ServicesFactory.eINSTANCE.createConsumerSession();
 			view.setConsumerId(stored.getConsumerId());
 			view.setLastRenewal(stored.getLastRenewal());
+			view.setOrigin(stored.getOrigin());
 			if (stored.getCapabilities() != null) {
 				view.setCapabilities(EcoreUtil.copy(stored.getCapabilities()));
 			}

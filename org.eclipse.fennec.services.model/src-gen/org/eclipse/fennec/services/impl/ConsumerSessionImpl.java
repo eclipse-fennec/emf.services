@@ -33,6 +33,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  * </p>
  * <ul>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getConsumerId <em>Consumer Id</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getOrigin <em>Origin</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getLastRenewal <em>Last Renewal</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getCapabilities <em>Capabilities</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getAcquisitions <em>Acquisitions</em>}</li>
@@ -60,6 +61,26 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 	 * @ordered
 	 */
 	protected String consumerId = CONSUMER_ID_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getOrigin() <em>Origin</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getOrigin()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final String ORIGIN_EDEFAULT = null;
+
+	/**
+	 * The cached value of the '{@link #getOrigin() <em>Origin</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getOrigin()
+	 * @generated
+	 * @ordered
+	 */
+	protected String origin = ORIGIN_EDEFAULT;
 
 	/**
 	 * The default value of the '{@link #getLastRenewal() <em>Last Renewal</em>}' attribute.
@@ -141,6 +162,29 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 		consumerId = newConsumerId;
 		if (eNotificationRequired())
 			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.CONSUMER_SESSION__CONSUMER_ID, oldConsumerId, consumerId));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public String getOrigin() {
+		return origin;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setOrigin(String newOrigin) {
+		String oldOrigin = origin;
+		origin = newOrigin;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.CONSUMER_SESSION__ORIGIN, oldOrigin, origin));
 	}
 
 	/**
@@ -265,6 +309,8 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 		switch (featureID) {
 			case ServicesPackage.CONSUMER_SESSION__CONSUMER_ID:
 				return getConsumerId();
+			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
+				return getOrigin();
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				return getLastRenewal();
 			case ServicesPackage.CONSUMER_SESSION__CAPABILITIES:
@@ -286,6 +332,9 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 		switch (featureID) {
 			case ServicesPackage.CONSUMER_SESSION__CONSUMER_ID:
 				setConsumerId((String)newValue);
+				return;
+			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
+				setOrigin((String)newValue);
 				return;
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				setLastRenewal((Date)newValue);
@@ -312,6 +361,9 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 			case ServicesPackage.CONSUMER_SESSION__CONSUMER_ID:
 				setConsumerId(CONSUMER_ID_EDEFAULT);
 				return;
+			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
+				setOrigin(ORIGIN_EDEFAULT);
+				return;
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				setLastRenewal(LAST_RENEWAL_EDEFAULT);
 				return;
@@ -335,6 +387,8 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 		switch (featureID) {
 			case ServicesPackage.CONSUMER_SESSION__CONSUMER_ID:
 				return CONSUMER_ID_EDEFAULT == null ? consumerId != null : !CONSUMER_ID_EDEFAULT.equals(consumerId);
+			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
+				return ORIGIN_EDEFAULT == null ? origin != null : !ORIGIN_EDEFAULT.equals(origin);
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				return LAST_RENEWAL_EDEFAULT == null ? lastRenewal != null : !LAST_RENEWAL_EDEFAULT.equals(lastRenewal);
 			case ServicesPackage.CONSUMER_SESSION__CAPABILITIES:
@@ -357,6 +411,8 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 		StringBuilder result = new StringBuilder(super.toString());
 		result.append(" (consumerId: ");
 		result.append(consumerId);
+		result.append(", origin: ");
+		result.append(origin);
 		result.append(", lastRenewal: ");
 		result.append(lastRenewal);
 		result.append(')');

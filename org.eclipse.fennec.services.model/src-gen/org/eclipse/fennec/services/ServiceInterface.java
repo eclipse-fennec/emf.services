@@ -25,6 +25,8 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getInvariants <em>Invariants</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getStatus <em>Status</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getDeprecationReason <em>Deprecation Reason</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getAddedBy <em>Added By</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getDeprecatedBy <em>Deprecated By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getReplacedBy <em>Replaced By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getUpdatePolicy <em>Update Policy</em>}</li>
  * </ul>
@@ -159,6 +161,56 @@ public interface ServiceInterface extends NamedElement, VersionedElement {
 	 * @generated
 	 */
 	void setDeprecationReason(String value);
+
+	/**
+	 * Returns the value of the '<em><b>Added By</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Which system put this contract into the catalog, as the client origin token 'label/runtimeId' (issue #125). Written by the broker from the X-DDSR-Origin header, never by the client body; a call that carried no origin records 'anonymous'. Catalog governance state like status/deprecationReason/replacedBy: NOT part of the sd1 fingerprint, so recording it does not move the catalog address of any contract.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Added By</em>' attribute.
+	 * @see #setAddedBy(String)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface_AddedBy()
+	 * @model
+	 * @generated
+	 */
+	String getAddedBy();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceInterface#getAddedBy <em>Added By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Added By</em>' attribute.
+	 * @see #getAddedBy()
+	 * @generated
+	 */
+	void setAddedBy(String value);
+
+	/**
+	 * Returns the value of the '<em><b>Deprecated By</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Which system deprecated this contract, as the client origin token 'label/runtimeId' (issue #125). Set on the transition to DEPRECATED, alongside deprecationReason. There is deliberately no removedBy: a removed entry is gone, and an audit field on a deleted object has nowhere to live — a removal is only visible in the broker log. Not part of the sd1 fingerprint.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Deprecated By</em>' attribute.
+	 * @see #setDeprecatedBy(String)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface_DeprecatedBy()
+	 * @model
+	 * @generated
+	 */
+	String getDeprecatedBy();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceInterface#getDeprecatedBy <em>Deprecated By</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Deprecated By</em>' attribute.
+	 * @see #getDeprecatedBy()
+	 * @generated
+	 */
+	void setDeprecatedBy(String value);
 
 	/**
 	 * Returns the value of the '<em><b>Replaced By</b></em>' reference.

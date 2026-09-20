@@ -1546,8 +1546,28 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getServiceInterface_AddedBy() {
+		return (EAttribute)serviceInterfaceEClass.getEStructuralFeatures().get(6);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getServiceInterface_DeprecatedBy() {
+		return (EAttribute)serviceInterfaceEClass.getEStructuralFeatures().get(7);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getServiceInterface_ReplacedBy() {
-		return (EReference)serviceInterfaceEClass.getEStructuralFeatures().get(6);
+		return (EReference)serviceInterfaceEClass.getEStructuralFeatures().get(8);
 	}
 
 	/**
@@ -1557,7 +1577,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EAttribute getServiceInterface_UpdatePolicy() {
-		return (EAttribute)serviceInterfaceEClass.getEStructuralFeatures().get(7);
+		return (EAttribute)serviceInterfaceEClass.getEStructuralFeatures().get(9);
 	}
 
 	/**
@@ -2526,8 +2546,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getServiceRegistration_ConsumerCount() {
+	public EAttribute getServiceRegistration_PublishedBy() {
 		return (EAttribute)serviceRegistrationEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getServiceRegistration_ConsumerCount() {
+		return (EAttribute)serviceRegistrationEClass.getEStructuralFeatures().get(6);
 	}
 
 	/**
@@ -2576,7 +2606,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getConsumerSession_LastRenewal() {
+	public EAttribute getConsumerSession_Origin() {
 		return (EAttribute)consumerSessionEClass.getEStructuralFeatures().get(1);
 	}
 
@@ -2586,8 +2616,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getConsumerSession_LastRenewal() {
+		return (EAttribute)consumerSessionEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getConsumerSession_Capabilities() {
-		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(2);
+		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(3);
 	}
 
 	/**
@@ -2597,7 +2637,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EReference getConsumerSession_Acquisitions() {
-		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(3);
+		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(4);
 	}
 
 	/**
@@ -4057,6 +4097,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__INVARIANTS);
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__STATUS);
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__DEPRECATION_REASON);
+		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__ADDED_BY);
+		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__DEPRECATED_BY);
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__REPLACED_BY);
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__UPDATE_POLICY);
 
@@ -4171,12 +4213,14 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__PROVIDER);
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__IMPLEMENTATION);
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__USING_SESSIONS);
+		createEAttribute(serviceRegistrationEClass, SERVICE_REGISTRATION__PUBLISHED_BY);
 		createEAttribute(serviceRegistrationEClass, SERVICE_REGISTRATION__CONSUMER_COUNT);
 		createEOperation(serviceRegistrationEClass, SERVICE_REGISTRATION___UNREGISTER);
 		createEOperation(serviceRegistrationEClass, SERVICE_REGISTRATION___SET_PROPERTIES__ELIST);
 
 		consumerSessionEClass = createEClass(CONSUMER_SESSION);
 		createEAttribute(consumerSessionEClass, CONSUMER_SESSION__CONSUMER_ID);
+		createEAttribute(consumerSessionEClass, CONSUMER_SESSION__ORIGIN);
 		createEAttribute(consumerSessionEClass, CONSUMER_SESSION__LAST_RENEWAL);
 		createEReference(consumerSessionEClass, CONSUMER_SESSION__CAPABILITIES);
 		createEReference(consumerSessionEClass, CONSUMER_SESSION__ACQUISITIONS);
@@ -4515,6 +4559,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getServiceInterface_Invariants(), this.getInvariant(), null, "invariants", null, 0, -1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceInterface_Status(), this.getCatalogStatus(), "status", "ACTIVE", 1, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceInterface_DeprecationReason(), ecorePackage.getEString(), "deprecationReason", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceInterface_AddedBy(), ecorePackage.getEString(), "addedBy", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceInterface_DeprecatedBy(), ecorePackage.getEString(), "deprecatedBy", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceInterface_ReplacedBy(), this.getServiceInterface(), null, "replacedBy", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceInterface_UpdatePolicy(), this.getUpdatePolicy(), "updatePolicy", null, 1, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
@@ -4632,6 +4678,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getServiceRegistration_Provider(), this.getServiceProvider(), null, "provider", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_Implementation(), this.getServiceImplementation(), null, "implementation", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_UsingSessions(), this.getConsumerSession(), this.getConsumerSession_Acquisitions(), "usingSessions", null, 0, -1, ServiceRegistration.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceRegistration_PublishedBy(), ecorePackage.getEString(), "publishedBy", null, 0, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceRegistration_ConsumerCount(), ecorePackage.getEInt(), "consumerCount", null, 0, 1, ServiceRegistration.class, IS_TRANSIENT, IS_VOLATILE, !IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, IS_DERIVED, IS_ORDERED);
 
 		initEOperation(getServiceRegistration__Unregister(), null, "unregister", 0, 1, IS_UNIQUE, IS_ORDERED);
@@ -4641,6 +4688,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 
 		initEClass(consumerSessionEClass, ConsumerSession.class, "ConsumerSession", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getConsumerSession_ConsumerId(), ecorePackage.getEString(), "consumerId", null, 1, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getConsumerSession_Origin(), ecorePackage.getEString(), "origin", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getConsumerSession_LastRenewal(), ecorePackage.getEDate(), "lastRenewal", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getConsumerSession_Capabilities(), this.getConsumerCapability(), null, "capabilities", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getConsumerSession_Acquisitions(), this.getServiceRegistration(), this.getServiceRegistration_UsingSessions(), "acquisitions", null, 0, -1, ConsumerSession.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5535,6 +5583,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Free-form explanation set when status transitions to DEPRECATED. Surfaced in the WARNING Diagnostic that publishImplementation returns against a deprecated interface and in catalog browsers."
 		   });
 		addAnnotation
+		  (getServiceInterface_AddedBy(),
+		   source,
+		   new String[] {
+			   "documentation", "Which system put this contract into the catalog, as the client origin token \'label/runtimeId\' (issue #125). Written by the broker from the X-DDSR-Origin header, never by the client body; a call that carried no origin records \'anonymous\'. Catalog governance state like status/deprecationReason/replacedBy: NOT part of the sd1 fingerprint, so recording it does not move the catalog address of any contract."
+		   });
+		addAnnotation
+		  (getServiceInterface_DeprecatedBy(),
+		   source,
+		   new String[] {
+			   "documentation", "Which system deprecated this contract, as the client origin token \'label/runtimeId\' (issue #125). Set on the transition to DEPRECATED, alongside deprecationReason. There is deliberately no removedBy: a removed entry is gone, and an audit field on a deleted object has nowhere to live \u2014 a removal is only visible in the broker log. Not part of the sd1 fingerprint."
+		   });
+		addAnnotation
 		  (getServiceInterface_ReplacedBy(),
 		   source,
 		   new String[] {
@@ -6147,6 +6207,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions \u2014 the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource \u2014 a serialized link would tear every registry save/copy apart (not contained in a resource)."
 		   });
 		addAnnotation
+		  (getServiceRegistration_PublishedBy(),
+		   source,
+		   new String[] {
+			   "documentation", "Which system published this registration, as the client origin token \'label/runtimeId\' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Persistent, unlike usingSessions/consumerCount: after a broker restart the snapshot should still be able to say where a registration came from. A withdraw has no counterpart here \u2014 the registration is gone with it, and only the broker log keeps that."
+		   });
+		addAnnotation
 		  (getServiceRegistration_ConsumerCount(),
 		   source,
 		   new String[] {
@@ -6163,6 +6229,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Identity of the consumer. Unauthenticated for now (S2) \u2014 once broker AuthN exists, the session binds to the authenticated identity and this id is checked against it."
+		   });
+		addAnnotation
+		  (getConsumerSession_Origin(),
+		   source,
+		   new String[] {
+			   "documentation", "Where the consumer behind this session came from, as the client origin token \'label/runtimeId\' (issue #125). The consumerId says WHO claims to be calling and is chosen by the client; this says which deployment and which run of it the call actually reached the broker from. Session-scoped by construction: the runtime id half is the framework UUID, so it is new after every restart and identifies no person and no durable machine."
 		   });
 		addAnnotation
 		  (getConsumerSession_LastRenewal(),

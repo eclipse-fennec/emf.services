@@ -280,7 +280,13 @@ public class RestDispatcher {
 			// be readable.
 			List<EObject> roots;
 			try {
-				roots = XmiCodec.readBundle(new ByteArrayInputStream(body), resourceSets).roots();
+				// In the encoding the contract declares it takes, not the
+				// one this dispatcher happens to prefer (#100). consumes
+				// is the provider's own statement about its input; empty
+				// means XMI, which is what every caller had before.
+				String contentType = operationFlavor.getConsumes().isEmpty() ? null
+						: operationFlavor.getConsumes().get(0);
+				roots = XmiCodec.readBundle(new ByteArrayInputStream(body), resourceSets, contentType).roots();
 			} catch (XmiCodecException refusal) {
 				throw XmiHttpErrors.toHttp(refusal);
 			}

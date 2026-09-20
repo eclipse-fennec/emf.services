@@ -63,6 +63,9 @@ jersey.deps:
 	org.eclipse.emf.common;version='[2.44.0,2.44.1)',\
 	org.eclipse.emf.ecore;version='[2.41.0,2.41.1)',\
 	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\
+	org.eclipse.fennec.protobuf;version='[1.0.0,1.0.1)',\
+	org.eclipse.fennec.protobuf.osgi;version='[1.0.0,1.0.1)',\
+	com.google.protobuf;version='[4.35.1,4.35.2)',\
 	org.eclipse.osgitech.rest;version='[1.2.3,1.2.4)',\
 	org.eclipse.osgitech.rest.servlet.whiteboard;version='[1.2.3,1.2.4)',\
 	org.eclipse.parsson.jakarta.json;version='[1.1.7,1.1.8)',\

@@ -81,10 +81,18 @@ public final class RestServiceInvoker implements ServiceInvoker {
 				? op.getProduces().get(0)
 				: MediaType.APPLICATION_XML;
 
+		// What the body is written AS, which is a different question from
+		// what we accept back (#100): consumes is the provider's statement
+		// about its input, produces about its output, and an operation may
+		// well take protobuf and answer XML.
+		String contentType = !op.getConsumes().isEmpty()
+				? op.getConsumes().get(0)
+				: MediaType.APPLICATION_XML;
+
 		HttpMethod method = op.getMethod() != null ? op.getMethod() : HttpMethod.GET;
 		Response response;
 		try {
-			response = send(target, method, RestPlacement.of(op, safeArgs), accept);
+			response = send(target, method, RestPlacement.of(op, safeArgs), accept, contentType);
 		} catch (ProcessingException unreachable) {
 			// Connect refused, connect/read timeout, reset: the provider is
 			// registered but not answering. Marked as a transport failure so
@@ -95,12 +103,30 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		return readResponse(response);
 	}
 
-	private static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept) {
+	/**
+	 * Whether this response can be read back as a model.
+	 *
+	 * <p>Asked by trying, because the providers are the authority on
+	 * what they can decode and duplicating their answer here is how the
+	 * two drift. A failure means "not a model", which is exactly what
+	 * the text fallback is for.
+	 */
+	private static boolean readsAsModel(Response response, MediaType mediaType) {
+		if (MediaType.APPLICATION_XML_TYPE.isCompatible(mediaType)) {
+			return true;
+		}
+		return response.getMediaType() != null
+				&& !MediaType.TEXT_PLAIN_TYPE.isCompatible(mediaType)
+				&& !MediaType.APPLICATION_JSON_TYPE.isCompatible(mediaType);
+	}
+
+	private static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept,
+			String contentType) {
 		// The body first: it decides whether an undeclared argument was
 		// consumed as the payload or still has to travel as a query
 		// parameter.
 		Entity<?> body = placement.body()
-				.map(payload -> Entity.entity(payload, MediaType.APPLICATION_XML))
+				.map(payload -> Entity.entity(payload, contentType))
 				.orElse(null);
 
 		for (Map.Entry<String, Object> e : placement.path().entrySet()) {
@@ -156,8 +182,12 @@ public final class RestServiceInvoker implements ServiceInvoker {
 			if (!response.hasEntity()) {
 				return null;
 			}
+			// A model comes back whenever a provider is registered for what
+			// arrived — the message body reader answers that question, and
+			// since #100 it answers it for every encoding the deployment
+			// knows, not only for XML. Anything else is text, as before.
 			MediaType mt = response.getMediaType();
-			if (mt != null && MediaType.APPLICATION_XML_TYPE.isCompatible(mt)) {
+			if (mt != null && response.hasEntity() && readsAsModel(response, mt)) {
 				return response.readEntity(EObject.class);
 			}
 			return Optional.ofNullable(response.readEntity(String.class)).orElse(null);

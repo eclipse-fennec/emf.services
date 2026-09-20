@@ -14,9 +14,11 @@
 # Generate the Eclipse Dash "DEPENDENCIES" file for this bnd workspace.
 #
 # It uses the new `bnd repo deps` subcommand (bnd 7.4.0-SNAPSHOT or newer) to
-# export the Maven GAVs of every artifact referenced by the workspace's Maven
-# repositories, then feeds that list to the Eclipse Dash License Tool
-# (dash-licenses) to produce the DEPENDENCIES summary used by IP Dash.
+# export the Maven GAVs of every artifact the workspace's Maven repositories
+# offer, narrows that catalogue to the artifacts this build actually names
+# (tools/used-dependencies.py, issue #90), and feeds the result to the Eclipse
+# Dash License Tool (dash-licenses) to produce the DEPENDENCIES summary used by
+# IP Dash.
 #
 # Local usage (e.g. from Git Bash on Windows or any shell on Linux/macOS):
 #   tools/dash-licenses.sh                 # regenerate DEPENDENCIES, then commit it
@@ -78,6 +80,7 @@ CACHE="$ROOT/cnf/cache/dash-licenses"   # under the gitignored cnf/cache
 mkdir -p "$CACHE"
 SUMMARY="${SUMMARY:-$ROOT/DEPENDENCIES}"
 DEPS="$CACHE/deps.txt"
+OFFERED="$CACHE/offered.txt"
 
 # ---- resolve & download the bnd CLI snapshot ------------------------------
 if [[ "$BND_VERSION" == *-SNAPSHOT ]]; then
@@ -107,7 +110,19 @@ fi
 
 # ---- 1) export the dependency list ----------------------------------------
 echo ">> Exporting dependency GAVs with 'bnd repo deps' ..."
-( cd "$ROOT" && java -jar "$BND_JAR" repo deps -o "$DEPS" )
+( cd "$ROOT" && java -jar "$BND_JAR" repo deps -o "$OFFERED" )
+OFFERED_COUNT="$(wc -l < "$OFFERED" | tr -d ' ')"
+echo ">> $OFFERED_COUNT coordinates offered by the workspace's repositories"
+
+# ---- 1b) narrow it to what the build names (#90) --------------------------
+# `bnd repo deps` exports an index, and an index is a catalogue rather than a
+# bill of materials: this workspace's repositories offer roughly four hundred
+# artifacts and the build names about a third of them. Asking the Eclipse IP
+# team to review the rest would be asking about code this project never
+# compiles against, ships or resolves — and it is what kept this check
+# non-blocking.
+echo ">> Narrowing to the coordinates this build names ..."
+python3 "$ROOT/tools/used-dependencies.py" --root "$ROOT" --deps "$OFFERED" --out "$DEPS"
 DEP_COUNT="$(wc -l < "$DEPS" | tr -d ' ')"
 echo ">> $DEP_COUNT dependencies written to $DEPS"
 

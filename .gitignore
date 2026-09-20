@@ -19,3 +19,6 @@ docker/*/content/
 
 # In-process broker snapshots written by launches (#105)
 broker-state.xmi
+
+# Python bytecode from tools/
+__pycache__/

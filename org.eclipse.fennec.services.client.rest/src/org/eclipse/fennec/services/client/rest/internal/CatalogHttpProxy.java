@@ -50,11 +50,24 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 	@Reference
 	private RestTransport tx;
 
+	/**
+	 * The requestor a governance call names.
+	 *
+	 * <p>Until #125 this fell back to {@code "anonymous"}, which meant
+	 * the catalog recorded nothing about who changed it in the common
+	 * case where a caller passed nothing. The fallback is now this
+	 * client's own origin: a caller that knows better still wins, and a
+	 * caller that does not is no longer anonymous by accident.
+	 */
+	private String requestorOr(String requestor) {
+		return requestor != null && !requestor.isBlank() ? requestor : tx.originToken();
+	}
+
 	@Override
 	public Diagnostic addCatalogEntry(ServiceInterface serviceInterface, String requestor) {
 		Response r = tx.target().path("catalog")
 				.request(MediaType.APPLICATION_XML)
-				.header("X-DDSR-Requestor", requestor != null ? requestor : "anonymous")
+				.header("X-DDSR-Requestor", requestorOr(requestor))
 				.post(Entity.entity(serviceInterface, MediaType.APPLICATION_XML));
 		return readDiagnostic(r);
 	}
@@ -64,7 +77,7 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 		Response r = tx.target().path("catalog/{name}/deprecate")
 				.resolveTemplate("name", serviceInterface.getName())
 				.request(MediaType.APPLICATION_XML)
-				.header("X-DDSR-Requestor", requestor != null ? requestor : "anonymous")
+				.header("X-DDSR-Requestor", requestorOr(requestor))
 				.put(Entity.entity(serviceInterface, MediaType.APPLICATION_XML));
 		return readDiagnostic(r);
 	}
@@ -74,7 +87,7 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 		Response r = tx.target().path("catalog/{name}")
 				.resolveTemplate("name", serviceInterface.getName())
 				.request(MediaType.APPLICATION_XML)
-				.header("X-DDSR-Requestor", requestor != null ? requestor : "anonymous")
+				.header("X-DDSR-Requestor", requestorOr(requestor))
 				.delete();
 		return readDiagnostic(r);
 	}

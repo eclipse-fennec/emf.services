@@ -18,10 +18,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -34,6 +36,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.ClientRequestFilter;
 import jakarta.ws.rs.client.WebTarget;
 
 /**
@@ -78,6 +81,15 @@ public final class RestTransport {
 						+ "0 = transport default.",
 				required = false)
 		long read_timeout_millis() default 10000;
+
+		@AttributeDefinition(
+				name = "Origin label",
+				description = "Which system this is, for the X-DDSR-Origin header every call carries (#125): "
+						+ "a deployment name such as payments-prod-eu. The other half of the origin is the "
+						+ "framework UUID and is taken from the runtime. Deliberately not a host name — name "
+						+ "the system, not the machine.",
+				required = false)
+		String origin_label() default "";
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -92,11 +104,22 @@ public final class RestTransport {
 	private Client client;
 	private Config config;
 
+	/**
+	 * Who this runtime is, for every call it makes (#125). Fixed at
+	 * activation: the framework half cannot change while the framework
+	 * lives, and a label that changes mid-session would make the audit
+	 * trail of one session read like two.
+	 */
+	private ClientOrigin origin;
+
 	@Activate
-	void activate(Config config) {
+	void activate(BundleContext context, Config config) {
 		this.config = config;
 		this.baseUrl = URI.create(config.broker_url());
+		this.origin = ClientOrigin.of(config.origin_label(),
+				context.getProperty(ClientOrigin.FRAMEWORK_UUID));
 		this.client = build(config);
+		LOG.info("[DDSR-Client] origin " + origin.token());
 	}
 
 	/**
@@ -118,6 +141,10 @@ public final class RestTransport {
 		this.baseUrl = URI.create(config.broker_url());
 		boolean timeoutsChanged = config.connect_timeout_millis() != this.config.connect_timeout_millis()
 				|| config.read_timeout_millis() != this.config.read_timeout_millis();
+		// The runtime half stays; only the deployment's name for itself
+		// is configuration. The filter reads the field, so a new label
+		// takes effect without rebuilding the client.
+		this.origin = ClientOrigin.of(config.origin_label(), origin.runtimeId());
 		this.config = config;
 		if (!timeoutsChanged) {
 			return;
@@ -142,6 +169,15 @@ public final class RestTransport {
 				.register(new XmiMessageBodyWriter(rsObjects))
 				.register(new XmiBundleMessageBodyReader(rsObjects))
 				.register(new XmiBundleMessageBodyWriter(rsObjects))
+				// #125 asks for the origin on EVERY call, and this is the
+				// only place that is true by construction: a filter on the
+				// shared client cannot be forgotten by a new proxy, and a
+				// per-call header can. It rides on service invocations too,
+				// not only on broker traffic — "which system told which
+				// system what" is the question, and the answer is worth
+				// nothing if it stops at the registry's door.
+				.register((ClientRequestFilter) request ->
+						request.getHeaders().putSingle(ClientOrigin.HEADER, origin.token()))
 				.build();
 	}
 
@@ -151,6 +187,15 @@ public final class RestTransport {
 			client.close();
 			client = null;
 		}
+	}
+
+	/**
+	 * The origin token this client stamps on every request, for the
+	 * places that also have to name a requestor in the body of the
+	 * protocol rather than only in a header.
+	 */
+	String originToken() {
+		return origin.token();
 	}
 
 	WebTarget target() {

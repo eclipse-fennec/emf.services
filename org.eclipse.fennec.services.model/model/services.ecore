@@ -602,6 +602,16 @@
         <details key="documentation" value="Free-form explanation set when status transitions to DEPRECATED. Surfaced in the WARNING Diagnostic that publishImplementation returns against a deprecated interface and in catalog browsers."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="addedBy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Which system put this contract into the catalog, as the client origin token 'label/runtimeId' (issue #125). Written by the broker from the X-DDSR-Origin header, never by the client body; a call that carried no origin records 'anonymous'. Catalog governance state like status/deprecationReason/replacedBy: NOT part of the sd1 fingerprint, so recording it does not move the catalog address of any contract."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deprecatedBy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Which system deprecated this contract, as the client origin token 'label/runtimeId' (issue #125). Set on the transition to DEPRECATED, alongside deprecationReason. There is deliberately no removedBy: a removed entry is gone, and an audit field on a deleted object has nowhere to live — a removal is only visible in the broker log. Not part of the sd1 fingerprint."/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="replacedBy" eType="#//ServiceInterface">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Optional migration hint: another ServiceInterface that supersedes this one. Non-containment. Lets tooling chain deprecated → successor → successor for multi-step migration trails."/>
@@ -1194,6 +1204,11 @@
         <details key="documentation" value="Derived view of the acquisition relation (ACQUISITION.md par.3): the sessions currently holding a lease on this registration. The OWNING side is ConsumerSession.acquisitions — the lease lifecycle follows the consumer. The usage count is a query (usingSessions size), never stored: stored counters drift on consumer crash. TRANSIENT by design: sessions are runtime state outside the persisted resource — a serialized link would tear every registry save/copy apart (not contained in a resource)."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="publishedBy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Which system published this registration, as the client origin token 'label/runtimeId' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Persistent, unlike usingSessions/consumerCount: after a broker restart the snapshot should still be able to say where a registration came from. A withdraw has no counterpart here — the registration is gone with it, and only the broker log keeps that."/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerCount" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
         changeable="false" volatile="true" transient="true" derived="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1212,6 +1227,11 @@
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Identity of the consumer. Unauthenticated for now (S2) — once broker AuthN exists, the session binds to the authenticated identity and this id is checked against it."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="origin" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where the consumer behind this session came from, as the client origin token 'label/runtimeId' (issue #125). The consumerId says WHO claims to be calling and is chosen by the client; this says which deployment and which run of it the call actually reached the broker from. Session-scoped by construction: the runtime id half is the framework UUID, so it is new after every restart and identifies no person and no durable machine."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="lastRenewal" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate">

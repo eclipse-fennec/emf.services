@@ -238,6 +238,32 @@ final class Sessions {
 	private final Map<String, Instant> disconnectedSince = new ConcurrentHashMap<>();
 
 	private volatile long disconnectGraceSeconds;
+	/**
+	 * Every session, as detached views.
+	 *
+	 * <p>The same copy {@link #getSession(String)} makes, for the same
+	 * reason: the live sessions carry a bidirectional link to the
+	 * registrations they hold, and handing one out would hand out a
+	 * handle on the registry through the eOpposite.
+	 */
+	List<SessionSnapshot> all() {
+		state.readLock().lock();
+		try {
+			List<SessionSnapshot> views = new ArrayList<>(sessions.size());
+			for (String consumerId : sessions.keySet()) {
+				getSession(consumerId).ifPresent(views::add);
+			}
+			return views;
+		} finally {
+			state.readLock().unlock();
+		}
+	}
+
+	/** Whether this consumer's event stream is currently open. */
+	boolean isConnected(String consumerId) {
+		return consumerId != null && !disconnectedSince.containsKey(consumerId);
+	}
+
 	int sessionCount() {
 		state.readLock().lock();
 		try {

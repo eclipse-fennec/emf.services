@@ -6210,7 +6210,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getServiceRegistration_PublishedBy(),
 		   source,
 		   new String[] {
-			   "documentation", "Which system published this registration, as the client origin token \'label/runtimeId\' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Persistent, unlike usingSessions/consumerCount: after a broker restart the snapshot should still be able to say where a registration came from. A withdraw has no counterpart here \u2014 the registration is gone with it, and only the broker log keeps that."
+			   "documentation", "Which system published this registration, as the client origin token \'label/runtimeId\' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Runtime state, like the registration itself: registrations are in no snapshot and in no wire document, so this field alone could be written but never read back. It is therefore PROJECTED onto the reference as the property ddsr.origin, which is where a lookup, an event and an auditor can see it \u2014 one source, one projection. After a broker restart the providers re-publish and the field is written again. A withdraw has no counterpart here: the registration is gone with it, and only the broker log keeps that."
 		   });
 		addAnnotation
 		  (getServiceRegistration_ConsumerCount(),

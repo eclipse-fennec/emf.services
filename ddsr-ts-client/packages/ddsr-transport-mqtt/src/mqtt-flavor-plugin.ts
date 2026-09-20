@@ -98,7 +98,7 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     const source = `/consumer/${this.options.originLabel ?? 'ts'}`;
     const provisional = randomUUID();
     const replyTo = `${replyBase}/${provisional}`;
-    const request = encodeRequest(operation, params, replyTo, source);
+    const request = encodeRequest(operation, params, replyTo, source, mqttOp);
 
     await client.subscribeAsync(replyTo, { qos });
     try {

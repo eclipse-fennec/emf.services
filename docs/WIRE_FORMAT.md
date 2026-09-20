@@ -266,6 +266,16 @@ message. The answer is a `ServiceInvocationResult`: a value, or a
 `Diagnostic` that says why there is none, which is how this registry
 reports failures everywhere else.
 
+The encoding is the contract's choice here as well (#100):
+`datacontenttype` comes from the operation flavor's `consumes` for the
+call and `produces` for the answer. The TypeScript side can write only
+XMI on this path today, and a contract declaring anything else is
+**refused** rather than served XMI under a label nobody checks — the
+same rule the XMI codec applies to a content type nothing is
+registered for. A refusal travels back as a `Diagnostic`, in XMI: it is
+not the operation's declared result, so `produces` does not describe
+it, and a caller that learns why beats one that waits out its timeout.
+
 Because `ServiceInvocation` points at its operation and each `Argument`
 at its parameter — by reference, deliberately — the document carries a
 second root describing the operation being called, and the references

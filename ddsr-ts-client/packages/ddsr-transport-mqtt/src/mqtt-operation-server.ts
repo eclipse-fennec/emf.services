@@ -93,6 +93,12 @@ export class MqttOperationServer {
     await client.endAsync().catch(() => undefined);
   }
 
+  /** The flavor of one operation, for what its answer is encoded in (#100). */
+  private operationFlavorFor(operationName: string): ServiceOperationFlavor | undefined {
+    return toArray<ServiceOperationFlavor>(this.flavor.operationFlavors)
+      .find(of => (of.operation?.name ?? of.name) === operationName);
+  }
+
   private async dispatch(topic: string, payload: Uint8Array): Promise<void> {
     const client = this.client;
     const operationName = this.topicToOperation.get(topic);
@@ -105,13 +111,20 @@ export class MqttOperationServer {
       return;
     }
     const source = `/provider/${this.options.originLabel ?? operationName}`;
+    const opFlavor = this.operationFlavorFor(operationName);
     let answer: Uint8Array;
     try {
       const result = await this.handlers[operationName](request.args);
-      answer = encodeResponse(request.id, source, result);
+      answer = encodeResponse(request.id, source, result, undefined, opFlavor);
     } catch (error) {
       // A failure is an answer: the consumer sees why, instead of
-      // waiting out its timeout for a message that never comes.
+      // waiting out its timeout for a message that never comes. This
+      // catches two different failures on purpose — the handler's, and
+      // a contract declaring an encoding this side cannot write (#100).
+      // The Diagnostic goes out in XMI either way: it is not the
+      // operation's declared result, so `produces` does not describe
+      // it, and a consumer that learns why beats one that learns
+      // nothing until its timer runs out.
       answer = encodeResponse(request.id, source, undefined, String(error));
     }
     try {

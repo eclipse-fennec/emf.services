@@ -51,8 +51,45 @@ import {
   newEnvelope, readStructured, writeStructured,
 } from '@ddsr/client';
 
-/** What the payload of a call is encoded in. XMI, as everywhere else. */
+/** What this side can write a call in. XMI, and only XMI, for now. */
 const INVOCATION_CONTENT_TYPE = 'application/xml';
+
+/**
+ * The encoding the contract declares for one direction of a call, and
+ * whether this side can produce it (#100).
+ *
+ * <p>The MQTT path used to write XMI whatever the contract said. The
+ * label on the wire was honest and the two ends agreed, which is
+ * exactly what makes that kind of bug survive: a contract declaring
+ * protobuf would have been served XMI by both, silently, for as long as
+ * nobody compared the document with the contract.
+ *
+ * <p>So it is asked, and a declaration this side cannot honour is
+ * refused rather than quietly ignored — the same rule the XMI codec
+ * applies to a content type nothing is registered for.
+ */
+function declaredContentType(
+  opFlavor: OperationFlavorLike, direction: 'consumes' | 'produces',
+): string {
+  const declared = toList(opFlavor[direction])[0];
+  if (!declared || declared === INVOCATION_CONTENT_TYPE) {
+    return INVOCATION_CONTENT_TYPE;
+  }
+  throw new Error(
+    `the contract declares ${direction}=${declared} for this operation, and the TypeScript`
+    + ` side can only write ${INVOCATION_CONTENT_TYPE} on MQTT — see #100`);
+}
+
+/** EMF lists arrive as an EList or a plain array, depending on the path. */
+function toList(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value as string[];
+  const elist = value as { size?: () => number; get?: (i: number) => string };
+  if (typeof elist.size === 'function' && typeof elist.get === 'function') {
+    return Array.from({ length: elist.size() }, (_, i) => elist.get!(i));
+  }
+  return [];
+}
 
 /** A decoded request: who asked, what they asked for, where the answer goes. */
 export interface MqttRpcRequest {
@@ -83,6 +120,8 @@ interface OperationFlavorLike {
   qos?: string;
   name?: string;
   operation?: { name?: string };
+  consumes?: unknown;
+  produces?: unknown;
 }
 
 export function requestTopicFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): string {
@@ -140,8 +179,9 @@ export function qosFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): 0 | 1
  */
 export function encodeRequest(
   operation: ServiceOperation, args: Record<string, unknown>, replyTo: string, source: string,
+  opFlavor: OperationFlavorLike = {},
 ): { payload: Uint8Array; id: string } {
-  const envelope = newEnvelope(CE_TYPE_INVOKE, source, INVOCATION_CONTENT_TYPE);
+  const envelope = newEnvelope(CE_TYPE_INVOKE, source, declaredContentType(opFlavor, 'consumes'));
   envelope.subject = operation.name ?? undefined;
   envelope.extensions[CE_EXTENSION_REPLY_TO] = replyTo;
   return {
@@ -173,8 +213,10 @@ export function decodeRequest(payload: Uint8Array): MqttRpcRequest {
 /** The answer to a call: a second event, correlated by the request's id. */
 export function encodeResponse(
   requestId: string, source: string, value: unknown, failure?: string,
+  opFlavor: OperationFlavorLike = {},
 ): Uint8Array {
-  const envelope = newEnvelope(CE_TYPE_INVOKE_REPLY, source, INVOCATION_CONTENT_TYPE);
+  const envelope = newEnvelope(CE_TYPE_INVOKE_REPLY, source,
+      declaredContentType(opFlavor, 'produces'));
   envelope.extensions[CE_EXTENSION_CORRELATION_ID] = requestId;
   const document = failure !== undefined ? encodeFailure(failure) : encodeResult(value);
   return writeStructured(envelope, document);

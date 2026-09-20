@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import jakarta.ws.rs.core.Application;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
 import org.osgi.framework.BundleContext;
@@ -213,9 +214,16 @@ public class RestDistributionComponent implements RestDistribution {
 
 		@Override
 		public Set<Object> getSingletons() {
+			// The bundle writer is here because an answer may need
+			// siblings (#88): a value that references contracts nobody
+			// else carries travels with them, as one multi-root
+			// document. Every application brings its own providers —
+			// a whiteboard extension is never asked when an application
+			// names its own.
 			return Set.of(dispatcher,
 					new XmiMessageBodyReader(resourceSets),
-					new XmiMessageBodyWriter(resourceSets));
+					new XmiMessageBodyWriter(resourceSets),
+					new XmiBundleMessageBodyWriter(resourceSets));
 		}
 	}
 

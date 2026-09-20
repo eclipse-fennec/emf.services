@@ -43,9 +43,11 @@ import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
+import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestRoute;
 import org.eclipse.fennec.services.xmi.codec.WireBody;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
 import org.eclipse.fennec.services.xmi.codec.XmiHttpErrors;
@@ -355,7 +357,27 @@ public class RestDispatcher {
 					Response.status(RestErrors.statusFor(operationFlavor, (Diagnostic) result)).entity(result));
 		}
 		int status = operationFlavor.getReturnCodes().isEmpty() ? 200 : operationFlavor.getReturnCodes().get(0);
-		return withMediaType(operationFlavor, Response.status(status).entity(result));
+		return withMediaType(operationFlavor, Response.status(status).entity(withContext(result)));
+	}
+
+	/**
+	 * The answer, plus whatever it needs in order to be readable (#88).
+	 *
+	 * <p>An operation's contract can say what it returns. It cannot say
+	 * "and the contracts that value points at", and a document carrying
+	 * only the value leaves those references pointing nowhere. The rule
+	 * for what travels is {@link ResultDocument}'s, and it is a wire
+	 * decision rather than a dispatcher's — this method only applies it.
+	 *
+	 * <p>A value that needs nothing is returned unwrapped, so the common
+	 * case is the single-root document it always was.
+	 */
+	private static Object withContext(Object result) {
+		if (!(result instanceof EObject value)) {
+			return result;
+		}
+		List<EObject> roots = ResultDocument.roots(value);
+		return roots.size() > 1 ? new XmiBundle(roots) : result;
 	}
 
 	private static Response withMediaType(RestOperationFlavor operationFlavor, Response.ResponseBuilder answer) {

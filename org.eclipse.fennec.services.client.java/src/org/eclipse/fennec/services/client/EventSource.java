@@ -56,4 +56,20 @@ public interface EventSource {
 	 * @return a handle that closes the subscription
 	 */
 	AutoCloseable open(Handler handler);
+
+	/**
+	 * Opens the stream and says who is listening.
+	 *
+	 * <p>Additive on purpose: a transport that has nothing to do with the
+	 * identity ignores it, which is what the default here does. It is
+	 * useful where the broker can see the connection, because then losing
+	 * it shortens that consumer's session deadline instead of waiting out
+	 * the full expiry (ACQUISITION.md §4).
+	 *
+	 * @param consumerId how this consumer names itself in its session, or
+	 *        {@code null} to stay anonymous
+	 */
+	default AutoCloseable open(Handler handler, String consumerId) {
+		return open(handler);
+	}
 }

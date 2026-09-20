@@ -101,6 +101,17 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 		long session_expiry_seconds() default 1200;
 
 		@AttributeDefinition(
+				name = "Session expiry after a lost event connection (seconds)",
+				description = "A consumer whose event connection went away loses its session this long "
+						+ "afterwards, instead of waiting out the full expiry. An open connection is a "
+						+ "free presence signal, so losing it is worth noticing sooner; a reconnect or a "
+						+ "fresh PUT clears it, and the client reconnects within seconds, so this has to "
+						+ "stay comfortably above that. Only transports the broker sees a connection for "
+						+ "report this at all. 0 disables the shortcut.",
+				required = false)
+		long session_disconnect_grace_seconds() default 60;
+
+		@AttributeDefinition(
 				name = "Cold cache after (seconds)",
 				description = "Optional storage policy (ACQUISITION.md \u00a710): a registration that held "
 						+ "no lease and saw no lookup on its interfaces for this long is parked on disk "
@@ -197,6 +208,7 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 		try {
 			Path snapshotPath = Paths.get(config.snapshot_path());
 			this.delegate = new DdsrBrokerImpl(snapshotPath, externalLookup, this::fanOut);
+			this.delegate.setDisconnectGraceSeconds(config.session_disconnect_grace_seconds());
 			long expirySeconds = config.session_expiry_seconds();
 			long coldSeconds = config.cold_after_seconds();
 			long policySweepSeconds = config.policy_sweep_seconds();
@@ -452,6 +464,16 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	@Override
 	public int expireSessions(Instant cutoff) {
 		return required().expireSessions(cutoff);
+	}
+
+	@Override
+	public void consumerConnected(String consumerId) {
+		required().consumerConnected(consumerId);
+	}
+
+	@Override
+	public void consumerDisconnected(String consumerId) {
+		required().consumerDisconnected(consumerId);
 	}
 
 	@Override

@@ -50,6 +50,20 @@ public final class SessionsHttpProxy implements BrokerSessions {
 	private RestTransport tx;
 
 	@Override
+	public void consumerConnected(String consumerId) {
+		// Nothing to send. On this side the connection itself is the
+		// signal: the event stream carries the consumer id, and the
+		// broker's SSE bridge reports both ends of it. A second message
+		// saying the same thing would only be able to disagree.
+	}
+
+	@Override
+	public void consumerDisconnected(String consumerId) {
+		// See above. A client cannot usefully report its own connection
+		// loss over that same connection.
+	}
+
+	@Override
 	public Diagnostic putSession(ConsumerSession session, Collection<String> acquiredReferenceIds) {
 		List<EObject> roots = new ArrayList<>();
 		roots.add(session);

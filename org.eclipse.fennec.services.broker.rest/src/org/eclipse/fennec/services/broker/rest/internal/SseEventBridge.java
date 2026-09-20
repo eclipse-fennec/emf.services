@@ -28,6 +28,7 @@ import java.util.logging.Logger;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
+import org.eclipse.fennec.services.broker.core.BrokerSessions;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.FlavorKind;
@@ -87,9 +88,13 @@ public class SseEventBridge implements EventSink {
 		/** Flavors this consumer can speak; empty means "no filter". */
 		private final Set<FlavorKind> flavors;
 
-		Subscription(SseEventSink sink, Set<FlavorKind> flavors) {
+		/** Who this is, when it said so; {@code null} otherwise. */
+		private final String consumerId;
+
+		Subscription(SseEventSink sink, Set<FlavorKind> flavors, String consumerId) {
 			this.sink = sink;
 			this.flavors = flavors;
+			this.consumerId = consumerId;
 		}
 	}
 
@@ -97,6 +102,16 @@ public class SseEventBridge implements EventSink {
 
 	@Reference
 	BrokerLookup broker;
+
+	/**
+	 * Told when a consumer's connection comes and goes.
+	 *
+	 * <p>An open event stream is a presence signal the broker gets for
+	 * free, and losing one is worth acting on sooner than the renewal
+	 * timeout (ACQUISITION.md §4).
+	 */
+	@Reference
+	BrokerSessions sessions;
 
 	@Reference(target = "(emf.name=services)")
 	ComponentServiceObjects<ResourceSet> rsObjects;
@@ -152,12 +167,12 @@ public class SseEventBridge implements EventSink {
 		for (Subscription s : subscriptions) {
 			try {
 				if (s.sink.isClosed()) {
-					subscriptions.remove(s);
+					drop(s);
 					continue;
 				}
 				s.sink.send(keepalive);
 			} catch (RuntimeException sendFailure) {
-				subscriptions.remove(s);
+				drop(s);
 			}
 		}
 	}
@@ -170,12 +185,37 @@ public class SseEventBridge implements EventSink {
 	 * @param sse     the SSE factory, kept for building outbound events
 	 * @param sink    the subscriber's sink
 	 * @param flavors flavors the consumer can speak; empty = no filter
+	 * @param consumerId who is subscribing, or {@code null} when the
+	 *        subscriber does not say
 	 */
-	void subscribe(Sse sse, SseEventSink sink, Set<FlavorKind> flavors) {
+	void subscribe(Sse sse, SseEventSink sink, Set<FlavorKind> flavors, String consumerId) {
 		this.sse = sse;
-		subscriptions.add(new Subscription(sink, flavors));
+		subscriptions.add(new Subscription(sink, flavors, consumerId));
+		sessions.consumerConnected(consumerId);
 		LOG.info("[DDSR] SSE subscriber added, now " + subscriptions.size()
-				+ (flavors.isEmpty() ? " (no flavor filter)" : " (flavors=" + flavors + ")"));
+				+ (flavors.isEmpty() ? " (no flavor filter)" : " (flavors=" + flavors + ")")
+				+ (consumerId == null || consumerId.isBlank() ? "" : " for " + consumerId));
+	}
+
+	/**
+	 * Drops a subscription and, if it was the last one this consumer had,
+	 * tells the broker its connection is gone.
+	 *
+	 * <p>Counting matters: a consumer that reconnects before the old
+	 * sink is pruned briefly has two, and reporting the first one's end
+	 * would start a deadline for a consumer that is demonstrably there.
+	 */
+	private void drop(Subscription subscription) {
+		subscriptions.remove(subscription);
+		String consumerId = subscription.consumerId;
+		if (consumerId == null || consumerId.isBlank()) {
+			return;
+		}
+		boolean stillHere = subscriptions.stream()
+				.anyMatch(other -> consumerId.equals(other.consumerId));
+		if (!stillHere) {
+			sessions.consumerDisconnected(consumerId);
+		}
 	}
 
 	int subscriberCount() {
@@ -213,13 +253,13 @@ public class SseEventBridge implements EventSink {
 			}
 			try {
 				if (s.sink.isClosed()) {
-					subscriptions.remove(s);
+					drop(s);
 					continue;
 				}
 				s.sink.send(outbound);
 			} catch (RuntimeException sendFailure) {
 				// A dead subscriber must not affect the others or the broker.
-				subscriptions.remove(s);
+				drop(s);
 			}
 		}
 	}

@@ -346,6 +346,21 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	}
 
 	@Override
+	public void consumerConnected(String consumerId) {
+		sessions.consumerConnected(consumerId);
+	}
+
+	@Override
+	public void consumerDisconnected(String consumerId) {
+		sessions.consumerDisconnected(consumerId);
+	}
+
+	/** How long a disconnected consumer keeps its session; 0 disables the shortcut. */
+	public void setDisconnectGraceSeconds(long seconds) {
+		sessions.disconnectGraceSeconds(seconds);
+	}
+
+	@Override
 	public int sessionCount() {
 		return sessions.sessionCount();
 	}

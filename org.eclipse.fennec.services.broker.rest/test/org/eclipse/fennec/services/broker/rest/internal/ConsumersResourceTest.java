@@ -51,6 +51,20 @@ class ConsumersResourceTest {
 		SessionSnapshot snapshot;
 		Diagnostic answer = diagnostic(DiagnosticSeverity.OK, 0, "ok");
 
+		/** What the bridge reported; this resource never touches these. */
+		final List<String> connected = new ArrayList<>();
+		final List<String> disconnected = new ArrayList<>();
+
+		@Override
+		public void consumerConnected(String consumerId) {
+			connected.add(consumerId);
+		}
+
+		@Override
+		public void consumerDisconnected(String consumerId) {
+			disconnected.add(consumerId);
+		}
+
 		@Override
 		public Diagnostic putSession(ConsumerSession session, Collection<String> acquiredReferenceIds) {
 			putSession = session;

@@ -38,6 +38,7 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerSessions.SessionSnapshot;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -487,5 +488,87 @@ class DdsrBrokerSessionsTest {
 		assertThat(broker.getRegistry()).isNotNull();
 		assertThat(broker.getRegistry().getImplementations()).hasSize(1);
 		assertThat(broker.snapshot().getSeverity()).isEqualTo(DiagnosticSeverity.OK);
+	}
+
+	// ------------------------------------------------------------------
+	// A lost event connection shortens the deadline (ACQUISITION.md §4)
+	// ------------------------------------------------------------------
+
+	@Test
+	@DisplayName("a lost connection is not acted on at once — a reconnect within seconds is the normal case")
+	void aLostConnectionIsNotActedOnImmediately() {
+		broker.setDisconnectGraceSeconds(30);
+		putSession("consumer-a");
+
+		broker.consumerDisconnected("consumer-a");
+
+		// The cutoff is far in the past, so nothing has been silent long
+		// enough: only the lost connection could account for an expiry.
+		assertThat(broker.expireSessions(Instant.now().minusSeconds(3600))).isZero();
+		assertThat(broker.sessionCount()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("once the grace has passed the session goes, without waiting out the renewal timeout")
+	void aLostConnectionExpiresTheSessionAfterTheGrace() throws InterruptedException {
+		// A real second, because the deadline is measured against the
+		// clock. It is the only place in this suite that waits, and it is
+		// what the behaviour is: a deadline nobody reset.
+		broker.setDisconnectGraceSeconds(1);
+		putSession("consumer-a");
+
+		broker.consumerDisconnected("consumer-a");
+		Thread.sleep(1200);
+
+		assertThat(broker.expireSessions(Instant.now().minusSeconds(3600)))
+				.as("gone for longer than the grace").isEqualTo(1);
+		assertThat(broker.sessionCount()).isZero();
+	}
+
+	@Test
+	@DisplayName("a reconnect inside the grace keeps the session")
+	void reconnectingClearsTheDeadline() {
+		broker.setDisconnectGraceSeconds(1);
+		putSession("consumer-a");
+
+		broker.consumerDisconnected("consumer-a");
+		broker.consumerConnected("consumer-a");
+		try {
+			Thread.sleep(1200);
+		} catch (InterruptedException interrupted) {
+			Thread.currentThread().interrupt();
+		}
+
+		assertThat(broker.expireSessions(Instant.now().minusSeconds(3600)))
+				.as("the deadline was cleared by the reconnect").isZero();
+		assertThat(broker.sessionCount()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("zero switches the shortcut off, and the renewal interval stays the only truth")
+	void zeroDisablesTheShortcut() {
+		broker.setDisconnectGraceSeconds(0);
+		putSession("consumer-a");
+
+		broker.consumerDisconnected("consumer-a");
+
+		assertThat(broker.expireSessions(Instant.now().minusSeconds(3600))).isZero();
+		assertThat(broker.sessionCount()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("a consumer that never reported a connection is untouched by the shortcut")
+	void aConsumerWithoutAConnectionIsUnaffected() {
+		broker.setDisconnectGraceSeconds(1);
+		putSession("consumer-a");
+
+		assertThat(broker.expireSessions(Instant.now().minusSeconds(3600))).isZero();
+		assertThat(broker.sessionCount()).isEqualTo(1);
+	}
+
+	private void putSession(String consumerId) {
+		ConsumerSession session = ServicesFactory.eINSTANCE.createConsumerSession();
+		session.setConsumerId(consumerId);
+		assertThat(broker.putSession(session, List.of()).getSeverity()).isEqualTo(DiagnosticSeverity.OK);
 	}
 }

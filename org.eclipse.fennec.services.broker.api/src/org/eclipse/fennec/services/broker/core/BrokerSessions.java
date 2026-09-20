@@ -84,4 +84,37 @@ public interface BrokerSessions {
 
 	/** Number of live sessions (diagnostics/tests). */
 	int sessionCount();
+
+	/**
+	 * A consumer's event connection came up.
+	 *
+	 * <p>An open event connection is a free presence signal: while it is
+	 * there, the consumer is demonstrably alive, whatever its renewal
+	 * interval says. Telling the broker about it lets a dropped
+	 * connection expire the session sooner than the full timeout would
+	 * (ACQUISITION.md §4).
+	 *
+	 * <p>The reverse does not hold. An open connection never replaces the
+	 * session PUT: it says "alive", not "still holding reference X".
+	 *
+	 * @param consumerId the consumer, as its session names it; ignored
+	 *        when blank, which is what a subscriber that does not
+	 *        identify itself looks like
+	 */
+	void consumerConnected(String consumerId);
+
+	/**
+	 * A consumer's event connection went away.
+	 *
+	 * <p>Not a reason to drop the session at once — a reconnect within
+	 * seconds is the normal case, and the client reconnects on a fixed
+	 * short delay. It shortens the deadline instead, so a consumer that
+	 * is really gone is noticed in a minute rather than in the full
+	 * timeout.
+	 *
+	 * <p>Only transports with connection semantics report this. For the
+	 * others the renewal interval remains the only truth, which is why
+	 * nothing here is required for correctness.
+	 */
+	void consumerDisconnected(String consumerId);
 }

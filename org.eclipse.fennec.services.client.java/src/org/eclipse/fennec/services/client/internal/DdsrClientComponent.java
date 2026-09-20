@@ -175,7 +175,7 @@ public final class DdsrClientComponent implements DdsrClient {
 			// whatever happened to be bound at that moment — the same
 			// mistake the broker side avoids with its fan-out.
 			this.delegate = new DdsrClientImpl(implementations, lookup, flavors, consumerId,
-					this::openEventStream, config.greedy_rebind());
+					eventStreams, config.greedy_rebind());
 			long renewalSeconds = config.session_interval_seconds();
 			long heartbeatSeconds = config.provider_heartbeat_seconds();
 			if (renewalSeconds > 0 || heartbeatSeconds > 0) {
@@ -262,9 +262,30 @@ public final class DdsrClientComponent implements DdsrClient {
 	 * tries again when the next listener registers, rather than keeping
 	 * a handle that delivers nothing.
 	 */
-	private AutoCloseable openEventStream(EventSource.Handler handler) {
-		return eventSource.open(handler);
-	}
+	/**
+	 * The bound event source, reached through this component rather than
+	 * handed over once.
+	 *
+	 * <p>Written out instead of passed as {@code this::openEventStream}.
+	 * A method reference can only implement an interface's single
+	 * abstract method, so the moment {@link EventSource} grew a second
+	 * {@code open} the reference kept satisfying the first one and the
+	 * new argument was silently dropped by the interface default. The
+	 * consumer id then never reached the wire, and nothing failed — the
+	 * broker simply saw an anonymous subscriber.
+	 */
+	private final EventSource eventStreams = new EventSource() {
+
+		@Override
+		public AutoCloseable open(Handler handler) {
+			return eventSource.open(handler);
+		}
+
+		@Override
+		public AutoCloseable open(Handler handler, String consumerId) {
+			return eventSource.open(handler, consumerId);
+		}
+	};
 
 	/**
 	 * The idempotent full replace (ACQUISITION.md §4): the current set of

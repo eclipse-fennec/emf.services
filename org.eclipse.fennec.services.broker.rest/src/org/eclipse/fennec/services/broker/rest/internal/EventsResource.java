@@ -69,8 +69,14 @@ public class EventsResource {
 	@GET
 	@Produces(MediaType.SERVER_SENT_EVENTS)
 	public void subscribe(@Context SseEventSink sink, @Context Sse sse,
-			@QueryParam("flavors") String flavors) {
-		bridge.subscribe(sse, sink, parseFlavors(flavors));
+			@QueryParam("flavors") String flavors,
+			@QueryParam("consumerId") String consumerId) {
+		// consumerId is optional and additive: a subscriber that does not
+		// name itself is served exactly as before. Naming itself buys one
+		// thing — losing this connection then shortens that consumer's
+		// session deadline instead of waiting out the full expiry
+		// (ACQUISITION.md §4).
+		bridge.subscribe(sse, sink, parseFlavors(flavors), consumerId);
 	}
 
 	/**

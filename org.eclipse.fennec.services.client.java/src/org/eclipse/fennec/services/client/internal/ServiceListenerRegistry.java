@@ -92,9 +92,21 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 	 *                             caller can re-snapshot (FR-Sync-Reconnect)
 	 */
 	ServiceListenerRegistry(EventSource eventSource, Runnable onStreamEstablished) {
+		this(eventSource, onStreamEstablished, null);
+	}
+
+	/**
+	 * @param consumerId the name this consumer uses for its session, so
+	 *        the broker can tie the stream to it; {@code null} stays
+	 *        anonymous and the stream behaves exactly as before
+	 */
+	ServiceListenerRegistry(EventSource eventSource, Runnable onStreamEstablished, String consumerId) {
 		this.eventSource = eventSource;
 		this.onStreamEstablished = onStreamEstablished;
+		this.consumerId = consumerId;
 	}
+
+	private final String consumerId;
 
 	synchronized AutoCloseable add(String interfaceName, String filter, DdsrServiceListener listener) {
 		Entry entry = new Entry(interfaceName, filter, listener);
@@ -163,7 +175,7 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 			// A source may return null when its transport is not up yet.
 			// Leaving subscription null means the next registration tries
 			// again, rather than us holding a dead handle forever.
-			subscription = eventSource.open(this);
+			subscription = eventSource.open(this, consumerId);
 		}
 	}
 

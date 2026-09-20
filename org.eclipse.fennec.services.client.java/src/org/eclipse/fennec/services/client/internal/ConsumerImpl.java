@@ -70,7 +70,7 @@ final class ConsumerImpl implements DdsrConsumer {
 		// rather than expect a replay (FR-Sync-Reconnect). Nothing is
 		// cached here yet, so the hook only logs — the point is that the
 		// signal exists and has one owner.
-		this.listeners = new ServiceListenerRegistry(eventSource, this::refreshFromSnapshot);
+		this.listeners = new ServiceListenerRegistry(eventSource, this::refreshFromSnapshot, consumerId);
 	}
 
 	/** Reference ids known from lookups — the session acquisition list (ACQUISITION.md §4). */

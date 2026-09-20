@@ -121,9 +121,25 @@ public final class RestEventSource implements EventSource {
 
 	@Override
 	public AutoCloseable open(Handler handler) {
+		return open(handler, null);
+	}
+
+	/**
+	 * Opens the stream, naming the consumer when there is one.
+	 *
+	 * <p>The name buys one thing: the broker can tie this connection to
+	 * that consumer's session, so losing the connection shortens the
+	 * session's deadline instead of waiting out the full expiry
+	 * (ACQUISITION.md §4). Leaving it out changes nothing else.
+	 */
+	@Override
+	public AutoCloseable open(Handler handler, String consumerId) {
 		WebTarget target = transport.target().path("events");
 		if (flavors != null && !flavors.isBlank()) {
 			target = target.queryParam("flavors", flavors);
+		}
+		if (consumerId != null && !consumerId.isBlank()) {
+			target = target.queryParam("consumerId", consumerId);
 		}
 		StreamReader reader = new StreamReader(target, handler);
 		streams.add(reader);

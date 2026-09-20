@@ -96,6 +96,9 @@ final class Sessions {
 				}
 			}
 			sessions.put(consumerId, session);
+			// A fresh session is a live consumer, whatever its connection
+			// did a moment ago.
+			disconnectedSince.remove(consumerId);
 			// Deliberately NO persist and NO event: sessions are runtime
 			// state (ACQUISITION.md §6).
 			return DdsrDiagnostics.ok("session accepted, " + accepted + " acquisition(s)"
@@ -157,16 +160,20 @@ final class Sessions {
 		if (cutoff == null) {
 			return 0;
 		}
+		Instant now = Instant.now();
 		state.writeLock().lock();
 		try {
 			int expired = 0;
 			var iterator = sessions.entrySet().iterator();
 			while (iterator.hasNext()) {
-				ConsumerSession session = iterator.next().getValue();
+				var entry = iterator.next();
+				ConsumerSession session = entry.getValue();
 				Date lastRenewal = session.getLastRenewal();
-				if (lastRenewal == null || lastRenewal.toInstant().isBefore(cutoff)) {
+				boolean silentTooLong = lastRenewal == null || lastRenewal.toInstant().isBefore(cutoff);
+				if (silentTooLong || goneTooLong(entry.getKey(), now)) {
 					releaseAcquisitions(session);
 					iterator.remove();
+					disconnectedSince.remove(entry.getKey());
 					expired++;
 				}
 			}
@@ -175,6 +182,54 @@ final class Sessions {
 			state.writeLock().unlock();
 		}
 	}
+
+	/**
+	 * Whether this consumer's event connection has been gone long enough
+	 * to stop waiting for the renewal interval.
+	 *
+	 * <p>Zero switches the shortcut off, and a consumer that never
+	 * reported a connection is never affected — which is every consumer
+	 * on a transport the broker sees no connection for.
+	 */
+	private boolean goneTooLong(String consumerId, Instant now) {
+		if (disconnectGraceSeconds <= 0) {
+			return false;
+		}
+		Instant since = disconnectedSince.get(consumerId);
+		return since != null && !now.isBefore(since.plusSeconds(disconnectGraceSeconds));
+	}
+
+	void consumerConnected(String consumerId) {
+		if (consumerId != null && !consumerId.isBlank()) {
+			disconnectedSince.remove(consumerId);
+		}
+	}
+
+	void consumerDisconnected(String consumerId) {
+		if (consumerId == null || consumerId.isBlank()) {
+			return;
+		}
+		// putIfAbsent: several subscriptions of one consumer may end one
+		// after another, and the deadline should run from the first of
+		// them, not be pushed back by each.
+		disconnectedSince.putIfAbsent(consumerId, Instant.now());
+	}
+
+	/** How long a consumer may be disconnected before its session goes; 0 disables. */
+	void disconnectGraceSeconds(long seconds) {
+		this.disconnectGraceSeconds = seconds;
+	}
+
+	/**
+	 * When a consumer's event connection went away, by consumer id.
+	 *
+	 * <p>Runtime state like the sessions themselves. A reconnect or a
+	 * fresh session clears the entry, so the normal reconnect of a
+	 * client that briefly lost its stream costs nothing.
+	 */
+	private final Map<String, Instant> disconnectedSince = new java.util.concurrent.ConcurrentHashMap<>();
+
+	private volatile long disconnectGraceSeconds;
 	int sessionCount() {
 		state.readLock().lock();
 		try {

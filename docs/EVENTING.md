@@ -73,6 +73,10 @@ Accept: text/event-stream
 - optional `?flavors=REST,MQTT` to be sent only events for those flavor
   kinds. Unknown tokens are ignored with a warning rather than
   rejecting the connection.
+- optional `?consumerId=…` to say who is listening. The SDK sends it
+  automatically. It buys one thing: losing the connection then shortens
+  that consumer's session deadline instead of waiting out the full
+  expiry. Leaving it out changes nothing else.
 
 The stream sends a `: keepalive` comment every 10 seconds by default
 (`org.eclipse.fennec.services.broker.rest.sse`, `heartbeat.seconds`).
@@ -191,6 +195,24 @@ PUT /references/{referenceId}/heartbeat?intervalSeconds=30
 
 Leases are runtime state. A broker restart forgets them, and the next
 heartbeat rebuilds them through that same 404.
+
+## Consumer presence
+
+A consumer session normally expires 1200 seconds after its last
+renewal. An open event stream is a presence signal the broker gets for
+free, so losing one is worth acting on sooner: a consumer whose stream
+has been gone for `session.disconnect.grace.seconds`, **60 by default**,
+loses its session without waiting out the full expiry.
+
+Three things keep that safe. A reconnect or a fresh session clears the
+deadline, and the client reconnects within seconds. A consumer that
+still holds another stream is not counted as gone. And a consumer whose
+transport the broker sees no connection for, MQTT among them, is never
+affected: for those the renewal interval remains the only truth.
+
+The reverse never holds. An open connection does not replace the
+session: it says "alive", not "still holding reference X". Set the
+property to 0 to switch the shortcut off.
 
 ## Proven by
 

@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -49,14 +50,22 @@ class SseEventBridgeTest {
 		bridge = new SseEventBridge();
 		bridge.broker = lookup;
 		bridge.rsObjects = resourceSets;
+		bridge.sessions = presence;
 	}
 
 	private FakeSse.Sink subscribe(FlavorKind... flavors) {
+		return subscribe(null, flavors);
+	}
+
+	private FakeSse.Sink subscribe(String consumerId, FlavorKind... flavors) {
 		FakeSse.Sink sink = new FakeSse.Sink();
 		Set<FlavorKind> set = flavors.length == 0 ? EnumSet.noneOf(FlavorKind.class) : EnumSet.of(flavors[0], flavors);
-		bridge.subscribe(sse, sink, set);
+		bridge.subscribe(sse, sink, set, consumerId);
 		return sink;
 	}
+
+	/** Records what the bridge says about who is connected. */
+	private final RecordingPresence presence = new RecordingPresence();
 
 	private ServiceEvent registered(String refId, FlavorKind... flavors) {
 		ServiceProvider provider = provider("payments", payment(), flavors);
@@ -213,5 +222,49 @@ class SseEventBridgeTest {
 		bridge.publish(registered("ref-1", FlavorKind.REST));
 		bridge.publish(registered("ref-2", FlavorKind.REST));
 		assertThat(resourceSets.outstanding).isZero();
+	}
+
+	@Test
+	@DisplayName("a subscriber that names itself is reported as connected")
+	void namingYourselfReportsPresence() {
+		subscribe("consumer-a");
+
+		assertThat(presence.connected).containsExactly("consumer-a");
+		assertThat(presence.disconnected).isEmpty();
+	}
+
+	@Test
+	@DisplayName("a subscriber that stays anonymous is served and reported as nobody")
+	void anonymousSubscribersAreStillServed() {
+		FakeSse.Sink sink = subscribe();
+
+		assertThat(bridge.subscriberCount()).isEqualTo(1);
+		assertThat(presence.connected).containsExactly((String) null);
+		assertThat(presence.disconnected).isEmpty();
+	}
+
+	@Test
+	@DisplayName("a closed stream reports the consumer as gone")
+	void aClosedStreamReportsTheDisconnect() {
+		FakeSse.Sink sink = subscribe("consumer-a");
+		sink.close();
+
+		bridge.publish(registered("ref-1"));
+
+		assertThat(presence.disconnected).containsExactly("consumer-a");
+	}
+
+	@Test
+	@DisplayName("a consumer that still has another stream is not reported gone")
+	void oneOfTwoStreamsEndingIsNotADisconnect() {
+		FakeSse.Sink first = subscribe("consumer-a");
+		subscribe("consumer-a");
+		first.close();
+
+		bridge.publish(registered("ref-1"));
+
+		assertThat(presence.disconnected)
+				.as("the consumer is demonstrably still there on its other stream")
+				.isEmpty();
 	}
 }

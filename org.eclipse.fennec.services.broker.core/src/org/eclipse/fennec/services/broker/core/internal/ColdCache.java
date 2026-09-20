@@ -14,15 +14,19 @@
 package org.eclipse.fennec.services.broker.core.internal;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.common.util.URI;
@@ -142,7 +146,7 @@ final class ColdCache {
 	private final Map<String, ColdEntry> coldEntries = new LinkedHashMap<>();
 
 	/** Last lookup instant per interface name — feeds the cold-idle rule. */
-	private final Map<String, Instant> lastLookupByInterface = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, Instant> lastLookupByInterface = new ConcurrentHashMap<>();
 
 	/**
 	 * When a registration was last known active (published, rehydrated,
@@ -176,7 +180,7 @@ final class ColdCache {
 		state.writeLock().lock();
 		try {
 			Instant now = Instant.now();
-			registrationSince.keySet().retainAll(new java.util.HashSet<>(state.registrations()));
+			registrationSince.keySet().retainAll(new HashSet<>(state.registrations()));
 			int moved = 0;
 			for (ServiceRegistration reg : new ArrayList<>(state.registrations())) {
 				if (reg.isUnregistered() || reg.getImplementation() == null || reg.getProvider() == null) {
@@ -390,13 +394,13 @@ final class ColdCache {
 	static String coldFileName(String key) {
 		try {
 			byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
-					.digest(key.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+					.digest(key.getBytes(StandardCharsets.UTF_8));
 			StringBuilder hex = new StringBuilder();
 			for (int i = 0; i < 12; i++) {
 				hex.append(String.format("%02x", digest[i]));
 			}
 			return hex + ".xmi";
-		} catch (java.security.NoSuchAlgorithmException impossible) {
+		} catch (NoSuchAlgorithmException impossible) {
 			throw new IllegalStateException("JVM without SHA-256", impossible);
 		}
 	}

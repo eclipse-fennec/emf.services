@@ -19,11 +19,14 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
+import jakarta.ws.rs.core.Application;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceObjects;
+import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -33,8 +36,6 @@ import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
 import org.osgi.service.jakartars.runtime.dto.ApplicationDTO;
 import org.osgi.service.jakartars.runtime.dto.FailedApplicationDTO;
 import org.osgi.service.jakartars.runtime.dto.RuntimeDTO;
-
-import jakarta.ws.rs.core.Application;
 
 /**
  * Mounts an endpoint for a flavor handed over at runtime.
@@ -224,7 +225,7 @@ public class RestDistributionComponent implements RestDistribution {
 	 * the dispatcher asks for, and because a service that is handed over
 	 * directly has no per-call instance to hand out.
 	 */
-	private static final class SingleService implements org.osgi.framework.ServiceObjects<Object> {
+	private static final class SingleService implements ServiceObjects<Object> {
 
 		private final Object service;
 
@@ -243,7 +244,7 @@ public class RestDistributionComponent implements RestDistribution {
 		}
 
 		@Override
-		public org.osgi.framework.ServiceReference<Object> getServiceReference() {
+		public ServiceReference<Object> getServiceReference() {
 			throw new UnsupportedOperationException("this service was handed over directly, not looked up");
 		}
 	}

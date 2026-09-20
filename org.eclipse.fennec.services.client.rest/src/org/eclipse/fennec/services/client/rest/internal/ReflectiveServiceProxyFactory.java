@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.client.rest.internal;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -183,7 +184,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		}
 
 		private static List<String> paramNames(ServiceOperation op) {
-			List<String> names = new java.util.ArrayList<>(op.getParameters().size());
+			List<String> names = new ArrayList<>(op.getParameters().size());
 			for (Parameter p : op.getParameters()) {
 				names.add(p.getName());
 			}

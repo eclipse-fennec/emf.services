@@ -8,9 +8,6 @@ Bundle-Description: \
 
 -library: enableEMF
 
-Private-Package: \
-	org.eclipse.fennec.services.rsa.discovery.local
-
 # 122.6.2: what an endpoint description extender says about itself. The
 # version is the specification's, not ours, and the uses directive is
 # exactly the package a description is expressed in.

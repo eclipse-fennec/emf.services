@@ -8,8 +8,6 @@ Bundle-Description: \
 
 -library: enableJakartaREST, enableEMF
 
-Private-Package: org.eclipse.fennec.services.client.rest.internal
-
 -buildpath: \
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\

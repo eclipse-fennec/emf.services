@@ -13,11 +13,14 @@
 
 package org.eclipse.fennec.services.rsa.registry.internal;
 
+import java.net.URL;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -117,7 +120,7 @@ public class BundleServiceModels implements EObjectProvider, BundleTrackerCustom
 
 	private Iterable<BundleCapability> capabilities(Bundle bundle) {
 		BundleWiring wiring = bundle.adapt(BundleWiring.class);
-		return wiring == null ? java.util.List.of() : wiring.getCapabilities(ServiceModelCapability.NAMESPACE);
+		return wiring == null ? List.of() : wiring.getCapabilities(ServiceModelCapability.NAMESPACE);
 	}
 
 	private static String name(BundleCapability capability) {
@@ -134,7 +137,7 @@ public class BundleServiceModels implements EObjectProvider, BundleTrackerCustom
 					+ (name == null ? "a name" : "a path") + " — ignored");
 			return false;
 		}
-		java.net.URL entry = bundle.getEntry(path.toString());
+		URL entry = bundle.getEntry(path.toString());
 		if (entry == null) {
 			LOG.warning("[DDSR] " + bundle.getSymbolicName() + " points at " + path + ", which it does not contain");
 			return false;
@@ -143,7 +146,7 @@ public class BundleServiceModels implements EObjectProvider, BundleTrackerCustom
 		ResourceSet resourceSet = resourceSets.getService();
 		try {
 			Resource document = resourceSet.getResource(
-					org.eclipse.emf.common.util.URI.createURI(entry.toString()), true);
+					URI.createURI(entry.toString()), true);
 			for (EObject root : document.getContents()) {
 				if (root instanceof ServiceInterface contract && name.equals(contract.getName())) {
 					writer.put(SOURCE, name, contract,

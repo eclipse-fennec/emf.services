@@ -14,14 +14,15 @@
 package org.eclipse.fennec.services.client.internal;
 
 import java.util.List;
+import java.util.Set;
 
+import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.client.DdsrClient;
-import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrProvider;
-import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.client.EventSource;
 
 /**
  * Transport-agnostic client core. Wires the provider/consumer facades
@@ -55,7 +56,7 @@ public final class DdsrClientImpl implements DdsrClient {
 	}
 
 	/** Reference ids known from lookups — the session acquisition list. */
-	public java.util.Set<String> knownReferenceIds() {
+	public Set<String> knownReferenceIds() {
 		return consumer.knownReferenceIds();
 	}
 

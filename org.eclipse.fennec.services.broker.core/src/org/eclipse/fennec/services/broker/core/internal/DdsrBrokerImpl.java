@@ -18,7 +18,6 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
@@ -34,17 +33,23 @@ import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 
 /**
- * In-memory broker implementation with synchronous XMI snapshot
- * persistence after each acknowledged mutation, guarded by a
- * read-write lock. Pure Java — no OSGi imports — so it can be reused
- * by a plain-Java host module later.
+ * The broker: an in-memory registry with synchronous XMI snapshot
+ * persistence after every acknowledged change, guarded by one
+ * read-write lock.
+ *
+ * <p>A façade over the components behind it, each with one concern.
+ * What it owns itself is the lifecycle: {@link #activate()} starts the
+ * work the broker does on its own — advancing a handover, retiring a
+ * silent provider, expiring a session, parking an idle registration —
+ * and {@link #close()} stops it.
+ *
+ * <p>Plain Java, no OSGi imports, and that is not a promise for later:
+ * the Declarative Services component around this is only a translation
+ * from Configuration Admin into {@link BrokerSettings}. The same
+ * settings give the same behaviour with or without a framework, which
+ * was not true while the periodic work lived in the component.
  */
 public final class DdsrBrokerImpl implements DdsrBroker {
-
-	private static final Logger LOG = Logger.getLogger(DdsrBrokerImpl.class.getName());
-
-	/** The index a lookup asks; fed by every publish, modify and withdraw. */
-	protected final LookupBackend lookup;
 
 	/** Where an acknowledged and persisted change is announced. */
 	private final Announcements announcements;
@@ -70,17 +75,31 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	/** Publishing, changing and withdrawing what a provider offers. */
 	private final Registrations registrations;
 
-
 	/** The registry, the lock that guards it and the file it lives in. */
 	private final BrokerState state;
+
+	/** The work the broker does on its own, on a clock. */
+	private final Maintenance maintenance;
 
 	public DdsrBrokerImpl(Path snapshotPath, LookupBackend lookup) {
 		this(snapshotPath, lookup, EventSink.NOOP);
 	}
 
 	public DdsrBrokerImpl(Path snapshotPath, LookupBackend lookup, EventSink events) {
-		this.state = new BrokerState(snapshotPath);
-		this.lookup = lookup;
+		this(BrokerSettings.defaults(snapshotPath), lookup, events);
+	}
+
+	/**
+	 * A broker with everything it needs to be told.
+	 *
+	 * <p>Building it does not start it: {@link #activate()} does. The
+	 * two are separate because a caller may want to hand the object
+	 * around, register it, or hold it briefly before the periodic work
+	 * begins.
+	 */
+	public DdsrBrokerImpl(BrokerSettings settings, LookupBackend lookup, EventSink events) {
+		this.maintenance = new Maintenance(settings);
+		this.state = new BrokerState(settings.snapshotPath());
 		this.announcements = new Announcements(events);
 		this.sessions = new Sessions(state);
 		// The four below need a way to take a registration away, and the
@@ -101,6 +120,32 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 			registrations.reindex();
 		}
 		cold.loadColdStubs();
+		setDisconnectGraceSeconds(settings.sessionDisconnectGraceSeconds());
+		setDefaultCutoverGraceMillis(settings.cutoverGraceMillis());
+	}
+
+	/**
+	 * Starts the work the broker does on its own.
+	 *
+	 * <p>Separate from the constructor, and idempotent enough to be
+	 * called once: the sweeps a broker runs are behaviour, not
+	 * deployment, so they belong here rather than in whatever framework
+	 * happens to host it.
+	 */
+	public void activate() {
+		maintenance.start(this);
+	}
+
+	/**
+	 * Stops the periodic work and saves the registry one last time.
+	 *
+	 * <p>The save is defensive. Every acknowledged change was already
+	 * saved before it was announced; this only covers a mutation that
+	 * landed while the shutdown was in flight.
+	 */
+	public void close() {
+		maintenance.close();
+		snapshot();
 	}
 
 	private ServiceReference retire(ServiceProvider provider, ServiceImplementation implementation) {
@@ -134,23 +179,6 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	public ServiceRegistration registerService(ServiceProvider provider, ServiceImplementation implementation) {
 		return registrations.registerService(provider, implementation);
 	}
-
-	// ============================================================
-	// Provider operations
-	// ============================================================
-
-
-
-
-
-
-
-	// ============================================================
-	// Consumer operations
-	// ============================================================
-
-
-
 
 	// ============================================================
 	// The registry itself — see BrokerState
@@ -326,16 +354,8 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	}
 
 	// ============================================================
-	// Catalog operations
-	// ============================================================
-
-
-
-
-	// ============================================================
 	// State access
 	// ============================================================
-
 
 	/**
 	 * The live registry object — package-private for tests and internal
@@ -345,101 +365,5 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	RemoteServiceRegistry liveRegistry() {
 		return state.registry();
 	}
-
-
-
-	// ============================================================
-	// Session operations (ACQUISITION.md §3/§4)
-	// ============================================================
-
-
-
-
-
-
-
-	// ============================================================
-	// Cold cache (ACQUISITION.md §10)
-	// ============================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	// ============================================================
-	// Helpers
-	// ============================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	// ============================================================
-	// The catalog as the wire states it (broker-catalog-api.xmi, #76)
-	//
-	// The contract describes what goes over HTTP, and these are the
-	// operations it names. They were the REST resource's methods until
-	// the generic distribution started serving that contract — and what
-	// they do is broker behaviour, not transport: which entry a name and
-	// a fingerprint address, and what "not found" or "ambiguous" means
-	// is the catalog's business.
-	// ============================================================
-
-
-
-
-
-
-
-	// ============================================================
-	// Update policies (UPDATE_POLICY.md §2)
-	// ============================================================
-
-
-
-
-
-	// ============================================================
-	// Provider liveness (#52, UPDATE_POLICY.md §4)
-	// ============================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }

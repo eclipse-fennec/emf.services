@@ -16,17 +16,23 @@ package org.eclipse.fennec.services.broker.core.internal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
+import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServiceRegistration;
@@ -61,8 +67,8 @@ import org.eclipse.fennec.services.fingerprint.ServiceImplementationFingerprint;
  */
 final class Registrations implements Retirement, Republication {
 
-	private static final java.util.logging.Logger LOG =
-			java.util.logging.Logger.getLogger(Registrations.class.getName());
+	private static final Logger LOG =
+			Logger.getLogger(Registrations.class.getName());
 
 	private final BrokerState state;
 
@@ -167,8 +173,8 @@ final class Registrations implements Retirement, Republication {
 				ServiceImplementation live = BrokerState.implementationNamed(
 						state.registry().getImplementations(), wanted.getName(), wanted.getVersion());
 				boolean ownIdentity = live != null
-						&& java.util.Objects.equals(live.getName(), implementation.getName())
-						&& java.util.Objects.equals(live.getVersion(), implementation.getVersion());
+						&& Objects.equals(live.getName(), implementation.getName())
+						&& Objects.equals(live.getVersion(), implementation.getVersion());
 				if (live == null || ownIdentity) {
 					replacesNote = "replaces " + wanted.getName() + "/" + wanted.getVersion()
 							+ (live == null
@@ -255,6 +261,8 @@ final class Registrations implements Retirement, Republication {
 			// replaced service goes away, then the new one appears.
 			announcements.emit(ServiceEventType.UNREGISTERING, retired, ServiceEventReasons.REPLACED);
 			announcements.emit(ServiceEventType.REGISTERED, ref);
+			LOG.info("[DDSR] published " + BrokerState.identityOf(reg)
+					+ (retired == null ? "" : " (replacing the previous copy)"));
 			if (predecessor != null) {
 				policies.armUpdatePolicy(reg, predecessor);
 			}
@@ -328,6 +336,7 @@ final class Registrations implements Retirement, Republication {
 			// Same reference id, same leases: consumers refresh, they do
 			// not rebind (UPDATE_POLICY/#55 — MODIFIED is OSGi's MODIFIED).
 			announcements.emit(ServiceEventType.MODIFIED, reference);
+			LOG.info("[DDSR] modified " + BrokerState.identityOf(registration) + " in place");
 			return contracts.deprecationNote() != null
 					? DdsrDiagnostics.warning(DdsrDiagnostics.CODE_INTERFACE_DEPRECATED,
 							"interface(s) marked deprecated: " + contracts.deprecationNote())
@@ -461,6 +470,8 @@ final class Registrations implements Retirement, Republication {
 			// After the save, never before: a withdrawal that could not
 			// be persisted must not be announced.
 			announcements.emit(ServiceEventType.UNREGISTERING, eventReference, ServiceEventReasons.WITHDRAWN);
+			LOG.info("[DDSR] withdrew " + liveImpl.getName() + "/" + liveImpl.getVersion()
+					+ " of " + liveProvider.getName());
 			return d;
 		} finally {
 			state.writeLock().unlock();
@@ -488,29 +499,29 @@ final class Registrations implements Retirement, Republication {
 	 * HTTP fetch on the broker side.
 	 */
 	void rewireOperationRefs(ServiceImplementation implementation) {
-		for (org.eclipse.fennec.services.ServiceFlavor flavor : implementation.getFlavors()) {
-			for (org.eclipse.fennec.services.ServiceOperationFlavor of : flavor.getOperationFlavors()) {
-				org.eclipse.fennec.services.ServiceOperation live = resolveLiveOperation(implementation, of);
+		for (ServiceFlavor flavor : implementation.getFlavors()) {
+			for (ServiceOperationFlavor of : flavor.getOperationFlavors()) {
+				ServiceOperation live = resolveLiveOperation(implementation, of);
 				if (live != null && live != of.getOperation()) {
 					of.setOperation(live);
 				}
 			}
 		}
 	}
-	org.eclipse.fennec.services.ServiceOperation resolveLiveOperation(
+	ServiceOperation resolveLiveOperation(
 			ServiceImplementation impl,
-			org.eclipse.fennec.services.ServiceOperationFlavor of) {
-		org.eclipse.fennec.services.ServiceOperation refOp = of.getOperation();
+			ServiceOperationFlavor of) {
+		ServiceOperation refOp = of.getOperation();
 		// (1) Operation cross-ref present and not a proxy: use its name.
-		if (refOp != null && !((org.eclipse.emf.ecore.InternalEObject) refOp).eIsProxy()) {
+		if (refOp != null && !((InternalEObject) refOp).eIsProxy()) {
 			return findOperationByName(impl, refOp.getName());
 		}
 		// (2) Operation cross-ref is a proxy from a wire href like
 		// http://broker/.../catalog/Payment#//@operations.0 — pull the
 		// positional index from the fragment without resolving.
 		if (refOp != null) {
-			org.eclipse.emf.common.util.URI proxyUri =
-					((org.eclipse.emf.ecore.InternalEObject) refOp).eProxyURI();
+			URI proxyUri =
+					((InternalEObject) refOp).eProxyURI();
 			Integer idx = positionalIndex(proxyUri);
 			if (idx != null) {
 				for (ServiceInterface si : impl.getServiceInterfaces()) {
@@ -525,12 +536,12 @@ final class Registrations implements Retirement, Republication {
 		// follow this).
 		return findOperationByName(impl, of.getName());
 	}
-	org.eclipse.fennec.services.ServiceOperation findOperationByName(ServiceImplementation impl, String opName) {
+	ServiceOperation findOperationByName(ServiceImplementation impl, String opName) {
 		if (opName == null) {
 			return null;
 		}
 		for (ServiceInterface si : impl.getServiceInterfaces()) {
-			for (org.eclipse.fennec.services.ServiceOperation op : si.getOperations()) {
+			for (ServiceOperation op : si.getOperations()) {
 				if (opName.equals(op.getName())) {
 					return op;
 				}
@@ -538,7 +549,7 @@ final class Registrations implements Retirement, Republication {
 		}
 		return null;
 	}
-	static Integer positionalIndex(org.eclipse.emf.common.util.URI uri) {
+	static Integer positionalIndex(URI uri) {
 		if (uri == null) {
 			return null;
 		}

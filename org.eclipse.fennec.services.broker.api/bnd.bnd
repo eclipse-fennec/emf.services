@@ -5,10 +5,6 @@ Bundle-Description: \
 	document, the lookup backend, and the exceptions. No implementation, \
 	no components, no configuration.
 
-Export-Package: \
-	org.eclipse.fennec.services.broker.core,\
-	org.eclipse.fennec.services.broker.core.exception
-
 -library: enableEMF
 
 -buildpath: \

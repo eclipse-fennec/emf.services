@@ -14,21 +14,22 @@
 package org.eclipse.fennec.services.client.internal;
 
 import java.net.URI;
-import org.eclipse.fennec.services.client.TrackedServiceLocator;
-import org.eclipse.fennec.services.client.DdsrException;
-import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
-import org.eclipse.fennec.services.ServiceEventType;
-import org.eclipse.fennec.services.ServiceEvent;
-import java.util.logging.Logger;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
+import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.TrackedServiceLocator;
 
 final class ServiceLocatorImpl implements TrackedServiceLocator {
 
@@ -49,10 +50,10 @@ final class ServiceLocatorImpl implements TrackedServiceLocator {
 	private volatile ServiceReference reference;
 	private volatile ServiceImplementation implementation;
 	private volatile State state = State.LIVE;
-	private volatile java.util.function.BiConsumer<ServiceLocatorImpl, String> rebound;
+	private volatile BiConsumer<ServiceLocatorImpl, String> rebound;
 
 	/** Tracker callback: (locator, previous reference id) after a rebind changed the id. */
-	void onRebound(java.util.function.BiConsumer<ServiceLocatorImpl, String> callback) {
+	void onRebound(BiConsumer<ServiceLocatorImpl, String> callback) {
 		this.rebound = callback;
 	}
 

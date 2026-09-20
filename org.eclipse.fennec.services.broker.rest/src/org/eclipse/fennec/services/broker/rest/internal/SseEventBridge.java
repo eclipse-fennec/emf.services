@@ -25,14 +25,18 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.sse.OutboundSseEvent;
+import jakarta.ws.rs.sse.Sse;
+import jakarta.ws.rs.sse.SseEventSink;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.BrokerSessions;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
-import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -42,10 +46,6 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
-
-import jakarta.ws.rs.sse.OutboundSseEvent;
-import jakarta.ws.rs.sse.Sse;
-import jakarta.ws.rs.sse.SseEventSink;
 
 /**
  * Distributes broker lifecycle events to SSE subscribers.
@@ -243,7 +243,7 @@ public class SseEventBridge implements EventSink {
 
 		OutboundSseEvent outbound = sse.newEventBuilder()
 				.name("ddsr-service-event")
-				.mediaType(jakarta.ws.rs.core.MediaType.APPLICATION_XML_TYPE)
+				.mediaType(MediaType.APPLICATION_XML_TYPE)
 				.data(String.class, payload)
 				.build();
 

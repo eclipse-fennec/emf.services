@@ -74,7 +74,7 @@ final class ConsumerImpl implements DdsrConsumer {
 	}
 
 	/** Reference ids known from lookups — the session acquisition list (ACQUISITION.md §4). */
-	public java.util.Set<String> knownReferenceIds() {
+	public Set<String> knownReferenceIds() {
 		return listeners.knownReferenceIds();
 	}
 

@@ -10,8 +10,6 @@ Bundle-Description: \
 
 src=${^src},src-gen
 
-Private-Package: org.eclipse.fennec.services.examples.payment, org.eclipse.fennec.services.examples.payment.internal, org.eclipse.fennec.services.examples.payment.probe
-
 # The BindingProbe interface is generated from the model in model/ — the same
 # document the publisher loads and publishes at runtime. Its ENDPOINT is not
 # generated: the generic REST distribution serves it from that document
@@ -24,7 +22,6 @@ Private-Package: org.eclipse.fennec.services.examples.payment, org.eclipse.fenne
 		model    = "model/binding-probe-java.xmi"; \
 		template = "../org.eclipse.fennec.services.m2t/templates/service-interface.mtl"; \
 		modules  = "../org.eclipse.fennec.services.m2t/templates/java-types.mtl"
-
 
 -includeresource: \
 	OSGI-INF/configurator/=configs/,\

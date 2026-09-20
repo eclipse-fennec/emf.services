@@ -131,7 +131,8 @@ public final class LookupHttpProxy implements BrokerLookup {
 		if (requestedFingerprint != null) {
 			t = t.queryParam("fingerprint", requestedFingerprint);
 		}
-		XmiBundle bundle = t.request(MediaType.APPLICATION_XML).get(XmiBundle.class);
+		XmiBundle bundle = tx.send("BrokerLookup/getServiceReferences",
+				t.request(MediaType.APPLICATION_XML), request -> request.get(XmiBundle.class));
 		LocalServiceRegistry envelope = null;
 		for (EObject root : bundle.roots()) {
 			if (root instanceof LocalServiceRegistry) {

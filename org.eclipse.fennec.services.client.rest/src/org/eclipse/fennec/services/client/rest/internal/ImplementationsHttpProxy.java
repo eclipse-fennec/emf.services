@@ -51,9 +51,9 @@ public final class ImplementationsHttpProxy implements BrokerImplementations {
 
 	@Override
 	public Diagnostic publishImplementation(ServiceProvider provider, ServiceImplementation implementation) {
-		Response r = tx.target().path("implementations")
-				.request(MediaType.APPLICATION_XML)
-				.post(bodyFor(provider, implementation));
+		Response r = tx.send("BrokerImplementations/publishImplementation",
+				tx.target().path("implementations").request(MediaType.APPLICATION_XML),
+				request -> request.post(bodyFor(provider, implementation)));
 		return CatalogHttpProxy.readDiagnostic(r);
 	}
 
@@ -73,9 +73,9 @@ public final class ImplementationsHttpProxy implements BrokerImplementations {
 
 	@Override
 	public Diagnostic modifyImplementation(ServiceProvider provider, ServiceImplementation implementation) {
-		Response r = tx.target().path("implementations")
-				.request(MediaType.APPLICATION_XML)
-				.put(bodyFor(provider, implementation));
+		Response r = tx.send("BrokerImplementations/modifyImplementation",
+				tx.target().path("implementations").request(MediaType.APPLICATION_XML),
+				request -> request.put(bodyFor(provider, implementation)));
 		return CatalogHttpProxy.readDiagnostic(r);
 	}
 
@@ -85,9 +85,10 @@ public final class ImplementationsHttpProxy implements BrokerImplementations {
 		// Jersey refuses a DELETE entity client-side ("Entity must be
 		// null for http method DELETE"), which silently killed every
 		// withdraw this proxy ever attempted (DECISIONS_PARITY D14).
-		Invocation.Builder b = tx.target().path("implementations").path("withdraw")
-				.request(MediaType.APPLICATION_XML);
-		Response r = b.post(Entity.entity(provider, MediaType.APPLICATION_XML));
+		Response r = tx.send("BrokerImplementations/withdrawImplementation",
+				tx.target().path("implementations").path("withdraw")
+						.request(MediaType.APPLICATION_XML),
+				request -> request.post(Entity.entity(provider, MediaType.APPLICATION_XML)));
 		return CatalogHttpProxy.readDiagnostic(r);
 	}
 
@@ -96,10 +97,11 @@ public final class ImplementationsHttpProxy implements BrokerImplementations {
 		// PUT /references/{id}/heartbeat?intervalSeconds=N — no body on the
 		// wire; the empty text entity only satisfies Jersey's client-side
 		// "PUT needs an entity" check.
-		Response r = tx.target().path("references").path(referenceId).path("heartbeat")
-				.queryParam("intervalSeconds", intervalSeconds)
-				.request(MediaType.APPLICATION_XML)
-				.put(Entity.text(""));
+		Response r = tx.send("BrokerImplementations/heartbeat",
+				tx.target().path("references").path(referenceId).path("heartbeat")
+						.queryParam("intervalSeconds", intervalSeconds)
+						.request(MediaType.APPLICATION_XML),
+				request -> request.put(Entity.text("")));
 		return CatalogHttpProxy.readDiagnostic(r);
 	}
 

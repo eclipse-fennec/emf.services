@@ -27,6 +27,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -65,38 +66,41 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 
 	@Override
 	public Diagnostic addCatalogEntry(ServiceInterface serviceInterface, String requestor) {
-		Response r = tx.target().path("catalog")
-				.request(MediaType.APPLICATION_XML)
-				.header("X-DDSR-Requestor", requestorOr(requestor))
-				.post(Entity.entity(serviceInterface, MediaType.APPLICATION_XML));
+		Response r = tx.send("BrokerCatalog/addCatalogEntry",
+				tx.target().path("catalog")
+						.request(MediaType.APPLICATION_XML)
+						.header("X-DDSR-Requestor", requestorOr(requestor)),
+				request -> request.post(Entity.entity(serviceInterface, MediaType.APPLICATION_XML)));
 		return readDiagnostic(r);
 	}
 
 	@Override
 	public Diagnostic deprecateCatalogEntry(ServiceInterface serviceInterface, String requestor) {
-		Response r = tx.target().path("catalog/{name}/deprecate")
-				.resolveTemplate("name", serviceInterface.getName())
-				.request(MediaType.APPLICATION_XML)
-				.header("X-DDSR-Requestor", requestorOr(requestor))
-				.put(Entity.entity(serviceInterface, MediaType.APPLICATION_XML));
+		Response r = tx.send("BrokerCatalog/deprecateCatalogEntry",
+				tx.target().path("catalog/{name}/deprecate")
+						.resolveTemplate("name", serviceInterface.getName())
+						.request(MediaType.APPLICATION_XML)
+						.header("X-DDSR-Requestor", requestorOr(requestor)),
+				request -> request.put(Entity.entity(serviceInterface, MediaType.APPLICATION_XML)));
 		return readDiagnostic(r);
 	}
 
 	@Override
 	public Diagnostic removeCatalogEntry(ServiceInterface serviceInterface, String requestor) {
-		Response r = tx.target().path("catalog/{name}")
-				.resolveTemplate("name", serviceInterface.getName())
-				.request(MediaType.APPLICATION_XML)
-				.header("X-DDSR-Requestor", requestorOr(requestor))
-				.delete();
+		Response r = tx.send("BrokerCatalog/removeCatalogEntry",
+				tx.target().path("catalog/{name}")
+						.resolveTemplate("name", serviceInterface.getName())
+						.request(MediaType.APPLICATION_XML)
+						.header("X-DDSR-Requestor", requestorOr(requestor)),
+				Invocation.Builder::delete);
 		return readDiagnostic(r);
 	}
 
 	@Override
 	public RemoteServiceRegistry getRegistry() {
-		return tx.target().path("registry")
-				.request(MediaType.APPLICATION_XML)
-				.get(RemoteServiceRegistry.class);
+		return tx.send("BrokerCatalog/getRegistry",
+				tx.target().path("registry").request(MediaType.APPLICATION_XML),
+				request -> request.get(RemoteServiceRegistry.class));
 	}
 
 	@Override

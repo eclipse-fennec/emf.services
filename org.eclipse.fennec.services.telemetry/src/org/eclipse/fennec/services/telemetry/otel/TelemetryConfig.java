@@ -49,6 +49,11 @@ public @interface TelemetryConfig {
 	 * worse than propagation that is obviously absent. Turn this on once
 	 * the integration supplies real ones.
 	 */
+	@AttributeDefinition(name = "Bridge JUL logs",
+			description = "Forward this framework's java.util.logging records to OpenTelemetry, "
+					+ "correlated with the span they happened in.")
+	boolean logs() default true;
+
 	@AttributeDefinition(name = "Use the published propagators",
 			description = "Use the registered ContextPropagators service instead of the built-in W3C propagators. "
 					+ "The OSGi OpenTelemetry integration currently publishes a no-op, so this is off by default.")

@@ -21,17 +21,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * What one role configuration has to turn into.
+ * What one node configuration has to turn into.
  *
  * <p>The values matter because they used to be stated twice and could
  * disagree; the order matters because taking the plan down in reverse
  * is what withdraws an export before the transport that carries the
  * withdrawal goes away.
  */
-class RolePlansTest {
+class DerivationTest {
 
-	private static RoleSettings provider() {
-		return new RoleSettings("http://broker:8887/ddsr/rest", "", "", 9095, "0.0.0.0", "services",
+	private static RsaSettings provider() {
+		return new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095, "0.0.0.0", "services",
 				true, "ddsrHttp", "node-a", "1.0.0", "fennec.rest", "promiscuous", "promiscuous",
 				30, 0, "");
 	}
@@ -39,20 +39,20 @@ class RolePlansTest {
 	@Test
 	@DisplayName("the broker is stated once and reaches both the client and the discovery")
 	void oneBrokerUrl() {
-		List<DerivedConfiguration> plan = RolePlans.provider(provider());
+		List<DerivedConfiguration> plan = Derivation.forProvider(provider());
 
-		assertThat(byLabel(plan, RolePlans.CLIENT_REST_PID).properties())
+		assertThat(byLabel(plan, Derivation.CLIENT_REST_PID).properties())
 				.containsEntry("broker.url", "http://broker:8887/ddsr/rest");
-		assertThat(byLabel(plan, RolePlans.DISCOVERY_PID).properties())
+		assertThat(byLabel(plan, Derivation.DISCOVERY_PID).properties())
 				.containsEntry("broker.url", "http://broker:8887/ddsr/rest");
 	}
 
 	@Test
 	@DisplayName("the public URL derives from the very port and context path that configure the HTTP stack")
 	void publicUrlDerived() {
-		List<DerivedConfiguration> plan = RolePlans.provider(provider());
+		List<DerivedConfiguration> plan = Derivation.forProvider(provider());
 
-		assertThat(byLabel(plan, RolePlans.DISTRIBUTION_PID).properties())
+		assertThat(byLabel(plan, Derivation.DISTRIBUTION_PID).properties())
 				.containsEntry("public.url", "http://localhost:9095/services");
 		assertThat(byLabel(plan, "org.apache.felix.http~ddsrHttp").properties())
 				.containsEntry("org.osgi.service.http.port", "9095")
@@ -62,7 +62,7 @@ class RolePlansTest {
 	@Test
 	@DisplayName("a stated public URL wins, because a node behind a proxy publishes another address on purpose")
 	void publicUrlStated() {
-		RoleSettings behindProxy = new RoleSettings("http://broker:8887/ddsr/rest",
+		RsaSettings behindProxy = new RsaSettings("http://broker:8887/ddsr/rest",
 				"https://edge.example.org/api/", "", 9095, "0.0.0.0", "services", true, "ddsrHttp",
 				"node-a", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "");
 
@@ -72,22 +72,22 @@ class RolePlansTest {
 	@Test
 	@DisplayName("the topology manager is written last, so taking the plan down withdraws first")
 	void topologyIsLast() {
-		List<DerivedConfiguration> plan = RolePlans.provider(provider());
+		List<DerivedConfiguration> plan = Derivation.forProvider(provider());
 
-		assertThat(plan.get(plan.size() - 1).label()).isEqualTo(RolePlans.TOPOLOGY_PID);
+		assertThat(plan.get(plan.size() - 1).label()).isEqualTo(Derivation.TOPOLOGY_PID);
 		assertThat(plan.get(plan.size() - 2).label()).isEqualTo("org.eclipse.fennec.services.rsa~fennec-rest");
 	}
 
 	@Test
-	@DisplayName("the HTTP stack comes first, and only when this role owns it")
+	@DisplayName("the HTTP stack comes first, and only when this node owns it")
 	void httpFirstAndOptional() {
-		assertThat(RolePlans.provider(provider()).get(0).label()).isEqualTo("org.apache.felix.http~ddsrHttp");
+		assertThat(Derivation.forProvider(provider()).get(0).label()).isEqualTo("org.apache.felix.http~ddsrHttp");
 
-		RoleSettings borrowed = new RoleSettings("http://broker:8887/ddsr/rest",
+		RsaSettings borrowed = new RsaSettings("http://broker:8887/ddsr/rest",
 				"http://node-a:9095/services", "", 9095, "0.0.0.0", "services", false, "ddsrHttp",
 				"node-a", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "");
 
-		assertThat(RolePlans.provider(borrowed).stream().map(DerivedConfiguration::label))
+		assertThat(Derivation.forProvider(borrowed).stream().map(DerivedConfiguration::label))
 				.doesNotContain("org.apache.felix.http~ddsrHttp",
 						"JakartarsServletWhiteboardRuntimeComponent~ddsrHttp");
 	}
@@ -95,24 +95,24 @@ class RolePlansTest {
 	@Test
 	@DisplayName("a consumer says it exports nothing instead of pointing at a distribution that is missing")
 	void consumerSaysItExportsNothing() {
-		RoleSettings settings = new RoleSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",
+		RsaSettings settings = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",
 				false, "", "node-b", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "node-b");
 
-		List<DerivedConfiguration> plan = RolePlans.consumer(settings);
+		List<DerivedConfiguration> plan = Derivation.forConsumer(settings);
 
 		assertThat(byLabel(plan, "org.eclipse.fennec.services.rsa~fennec-rest").properties())
 				.containsEntry("distribution.target", "(ddsr.rsa.flavor=none)")
 				.containsEntry("discovery.target", "(ddsr.rsa.flavor=fennec.rest)");
 		assertThat(plan.stream().map(DerivedConfiguration::label))
-				.doesNotContain(RolePlans.DISTRIBUTION_PID);
+				.doesNotContain(Derivation.DISTRIBUTION_PID);
 	}
 
 	@Test
 	@DisplayName("an empty consumer id is left out rather than written as an empty one")
 	void emptyConsumerIdIsAbsent() {
-		List<DerivedConfiguration> plan = RolePlans.provider(provider());
+		List<DerivedConfiguration> plan = Derivation.forProvider(provider());
 
-		assertThat(byLabel(plan, RolePlans.CLIENT_PID).properties()).doesNotContainKey("consumer.id");
+		assertThat(byLabel(plan, Derivation.CLIENT_PID).properties()).doesNotContainKey("consumer.id");
 	}
 
 	private static DerivedConfiguration byLabel(List<DerivedConfiguration> plan, String label) {

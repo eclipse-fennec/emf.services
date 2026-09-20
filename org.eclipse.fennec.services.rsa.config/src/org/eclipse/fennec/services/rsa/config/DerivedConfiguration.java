@@ -16,7 +16,7 @@ package org.eclipse.fennec.services.rsa.config;
 import java.util.Map;
 
 /**
- * One configuration a role derives, named the way a deployment would
+ * One configuration a node derives, named the way a deployment would
  * have written it by hand.
  *
  * <p>{@code name} is what turns a plain PID into a factory

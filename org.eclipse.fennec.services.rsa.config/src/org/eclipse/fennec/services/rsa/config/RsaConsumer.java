@@ -39,7 +39,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 @Designate(ocd = RsaConsumer.Config.class)
 @Component(name = RsaConsumer.PID, configurationPid = RsaConsumer.PID,
 		configurationPolicy = ConfigurationPolicy.REQUIRE, immediate = true)
-public class RsaConsumer extends RsaRoleConfiguration {
+public class RsaConsumer extends NodeConfiguration {
 
 	public static final String PID = "org.eclipse.fennec.services.rsa.consumer";
 
@@ -111,17 +111,17 @@ public class RsaConsumer extends RsaRoleConfiguration {
 	}
 
 	@Override
-	List<DerivedConfiguration> plan(RoleSettings settings) {
-		return RolePlans.consumer(settings);
+	List<DerivedConfiguration> plan(RsaSettings settings) {
+		return Derivation.forConsumer(settings);
 	}
 
 	@Override
-	String role() {
+	String name() {
 		return "RSA consumer";
 	}
 
-	static RoleSettings settings(Config config) {
-		return new RoleSettings(config.broker_url(), "", "", 0, "", "", false, "",
+	static RsaSettings settings(Config config) {
+		return new RsaSettings(config.broker_url(), "", "", 0, "", "", false, "",
 				config.registry_name(), config.default_version(), config.flavor(),
 				config.policy(), config.import_policy(), config.provider_heartbeat_seconds(),
 				config.session_interval_seconds(), config.consumer_id());

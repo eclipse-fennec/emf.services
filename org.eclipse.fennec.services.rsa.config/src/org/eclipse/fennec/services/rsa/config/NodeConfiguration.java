@@ -21,43 +21,43 @@ import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentException;
 
 /**
- * What the provider and the consumer role have in common: take the
+ * What a serving node and a consuming node have in common: take the
  * settings, say what is wrong with them, write the derived
  * configurations in order, and take them down in the opposite order.
  *
- * <p>Both roles are ordinary configured components — they exist because
+ * <p>Both are ordinary configured components — they exist because
  * a deployment wrote their one configuration, and they do nothing
  * without it.
  */
-abstract class RsaRoleConfiguration {
+abstract class NodeConfiguration {
 
-	private static final Logger LOG = Logger.getLogger(RsaRoleConfiguration.class.getName());
+	private static final Logger LOG = Logger.getLogger(NodeConfiguration.class.getName());
 
 	private DerivedConfigurations derived;
 
-	/** Whether this role serves endpoints, i.e. whether it has an HTTP stack. */
+	/** Whether this node serves endpoints, i.e. whether it has an HTTP stack. */
 	abstract boolean serves();
 
-	/** The configurations this role owns, in the order they are written. */
-	abstract List<DerivedConfiguration> plan(RoleSettings settings);
+	/** The configurations this node owns, in the order they are written. */
+	abstract List<DerivedConfiguration> plan(RsaSettings settings);
 
-	/** How this role names itself in the log. */
-	abstract String role();
+	/** How this node names itself in the log. */
+	abstract String name();
 
-	void start(ConfigurationAdmin admin, RoleSettings settings) {
-		derived = new DerivedConfigurations(admin, role());
+	void start(ConfigurationAdmin admin, RsaSettings settings) {
+		derived = new DerivedConfigurations(admin, name());
 		apply(settings);
 	}
 
 	/**
-	 * A changed role configuration updates the derived ones in place.
+	 * A changed configuration updates the derived ones in place.
 	 *
 	 * <p>Taking the change here rather than letting this component be
 	 * destroyed and rebuilt is what keeps the stack below from being torn
 	 * down and brought back up for a heartbeat interval nobody urgently
 	 * needed changed.
 	 */
-	void update(RoleSettings settings) {
+	void update(RsaSettings settings) {
 		apply(settings);
 	}
 
@@ -68,22 +68,22 @@ abstract class RsaRoleConfiguration {
 		}
 	}
 
-	private void apply(RoleSettings settings) {
-		List<String> problems = RoleChecks.problems(settings, serves());
+	private void apply(RsaSettings settings) {
+		List<String> problems = SettingsChecks.problems(settings, serves());
 		if (!problems.isEmpty()) {
-			String message = "[DDSR] the " + role() + " configuration cannot be used: "
+			String message = "[DDSR] the " + name() + " configuration cannot be used: "
 					+ String.join("; ", problems);
 			LOG.severe(message);
-			// Failing here is the point: the role wrote nothing, and the
+			// Failing here is the point: the node wrote nothing, and the
 			// reason stands in the component's own failure rather than
 			// surfacing minutes later as an export nobody can explain.
 			throw new ComponentException(message);
 		}
-		RoleChecks.mismatches(settings).forEach(note -> LOG.warning("[DDSR] " + role() + ": " + note));
+		SettingsChecks.mismatches(settings).forEach(note -> LOG.warning("[DDSR] " + name() + ": " + note));
 		try {
 			derived.apply(plan(settings));
 		} catch (IOException failure) {
-			throw new ComponentException("[DDSR] the " + role() + " could not write its configurations", failure);
+			throw new ComponentException("[DDSR] the " + name() + " could not write its configurations", failure);
 		}
 	}
 }

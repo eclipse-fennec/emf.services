@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Turns a role's few decisions into the configurations the bundles
+ * Turns a node's few decisions into the configurations the bundles
  * below actually read.
  *
  * <p>Pure on purpose: the order and the derived values are the thing
@@ -30,7 +30,7 @@ import java.util.Map;
  * the plan down in reverse is therefore a withdrawal before the
  * transports go, which is what FR-P3 asks for.
  */
-public final class RolePlans {
+public final class Derivation {
 
 	/** Where the model registry the RSA registry reads from lives. */
 	static final String EOBJECT_REGISTRY_FACTORY = "EObjectRegistry";
@@ -59,14 +59,14 @@ public final class RolePlans {
 	/** The distribution a node points at when it exports nothing. */
 	static final String NO_DISTRIBUTION = "(ddsr.rsa.flavor=none)";
 
-	private RolePlans() {
+	private Derivation() {
 	}
 
 	/**
 	 * A node that serves and announces: it has an HTTP stack, a
 	 * distribution, a discovery and an admin that uses both.
 	 */
-	public static List<DerivedConfiguration> provider(RoleSettings settings) {
+	public static List<DerivedConfiguration> forProvider(RsaSettings settings) {
 		List<DerivedConfiguration> plan = new ArrayList<>();
 		if (settings.manageHttp()) {
 			plan.add(DerivedConfiguration.ofFactory(FELIX_HTTP_FACTORY, settings.httpId(), Map.of(
@@ -98,7 +98,7 @@ public final class RolePlans {
 	 * not export, rather than being configured with a reference that
 	 * happens to find nothing.
 	 */
-	public static List<DerivedConfiguration> consumer(RoleSettings settings) {
+	public static List<DerivedConfiguration> forConsumer(RsaSettings settings) {
 		List<DerivedConfiguration> plan = new ArrayList<>();
 		contracts(plan, settings);
 		client(plan, settings);
@@ -109,7 +109,7 @@ public final class RolePlans {
 		return List.copyOf(plan);
 	}
 
-	private static void contracts(List<DerivedConfiguration> plan, RoleSettings settings) {
+	private static void contracts(List<DerivedConfiguration> plan, RsaSettings settings) {
 		plan.add(DerivedConfiguration.ofFactory(EOBJECT_REGISTRY_FACTORY, CONTRACT_REGISTRY_NAME, Map.of(
 				"name", "ddsr.contracts",
 				"initialProvider.target", "(emf.eobject.provider.name=ddsr.bundle.models)")));
@@ -118,7 +118,7 @@ public final class RolePlans {
 				"default.version", settings.defaultVersion())));
 	}
 
-	private static void client(List<DerivedConfiguration> plan, RoleSettings settings) {
+	private static void client(List<DerivedConfiguration> plan, RsaSettings settings) {
 		plan.add(DerivedConfiguration.of(CLIENT_REST_PID, Map.of(
 				"broker.url", settings.brokerUrl())));
 		Map<String, Object> client = new LinkedHashMap<>();
@@ -135,7 +135,7 @@ public final class RolePlans {
 	 * what makes a second flavor (#98) a second line here rather than a
 	 * change to the admin.
 	 */
-	private static DerivedConfiguration admin(RoleSettings settings, String distributionTarget) {
+	private static DerivedConfiguration admin(RsaSettings settings, String distributionTarget) {
 		return DerivedConfiguration.ofFactory(ADMIN_FACTORY, factoryName(settings.flavor()), Map.of(
 				"remote.configs.supported", settings.flavor(),
 				"distribution.target", distributionTarget,
@@ -152,7 +152,7 @@ public final class RolePlans {
 		return flavor.replaceAll("[^A-Za-z0-9_-]", "-");
 	}
 
-	private static DerivedConfiguration topology(RoleSettings settings) {
+	private static DerivedConfiguration topology(RsaSettings settings) {
 		return DerivedConfiguration.of(TOPOLOGY_PID, Map.of(
 				"policy", settings.exportPolicy(),
 				"import.policy", settings.importPolicy()));

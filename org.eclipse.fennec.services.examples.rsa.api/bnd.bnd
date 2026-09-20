@@ -3,6 +3,3 @@ Bundle-Description: \
 	The interface, and nothing else — the one bundle a provider and a \
 	consumer of the example share. That is the ordinary OSGi shape, and \
 	the reason an import can load the class at all.
-
-Export-Package: \
-	org.eclipse.fennec.services.examples.rsa.api

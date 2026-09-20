@@ -15,10 +15,13 @@ package org.eclipse.fennec.services.broker.core.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.Diagnostic;
@@ -47,8 +50,8 @@ import org.eclipse.fennec.services.broker.core.exception.CatalogEntryNotFound;
  */
 final class CatalogStore {
 
-	private static final java.util.logging.Logger LOG =
-			java.util.logging.Logger.getLogger(CatalogStore.class.getName());
+	private static final Logger LOG =
+			Logger.getLogger(CatalogStore.class.getName());
 
 	private final BrokerState state;
 
@@ -302,7 +305,7 @@ final class CatalogStore {
 			return CatalogResolution.refuse(DdsrDiagnostics.error(notFoundCode,
 					"service interface '" + name + "' is not in the catalog"));
 		}
-		boolean carriesContent = !((org.eclipse.emf.ecore.InternalEObject) incoming).eIsProxy()
+		boolean carriesContent = !((InternalEObject) incoming).eIsProxy()
 				&& (!incoming.getOperations().isEmpty() || !incoming.getExceptions().isEmpty());
 		if (carriesContent) {
 			String sd1 = ContractAddressing.fingerprint(incoming);
@@ -347,11 +350,11 @@ final class CatalogStore {
 		if (si == null) {
 			return null;
 		}
-		if (!((org.eclipse.emf.ecore.InternalEObject) si).eIsProxy()) {
+		if (!((InternalEObject) si).eIsProxy()) {
 			return si.getName();
 		}
-		org.eclipse.emf.common.util.URI proxyUri =
-				((org.eclipse.emf.ecore.InternalEObject) si).eProxyURI();
+		URI proxyUri =
+				((InternalEObject) si).eProxyURI();
 		if (proxyUri == null) {
 			return null;
 		}
@@ -372,7 +375,7 @@ final class CatalogStore {
 	 */
 	ContractResolution resolveContracts(ServiceImplementation implementation) {
 		StringBuilder deprecationNote = new StringBuilder();
-		java.util.List<ServiceInterface> sis = implementation.getServiceInterfaces();
+		List<ServiceInterface> sis = implementation.getServiceInterfaces();
 		for (int i = 0; i < sis.size(); i++) {
 			ServiceInterface si = sis.get(i);
 			String name = catalogNameOf(si);

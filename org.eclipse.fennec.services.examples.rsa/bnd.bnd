@@ -6,9 +6,6 @@ Bundle-Description: \
 
 -library: enableEMF
 
-Private-Package: \
-	org.eclipse.fennec.services.examples.rsa
-
 -buildpath: \
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.remoteserviceadmin;version=latest,\

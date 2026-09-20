@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.ConsumerSession;
@@ -226,7 +227,7 @@ final class Sessions {
 	 * fresh session clears the entry, so the normal reconnect of a
 	 * client that briefly lost its stream costs nothing.
 	 */
-	private final Map<String, Instant> disconnectedSince = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, Instant> disconnectedSince = new ConcurrentHashMap<>();
 
 	private volatile long disconnectGraceSeconds;
 	int sessionCount() {

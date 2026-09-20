@@ -6,10 +6,6 @@ Bundle-Description: \
 
 -library: enableJakartaREST, enableEMF
 
-Export-Package: \
-	org.eclipse.fennec.services.xmi.codec,\
-	org.eclipse.fennec.services.fingerprint
-
 -buildpath: \
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\

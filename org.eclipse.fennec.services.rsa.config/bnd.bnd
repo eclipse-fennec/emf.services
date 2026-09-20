@@ -8,9 +8,6 @@ Bundle-Description: \
 	and takes them down in an order that withdraws before the transports \
 	go.
 
-Private-Package: \
-	org.eclipse.fennec.services.rsa.config
-
 -buildpath: \
 	osgi.core;version=latest,\
 	osgi.cmpn;version=latest,\

@@ -13,16 +13,12 @@
 
 package org.eclipse.fennec.services.broker.core.internal;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,7 +42,6 @@ import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
@@ -164,8 +159,6 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	 */
 	private volatile DdsrBrokerImpl delegate;
 
-	private ScheduledExecutorService sessionExpiry;
-
 	private DdsrBrokerImpl required() {
 		DdsrBrokerImpl current = delegate;
 		if (current == null) {
@@ -206,107 +199,36 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	@Activate
 	void activate(Config config) {
 		try {
-			Path snapshotPath = Paths.get(config.snapshot_path());
-			this.delegate = new DdsrBrokerImpl(snapshotPath, externalLookup, this::fanOut);
-			this.delegate.setDisconnectGraceSeconds(config.session_disconnect_grace_seconds());
-			long expirySeconds = config.session_expiry_seconds();
-			long coldSeconds = config.cold_after_seconds();
-			long policySweepSeconds = config.policy_sweep_seconds();
-			long livenessSweepSeconds = config.liveness_sweep_seconds();
-			this.delegate.setDefaultCutoverGraceMillis(config.cutover_grace_seconds() * 1000L);
-			if (expirySeconds > 0 || coldSeconds > 0 || policySweepSeconds > 0 || livenessSweepSeconds > 0) {
-				sessionExpiry = Executors.newSingleThreadScheduledExecutor(task -> {
-					Thread thread = new Thread(task, "ddsr-broker-maintenance");
-					thread.setDaemon(true);
-					return thread;
-				});
-			}
-			if (policySweepSeconds > 0) {
-				sessionExpiry.scheduleAtFixedRate(() -> {
-					try {
-						DdsrBrokerImpl current = delegate;
-						if (current == null) {
-							return;
-						}
-						int retired = current.advanceUpdatePolicies(Instant.now());
-						if (retired > 0) {
-							LOG.info("[DDSR] update policies retired " + retired + " superseded implementation(s)");
-						}
-					} catch (RuntimeException sweepFailure) {
-						LOG.warning("[DDSR] update-policy sweep failed, continuing: " + sweepFailure);
-					}
-				}, policySweepSeconds, policySweepSeconds, TimeUnit.SECONDS);
-			}
-			if (livenessSweepSeconds > 0) {
-				sessionExpiry.scheduleAtFixedRate(() -> {
-					try {
-						DdsrBrokerImpl current = delegate;
-						if (current == null) {
-							return;
-						}
-						int retired = current.retireLostProviders(Instant.now());
-						if (retired > 0) {
-							LOG.warning("[DDSR] retired " + retired + " registration(s) of silent provider(s)");
-						}
-					} catch (RuntimeException sweepFailure) {
-						LOG.warning("[DDSR] provider-liveness sweep failed, continuing: " + sweepFailure);
-					}
-				}, livenessSweepSeconds, livenessSweepSeconds, TimeUnit.SECONDS);
-			}
-			if (expirySeconds > 0) {
-				long sweepSeconds = Math.max(1, expirySeconds / 4);
-				sessionExpiry.scheduleAtFixedRate(() -> {
-					try {
-						DdsrBrokerImpl current = delegate;
-						if (current == null) {
-							return;
-						}
-						int expired = current.expireSessions(Instant.now().minusSeconds(expirySeconds));
-						if (expired > 0) {
-							LOG.info("[DDSR] expired " + expired + " consumer session(s) without renewal");
-						}
-					} catch (RuntimeException sweepFailure) {
-						LOG.warning("[DDSR] session expiry sweep failed, continuing: " + sweepFailure);
-					}
-				}, sweepSeconds, sweepSeconds, TimeUnit.SECONDS);
-			}
-			if (coldSeconds > 0) {
-				long sweepSeconds = Math.max(1, coldSeconds / 4);
-				sessionExpiry.scheduleAtFixedRate(() -> {
-					try {
-						DdsrBrokerImpl current = delegate;
-						if (current == null) {
-							return;
-						}
-						int moved = current.coldifyIdle(Instant.now().minusSeconds(coldSeconds));
-						if (moved > 0) {
-							LOG.info("[DDSR] parked " + moved + " idle registration(s) in the cold cache");
-						}
-					} catch (RuntimeException sweepFailure) {
-						LOG.warning("[DDSR] cold-cache sweep failed, continuing: " + sweepFailure);
-					}
-				}, sweepSeconds, sweepSeconds, TimeUnit.SECONDS);
-			}
-			LOG.info("[DDSR] BrokerCore activated, snapshot=" + snapshotPath.toAbsolutePath());
-		} catch (Throwable t) {
-			LOG.log(Level.WARNING, "[DDSR] BrokerCore activation FAILED", t);
-			throw t;
+			// Everything below this line is behaviour, so none of it is
+			// decided here: the component turns a configuration into
+			// settings and hands them over. A broker embedded in a plain
+			// Java program gets the same object with the same settings and
+			// behaves the same way, which it did not while the periodic
+			// work lived in this class.
+			BrokerSettings settings = new BrokerSettings(
+					Paths.get(config.snapshot_path()),
+					config.session_expiry_seconds(),
+					config.session_disconnect_grace_seconds(),
+					config.cold_after_seconds(),
+					config.policy_sweep_seconds(),
+					config.liveness_sweep_seconds(),
+					config.cutover_grace_seconds() * 1000L);
+			DdsrBrokerImpl broker = new DdsrBrokerImpl(settings, externalLookup, this::fanOut);
+			this.delegate = broker;
+			broker.activate();
+			LOG.info("[DDSR] BrokerCore activated, snapshot=" + settings.snapshotPath().toAbsolutePath());
+		} catch (RuntimeException activationFailure) {
+			LOG.log(Level.SEVERE, "[DDSR] BrokerCore could not be activated", activationFailure);
+			throw activationFailure;
 		}
 	}
 
-	@Deactivate
 	void deactivate() {
-		if (sessionExpiry != null) {
-			sessionExpiry.shutdownNow();
-			sessionExpiry = null;
-		}
-		if (delegate != null) {
-			// Best-effort final snapshot — already persisted after every
-			// mutation, but defensive in case mutations happened during
-			// in-flight shutdown.
-			delegate.snapshot();
-		}
+		DdsrBrokerImpl broker = delegate;
 		delegate = null;
+		if (broker != null) {
+			broker.close();
+		}
 	}
 
 	// --- Delegation -------------------------------------------------------

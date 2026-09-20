@@ -14,16 +14,18 @@
 package org.eclipse.fennec.services.broker.mqtt.internal;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
-import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 
@@ -96,7 +98,7 @@ public final class MqttEventSink implements EventSink {
 	 * same "over-deliver rather than drop" rule the consumer-side registry
 	 * follows.
 	 */
-	static List<String> topicsFor(String prefix, java.util.Set<String> interfaceNames) {
+	static List<String> topicsFor(String prefix, Set<String> interfaceNames) {
 		if (interfaceNames.isEmpty()) {
 			return List.of(prefix + "/" + UNKNOWN_INTERFACE);
 		}
@@ -129,7 +131,7 @@ public final class MqttEventSink implements EventSink {
 		}
 	}
 
-	private byte[] toXmi(ServiceEvent event) throws java.io.IOException {
+	private byte[] toXmi(ServiceEvent event) throws IOException {
 		List<EObject> roots = EventDocument.roots(event, lookup);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		XmiCodec.write(out, rsObjects, roots);

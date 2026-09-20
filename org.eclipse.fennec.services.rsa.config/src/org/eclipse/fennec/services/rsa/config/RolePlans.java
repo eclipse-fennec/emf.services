@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.rsa.config;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -120,7 +121,7 @@ public final class RolePlans {
 	private static void client(List<DerivedConfiguration> plan, RoleSettings settings) {
 		plan.add(DerivedConfiguration.of(CLIENT_REST_PID, Map.of(
 				"broker.url", settings.brokerUrl())));
-		Map<String, Object> client = new java.util.LinkedHashMap<>();
+		Map<String, Object> client = new LinkedHashMap<>();
 		client.put("provider.heartbeat.seconds", String.valueOf(settings.heartbeatSeconds()));
 		client.put("session.interval.seconds", String.valueOf(settings.sessionIntervalSeconds()));
 		if (!settings.consumerId().isBlank()) {

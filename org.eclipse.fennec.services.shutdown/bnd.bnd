@@ -4,9 +4,6 @@ Bundle-Description: \
 	that every @Deactivate runs before the process exits. One component, \
 	no configuration, no dependencies beyond the framework.
 
-Private-Package: \
-	org.eclipse.fennec.services.shutdown
-
 -buildpath: \
 	osgi.core;version=latest,\
 	org.osgi.service.component.annotations;version=latest

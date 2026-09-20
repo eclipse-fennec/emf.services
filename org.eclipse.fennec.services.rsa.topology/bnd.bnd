@@ -3,9 +3,6 @@ Bundle-Description: \
 	Decides what gets exported. Remote Service Admin deliberately does not: \
 	it exports what it is told to, and this is what tells it.
 
-Private-Package: \
-	org.eclipse.fennec.services.rsa.topology
-
 -library: enableEMF
 
 -buildpath: \

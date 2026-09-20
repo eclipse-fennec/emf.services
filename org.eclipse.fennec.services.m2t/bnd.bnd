@@ -21,9 +21,6 @@ src=${^src},src-gen,src-gen-rest
 		template = "templates/service-interface.mtl"; \
 		modules  = "templates/java-types.mtl"
 
--privatepackage: \
-	org.eclipse.fennec.services.m2t.example
-
 -library: enableJakartaREST
 
 -buildpath: \
@@ -39,7 +36,6 @@ src=${^src},src-gen,src-gen-rest
 	junit-platform-launcher;version=latest
 
 -includeresource.templates: templates=templates
-
 
 # The transport side, from the flavor, into its own output directory: bnd
 # empties the output of a generation before it runs, so two generations must

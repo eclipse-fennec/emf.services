@@ -12,8 +12,6 @@
 -library: enableJakartaREST,\
 	enableEMF
 
-Private-Package: org.eclipse.fennec.services.broker.rest, org.eclipse.fennec.services.broker.rest.internal
-
 -includeresource: \
 	OSGI-INF/configurator/=configs/,\
 	=resources/

@@ -14,10 +14,14 @@ Bundle-Description: \
 	org.eclipse.paho.client.mqttv3;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	io.cloudevents.model;version=latest,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot
 
 # Plain JUnit: the sink takes its MQTT client as a constructor argument,
 # so it is exercised against a fake without a broker or an OSGi runtime.
 -testpath: \
+	jakarta.json-api;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest,\
 	${junit},\
 	junit-platform-launcher;version=latest

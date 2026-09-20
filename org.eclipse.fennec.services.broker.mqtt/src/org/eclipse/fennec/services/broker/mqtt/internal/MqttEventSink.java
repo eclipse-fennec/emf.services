@@ -27,6 +27,8 @@ import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 
@@ -73,12 +75,16 @@ public final class MqttEventSink implements EventSink {
 
 	private final String topicPrefix;
 
+	private final String eventSource;
+
 	public MqttEventSink(Publisher publisher, BrokerLookup lookup,
-			ComponentServiceObjects<ResourceSet> rsObjects, String topicPrefix) {
+			ComponentServiceObjects<ResourceSet> rsObjects, String topicPrefix, String eventSource) {
 		this.publisher = publisher;
 		this.lookup = lookup;
 		this.rsObjects = rsObjects;
 		this.topicPrefix = topicPrefix != null && !topicPrefix.isBlank() ? topicPrefix : "ddsr/events";
+		this.eventSource = eventSource != null && !eventSource.isBlank() ? eventSource
+				: "/fennec/services/broker";
 	}
 
 	/**
@@ -120,7 +126,7 @@ public final class MqttEventSink implements EventSink {
 		byte[] payload;
 		List<String> topics;
 		try {
-			payload = toXmi(event);
+			payload = toStructuredMessage(event);
 			topics = topicsFor(topicPrefix, EventDocument.interfaceNamesOf(event, lookup));
 		} catch (Exception renderFailure) {
 			// Nothing was put on the wire, and a consumer cannot tell the
@@ -170,7 +176,12 @@ public final class MqttEventSink implements EventSink {
 		}
 		String topic = topicPrefix + "/" + RESYNC_TOPIC_SEGMENT;
 		try {
-			publisher.publish(topic, new byte[0]);
+			// An envelope with no payload rather than an empty message:
+			// the topic is what subscribers act on, but a message that
+			// says what it is can be read by anything that reads
+			// CloudEvents — including a transport that has no topics.
+			publisher.publish(topic, CloudEventCodec.writeStructured(
+					CloudEvents.newEnvelope(CloudEvents.TYPE_RESYNC, eventSource, null), null));
 			pendingResync.set(false);
 			LOG.info("[DDSR-MQTT] told subscribers on " + topic + " to take a fresh snapshot");
 		} catch (Exception stillFailing) {
@@ -184,10 +195,23 @@ public final class MqttEventSink implements EventSink {
 		return pendingResync.get();
 	}
 
-	private byte[] toXmi(ServiceEvent event) throws IOException {
+	/**
+	 * One event as a CloudEvents message in structured mode — the whole
+	 * event in one JSON document, which is the mode the specification
+	 * has for a transport that carries nothing but messages.
+	 *
+	 * <p>The payload inside is the same self-contained XMI document as
+	 * before, so what changes for a subscriber is the wrapper and not
+	 * what it finds when it opens it.
+	 */
+	private byte[] toStructuredMessage(ServiceEvent event) throws IOException {
 		List<EObject> roots = EventDocument.roots(event, lookup);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		XmiCodec.write(out, rsObjects, roots);
-		return out.toString(StandardCharsets.UTF_8).getBytes(StandardCharsets.UTF_8);
+		return CloudEventCodec.writeStructured(
+				CloudEvents.envelopeFor(event, eventSource, XMI_CONTENT_TYPE), out.toByteArray());
 	}
+
+	/** What the payload of a lifecycle event is encoded in today. */
+	private static final String XMI_CONTENT_TYPE = "application/xml";
 }

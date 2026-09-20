@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ServiceEvent } from '@ddsr/model';
 import { RestEventSource } from '../src/events/rest-event-source';
-import { UNREGISTERING_XMI } from './fixtures';
+import { lifecycleMessage, UNREGISTERING_XMI } from './fixtures';
 
 function sseFrame(payload: string): string {
   const data = payload.split('\n').map(l => `data: ${l}`).join('\n');
@@ -55,7 +55,7 @@ async function until(condition: () => boolean, timeoutMillis = 3000): Promise<vo
 
 describe('RestEventSource', () => {
   it('signals establish before delivering events, then decodes them', async () => {
-    const { fetchFn, urls } = streamingFetch([[sseFrame(UNREGISTERING_XMI)]]);
+    const { fetchFn, urls } = streamingFetch([[sseFrame(lifecycleMessage(UNREGISTERING_XMI))]]);
     const order: string[] = [];
     const events: ServiceEvent[] = [];
 
@@ -87,7 +87,7 @@ describe('RestEventSource', () => {
   });
 
   it('awaits the establish handler before pumping (snapshot-before-events)', async () => {
-    const { fetchFn } = streamingFetch([[sseFrame(UNREGISTERING_XMI)]]);
+    const { fetchFn } = streamingFetch([[sseFrame(lifecycleMessage(UNREGISTERING_XMI))]]);
     const order: string[] = [];
     const source = new RestEventSource({
       brokerUrl: 'http://b.test',
@@ -129,7 +129,7 @@ describe('RestEventSource', () => {
 
   it('an undecodable payload is skipped without tearing the stream down', async () => {
     const { fetchFn } = streamingFetch([
-      [sseFrame('<not-xmi>'), sseFrame(UNREGISTERING_XMI)],
+      [sseFrame('<not-xmi>'), sseFrame(lifecycleMessage(UNREGISTERING_XMI))],
     ]);
     const events: ServiceEvent[] = [];
     const source = new RestEventSource({

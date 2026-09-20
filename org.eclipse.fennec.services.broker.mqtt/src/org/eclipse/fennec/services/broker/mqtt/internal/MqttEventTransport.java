@@ -61,6 +61,13 @@ public final class MqttEventTransport implements EventSink {
 				description = "Events are published to <prefix>/<interface>.")
 		String topic_prefix() default "ddsr/events";
 
+		@AttributeDefinition(name = "Event source",
+				description = "The CloudEvents 'source' attribute of every event this transport"
+						+ " sends: the context the event happened in, as a URI reference. Together"
+						+ " with the event id it is what makes an event identifiable, so a"
+						+ " deployment running more than one broker gives each its own.")
+		String event_source() default "/fennec/services/broker";
+
 		@AttributeDefinition(name = "Client id",
 				description = "MQTT client identifier of the broker-side publisher.")
 		String client_id() default "ddsr-broker";
@@ -101,7 +108,8 @@ public final class MqttEventTransport implements EventSink {
 		options.setCleanSession(true);
 		options.setAutomaticReconnect(true);
 		client.connect(options).waitForCompletion();
-		this.sink = new MqttEventSink(this::send, broker, rsObjects, config.topic_prefix());
+		this.sink = new MqttEventSink(this::send, broker, rsObjects, config.topic_prefix(),
+				config.event_source());
 		LOG.info("[DDSR-MQTT] event transport connected to " + config.broker_url()
 				+ ", topic prefix " + config.topic_prefix());
 	}

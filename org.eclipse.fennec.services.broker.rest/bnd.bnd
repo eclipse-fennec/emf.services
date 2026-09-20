@@ -6,6 +6,8 @@
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	io.cloudevents.model;version=latest,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 	org.eclipse.fennec.services.flavor.rest;version=snapshot
 
@@ -20,6 +22,8 @@ Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
 # Plain JUnit 5 (no OSGi runtime). jersey-common provides the JAX-RS
 # RuntimeDelegate that Response.status(...).build() needs at runtime.
 -testpath: \
+	jakarta.json-api;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest,\
 	${junit},\
 	junit-platform-launcher;version=latest,\
 	org.glassfish.jersey.core.jersey-common;version=latest,\

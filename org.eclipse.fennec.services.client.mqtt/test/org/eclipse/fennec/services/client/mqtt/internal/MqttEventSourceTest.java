@@ -28,7 +28,11 @@ import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.junit.jupiter.api.Test;
+
+import io.cloudevents.model.ce.CloudEvent;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
 
@@ -135,11 +139,26 @@ class MqttEventSourceTest {
 				.containsExactly("up");
 	}
 
+	/**
+	 * The wire shape since #101: the document inside a CloudEvents
+	 * message in structured mode. The test builds it the way the broker
+	 * does, so what is exercised here is the reading and not a
+	 * hand-written approximation of the writing.
+	 */
+	private static byte[] message(String document, String type) {
+		CloudEvent envelope = CloudEvents.newEnvelope(type, "/test/broker", "application/xml");
+		return CloudEventCodec.writeStructured(envelope, document.getBytes(StandardCharsets.UTF_8));
+	}
+
+	private static byte[] lifecycleMessage(String document) {
+		return message(document, CloudEvents.typeOf(ServiceEventType.UNREGISTERING));
+	}
+
 	@Test
 	void aReceivedPayloadBecomesAServiceEvent() {
 		source("ddsr/events").open(handler);
 
-		subscriber.listener.onMessage("ddsr/events/Payment", EVENT_XMI.getBytes(StandardCharsets.UTF_8));
+		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
 
 		assertThat(received).hasSize(1);
 		ServiceEvent event = received.get(0);
@@ -152,12 +171,36 @@ class MqttEventSourceTest {
 	void anUndecodablePayloadIsSkippedWithoutEndingTheSubscription() {
 		source("ddsr/events").open(handler);
 
-		subscriber.listener.onMessage("ddsr/events/Payment", "this is not XMI".getBytes(StandardCharsets.UTF_8));
-		subscriber.listener.onMessage("ddsr/events/Payment", EVENT_XMI.getBytes(StandardCharsets.UTF_8));
+		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage("this is not XMI"));
+		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
 
 		assertThat(received)
 				.as("one bad message must not cost us the next good one")
 				.hasSize(1);
+	}
+
+	@Test
+	void aMessageThatIsNotACloudEventIsSkipped() {
+		source("ddsr/events").open(handler);
+
+		subscriber.listener.onMessage("ddsr/events/Payment", EVENT_XMI.getBytes(StandardCharsets.UTF_8));
+		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
+
+		assertThat(received)
+				.as("a bare document is no longer the wire shape, and it must not end the subscription")
+				.hasSize(1);
+	}
+
+	@Test
+	void aMessageOfAForeignTypeIsNotADdsrLifecycleEvent() {
+		source("ddsr/events").open(handler);
+
+		subscriber.listener.onMessage("ddsr/events/Payment",
+				message(EVENT_XMI, "com.example.something.happened"));
+
+		assertThat(received)
+				.as("one envelope does not mean one meaning — a shared transport carries other events")
+				.isEmpty();
 	}
 
 	@Test

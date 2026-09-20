@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { ServiceEvent } from '@ddsr/model';
+import { lifecycleTypeOf, newEnvelope, writeStructured } from '@ddsr/client';
 import { MqttEventSource } from '../src/mqtt-event-source';
 import type { MqttClientLike } from '../src/mqtt-event-source';
 
@@ -22,6 +23,15 @@ const EVENT_XMI = `<?xml version="1.0" encoding="UTF-8"?>
   <services:ServiceEvent type="UNREGISTERING" reference="/1"/>
   <services:ServiceReference id="ref-42"/>
 </xmi:XMI>`;
+
+/**
+ * The wire shape since #101: the document inside a CloudEvent in
+ * structured mode, built with the writer the broker uses.
+ */
+function lifecycleMessage(document: string): Uint8Array {
+  const envelope = newEnvelope(lifecycleTypeOf('UNREGISTERING'), '/test/broker', 'application/xml');
+  return writeStructured(envelope, document);
+}
 
 class FakeMqttClient implements MqttClientLike {
   listeners = new Map<string, Array<(...args: any[]) => void>>();
@@ -92,7 +102,7 @@ describe('MqttEventSource', () => {
     await settle();
     client.emit('connect');
     // message races in while the snapshot refresh is still running
-    client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(EVENT_XMI));
+    client.emit('message', 'ddsr/events/Payment', lifecycleMessage(EVENT_XMI));
     await new Promise(resolve => setTimeout(resolve, 60));
 
     expect(order).toEqual(['snapshot-done', 'event']);
@@ -131,7 +141,7 @@ describe('MqttEventSource', () => {
     await settle();
     client.emit('connect');
     await settle();
-    client.emit('message', 'ddsr/events/_unknown', new TextEncoder().encode(EVENT_XMI));
+    client.emit('message', 'ddsr/events/_unknown', lifecycleMessage(EVENT_XMI));
     await settle();
 
     expect(events).toHaveLength(1);
@@ -154,7 +164,7 @@ describe('MqttEventSource', () => {
     await settle();
     client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(''));
     client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode('<kaputt'));
-    client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(EVENT_XMI));
+    client.emit('message', 'ddsr/events/Payment', lifecycleMessage(EVENT_XMI));
     await settle();
 
     expect(events).toHaveLength(1);
@@ -174,8 +184,8 @@ describe('MqttEventSource', () => {
     await settle();
     client.emit('connect');
     await settle();
-    client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(EVENT_XMI));
-    client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(EVENT_XMI));
+    client.emit('message', 'ddsr/events/Payment', lifecycleMessage(EVENT_XMI));
+    client.emit('message', 'ddsr/events/Payment', lifecycleMessage(EVENT_XMI));
     await settle();
 
     expect(calls).toBe(2);
@@ -196,7 +206,7 @@ describe('MqttEventSource', () => {
     await settle();
     await subscription.close();
     expect(client.ended).toBe(true);
-    client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(EVENT_XMI));
+    client.emit('message', 'ddsr/events/Payment', lifecycleMessage(EVENT_XMI));
     await settle();
     expect(events).toHaveLength(0);
   });
@@ -257,7 +267,7 @@ describe('MqttEventSource', () => {
 
     // A contract named "Payment_resync" is a service, not a signal. The
     // segment has to be the whole last one.
-    client.emit('message', 'ddsr/events/Payment_resync', new TextEncoder().encode(EVENT_XMI));
+    client.emit('message', 'ddsr/events/Payment_resync', lifecycleMessage(EVENT_XMI));
     await settle();
 
     expect(seen).toEqual(['event']);
@@ -277,7 +287,7 @@ describe('MqttEventSource', () => {
     seen.length = 0;
 
     client.emit('message', 'ddsr/events/_resync', new Uint8Array(0));
-    client.emit('message', 'ddsr/events/Payment', new TextEncoder().encode(EVENT_XMI));
+    client.emit('message', 'ddsr/events/Payment', lifecycleMessage(EVENT_XMI));
     await settle();
 
     expect(seen).toEqual(['snapshot', 'event']);

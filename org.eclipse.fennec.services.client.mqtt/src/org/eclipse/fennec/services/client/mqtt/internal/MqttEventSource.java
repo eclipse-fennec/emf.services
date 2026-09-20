@@ -20,6 +20,8 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.client.EventSource;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -123,7 +125,20 @@ public final class MqttEventSource implements EventSource {
 			return;
 		}
 		try {
-			XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(payload), rsObjects);
+			// Structured mode: the envelope and the document in one JSON
+			// message, which is what a transport that carries nothing but
+			// messages gets (#101).
+			CloudEventCodec.Message message = CloudEventCodec.readStructured(payload);
+			if (CloudEvents.eventTypeOf(message.attributes().getType()) == null) {
+				LOG.fine(() -> "[DDSR-MQTT] ignoring a '" + message.attributes().getType()
+						+ "' message on " + topic + " — this subscription is for lifecycle events");
+				return;
+			}
+			if (message.data() == null) {
+				LOG.warning("[DDSR-MQTT] a lifecycle event arrived without its document, ignoring");
+				return;
+			}
+			XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), rsObjects);
 			for (EObject root : bundle.roots()) {
 				if (root instanceof ServiceEvent event) {
 					handler.onEvent(event);

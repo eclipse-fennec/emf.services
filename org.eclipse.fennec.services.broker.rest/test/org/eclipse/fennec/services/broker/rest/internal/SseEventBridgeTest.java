@@ -20,6 +20,7 @@ import static org.eclipse.fennec.services.broker.rest.internal.RestTestSupport.p
 import static org.eclipse.fennec.services.broker.rest.internal.RestTestSupport.provider;
 import static org.eclipse.fennec.services.broker.rest.internal.RestTestSupport.reference;
 
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -31,6 +32,7 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -109,7 +111,7 @@ class SseEventBridgeTest {
 	}
 
 	@Test
-	void theFrameIsANamedXmlEventCarryingASelfContainedDocumentWithTheReason() {
+	void theFrameIsANamedCloudEventCarryingASelfContainedDocumentWithTheReason() {
 		FakeSse.Sink sink = subscribe();
 		ServiceProvider provider = provider("payments", payment(), FlavorKind.REST);
 		ServiceReference ref = reference("ref-1", provider);
@@ -118,9 +120,17 @@ class SseEventBridgeTest {
 		bridge.publish(event(ServiceEventType.UNREGISTERING, ref, ServiceEventReasons.WITHDRAWN));
 
 		FakeSse.Frame frame = (FakeSse.Frame) sink.sent.get(0);
-		assertThat(frame.getName()).isEqualTo("ddsr-service-event");
-		assertThat(frame.getMediaType().toString()).isEqualTo("application/xml");
-		String payload = String.valueOf(frame.getData());
+		assertThat(frame.getName())
+				.as("the frame name is one of the frozen wire names of #4 and does not move")
+				.isEqualTo("ddsr-service-event");
+		assertThat(frame.getMediaType().toString()).isEqualTo("application/cloudevents+json");
+
+		CloudEventCodec.Message message = CloudEventCodec.readStructured(
+				String.valueOf(frame.getData()).getBytes(StandardCharsets.UTF_8));
+		assertThat(message.attributes().getType()).isEqualTo("org.eclipse.fennec.services.unregistering");
+		assertThat(message.attributes().getSubject()).isEqualTo("ref-1");
+		assertThat(message.attributes().getDatacontenttype()).isEqualTo("application/xml");
+		String payload = new String(message.data(), StandardCharsets.UTF_8);
 		assertThat(payload).contains("<?xml").contains("ServiceEvent").contains("type=\"UNREGISTERING\"")
 				.contains("reasonCode=\"WITHDRAWN\"")
 				.as("self-contained: the interface travels in the document").contains("name=\"Payment\"")

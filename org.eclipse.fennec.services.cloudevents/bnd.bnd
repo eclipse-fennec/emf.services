@@ -1,0 +1,21 @@
+Bundle-Name: Fennec Services CloudEvents Envelope
+Bundle-Description: \
+	The envelope every message travels in: CloudEvents 1.0, with the \
+	payload model inside. Structured mode where a transport carries \
+	nothing but messages (MQTT, AMQP, an SSE frame), binary mode over \
+	HTTP, where the attributes are ce-* headers and the body stays the \
+	payload in whatever encoding its contract declares. Knows CloudEvents \
+	and nothing about how a payload is encoded — that is the codec's \
+	business and the contract's choice.
+
+-library: enableEMF
+
+-buildpath: \
+	org.eclipse.fennec.services.model;version=snapshot,\
+	io.cloudevents.model;version=latest,\
+	jakarta.json-api;version=latest
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest

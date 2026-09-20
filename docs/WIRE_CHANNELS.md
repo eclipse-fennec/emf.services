@@ -124,6 +124,27 @@ arguments. Which is the shape this section describes in the abstract,
 arriving in the v1 model: the correlation identity is an attribute of
 the message, and the response channel is named by the request.
 
+### What a working messaging stack already does here
+
+Read off `org.gecko.messaging`, whose AMQP adapter is the most complete
+of the three, while the MQTT flavor of #98 was being built (see
+[#138](https://github.com/eclipse-fennec/emf.services/issues/138)):
+
+- **A reply address can be enforced rather than agreed.** AMQP's
+  `queueDeclare()` with no arguments returns a server-named, exclusive,
+  auto-delete queue: nobody else can consume from it, and no convention
+  has to be trusted. MQTT has no such destination, which is why the
+  MQTT binding separates consumers by a topic subtree carrying the
+  consumer's name — a rule a broker ACL can be given. An AMQP channel
+  should use the exclusive queue and not copy the topic convention.
+- **`ReplyToPolicy SINGLE | MULTIPLE`** is the same distinction this
+  page draws in the abstract: a call may expect one answer or a stream
+  of them. `ServiceInvocation` assumes one today.
+- **The knobs an AMQP channel needs** are `routingKey`, `queueName`,
+  `durable`, `exclusive`, `autoDelete` and `contentEncoding` — beside
+  the correlation id, reply address and content type the CloudEvents
+  envelope already carries (#101).
+
 ## 6. Capability/requirement matching
 
 Instead of carrying `supportedFlavors` (today) as a special filter, **DDSR models a general capability/requirement system** along the lines of OSGi `Provide-Capability` / `Require-Capability`. Provider and consumer both declare lists, and the broker resolves.

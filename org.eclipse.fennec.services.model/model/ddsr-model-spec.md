@@ -1,95 +1,95 @@
 # DDSR Model Spec
 
-Designspezifikation für `ddsr.ecore` — sprachneutrales OSGi-Service-Modell auf Basis von EMF/Ecore.
+The design specification for `ddsr.ecore` — a language-neutral OSGi service model on top of EMF/Ecore.
 
 - **Package**: `ddsr`
 - **nsURI**: `http://geckoprojects.org/ddsr/1.0`
 - **nsPrefix**: `ddsr`
 - **basePackage**: `org.gecko.ddsr.model`
 
-Vorlage: OSGi-DS-DTOs (`ComponentDescriptionDTO`, `ComponentConfigurationDTO`, `ReferenceDTO`, `SatisfiedReferenceDTO`, `UnsatisfiedReferenceDTO`, `ServiceReferenceDTO`) sowie `ServiceEvent`/`ServiceRegistration`/`ServiceReference` aus `org.osgi.framework`. Java-spezifisches ist sprachneutral übersetzt (siehe Abschnitt „Sprachneutrale Übersetzungen").
+The template: the OSGi DS DTOs (`ComponentDescriptionDTO`, `ComponentConfigurationDTO`, `ReferenceDTO`, `SatisfiedReferenceDTO`, `UnsatisfiedReferenceDTO`, `ServiceReferenceDTO`) plus `ServiceEvent`/`ServiceRegistration`/`ServiceReference` from `org.osgi.framework`. Java-specific things are translated language-neutrally (see the section "Language-neutral translations").
 
-## Implementations-Architektur (Kontext)
+## Implementation architecture (context)
 
-Das Modell ist sprachneutral, die Implementations folgen aber pro Sprache derselben **Drei-Schicht-Struktur** (siehe REQUIREMENTS §6 NFR-Three-Layer-Architecture):
+The model is language-neutral, but the implementations follow the same **three-layer structure** in every language (see REQUIREMENTS §6 NFR-Three-Layer-Architecture):
 
-| Schicht | Java | TypeScript | Python |
+| Layer | Java | TypeScript | Python |
 |---|---|---|---|
-| **EMF / POJOs** *(aus dem Modell generiert)* | EMF | `ecore.ts` | PyEcore |
-| **Component-Lifecycle / DI** *(nativ vorhandene Engines)* | OSGi DS *(OSGi-Flavor)* oder DDSR-eigener Plain-Java-Lifecycle-Core | Daanse TSM | iPOPO |
-| **DDSR-eigene Schicht** *(Registry, Lookup, Events, Listeners, Remote-Bridge)* | hand-geschrieben, spec-implementierend | hand-geschrieben, spec-implementierend | hand-geschrieben, spec-implementierend |
+| **EMF / POJOs** *(generated from the model)* | EMF | `ecore.ts` | PyEcore |
+| **Component lifecycle / DI** *(engines that are natively there)* | OSGi DS *(the OSGi flavor)* or DDSR's own plain-Java lifecycle core | Daanse TSM | iPOPO |
+| **DDSR's own layer** *(registry, lookup, events, listeners, remote bridge)* | hand-written, implementing the spec | hand-written, implementing the spec | hand-written, implementing the spec |
 
-Die unterste Zeile ist der Hebel für **Behavioral Parity** — sie ist überall die direkte Umsetzung dieser Spec. Mappings vom DDSR-`ComponentState`-Enum auf die jeweiligen nativen Lifecycle-States (DS-States / TSM `registered…stopped` / iPOPO-States) müssen pro Sprache explizit und dokumentiert sein.
+The bottom row is the lever for **behavioral parity** — everywhere it is the direct realisation of this spec. Mappings from the DDSR `ComponentState` enum onto the respective native lifecycle states (DS states / TSM `registered…stopped` / iPOPO states) have to be explicit and documented per language.
 
 ---
 
-## Sprachneutrale Übersetzungen
+## Language-neutral translations
 
-| OSGi-DTO / API | DDSR-Äquivalent | Begründung |
+| OSGi DTO / API | The DDSR equivalent | Rationale |
 |---|---|---|
-| `BundleDTO bundle` | EClass `ServiceProvider` | „Deployment-Einheit, die Services registriert" — sprachneutral |
-| `String implementationClass` | `implementationId: EString` | symbolisch statt FQN-Java-Klasse |
-| `bind/unbind/updated/field` | EClass `ReferenceBinding` (Container) | weg von Java-Method-Namen, hin zu „Hook"-Begriff |
-| `activate/deactivate/modified/activationFields/init` | EClass `LifecycleHook` (Container) | s.o. |
-| `service.id : long` | `EString` (UUID) | flexibler über Sprachen + Netzwerk |
-| `Map<String,Object> properties` | `Property[0..*]` containment, typisierte Subklassen | DTO-tauglich + sprachneutral |
-| `Throwable failure` | EClass `Diagnostic` (Struktur wie EMF-`Diagnostic`) | strukturiert statt Stack-Trace-String |
+| `BundleDTO bundle` | EClass `ServiceProvider` | "a deployment unit that registers services" — language-neutral |
+| `String implementationClass` | `implementationId: EString` | symbolic instead of an FQN Java class |
+| `bind/unbind/updated/field` | EClass `ReferenceBinding` (a container) | away from Java method names, towards the notion of a "hook" |
+| `activate/deactivate/modified/activationFields/init` | EClass `LifecycleHook` (a container) | as above |
+| `service.id : long` | `EString` (UUID) | more flexible across languages and the network |
+| `Map<String,Object> properties` | `Property[0..*]` containment, typed subclasses | DTO-capable and language-neutral |
+| `Throwable failure` | EClass `Diagnostic` (structured like the EMF `Diagnostic`) | structured instead of a stack-trace string |
 
 ---
 
 ## EEnums
 
-| Enum | Literale (Wert) | Quelle |
+| Enum | Literals (value) | Source |
 |---|---|---|
 | `ServiceScope` | `SINGLETON`, `BUNDLE`, `PROTOTYPE` | `ComponentDescriptionDTO.scope` |
 | `ReferenceCardinality` | `ZERO_OR_ONE`, `ONE`, `ZERO_OR_MANY`, `ONE_OR_MANY` | `ReferenceDTO.cardinality` |
 | `ReferencePolicy` | `STATIC`, `DYNAMIC` | `ReferenceDTO.policy` |
 | `ReferencePolicyOption` | `RELUCTANT`, `GREEDY` | `ReferenceDTO.policyOption` |
 | `ConfigurationPolicy` | `OPTIONAL`, `REQUIRE`, `IGNORE` | `ComponentDescriptionDTO.configurationPolicy` |
-| `ComponentState` | `UNSATISFIED_CONFIGURATION = 1`, `UNSATISFIED_REFERENCE = 2`, `SATISFIED = 4`, `ACTIVE = 8`, `FAILED_ACTIVATION = 16` | `ComponentConfigurationDTO` static ints (Werte bitweise!) |
-| `ServiceEventType` | `REGISTERED = 1`, `MODIFIED = 2`, `UNREGISTERING = 4`, `MODIFIED_ENDMATCH = 8` | `ServiceEvent` static ints (Werte bitweise!) |
+| `ComponentState` | `UNSATISFIED_CONFIGURATION = 1`, `UNSATISFIED_REFERENCE = 2`, `SATISFIED = 4`, `ACTIVE = 8`, `FAILED_ACTIVATION = 16` | the `ComponentConfigurationDTO` static ints (the values are bitwise!) |
+| `ServiceEventType` | `REGISTERED = 1`, `MODIFIED = 2`, `UNREGISTERING = 4`, `MODIFIED_ENDMATCH = 8` | the `ServiceEvent` static ints (the values are bitwise!) |
 | `FieldOption` | `REPLACE`, `UPDATE` | `ReferenceDTO.fieldOption` |
 | `CollectionType` | `SERVICE`, `REFERENCE`, `SERVICEOBJECTS`, `PROPERTIES`, `TUPLE` | `ReferenceDTO.collectionType` |
-| `LifecycleHookKind` | `ACTIVATE`, `DEACTIVATE`, `MODIFIED`, `ACTIVATION_FIELD` | abgeleitet aus DS-Method-Namen |
-| `ReferenceBindingKind` | `BIND`, `UNBIND`, `UPDATED`, `FIELD` | s.o. |
-| `DiagnosticSeverity` | `OK = 0`, `INFO = 1`, `WARNING = 2`, `ERROR = 4`, `CANCEL = 8` | analog `org.eclipse.emf.common.util.Diagnostic` |
-| `ExpressionLanguage` | `OCL` | Discriminator für `ExpressionConstraint` / `Invariant`. Im Prototyp nur OCL; Surface offen für CEL/JSON-Logic/eigene Sublanguage ohne Modell-Migration. |
-| `CatalogStatus` | `ACTIVE`, `DEPRECATED` | Lifecycle-Marker am `ServiceInterface` im Katalog. ACTIVE = frei publishable und lookupable; DEPRECATED = bestehende Implementationen laufen weiter, Lookups liefern weiter, neue Publishes erzeugen WARNING. Transition ist einseitig — Revival = neuer Eintrag. |
-| `ConnectionState` | `CONNECTED`, `DEGRADED`, `OFFLINE` | Health der Verbindung von `LocalServiceRegistry` zu ihrer Remote Registry. CONNECTED = Snapshot empfangen + Event-Stream lebt; DEGRADED = Verbindung verloren, Reconnect läuft, Cache-Sicht aktiv; OFFLINE = nie verbunden oder Reconnect permanent fehlgeschlagen. Writes nur in CONNECTED erlaubt; Reads in allen Zuständen aus dem letzten bekannten State. |
-| `FlavorKind` | `REST`, `MQTT` | Discriminator und Identifier-String, den Consumer in `ConsumerCapability.supportedFlavors` mitschickt. Erweiterbar über Flavor-Plugins. |
-| `HttpMethod` | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS` | für `RestOperationFlavor.method` |
-| `MqttQos` | `AT_MOST_ONCE = 0`, `AT_LEAST_ONCE = 1`, `EXACTLY_ONCE = 2` | MQTT QoS-Levels |
-| `RegistryKind` | `LOCAL`, `REMOTE` | Discriminator wenn man `ServiceRegistry`-Hierarchie über Discriminator statt Subklasse modelliert *(siehe Entscheidung im API-Layer)* |
+| `LifecycleHookKind` | `ACTIVATE`, `DEACTIVATE`, `MODIFIED`, `ACTIVATION_FIELD` | derived from the DS method names |
+| `ReferenceBindingKind` | `BIND`, `UNBIND`, `UPDATED`, `FIELD` | as above |
+| `DiagnosticSeverity` | `OK = 0`, `INFO = 1`, `WARNING = 2`, `ERROR = 4`, `CANCEL = 8` | analogous to `org.eclipse.emf.common.util.Diagnostic` |
+| `ExpressionLanguage` | `OCL` | The discriminator for `ExpressionConstraint` / `Invariant`. In the prototype OCL only; the surface stays open for CEL/JSON-Logic/a sublanguage of our own without a model migration. |
+| `CatalogStatus` | `ACTIVE`, `DEPRECATED` | A lifecycle marker on the `ServiceInterface` in the catalog. ACTIVE = freely publishable and lookupable; DEPRECATED = existing implementations keep running, lookups keep delivering, new publishes produce a WARNING. The transition is one-way — a revival is a new entry. |
+| `ConnectionState` | `CONNECTED`, `DEGRADED`, `OFFLINE` | The health of the connection from a `LocalServiceRegistry` to its remote registry. CONNECTED = the snapshot has arrived and the event stream is alive; DEGRADED = the connection was lost, a reconnect is running, the cache view is active; OFFLINE = never connected, or the reconnect has permanently failed. Writes are allowed in CONNECTED only; reads work in every state out of the last known state. |
+| `FlavorKind` | `REST`, `MQTT` | The discriminator and the identifier string a consumer sends along in `ConsumerCapability.supportedFlavors`. Extensible through flavor plugins. |
+| `HttpMethod` | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS` | for `RestOperationFlavor.method` |
+| `MqttQos` | `AT_MOST_ONCE = 0`, `AT_LEAST_ONCE = 1`, `EXACTLY_ONCE = 2` | the MQTT QoS levels |
+| `RegistryKind` | `LOCAL`, `REMOTE` | The discriminator if one models the `ServiceRegistry` hierarchy through a discriminator rather than through subclasses *(see the decision in the API layer)* |
 
 ---
 
-## Mixin-Interfaces
+## Mixin interfaces
 
 ### `NamedElement` (abstract, interface)
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
 | `name` | `EString` | `1..1` | `iD=true` |
 
 ### `VersionedElement` (abstract, interface)
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `version` | `EString` | `0..1` | semver, OCL-Validation TODO |
+| `version` | `EString` | `0..1` | semver, OCL validation TODO |
 
 ---
 
-## Property-Layer
+## The property layer
 
 ### `Property` (abstract) `extends NamedElement`
 
-(keine eigenen Features — Subklassen tragen `value`)
+(no features of its own — the subclasses carry the `value`)
 
-### Konkrete Property-Klassen
+### The concrete property classes
 
-Alle `extends Property`:
+All `extends Property`:
 
-| Klasse | `value`-Typ |
+| Class | `value` type |
 |---|---|
 | `StringProperty` | `EString` |
 | `IntProperty` | `EInt` |
@@ -102,245 +102,245 @@ Alle `extends Property`:
 
 ---
 
-## Description-Layer
+## The description layer
 
 ### `ServiceInterface` `extends NamedElement, VersionedElement`
 
-Eigenständige Klasse mit Identität, damit Versionierung und Wiederverwendung funktionieren. Trägt jetzt die Signatur der Operationen, die das Interface anbietet — ohne diese Erweiterung wäre der API-Katalog leer von „was die Services können". **Nach `addCatalogEntry` konzeptionell immutable** — Änderungen ⇒ neuer Eintrag mit neuer Version, alter optional deprecated.
+A class of its own with an identity, so that versioning and reuse work. It now carries the signature of the operations the interface offers — without that addition the API catalog would hold nothing about "what the services can do". **Conceptually immutable after `addCatalogEntry`** — a change ⇒ a new entry with a new version, the old one optionally deprecated.
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
-| `description` | `EString` | `0..1` | | Doku-Text |
-| `operations` | `ServiceOperation` | `0..*` | | **containment**, die Methoden des Interfaces |
-| `exceptions` | `ServiceException` | `0..*` | | **containment**, Exceptions, die das Interface global deklariert (operation-spezifische Exceptions stehen auf der Operation selbst) |
-| `invariants` | `Invariant` | `0..*` | | **containment**, Klassen-Level-Invarianten |
-| `status` | `CatalogStatus` | `1..1` | `ACTIVE` | Lifecycle-Marker im Katalog. `deprecateCatalogEntry` setzt auf `DEPRECATED`; einseitige Transition. |
-| `deprecationReason` | `EString` | `0..1` | | Frei-Text, gesetzt bei der Deprecation; landet im WARNING-Diagnostic von `publishImplementation` |
-| `replacedBy` | `ServiceInterface` | `0..1` | | non-containment, Migration-Hint zu einem Nachfolger-Interface |
+| `description` | `EString` | `0..1` | | documentation text |
+| `operations` | `ServiceOperation` | `0..*` | | **containment**, the interface's methods |
+| `exceptions` | `ServiceException` | `0..*` | | **containment**, the exceptions the interface declares globally (operation-specific exceptions sit on the operation itself) |
+| `invariants` | `Invariant` | `0..*` | | **containment**, class-level invariants |
+| `status` | `CatalogStatus` | `1..1` | `ACTIVE` | The lifecycle marker in the catalog. `deprecateCatalogEntry` sets it to `DEPRECATED`; a one-way transition. |
+| `deprecationReason` | `EString` | `0..1` | | free text, set at deprecation time; it lands in the WARNING diagnostic of `publishImplementation` |
+| `replacedBy` | `ServiceInterface` | `0..1` | | non-containment, a migration hint towards a successor interface |
 
 ---
 
-## Operation-Signatur-Layer
+## The operation signature layer
 
-Modelliert *was* ein Service kann — Methoden, Parameter mit Constraints, Exceptions. Ist die sprachneutrale Beschreibung, aus der pro Sprache **POJO-Stubs** und typisierte Interfaces erzeugt werden (vom Code Publisher als JAR/npm-Package/Python-Wheel veröffentlicht — siehe REQUIREMENTS §5 „Code generation" und „Code distribution"). Codegen erzeugt nur Typen, kein Verhalten; Verhalten lebt im Framework pro Sprache.
+It models *what* a service can do — methods, parameters with constraints, exceptions. It is the language-neutral description from which **POJO stubs** and typed interfaces are produced per language (published by the code publisher as a JAR / npm package / Python wheel — see REQUIREMENTS §5 "Code generation" and "Code distribution"). Code generation produces types only, no behaviour; behaviour lives in the framework of each language.
 
 ### `ServiceOperation` `extends NamedElement`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `description` | `EString` | `0..1` | Doku-Text |
-| `parameters` | `Parameter` | `0..*` | **containment**, Reihenfolge per `index` |
-| `returnValue` | `Parameter` | `0..1` | **containment**, der Rückgabe-Slot als vollwertiger Parameter — Typ, Multiplizität und Constraints an einer Stelle; unset = void. `index` ist hier bedeutungslos, `optional` heißt „Ergebnis darf null sein" |
-| `exceptions` | `ServiceException` | `0..*` | non-containment, Verweise auf am `ServiceInterface` definierte Exceptions, die diese Operation werfen kann |
+| `description` | `EString` | `0..1` | documentation text |
+| `parameters` | `Parameter` | `0..*` | **containment**, ordered by `index` |
+| `returnValue` | `Parameter` | `0..1` | **containment**, the return slot as a full parameter — type, multiplicity and constraints in one place; unset = void. `index` is meaningless here, and `optional` means "the result may be null" |
+| `exceptions` | `ServiceException` | `0..*` | non-containment, pointers at exceptions defined on the `ServiceInterface` that this operation can throw |
 
 ### `Parameter` `extends NamedElement`
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
-| `index` | `EInt` | `1..1` | | Positionsindex (0-based) — sprachneutral und sprach-unabhängig vom Argument-Name |
-| `type` | `EString` | `0..1` | | sprachneutraler Typname; mindestens eines von `type`/`eType` MUSS gesetzt sein |
-| `eType` | `ecore::EClassifier` | `0..1` | | non-containment, der Metamodell-Typ: eine `EClass` für EObject-Werte, ein Ecore-`EDataType` für Primitive. Wandert als dokumentübergreifender href `<nsURI>#//<Name>` über die Leitung und muss vom Leser **nicht** auflösbar sein |
-| `lowerBound` | `EInt` | `1..1` | `1` | Mindestanzahl Werte; für einen Einzelwert redundant zu `optional` und konsistent zu halten (`lowerBound = 0` genau dann, wenn `optional`) |
-| `upperBound` | `EInt` | `1..1` | `1` | Maximalanzahl Werte, `-1` = unbegrenzt-endliche Collection. Unbegrenzte Ströme über die Zeit gehören zum Interaction-Style-Thema, nicht hierher |
+| `index` | `EInt` | `1..1` | | the positional index (0-based) — language-neutral and independent of the argument name in any language |
+| `type` | `EString` | `0..1` | | a language-neutral type name; at least one of `type`/`eType` MUST be set |
+| `eType` | `ecore::EClassifier` | `0..1` | | non-containment, the metamodel type: an `EClass` for EObject values, an Ecore `EDataType` for primitives. It travels over the wire as a cross-document href `<nsURI>#//<Name>` and does **not** have to be resolvable by the reader |
+| `lowerBound` | `EInt` | `1..1` | `1` | the minimum number of values; for a single value it is redundant with `optional` and has to be kept consistent (`lowerBound = 0` exactly when `optional`) |
+| `upperBound` | `EInt` | `1..1` | `1` | the maximum number of values, `-1` = an unbounded-but-finite collection. Unbounded streams over time belong to the interaction-style topic, not here |
 | `optional` | `EBoolean` | `1..1` | `false` | |
-| `defaultValue` | `EString` | `0..1` | | String-kodierter Default-Wert (Parsen je Typ Sache der Implementation) |
-| `description` | `EString` | `0..1` | | Doku-Text |
+| `defaultValue` | `EString` | `0..1` | | a string-encoded default value (parsing per type is the implementation's business) |
+| `description` | `EString` | `0..1` | | documentation text |
 | `constraints` | `ParameterConstraint` | `0..*` | | **containment** |
 
 ### `ParameterConstraint` (abstract)
 
-Basis für typisierte Gültigkeitsbereiche. **Nicht** `extends NamedElement` — Constraints sind nicht benannt, sondern positionell unter ihrem Parameter.
+The base for typed validity ranges. **Not** `extends NamedElement` — constraints are not named but positional under their parameter.
 
-(keine eigenen Features)
+(no features of its own)
 
-### Konkrete Constraint-Klassen
+### The concrete constraint classes
 
-Alle `extends ParameterConstraint`:
+All `extends ParameterConstraint`:
 
-| Klasse | Features | Notes |
+| Class | Features | Notes |
 |---|---|---|
-| `RequiredConstraint` | *(marker)* | Parameter darf nicht null/missing sein. Redundant mit `Parameter.optional = false`, aber explizit ausdrückbar. |
-| `NumericRangeConstraint` | `min: EDouble [0..1]`, `max: EDouble [0..1]`, `inclusiveMin: EBoolean = true`, `inclusiveMax: EBoolean = true` | `EDouble` deckt alle numerischen Typen ab; Implementation muss in den Parameter-Typ zurückcasten. |
-| `StringPatternConstraint` | `pattern: EString [1..1]`, `minLength: EInt [0..1]`, `maxLength: EInt [0..1]` | Regex-Pattern; Syntax: ECMA-262 (wird in TS nativ unterstützt, in Java/Python kompatibel). |
-| `EnumerationConstraint` | `allowedValues: EString [1..*]` | Erlaubte stringifizierte Werte. |
-| `CollectionSizeConstraint` | `minSize: EInt [0..1]`, `maxSize: EInt [0..1]` | Für Parameter-Typen, die Listen/Arrays sind. |
-| `ExpressionConstraint` *(extends `ParameterConstraint, NamedElement`)* | `language: ExpressionLanguage [1..1] = OCL`, `expression: EString [1..1]`, `message: EString [0..1]` | Offener Constraint mit Identität (Name für Violation-Reporting). Für alles, was die geschlossene Constraint-Liste nicht abdeckt: Cross-Parameter-Checks, bedingte Regeln, Domain-Logik. Evaluierungs-Kontext: `self` = Laufzeitwert des Parameters/Return-Werts; `op` = enclosing `ServiceOperation`; `params` = Map Name→Wert (verfügbar bei pre/post). |
+| `RequiredConstraint` | *(a marker)* | The parameter must not be null/missing. Redundant with `Parameter.optional = false`, but expressible explicitly. |
+| `NumericRangeConstraint` | `min: EDouble [0..1]`, `max: EDouble [0..1]`, `inclusiveMin: EBoolean = true`, `inclusiveMax: EBoolean = true` | `EDouble` covers every numeric type; the implementation has to cast back into the parameter's type. |
+| `StringPatternConstraint` | `pattern: EString [1..1]`, `minLength: EInt [0..1]`, `maxLength: EInt [0..1]` | A regex pattern; the syntax is ECMA-262 (natively supported in TS, compatible in Java/Python). |
+| `EnumerationConstraint` | `allowedValues: EString [1..*]` | The allowed stringified values. |
+| `CollectionSizeConstraint` | `minSize: EInt [0..1]`, `maxSize: EInt [0..1]` | For parameter types that are lists/arrays. |
+| `ExpressionConstraint` *(extends `ParameterConstraint, NamedElement`)* | `language: ExpressionLanguage [1..1] = OCL`, `expression: EString [1..1]`, `message: EString [0..1]` | An open constraint with an identity (a name, for violation reporting). For everything the closed constraint list does not cover: cross-parameter checks, conditional rules, domain logic. The evaluation context: `self` = the runtime value of the parameter or return value; `op` = the enclosing `ServiceOperation`; `params` = a map name→value (available in pre/post). |
 
 ### `Invariant` `extends NamedElement`
 
-Geschwister-Klasse zu `ExpressionConstraint`, aber **kein** `ParameterConstraint` — Invariants sind nicht an einen Parameter oder Return-Wert gebunden, sondern an die *Operation* (pre/post) oder das *Interface* (Klassen-Level-Invariante).
+A sibling class to `ExpressionConstraint`, but **not** a `ParameterConstraint` — invariants are not bound to a parameter or a return value but to the *operation* (pre/post) or to the *interface* (a class-level invariant).
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
 | `language` | `ExpressionLanguage` | `1..1` | `OCL` | |
-| `expression` | `EString` | `1..1` | | Boolean-Expression; multi-line erlaubt |
-| `message` | `EString` | `0..1` | | Optional, für Violation-Reporting |
+| `expression` | `EString` | `1..1` | | a boolean expression; multi-line is allowed |
+| `message` | `EString` | `0..1` | | optional, for violation reporting |
 
-**Verwendet als Containment in**:
-- `ServiceOperation.preconditions [0..*]` — gelten beim Eintritt; Kontext: `self`, `params`, `op`. Violation ⇒ Aufruf wird abgelehnt, Implementation nicht invoked.
-- `ServiceOperation.postconditions [0..*]` — gelten beim erfolgreichen Verlassen; Kontext zusätzlich `result` = Return-Wert. Violation ⇒ ERROR-Diagnostic (Implementation-Contract-Bruch).
-- `ServiceInterface.invariants [0..*]` — gelten für jede Instanz, vor und nach jeder Operation; Kontext: `self` = Service-Objekt.
+**Used as containment in**:
+- `ServiceOperation.preconditions [0..*]` — they hold on entry; the context is `self`, `params`, `op`. A violation ⇒ the call is refused and the implementation is not invoked.
+- `ServiceOperation.postconditions [0..*]` — they hold on a successful exit; the context additionally has `result` = the return value. A violation ⇒ an ERROR diagnostic (a broken implementation contract).
+- `ServiceInterface.invariants [0..*]` — they hold for every instance, before and after every operation; the context is `self` = the service object.
 
 ### `ServiceException` `extends NamedElement, VersionedElement`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `description` | `EString` | `0..1` | Doku |
-| `type` | `EString` | `1..1` | symbolischer Exception-Name (sprachneutral, FQN-style) |
-| `properties` | `Property` | `0..*` | **containment**, Felder, die der Exception-Payload tragen (z.B. `errorCode`, `retryable`) |
+| `description` | `EString` | `0..1` | documentation |
+| `type` | `EString` | `1..1` | the symbolic exception name (language-neutral, FQN style) |
+| `properties` | `Property` | `0..*` | **containment**, the fields the exception payload carries (e.g. `errorCode`, `retryable`) |
 
 ---
 
 ### `LifecycleHook` `extends NamedElement`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
 | `kind` | `LifecycleHookKind` | `1..1` | |
-| `parameter` | `EInt` | `0..1` | nur für `init`/Konstruktor-Param |
+| `parameter` | `EInt` | `0..1` | only for the `init`/constructor param |
 
 ### `ReferenceBinding` `extends NamedElement`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
 | `kind` | `ReferenceBindingKind` | `1..1` | |
-| `fieldOption` | `FieldOption` | `0..1` | nur für `kind = FIELD` |
+| `fieldOption` | `FieldOption` | `0..1` | only for `kind = FIELD` |
 
 ### `ComponentReference` `extends NamedElement`  (≈ `ReferenceDTO`)
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
-| `interfaceName` | `EString` | `1..1` | | FQN des Service-Interfaces |
+| `interfaceName` | `EString` | `1..1` | | the FQN of the service interface |
 | `cardinality` | `ReferenceCardinality` | `1..1` | `ONE` | |
 | `policy` | `ReferencePolicy` | `1..1` | `STATIC` | |
 | `policyOption` | `ReferencePolicyOption` | `1..1` | `RELUCTANT` | |
-| `target` | `EString` | `0..1` | | LDAP-Filter |
+| `target` | `EString` | `0..1` | | an LDAP filter |
 | `scope` | `ServiceScope` | `1..1` | `BUNDLE` | |
 | `collectionType` | `CollectionType` | `0..1` | | |
-| `parameter` | `EInt` | `0..1` | | Konstruktor-Parameter-Index (DS 1.4) |
+| `parameter` | `EInt` | `0..1` | | the constructor parameter index (DS 1.4) |
 | `bindings` | `ReferenceBinding` | `0..*` | | **containment** |
 
 ### `ComponentDescription` `extends NamedElement` (≈ `ComponentDescriptionDTO`)
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
-| `factory` | `EString` | `0..1` | | Factory-Name (DS factory component) |
+| `factory` | `EString` | `0..1` | | the factory name (a DS factory component) |
 | `scope` | `ServiceScope` | `1..1` | `SINGLETON` | |
-| `implementationId` | `EString` | `1..1` | | sprachneutral statt `implementationClass` |
+| `implementationId` | `EString` | `1..1` | | language-neutral, instead of `implementationClass` |
 | `defaultEnabled` | `EBoolean` | `1..1` | `true` | |
 | `immediate` | `EBoolean` | `1..1` | `false` | |
 | `configurationPolicy` | `ConfigurationPolicy` | `1..1` | `OPTIONAL` | |
 | `configurationPid` | `EString` | `0..*` | | |
-| `serviceInterfaces` | `ServiceInterface` | `0..*` | | non-containment (geteilte Identität) |
+| `serviceInterfaces` | `ServiceInterface` | `0..*` | | non-containment (a shared identity) |
 | `properties` | `Property` | `0..*` | | **containment** |
 | `factoryProperties` | `Property` | `0..*` | | **containment** |
 | `references` | `ComponentReference` | `0..*` | | **containment** |
-| `lifecycleHooks` | `LifecycleHook` | `0..*` | | **containment**, ersetzt `activate/deactivate/modified/activationFields/init` |
-| `provider` | `ServiceProvider` | `0..1` | | non-containment (Provider „besitzt" Descriptions, siehe `ServiceProvider.descriptions`) |
+| `lifecycleHooks` | `LifecycleHook` | `0..*` | | **containment**, replacing `activate/deactivate/modified/activationFields/init` |
+| `provider` | `ServiceProvider` | `0..1` | | non-containment (the provider "owns" the descriptions, see `ServiceProvider.descriptions`) |
 
 ### `ServiceProvider` `extends NamedElement, VersionedElement`
 
-Sprachneutrales Pendant zu OSGi `Bundle`.
+The language-neutral counterpart of an OSGi `Bundle`.
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
 | `symbolicName` | `EString` | `1..1` | |
 | `descriptions` | `ComponentDescription` | `0..*` | **containment** |
-| `implementations` | `ServiceImplementation` | `0..*` | **containment**, konkrete Bereitstellungen, die dieser Provider anbietet (s.u.) |
+| `implementations` | `ServiceImplementation` | `0..*` | **containment**, the concrete offerings this provider makes (see below) |
 
 ### `ServiceImplementation` `extends NamedElement, VersionedElement`
 
-Konkrete Bereitstellung eines (oder mehrerer) `ServiceInterface`s durch einen Provider über bestimmte Transport-Flavors. **Getrennt von `ComponentDescription`**, weil eine Implementation auch ohne DS-Deklaration existieren kann (z.B. ein „plain" Java-Service, oder eine TS/Python-Implementation ohne DS-Pendant). Wenn DS-deklariert, verweist sie zurück auf eine `ComponentDescription`.
+A concrete offering of one (or several) `ServiceInterface`s by a provider over particular transport flavors. **Kept apart from `ComponentDescription`**, because an implementation can exist without a DS declaration too (a "plain" Java service, say, or a TS/Python implementation with no DS counterpart). When it is DS-declared it points back at a `ComponentDescription`.
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `description` | `EString` | `0..1` | Doku |
-| `implementationId` | `EString` | `1..1` | sprachneutraler symbolischer Bezeichner der Implementations-Klasse / des Moduls / der Datei |
-| `serviceInterfaces` | `ServiceInterface` | `1..*` | non-containment, welche Interfaces diese Implementation erfüllt |
-| `flavors` | `ServiceFlavor` | `0..*` | **containment**, über welche Transports erreichbar (bei rein lokaler Bereitstellung leer) |
-| `properties` | `Property` | `0..*` | **containment**, Implementations-spezifische Properties (Service-Ranking, Tenancy, …) |
-| `componentDescription` | `ComponentDescription` | `0..1` | non-containment; gesetzt, wenn DS-getrieben |
+| `description` | `EString` | `0..1` | documentation |
+| `implementationId` | `EString` | `1..1` | the language-neutral symbolic identifier of the implementation class / module / file |
+| `serviceInterfaces` | `ServiceInterface` | `1..*` | non-containment, which interfaces this implementation fulfils |
+| `flavors` | `ServiceFlavor` | `0..*` | **containment**, over which transports it is reachable (empty for a purely local offering) |
+| `properties` | `Property` | `0..*` | **containment**, implementation-specific properties (service ranking, tenancy, …) |
+| `componentDescription` | `ComponentDescription` | `0..1` | non-containment; set when it is DS-driven |
 
 ---
 
-## Flavor / Transport-Binding-Layer
+## The flavor / transport binding layer
 
-Modelliert *wie* eine Implementation über das Netz erreichbar ist. Eine `ServiceImplementation` kann mehrere `ServiceFlavor`s gleichzeitig anbieten (z.B. derselbe Service per REST *und* per MQTT). Der Consumer wählt einen Flavor anhand seiner `ConsumerCapability` (siehe API-Layer).
+It models *how* an implementation is reachable over the network. A `ServiceImplementation` can offer several `ServiceFlavor`s at once (the same service over REST *and* over MQTT, say). The consumer picks a flavor by its `ConsumerCapability` (see the API layer).
 
 ### `ServiceFlavor` (abstract) `extends NamedElement`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `kind` | `FlavorKind` | `1..1` | Discriminator (REST/MQTT/…); doppelt zu Subklasse aber praktisch für consumer-side filtering |
-| `operationFlavors` | `ServiceOperationFlavor` | `0..*` | **containment**, transport-spezifische Bindung pro Operation |
+| `kind` | `FlavorKind` | `1..1` | the discriminator (REST/MQTT/…); redundant with the subclass but handy for consumer-side filtering |
+| `operationFlavors` | `ServiceOperationFlavor` | `0..*` | **containment**, the transport-specific binding per operation |
 
 ### `RestFlavor` `extends ServiceFlavor`
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
-| `host` | `EString` | `0..1` | | optional, kann zur Laufzeit in der Service-Reference stehen |
-| `basePath` | `EString` | `1..1` | | gemeinsame URL-Präfix-Komponente aller Operationen |
-| `contentTypes` | `EString` | `0..*` | | erlaubte/produzierte Content-Types als Default |
+| `host` | `EString` | `0..1` | | optional, may sit in the service reference at runtime |
+| `basePath` | `EString` | `1..1` | | the URL prefix component shared by every operation |
+| `contentTypes` | `EString` | `0..*` | | the allowed/produced content types as a default |
 
 ### `MqttFlavor` `extends ServiceFlavor`
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
-| `brokers` | `EString` | `1..*` | | Broker-URLs (mqtt(s)://…) |
-| `requestTopic` | `EString` | `1..1` | | Default-Topic für Requests; Operationen können überschreiben |
-| `responseTopic` | `EString` | `0..1` | | Default-Topic für Responses |
+| `brokers` | `EString` | `1..*` | | the broker URLs (mqtt(s)://…) |
+| `requestTopic` | `EString` | `1..1` | | the default topic for requests; operations may override it |
+| `responseTopic` | `EString` | `0..1` | | the default topic for responses |
 | `defaultQos` | `MqttQos` | `1..1` | `AT_LEAST_ONCE` | |
 | `defaultRetained` | `EBoolean` | `1..1` | `false` | |
 
 ### `ServiceOperationFlavor` (abstract) `extends NamedElement`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `operation` | `ServiceOperation` | `1..1` | non-containment, auf welche Interface-Operation diese Bindung verweist |
-| `consumes` | `EString` | `0..*` | Content-Types für Request-Body (überschreibt Flavor-Default) |
-| `produces` | `EString` | `0..*` | Content-Types für Response-Body |
+| `operation` | `ServiceOperation` | `1..1` | non-containment, which interface operation this binding points at |
+| `consumes` | `EString` | `0..*` | the content types for the request body (overriding the flavor default) |
+| `produces` | `EString` | `0..*` | the content types for the response body |
 
 ### `RestOperationFlavor` `extends ServiceOperationFlavor`
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
 | `method` | `HttpMethod` | `1..1` | | |
-| `path` | `EString` | `0..1` | | relativ zum `RestFlavor.basePath`; `null` = direkt auf `basePath` |
-| `returnCodes` | `EInt` | `1..*` | | erwartete HTTP-Status-Codes für Erfolg (typisch z.B. `[200, 204]`) |
+| `path` | `EString` | `0..1` | | relative to `RestFlavor.basePath`; `null` = directly on `basePath` |
+| `returnCodes` | `EInt` | `1..*` | | the HTTP status codes expected on success (typically `[200, 204]`) |
 
 ### `MqttOperationFlavor` `extends ServiceOperationFlavor`
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
-| `requestTopic` | `EString` | `0..1` | | überschreibt Flavor-Default für diese Operation |
-| `responseTopic` | `EString` | `0..1` | | s.o. |
-| `qos` | `MqttQos` | `0..1` | | s.o. |
-| `retained` | `EBoolean` | `0..1` | | s.o. |
-| `correlation` | `EBoolean` | `1..1` | `true` | ob Request/Response per correlationId gematcht werden müssen |
-| `returnPath` | `EString` | `0..1` | | optional, alternative Konvention für asynchrone Antworten |
+| `requestTopic` | `EString` | `0..1` | | overrides the flavor default for this operation |
+| `responseTopic` | `EString` | `0..1` | | as above |
+| `qos` | `MqttQos` | `0..1` | | as above |
+| `retained` | `EBoolean` | `0..1` | | as above |
+| `correlation` | `EBoolean` | `1..1` | `true` | whether request and response have to be matched by correlationId |
+| `returnPath` | `EString` | `0..1` | | optional, an alternative convention for asynchronous answers |
 
 ---
 
-## Runtime-Layer
+## The runtime layer
 
 ### `ServiceReference` (≈ `ServiceReferenceDTO`)
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `id` | `EString` | `1..1` | UUID, `iD=true` |
+| `id` | `EString` | `1..1` | a UUID, `iD=true` |
 | `properties` | `Property` | `0..*` | **containment** |
-| `provider` | `ServiceProvider` | `1..1` | non-containment (statt `bundle: long`) |
-| `usingProviders` | `ServiceProvider` | `0..*` | non-containment (statt `usingBundles: long[]`) |
-| `registration` | `ServiceRegistration` | `0..1` | opposite zu `ServiceRegistration.reference` |
+| `provider` | `ServiceProvider` | `1..1` | non-containment (instead of `bundle: long`) |
+| `usingProviders` | `ServiceProvider` | `0..*` | non-containment (instead of `usingBundles: long[]`) |
+| `registration` | `ServiceRegistration` | `0..1` | the opposite of `ServiceRegistration.reference` |
 
 **EOperations**:
-- `getProperty(key: EString) : EJavaObject` — Lookup einer Property nach Name
-- `getPropertyKeys() : EString[*]` — Namen aller gesetzten Properties
+- `getProperty(key: EString) : EJavaObject` — look a property up by name
+- `getPropertyKeys() : EString[*]` — the names of every property that is set
 
-### `ServiceRegistration` (Provider-Sicht)
+### `ServiceRegistration` (the provider's view)
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `reference` | `ServiceReference` | `1..1` | non-containment, opposite zu `ServiceReference.registration` *(Container ist `ServiceRegistry.references`)* |
+| `reference` | `ServiceReference` | `1..1` | non-containment, the opposite of `ServiceReference.registration` *(the container is `ServiceRegistry.references`)* |
 | `unregistered` | `EBoolean` | `1..1` (default `false`) | |
 
 **EOperations**:
@@ -349,51 +349,51 @@ Modelliert *wie* eine Implementation über das Netz erreichbar ist. Eine `Servic
 
 ### `ComponentConfiguration` `extends NamedElement` (≈ `ComponentConfigurationDTO`)
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `id` | `EString` | `1..1` | `iD=true`, component.id |
+| `id` | `EString` | `1..1` | `iD=true`, the component.id |
 | `description` | `ComponentDescription` | `1..1` | non-containment |
 | `state` | `ComponentState` | `1..1` | |
 | `properties` | `Property` | `0..*` | **containment** |
 | `satisfiedReferences` | `SatisfiedReference` | `0..*` | **containment** |
 | `unsatisfiedReferences` | `UnsatisfiedReference` | `0..*` | **containment** |
-| `failure` | `Diagnostic` | `0..1` | **containment**, nur bei `state = FAILED_ACTIVATION` |
-| `service` | `ServiceReference` | `0..1` | non-containment, das registrierte Service-Reference (falls Component Service registriert) |
+| `failure` | `Diagnostic` | `0..1` | **containment**, only when `state = FAILED_ACTIVATION` |
+| `service` | `ServiceReference` | `0..1` | non-containment, the registered service reference (if the component registers a service) |
 
 ### `SatisfiedReference`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `name` | `EString` | `1..1` | Name der `ComponentReference` |
+| `name` | `EString` | `1..1` | the name of the `ComponentReference` |
 | `target` | `EString` | `0..1` | |
 | `boundServices` | `ServiceReference` | `0..*` | non-containment |
 
 ### `UnsatisfiedReference`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `name` | `EString` | `1..1` | Name der `ComponentReference` |
+| `name` | `EString` | `1..1` | the name of the `ComponentReference` |
 | `target` | `EString` | `0..1` | |
 | `targetServices` | `ServiceReference` | `0..*` | non-containment |
 
-### `Diagnostic` (sprachneutral nachgebaut, Struktur wie `org.eclipse.emf.common.util.Diagnostic`)
+### `Diagnostic` (rebuilt language-neutrally, structured like `org.eclipse.emf.common.util.Diagnostic`)
 
-| Feature | Typ | Bounds | Default | Notes |
+| Feature | Type | Bounds | Default | Notes |
 |---|---|---|---|---|
 | `severity` | `DiagnosticSeverity` | `1..1` | `OK` | |
 | `message` | `EString` | `0..1` | | |
-| `source` | `EString` | `0..1` | | z.B. `"org.gecko.ddsr.runtime"` |
+| `source` | `EString` | `0..1` | | e.g. `"org.gecko.ddsr.runtime"` |
 | `code` | `EInt` | `1..1` | `0` | |
-| `data` | `EString` | `0..*` | | stringifizierte Kontextdaten (sprachneutral; Java-Object-Liste vermieden) |
-| `children` | `Diagnostic` | `0..*` | | **containment**, rekursive Ursachenkette |
+| `data` | `EString` | `0..*` | | stringified context data (language-neutral; a Java object list was avoided) |
+| `children` | `Diagnostic` | `0..*` | | **containment**, the recursive chain of causes |
 
 ---
 
-## Event-Layer
+## The event layer
 
 ### `ServiceEvent`
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
 | `type` | `ServiceEventType` | `1..1` | |
 | `reference` | `ServiceReference` | `1..1` | non-containment |
@@ -401,30 +401,30 @@ Modelliert *wie* eine Implementation über das Netz erreichbar ist. Eine `Servic
 
 ### `ServiceListener` (abstract, interface)
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `filter` | `EString` | `0..1` | LDAP-Filter, optional |
+| `filter` | `EString` | `0..1` | an LDAP filter, optional |
 
 **EOperations**:
 - `serviceChanged(event: ServiceEvent) : void`
 
 ---
 
-## API-Layer
+## The API layer
 
-Die Registry-Hierarchie ist jetzt zweistufig: eine abstract `ServiceRegistry`-Basis, plus zwei konkrete Subklassen `LocalServiceRegistry` (In-Process) und `RemoteServiceRegistry` (Broker). Die Aufteilung ist explizit, weil lokale und Remote Registry strukturell und semantisch unterschiedliche State-Bestandteile halten.
+The registry hierarchy is two-tiered now: an abstract `ServiceRegistry` base plus two concrete subclasses, `LocalServiceRegistry` (in process) and `RemoteServiceRegistry` (the broker). The split is explicit because a local and a remote registry hold structurally and semantically different pieces of state.
 
 ### `ServiceRegistry` (abstract) `extends NamedElement`
 
-Gemeinsame Basis. Hält *nur* das, was beide Registry-Arten gemeinsam haben.
+The shared base. It holds *only* what both kinds of registry have in common.
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `kind` | `RegistryKind` | `1..1` | Discriminator zusätzlich zur Subklasse — hilft Filtern in Listen heterogener Registries |
+| `kind` | `RegistryKind` | `1..1` | a discriminator on top of the subclass — it helps when filtering lists of heterogeneous registries |
 
-**Abstrakte EOperations** (von Subklassen implementiert):
+**Abstract EOperations** (implemented by the subclasses):
 
-| Operation | Parameter | Return |
+| Operation | Parameters | Return |
 |---|---|---|
 | `getServiceReference` | `interfaceName: EString` | `ServiceReference` |
 | `getServiceReferences` | `interfaceName: EString, filter: EString, capability: ConsumerCapability` | `ServiceReference[*]` |
@@ -432,73 +432,73 @@ Gemeinsame Basis. Hält *nur* das, was beide Registry-Arten gemeinsam haben.
 | `addServiceListener` | `listener: ServiceListener` | `void` |
 | `removeServiceListener` | `listener: ServiceListener` | `void` |
 
-Anmerkung: `capability` ist auf `getServiceReferences`/`getAllServiceReferences` Pflicht-Parameter, weil das Flavor-Matching daran hängt. Bei In-Process-Lookup (LocalServiceRegistry) wird sie meist `null`/leer sein — dann werden alle Flavors als verfügbar betrachtet.
+A note: `capability` is a mandatory parameter on `getServiceReferences`/`getAllServiceReferences` because the flavor matching hangs off it. For an in-process lookup (a LocalServiceRegistry) it will mostly be `null`/empty — then every flavor counts as available.
 
 ### `LocalServiceRegistry` `extends ServiceRegistry`
 
-Das, was bisher `ServiceRegistry` war — die OSGi-`ServiceRegistry`-artige In-Process-Komponente.
+What used to be `ServiceRegistry` — the OSGi-`ServiceRegistry`-like in-process component.
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `references` | `ServiceReference` | `0..*` | **containment**, alle lokal registrierten Services |
-| `registrations` | `ServiceRegistration` | `0..*` | **containment**, Provider-Sicht zu den Services in `references` |
+| `references` | `ServiceReference` | `0..*` | **containment**, every locally registered service |
+| `registrations` | `ServiceRegistration` | `0..*` | **containment**, the provider's view of the services in `references` |
 | `configurations` | `ComponentConfiguration` | `0..*` | **containment** |
 | `providers` | `ServiceProvider` | `0..*` | **containment** |
 | `listeners` | `ServiceListener` | `0..*` | non-containment |
-| `remote` | `RemoteServiceRegistry` | `0..1` | non-containment, die Remote-Registry, an die delegiert wird (falls verbunden) |
-| `connectionState` | `ConnectionState` | `1..1` (default `OFFLINE`) | Health der Verbindung zur Remote Registry. In DEGRADED/OFFLINE: Writes ablehnen, Reads aus letztem bekannten State. Reconnect synthetisiert ServiceEvents für den Diff. |
+| `remote` | `RemoteServiceRegistry` | `0..1` | non-containment, the remote registry delegated to (if connected) |
+| `connectionState` | `ConnectionState` | `1..1` (default `OFFLINE`) | The health of the connection to the remote registry. In DEGRADED/OFFLINE: refuse writes, serve reads from the last known state. A reconnect synthesises ServiceEvents for the diff. |
 
-**Zusätzliche EOperations** (über die abstrakte Basis hinaus):
+**Additional EOperations** (beyond the abstract base):
 
-| Operation | Parameter | Return |
+| Operation | Parameters | Return |
 |---|---|---|
 | `registerService` | `provider: ServiceProvider, implementation: ServiceImplementation, props: Property[*]` | `ServiceRegistration` |
 | `fireServiceEvent` | `event: ServiceEvent` | `void` |
 
-Verhalten von `registerService`: lokale Eintragung *synchron*, lokale Listener *synchron*, Remote-Propagation *asynchron* (FR-Dist-Framework-Owns-Comms). Genaue Schrittreihenfolge wird in §5 Lifecycle der REQUIREMENTS fixiert.
+The behaviour of `registerService`: the local entry *synchronously*, the local listeners *synchronously*, the remote propagation *asynchronously* (FR-Dist-Framework-Owns-Comms). The exact step ordering is pinned down in §5 Lifecycle of the REQUIREMENTS.
 
 ### `RemoteServiceRegistry` `extends ServiceRegistry`
 
-Der zentrale Broker. Hält den **API-Katalog** und den **Implementations-Index**.
+The central broker. It holds the **API catalog** and the **implementation index**.
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `endpoint` | `EString` | `0..1` | URL/Adresse des Broker-Services aus Sicht des Clients (z.B. Cluster-VIP). Auf der Server-Seite kann leer sein. |
-| `catalog` | `ServiceInterface` | `0..*` | **containment**, der API-Katalog: alle in diesem System erlaubten Service-Interfaces (mit ihren Operations + Constraints + Exceptions) |
-| `implementations` | `ServiceImplementation` | `0..*` | non-containment, alle gemeldeten Implementations aller Provider |
-| `providers` | `ServiceProvider` | `0..*` | non-containment, Provider, die sich beim Broker registriert haben |
+| `endpoint` | `EString` | `0..1` | The URL/address of the broker service as the client sees it (a cluster VIP, say). It may be empty on the server side. |
+| `catalog` | `ServiceInterface` | `0..*` | **containment**, the API catalog: every service interface allowed in this system (with its operations + constraints + exceptions) |
+| `implementations` | `ServiceImplementation` | `0..*` | non-containment, every reported implementation of every provider |
+| `providers` | `ServiceProvider` | `0..*` | non-containment, the providers that have registered with the broker |
 
-**Zusätzliche EOperations**:
+**Additional EOperations**:
 
-| Operation | Parameter | Return |
+| Operation | Parameters | Return |
 |---|---|---|
-| `publishImplementation` | `provider: ServiceProvider, implementation: ServiceImplementation` | `Diagnostic` *(success/failure; WARNING wenn referenziertes Interface DEPRECATED ist, OK sonst)* |
-| `withdrawImplementation` | `provider: ServiceProvider, implementation: ServiceImplementation` | `Diagnostic` — symmetrisch zu `publishImplementation`; Provider explizit, damit Ownership-Check (Implementation MUSS zum Provider gehören) und PublishHook-Authorization eindeutig sind |
-| `deprecateCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` — Soft-Marker: setzt `status = DEPRECATED`, existing Implementationen bleiben, Lookups liefern weiter. Einseitig. |
-| `removeCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` — Strict-Reject: ERROR mit code `CATALOG_HAS_LIVE_IMPLS`, solange Implementationen referenzieren. Kein Auto-Cascade. |
-| `addCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` — flowed through PDP/PEP, gates on Governance officer authorization |
+| `publishImplementation` | `provider: ServiceProvider, implementation: ServiceImplementation` | `Diagnostic` *(success/failure; a WARNING when the referenced interface is DEPRECATED, OK otherwise)* |
+| `withdrawImplementation` | `provider: ServiceProvider, implementation: ServiceImplementation` | `Diagnostic` — symmetric to `publishImplementation`; the provider is explicit so that the ownership check (the implementation MUST belong to the provider) and the PublishHook authorization are unambiguous |
+| `deprecateCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` — a soft marker: it sets `status = DEPRECATED`, existing implementations stay, lookups keep delivering. One-way. |
+| `removeCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` — a strict reject: ERROR with code `CATALOG_HAS_LIVE_IMPLS` as long as implementations reference it. No auto-cascade. |
+| `addCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` — flowed through PDP/PEP, gates on governance officer authorization |
 | `deprecateCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` |
 | `removeCatalogEntry` | `serviceInterface: ServiceInterface, requestor: EString` | `Diagnostic` |
 
 ### `ConsumerCapability`
 
-Was ein Consumer beim Lookup mitschickt, damit der Registry-seitig Flavor-Matching möglich ist. **Nicht persistent** — pro Lookup übergeben.
+What a consumer sends along with a lookup so that flavor matching is possible on the registry side. **Not persistent** — passed per lookup.
 
-| Feature | Typ | Bounds | Notes |
+| Feature | Type | Bounds | Notes |
 |---|---|---|---|
-| `consumerId` | `EString` | `0..1` | optional, für Auditing / Policy-Entscheidungen |
-| `supportedFlavors` | `FlavorKind` | `1..*` | mindestens ein Flavor — sonst kann der Consumer gar nichts konsumieren |
-| `properties` | `Property` | `0..*` | **containment**, zusätzliche Capability-Hinweise (z.B. unterstützte Content-Types, Encoding-Präferenzen) |
+| `consumerId` | `EString` | `0..1` | optional, for auditing / policy decisions |
+| `supportedFlavors` | `FlavorKind` | `1..*` | at least one flavor — otherwise the consumer cannot consume anything at all |
+| `properties` | `Property` | `0..*` | **containment**, additional capability hints (supported content types, encoding preferences, …) |
 
 ---
 
-## Interception-Hooks
+## Interception hooks
 
-DDSR enthält **keine eigene Policy-/PDP-Semantik**. Stattdessen drei Hook-Interfaces, an denen ein Integrator beliebige externe Logik (PDP, IAM, Audit, Property-Mutation, Tenant-Filtering, …) anschließen kann. Der Prototyp shipt mit *keinen* Hook-Implementationen, läuft also Hook-frei (alle Aktionen erlaubt).
+DDSR contains **no policy/PDP semantics of its own**. Instead there are three hook interfaces where an integrator can attach arbitrary external logic (a PDP, IAM, auditing, property mutation, tenant filtering, …). The prototype ships with *no* hook implementations and therefore runs hook-free (every action is allowed).
 
-**Hook-Vertrag**: jede Hook-Methode gibt eine `Diagnostic` zurück. Severity `OK` / `INFO` / `WARNING` → fortfahren; `ERROR` / `CANCEL` → abbrechen, diese Diagnostic an den Caller zurückgeben. Mehrere Hooks bilden eine Pipeline — jeder muss OK liefern, sonst Abbruch.
+**The hook contract**: every hook method returns a `Diagnostic`. Severity `OK` / `INFO` / `WARNING` → carry on; `ERROR` / `CANCEL` → abort and hand that diagnostic back to the caller. Several hooks form a pipeline — each one has to return OK, otherwise it aborts.
 
-Die drei Hook-Listen werden non-containment an `ServiceRegistry` (also vererbt nach `LocalServiceRegistry` und `RemoteServiceRegistry`) gehängt:
+The three hook lists hang off `ServiceRegistry` non-containment (and are therefore inherited by `LocalServiceRegistry` and `RemoteServiceRegistry`):
 
 - `publishHooks : PublishHook [0..*]`
 - `discoveryHooks : DiscoveryHook [0..*]`
@@ -506,7 +506,7 @@ Die drei Hook-Listen werden non-containment an `ServiceRegistry` (also vererbt n
 
 ### `PublishHook` (abstract, interface)
 
-Provider-Seite. Wird vor `publishImplementation` / `withdrawImplementation` konsultiert.
+The provider side. Consulted before `publishImplementation` / `withdrawImplementation`.
 
 **EOperations**:
 - `onPublish(provider: ServiceProvider, implementation: ServiceImplementation) : Diagnostic`
@@ -514,7 +514,7 @@ Provider-Seite. Wird vor `publishImplementation` / `withdrawImplementation` kons
 
 ### `DiscoveryHook` (abstract, interface)
 
-Consumer-Seite. Wird vor Lookup und Subscription konsultiert, plus Ergebnis-Filterung.
+The consumer side. Consulted before a lookup and a subscription, plus for filtering the result.
 
 **EOperations**:
 - `onLookup(interfaceName: EString, filter: EString, capability: ConsumerCapability) : Diagnostic`
@@ -523,71 +523,71 @@ Consumer-Seite. Wird vor Lookup und Subscription konsultiert, plus Ergebnis-Filt
 
 ### `DistributionHook` (abstract, interface)
 
-Federation-Grenze. Wird bei Outbound (Local → Broker) und Inbound (Broker → Local) Events konsultiert.
+The federation boundary. Consulted on outbound (local → broker) and inbound (broker → local) events.
 
 **EOperations**:
 - `onOutbound(event: ServiceEvent) : Diagnostic`
 - `onInbound(event: ServiceEvent) : Diagnostic`
 
-### Verhältnis zu XACML / OPA
+### The relationship to XACML / OPA
 
-Integratoren, die ein externes XACML-System anschließen wollen, schreiben einen Adapter-Hook: in `onPublish` baut der Adapter einen XACML-Request, schickt ihn an den PDP, und mappt die Antwort auf `Diagnostic.severity`. Identisch für OPA, IAM-Tokens, hauseigene Policy-Engines. DDSR muss nichts von dem konkreten Policy-Format wissen — der Hook ist der Übergangspunkt.
-
----
-
-## Bewusst NICHT im ersten Wurf
-
-- **`ServiceComponentRuntime`** als eigene EClass — wird nachgezogen, falls DS-Lifecycle-Operations (`enableComponent`, `disableComponent`, `getComponentDescriptions(provider)`, `getComponentConfigurations(description)`) gebraucht werden.
-- **`PrototypeServiceFactory` / `ServiceObjects`** — Prototyp-Scope wird vorerst nur als `ServiceScope`-Enum-Wert erfasst, ohne eigene Erzeugungs-API.
-- **`Bundle`-Lifecycle** (`STARTING`/`ACTIVE`/`STOPPING`/…) — DDSR modelliert Services, nicht Deployment-Einheiten.
-- **`Filter` als EClass** — wird vorerst als plain `EString` (LDAP-Filter-Syntax) gespeichert. Parser/Evaluator ist Sache der Implementierung.
-- **Konkrete Policy-Engine-Implementationen** (XACML-Parser, OPA-Bindings, …). Das Modell liefert die drei Interception-Hooks (`PublishHook`, `DiscoveryHook`, `DistributionHook`); Authorization-Logik kommt von extern als Hook-Adapter.
-- **Weitere Flavors über REST/MQTT hinaus** (gRPC, WebSocket, Kafka, AMQP, …). Werden erst gebraucht, wenn ein konkreter Bedarf besteht; das Flavor-Plugin-Konzept ist genau dafür gemacht.
-- **Konkrete Flavor-Client/-Server-Implementations**. Die `RestFlavor`/`MqttFlavor`-Klassen sind reine Beschreibungen — die HTTP- bzw. MQTT-Bibliotheken, die das tatsächlich umsetzen, sind außerhalb des Ecore-Modells.
+Integrators who want to attach an external XACML system write an adapter hook: in `onPublish` the adapter builds an XACML request, sends it to the PDP and maps the answer onto `Diagnostic.severity`. The same for OPA, IAM tokens, in-house policy engines. DDSR need know nothing about the concrete policy format — the hook is the point of transition.
 
 ---
 
-## Offene TODOs nach erstem Modellanlegen
+## Deliberately NOT in the first cut
 
-### OCL-Constraints
+- **`ServiceComponentRuntime`** as an EClass of its own — it will follow if DS lifecycle operations (`enableComponent`, `disableComponent`, `getComponentDescriptions(provider)`, `getComponentConfigurations(description)`) are needed.
+- **`PrototypeServiceFactory` / `ServiceObjects`** — the prototype scope is captured for now only as a `ServiceScope` enum value, with no creation API of its own.
+- **The `Bundle` lifecycle** (`STARTING`/`ACTIVE`/`STOPPING`/…) — DDSR models services, not deployment units.
+- **`Filter` as an EClass** — it is stored as a plain `EString` (LDAP filter syntax) for now. The parser/evaluator is the implementation's business.
+- **Concrete policy engine implementations** (an XACML parser, OPA bindings, …). The model delivers the three interception hooks (`PublishHook`, `DiscoveryHook`, `DistributionHook`); authorization logic comes from outside as a hook adapter.
+- **Further flavors beyond REST/MQTT** (gRPC, WebSocket, Kafka, AMQP, …). They will be needed once there is a concrete need; the flavor plugin concept is made for exactly that.
+- **Concrete flavor client/server implementations.** The `RestFlavor`/`MqttFlavor` classes are pure descriptions — the HTTP and MQTT libraries that actually realise them live outside the Ecore model.
 
-Die OCL-Engine ist **Fennec M2X OCL** unter `/opt/git/m2m/workspace`. Doku in `docs/ocl-user-guide.md` und `docs/ocl-architecture.md`. Annotation-Namespace ist `http://www.eclipse.org/fennec/m2x/ocl/1.0`, Detail-Keys sind die Constraint-Namen (für invariants) bzw. die Reservierten `derive`, `initial`, `body`, `pre`, `post` für Setting-/Invocation-Delegates.
+---
 
-**Bereits ausführbar als M2X-OCL im ddsr.ecore:**
+## Open TODOs after the first pass at the model
 
-| Class | Invariant-Name | Bedingung |
+### OCL constraints
+
+The OCL engine is **Fennec M2X OCL** under `/opt/git/m2m/workspace`. The documentation is in `docs/ocl-user-guide.md` and `docs/ocl-architecture.md`. The annotation namespace is `http://www.eclipse.org/fennec/m2x/ocl/1.0`, and the detail keys are the constraint names (for invariants) or the reserved `derive`, `initial`, `body`, `pre`, `post` for setting/invocation delegates.
+
+**Already executable as M2X OCL in ddsr.ecore:**
+
+| Class | Invariant name | Condition |
 |---|---|---|
 | `VersionedElement` | `validSemver` | `version = null or version.matches('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')` |
 | `NumericRangeConstraint` | `atLeastOneBound` | `min ≠ null or max ≠ null` |
 | `NumericRangeConstraint` | `rangeOrdered` | `min = null or max = null or min ≤ max` |
-| `StringPatternConstraint` | `lengthBoundsNonNegative` | beide Length-Bounds ≥ 0 wenn gesetzt |
-| `StringPatternConstraint` | `lengthBoundsOrdered` | `minLength ≤ maxLength` wenn beide gesetzt |
-| `CollectionSizeConstraint` | `sizeBoundsNonNegative` | beide Size-Bounds ≥ 0 wenn gesetzt |
-| `CollectionSizeConstraint` | `sizeBoundsOrdered` | `minSize ≤ maxSize` wenn beide gesetzt |
+| `StringPatternConstraint` | `lengthBoundsNonNegative` | both length bounds ≥ 0 when set |
+| `StringPatternConstraint` | `lengthBoundsOrdered` | `minLength ≤ maxLength` when both are set |
+| `CollectionSizeConstraint` | `sizeBoundsNonNegative` | both size bounds ≥ 0 when set |
+| `CollectionSizeConstraint` | `sizeBoundsOrdered` | `minSize ≤ maxSize` when both are set |
 | `ComponentConfiguration` | `failureOnlyWhenFailed` | `failure ≠ null` ⇔ `state = FAILED_ACTIVATION` |
-| `ServiceRegistration` | `unregisteredNotInRegistry` | wenn `unregistered`, dann in keiner `LocalServiceRegistry.registrations` enthalten |
+| `ServiceRegistration` | `unregisteredNotInRegistry` | when `unregistered`, it is contained in no `LocalServiceRegistry.registrations` |
 | `ServiceImplementation` | `atLeastOneInterface` | `serviceInterfaces->notEmpty()` |
-| `ServiceImplementation` | `operationFlavorsCoverInterfaces` | jeder `ServiceOperationFlavor.operation` gehört zu einem der `serviceInterfaces` |
-| `RemoteServiceRegistry` | `publishedImplsHaveFlavor` | jede publizierte Implementation hat ≥1 Flavor |
-| `RemoteServiceRegistry` | `publishedImplsReferenceCatalog` | jede `serviceInterfaces`-Referenz einer publizierten Impl existiert im `catalog` |
-| `RemoteServiceRegistry` | `publishedImplsOwnedByListedProvider` | jede publizierte Impl ist Containment-mäßig in einem der `providers` |
+| `ServiceImplementation` | `operationFlavorsCoverInterfaces` | every `ServiceOperationFlavor.operation` belongs to one of the `serviceInterfaces` |
+| `RemoteServiceRegistry` | `publishedImplsHaveFlavor` | every published implementation has ≥1 flavor |
+| `RemoteServiceRegistry` | `publishedImplsReferenceCatalog` | every `serviceInterfaces` reference of a published impl exists in the `catalog` |
+| `RemoteServiceRegistry` | `publishedImplsOwnedByListedProvider` | every published impl is, by containment, inside one of the `providers` |
 
-**StringPatternConstraint Regex-Syntax-Validität**: in OCL nicht statisch entscheidbar — wird vom Engine-Aufrufer geprüft (z.B. Java `Pattern.compile`, TS `new RegExp`, Python `re.compile`).
+**The regex syntax validity of StringPatternConstraint**: not statically decidable in OCL — it is checked by whoever calls the engine (Java `Pattern.compile`, TS `new RegExp`, Python `re.compile`).
 
-**Withdraw-Ownership** (`withdrawImplementation(provider, implementation)`): `implementation.eContainer() = provider`. Aktuell nicht als statischer OCL-Invariant ausgedrückt, weil sie auf einem Operations-*Parameter-Paar* zu Laufzeit gilt, nicht auf einem persistenten Modell-State — gehört in den `pre:`-Body der Operation. **TODO** (sobald wir Setting/Invocation-Delegates aktivieren):
+**Withdraw ownership** (`withdrawImplementation(provider, implementation)`): `implementation.eContainer() = provider`. It is not expressed as a static OCL invariant today because it holds at runtime over a *pair of operation parameters*, not over persistent model state — it belongs in the operation's `pre:` body. **TODO** (as soon as we activate setting/invocation delegates):
 
 ```
 pre ownershipCheck: implementation.eContainer() = provider
 ```
 
-## ExpressionConstraint und Invariant in der Praxis
+## ExpressionConstraint and Invariant in practice
 
-Wer reine OCL-Annotations am Ecore-EModelElement verwenden will (z.B. eine Bedingung am Modell, nicht am Modell-*Inhalt*), nutzt die M2X-Detail-Keys direkt — `body`, `pre`, `post`, `derive`, `initial`, Constraint-Name. Wer eine Constraint **als Modell-Inhalt** ausdrücken muss (typischer Fall: der Governance-Officer schreibt im API-Katalog `amount > 0` ohne den Ecore zu kennen), benutzt `ExpressionConstraint` / `Invariant`.
+Whoever wants to use plain OCL annotations on the Ecore EModelElement (a condition on the model rather than on the model's *content*, say) uses the M2X detail keys directly — `body`, `pre`, `post`, `derive`, `initial`, a constraint name. Whoever has to express a constraint **as model content** (the typical case: the governance officer writes `amount > 0` in the API catalog without knowing the Ecore) uses `ExpressionConstraint` / `Invariant`.
 
-Beispiele:
+Examples:
 
 ```ocl
--- Parameter.constraints (an einem 'amount: int' Parameter)
+-- Parameter.constraints (on an 'amount: int' parameter)
 ExpressionConstraint {
   name = "positiveAmount"
   expression = "self > 0"
@@ -613,19 +613,19 @@ Invariant {
 }
 ```
 
-Die DDSR-Engines (Java, TS) müssen für jede unterstützte `ExpressionLanguage` einen Evaluator mitbringen. Im Prototyp ist das nur **OCL** — auf Java-Seite läuft das durch Fennec M2X, auf TS-Seite braucht es eine OCL-Implementation; falls nicht verfügbar, ist die Alternative, einen OCL-zu-TS-Compiler im Code Publisher zu bauen, der `ExpressionConstraint.expression` in TypeScript-Code übersetzt. (Diese Entscheidung ist nicht jetzt nötig — Modell-Surface ist offen.)
+The DDSR engines (Java, TS) have to bring an evaluator for every supported `ExpressionLanguage`. In the prototype that is **OCL** only — on the Java side it runs through Fennec M2X, on the TS side an OCL implementation is needed; failing that, the alternative is to build an OCL-to-TS compiler in the code publisher that translates `ExpressionConstraint.expression` into TypeScript code. (That decision is not needed now — the model surface is open.)
 
-### Modell-Erweiterungs-TODOs (sobald REQUIREMENTS Open Questions geklärt sind)
+### Model extension TODOs (once the REQUIREMENTS open questions are settled)
 
-- **Q3 (Reverse-Engineering-Quelle):** ggf. eigene EAnnotation-Source `"http://geckoprojects.org/ddsr/reveng/1.0"` mit Marker-Details (z.B. „extracted from Java annotation X").
-- **Q4 (PDP-Contract):** `PolicyRequest`/`PolicyDecision`-Felder verfeinern (heute Stub).
-- **Q8 (Semver-Kompatibilitätsregeln):** ggf. EAnnotations an `ServiceOperation` / `Parameter` / `ParameterConstraint`, die Versions-Impact-Klassifizierung tragen (z.B. `breakingChange="true"` als Hinweis für den Code Publisher).
+- **Q3 (the reverse-engineering source):** possibly an EAnnotation source of its own, `"http://geckoprojects.org/ddsr/reveng/1.0"`, with marker details (e.g. "extracted from Java annotation X").
+- **Q4 (the PDP contract):** refine the `PolicyRequest`/`PolicyDecision` fields (a stub today).
+- **Q8 (semver compatibility rules):** possibly EAnnotations on `ServiceOperation` / `Parameter` / `ParameterConstraint` carrying the version impact classification (e.g. `breakingChange="true"` as a hint for the code publisher).
 
-### Sonstiges
-- GenModel: `oSGiCompatible = true`, `basePackage = org.gecko.ddsr.model`, `resource = XMI` (steht schon im aktuellen Ecore).
-- Beispielinstanzen `*.xmi` für je einen typischen Fall:
-  - API-Katalog-Snapshot (`RemoteServiceRegistry` mit zwei, drei `ServiceInterface`s mit Operations + Constraints)
-  - `ServiceImplementation` mit `RestFlavor` *und* `MqttFlavor` für dasselbe Interface
-  - `LocalServiceRegistry` mit Registration + Reference + Configuration
-  - `ConsumerCapability`-Beispiele für REST-only und REST+MQTT-Consumer
-  - Bestehende `ServiceProvider.xmi`, `ServiceRegistry.xmi`, `PaypalPaymentImpl.xmi` als Migrations-Vorlagen.
+### Miscellaneous
+- GenModel: `oSGiCompatible = true`, `basePackage = org.gecko.ddsr.model`, `resource = XMI` (already in the current Ecore).
+- Example instances `*.xmi` for one typical case each:
+  - an API catalog snapshot (a `RemoteServiceRegistry` with two or three `ServiceInterface`s with operations + constraints)
+  - a `ServiceImplementation` with a `RestFlavor` *and* an `MqttFlavor` for the same interface
+  - a `LocalServiceRegistry` with a registration + reference + configuration
+  - `ConsumerCapability` examples for a REST-only and a REST+MQTT consumer
+  - the existing `ServiceProvider.xmi`, `ServiceRegistry.xmi`, `PaypalPaymentImpl.xmi` as migration templates.

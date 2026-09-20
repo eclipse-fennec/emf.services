@@ -1,474 +1,471 @@
-# Discovery, Acquisition, Invocation — die drei Stufen und die Broker-Grenze
+# Discovery, acquisition, invocation — the three stages and the broker's boundary
 
-Design-Entwurf (Stufe 3, wie [UPDATE_POLICY.md](UPDATE_POLICY.md) und
-[WIRE_CHANNELS.md](WIRE_CHANNELS.md) — spezifiziert, nicht
-implementiert). Entstanden aus der Frage: *Wir wissen, wer eine
-Implementation anbietet — aber ein Consumer, der sich eine Referenz
-holt, konsumiert deshalb noch lange nicht. Wo gehört das Wissen über
-tatsächliche Nutzung hin?*
+A design draft (stage 3, like [UPDATE_POLICY.md](UPDATE_POLICY.md) and
+[WIRE_CHANNELS.md](WIRE_CHANNELS.md) — specified, not implemented).
+It came out of the question: *we know who offers an implementation —
+but a consumer that fetches a reference is a long way from consuming
+it. Where does knowledge about actual usage belong?*
 
-## 1. Die drei Stufen und der Broker-Scope
+## 1. The three stages and the broker's scope
 
-OSGi kennt drei Stufen der Service-Nutzung. DDSR bildet sie so ab:
+OSGi knows three stages of service usage. DDSR maps them like this:
 
-| Stufe | OSGi | DDSR | Broker-Rolle |
+| Stage | OSGi | DDSR | The broker's role |
 |---|---|---|---|
-| **Discovery** | `getServiceReference` | `GET /references` | vollständig — implementiert |
-| **Acquisition** | `getService` / `ungetService`, Use-Count | ConsumerSession + Leases (dieses Dokument) | vollständig — **entworfen** |
-| **Invocation** | Methodenaufruf | Flavor-Pfad (REST/MQTT/…) | **keine** — peer-to-peer |
+| **Discovery** | `getServiceReference` | `GET /references` | complete — implemented |
+| **Acquisition** | `getService` / `ungetService`, use count | ConsumerSession + leases (this document) | complete — **designed** |
+| **Invocation** | a method call | the flavor path (REST/MQTT/…) | **none** — peer to peer |
 
-**Festlegung: der Broker unterstützt genau die ersten beiden Stufen.**
-Für die Invocation ist er ausschließlich Vermittler der
-Peer-to-Peer-Verbindungsinformation (die Flavors in der Service-
-Beschreibung); der Aufruf selbst berührt den Broker nie. Das ist die
-bestehende Architektur und bleibt so — ein Broker-as-Gateway wäre ein
-anderes System.
+**The decision: the broker supports exactly the first two stages.**
+For the invocation it is purely the mediator of peer-to-peer connection
+information (the flavors in the service description); the call itself
+never touches the broker. That is the existing architecture and it
+stays — a broker-as-gateway would be a different system.
 
-Konsequenz, ehrlich benannt: **Acquisition ist ein kooperatives
-Protokoll, keine Durchsetzung.** Ein Consumer, der die
-Verbindungsinformation einmal hat, kann am Broker vorbei aufrufen. Die
-Akquisitionsstufe kauft Drain-Semantik (`DEPRECATE_AND_DRAIN`),
-Stale-Cleanup (OPEN_ISSUES C3) und Nutzungs-Telemetrie — nicht
-Zugriffskontrolle. Enforcement wäre Sache der Provider-Seite bzw. der
-Hook-Architektur (A3) und ist hier bewusst außen vor.
+The consequence, named honestly: **acquisition is a cooperative
+protocol, not enforcement.** A consumer that has the connection
+information once can call past the broker. The acquisition stage buys
+drain semantics (`DEPRECATE_AND_DRAIN`), stale cleanup (OPEN_ISSUES C3)
+and usage telemetry — not access control. Enforcement would be the
+provider side's business, or the hook architecture's (A3), and is
+deliberately out of scope here.
 
-## 2. Wer weiß was — die Epistemik
+## 2. Who knows what — the epistemics
 
-- **„Wer bietet an"** weiß der Broker transaktional sicher (Publish ist
-  bestätigt und persistiert).
-- **„Wer hat gesucht"** weiß er anekdotisch (`consumerId` am Lookup).
-- **„Wer will konsumieren"** ist die Lücke, die dieses Dokument füllt —
-  als *Behauptung mit Verfallsdatum* (Lease), denn verteilt gibt es
-  keinen erzwungenen Use-Count: ein abgestürzter Consumer zählt nicht
-  selbst herunter.
-- **„Wer konsumiert tatsächlich"** weiß in letzter Instanz nur der
-  Provider an seinem Endpoint — und auch nur, wenn Invocations eine
-  Consumer-Identität tragen (tun sie heute nicht; bewusst kein Teil
-  dieses Entwurfs).
+- **"Who offers"** the broker knows with transactional certainty (a
+  publish is acknowledged and persisted).
+- **"Who searched"** it knows anecdotally (`consumerId` at lookup).
+- **"Who wants to consume"** is the gap this document fills — as an
+  *assertion with an expiry date* (a lease), because in a distributed
+  system there is no enforced use count: a crashed consumer does not
+  count itself down.
+- **"Who actually consumes"** is, in the last instance, known only to
+  the provider at its endpoint — and only if invocations carry a
+  consumer identity (they do not today; deliberately not part of this
+  draft).
 
-## 3. Modell: die Session besitzt die Lease, die Registration bekommt eine Sicht
+## 3. Model: the session owns the lease, the registration gets a view
 
-### 3.1 Warum nicht an der `ServiceReference`
+### 3.1 Why not on the `ServiceReference`
 
-`ServiceReference` ↔ `ServiceRegistration` ist ein 1:1-Paar pro
-publiziertem Service. „Viele und flüchtig" sind nicht die Referenzen,
-sondern ihre **Wire-Kopien**: Die Referenz ist das consumer-sichtbare
-Artefakt und wird in jedes Lookup-Ergebnis und jedes Event-Dokument
-kopiert. Nutzungszustand an der Referenz würde also (a) in jeder
-Serialisierung mitreisen und wäre veraltet, sobald er den Draht
-berührt, (b) Schreiblast auf ein read-mostly-Objekt legen, (c) dem
-Consumer eine Live-Sicht suggerieren, die keine ist.
+`ServiceReference` ↔ `ServiceRegistration` is a 1:1 pair per published
+service. What is "many and fleeting" is not the references but their
+**wire copies**: the reference is the consumer-visible artefact and is
+copied into every lookup result and every event document. Usage state
+on the reference would therefore (a) travel along in every
+serialisation and be stale the moment it touched the wire, (b) put
+write load on a read-mostly object, (c) suggest a live view to the
+consumer that is not one.
 
-`ServiceReference.usingProviders` ist darüber hinaus doppelt
-unglücklich: falscher Ort (siehe oben) **und falscher Typ** — ein
-Consumer ist nicht notwendig ein `ServiceProvider`. Das Feature wird
-deprecated und durch das Folgende ersetzt (OPEN_ISSUES M5).
+`ServiceReference.usingProviders` is doubly unfortunate on top of that:
+the wrong place (see above) **and the wrong type** — a consumer is not
+necessarily a `ServiceProvider`. The feature is deprecated and replaced
+by what follows (OPEN_ISSUES M5).
 
-### 3.2 Warum nicht als Zähler an der `ServiceRegistration`
+### 3.2 Why not as a counter on the `ServiceRegistration`
 
-Ein gespeicherter `usageCount:int` driftet beim ersten Consumer-Crash —
-niemand zählt herunter. **Die Wahrheit ist die Lease; der Count ist
-eine Abfrage.**
+A stored `usageCount:int` drifts at the first consumer crash — nobody
+counts down. **The truth is the lease; the count is a query.**
 
-### 3.3 Das Modell
+### 3.3 The model
 
 ```
 ConsumerSession                       (containment: LocalServiceRegistry.sessions)
-  consumerId    : String              (Identität, siehe §7)
+  consumerId    : String              (identity, see §7)
   capabilities  : ConsumerCapability  (containment; greedy, supportedFlavors, …)
   lastRenewal   : Instant
   acquisitions  : ServiceRegistration[*]   (non-containment)
 
 ServiceRegistration
-  usingSessions : ConsumerSession[*]  (eOpposite zu acquisitions — abgeleitete Sicht)
+  usingSessions : ConsumerSession[*]  (eOpposite of acquisitions — the derived view)
 ```
 
-- **Owner ist die Session**, denn der Lease-Lebenszyklus folgt dem
-  Consumer, nicht dem Service: Ein Heartbeat erneuert *alle*
-  Akquisitionen eines Consumers auf einen Schlag, ein Shutdown gibt
-  alle frei, ein Crash lässt alle gemeinsam verfallen. Das dominante
-  Ereignis „Consumer weg" trifft genau eine Session statt N
-  Registrations. (Auch OSGi hält die Use-Counts im *BundleContext* des
-  Nutzers; `getUsingBundles()` ist nur die aggregierte Sicht.)
-- Die Drain-Frage von `DEPRECATE_AND_DRAIN` wird zur Abfrage der
-  Gegenrichtung: `registration.usingSessions.isEmpty()`.
-- Akquisitionen zeigen auf die **Registration** (stabil, 1:1 zur
-  publizierten Implementation, überlebt die Referenz-Id-Regeneration
-  beim Broker-Neustart *nicht* — siehe §6, das ist okay).
+- **The session is the owner**, because the lease lifecycle follows the
+  consumer, not the service: one heartbeat renews *all* of a consumer's
+  acquisitions in one go, one shutdown releases them all, one crash
+  lets them all expire together. The dominant event, "the consumer is
+  gone", hits exactly one session instead of N registrations. (OSGi
+  too keeps the use counts in the user's *BundleContext*;
+  `getUsingBundles()` is only the aggregated view.)
+- The drain question of `DEPRECATE_AND_DRAIN` becomes a query in the
+  other direction: `registration.usingSessions.isEmpty()`.
+- Acquisitions point at the **registration** (stable, 1:1 with the
+  published implementation, and it does *not* survive the reference-id
+  regeneration of a broker restart — see §6, which is fine).
 
-Die Ecore-Änderung (neue EClass `ConsumerSession`,
-`LocalServiceRegistry.sessions`, eOpposite an `ServiceRegistration`,
-Deprecation von `usingProviders`) erfolgt separat; Codegen macht wie
-üblich der Modell-Owner.
+The ecore change (a new EClass `ConsumerSession`,
+`LocalServiceRegistry.sessions`, the eOpposite on `ServiceRegistration`,
+deprecating `usingProviders`) happens separately; code generation is
+the model owner's job as usual.
 
-## 4. Protokoll: ein idempotenter Endpoint statt drei Verben
+## 4. Protocol: one idempotent endpoint instead of three verbs
 
-Acquire, Release und Heartbeat kollabieren zu **einem idempotenten
-Voll-Abgleich** — dasselbe Muster wie FR-Sync-Reconnect (Snapshot statt
-Delta, Zustand statt Historie):
+Acquire, release and heartbeat collapse into **one idempotent full
+replace** — the same pattern as FR-Sync-Reconnect (a snapshot instead
+of a delta, state instead of history):
 
 ```
-PUT    /consumers/{consumerId}    Body: ConsumerSession-XMI
-                                  (capabilities + acquisitions als Referenz-Ids)
-                                  → legt an oder ersetzt vollständig; erneuert die Lease
-DELETE /consumers/{consumerId}    → Shutdown: gibt alle Akquisitionen sofort frei
-GET    /consumers/{consumerId}    → Diagnose (was glaubt der Broker über mich?)
+PUT    /consumers/{consumerId}    body: ConsumerSession XMI
+                                  (capabilities + acquisitions as reference ids)
+                                  → creates or fully replaces; renews the lease
+DELETE /consumers/{consumerId}    → shutdown: releases every acquisition at once
+GET    /consumers/{consumerId}    → diagnostics (what does the broker believe about me?)
 ```
 
-- **Acquire** = Ref in die lokale Liste aufnehmen, `PUT`.
-  **Release** = Ref entfernen, `PUT`. **Heartbeat** = unverändertes
-  `PUT` im Intervall. Ein Roundtrip pro Intervall, crash-sicher,
-  reihenfolge-unempfindlich (letzter `PUT` gewinnt).
-- **TTL:** Lease verfällt nach 2× Intervall ohne `PUT` (Werte wie in
-  UPDATE_POLICY §4: 10 min / 20 min; konfigurierbar am Broker). Verfall
-  gibt alle Akquisitionen der Session frei.
-- **Liveness-Abkürzung:** Der Abriss der Event-Verbindung (SSE/MQTT-
-  Session) *darf* den Verfall vorziehen — die offene Verbindung ist ein
-  Gratis-Präsenzsignal und unterbietet den Timeout im Normalfall. Der
-  Heartbeat bleibt die Wahrheit für Transporte ohne
-  Verbindungssemantik. Umgekehrt gilt nicht: eine offene Verbindung
-  ersetzt den `PUT` nicht (sie sagt „lebt", nicht „hält Ref X").
-- Der Client hat alles schon: die `noteReference`-Map und
-  `subscribedInterfaces()` des SDK sind genau die `acquisitions`-Liste;
-  `close()`/Shutdown-Hooks rufen das `DELETE` (Java und TS symmetrisch,
-  FR-P3-Ordnung: erst Withdraw/Release, dann Endpoint/Streams).
-- **Wire-Realisierung (umgesetzt):** Das PUT-Dokument ist ein
-  Multi-Root-XMI nach der Publish-Konvention — die `ConsumerSession`
-  (consumerId + capabilities containment) plus
-  **Geschwister-`ServiceReference`-Stubs, die nur ihre `id` tragen**;
-  die Stub-Liste *ist* die Acquisition-Liste. Das Modell-Feature
-  `acquisitions` ist transient und reist nie im XMI (ebenso
-  `usingSessions` und das `reference`⟷`registration`-Paar: die
-  Provider-Handles sind broker-seitig Laufzeitobjekte ohne
-  Containment-Heimat — ein serialisierter Link würde jeden Snapshot
-  zerreißen). `GET` antwortet formsymmetrisch. Der Pfad besitzt die
-  Identität; eine widersprechende Body-Id ist ein 400. **Stale
-  Acquire** (Ref-Id, die es nicht mehr gibt — etwa nach
-  Broker-Neustart mit regenerierten Ids): wird übersprungen und im
-  Diagnostic benannt, nie abgelehnt (§5).
-- Nebengewinn: dieselbe Session-Struktur ist der natürliche Träger für
-  die **Interessenlage der Event-Subscription** — das dokumentierte
-  A2-Loch, dass `EventSource.open()` keine Interessen transportiert.
+- **Acquire** = add the reference to the local list, `PUT`.
+  **Release** = remove the reference, `PUT`. **Heartbeat** = an
+  unchanged `PUT` on the interval. One round trip per interval, crash
+  safe, insensitive to ordering (the last `PUT` wins).
+- **TTL:** a lease expires after 2× the interval without a `PUT`
+  (values as in UPDATE_POLICY §4: 10 min / 20 min; configurable on the
+  broker). Expiry releases every acquisition of the session.
+- **A liveness shortcut:** the loss of the event connection (the
+  SSE/MQTT session) *may* bring the expiry forward — an open connection
+  is a free presence signal and beats the timeout in the normal case.
+  The heartbeat stays the truth for transports with no connection
+  semantics. The converse does not hold: an open connection does not
+  replace the `PUT` (it says "alive", not "holds reference X").
+- The client has it all already: the SDK's `noteReference` map and
+  `subscribedInterfaces()` are exactly the `acquisitions` list;
+  `close()`/shutdown hooks call the `DELETE` (symmetric in Java and TS,
+  in FR-P3 order: withdraw/release first, then the endpoint/streams).
+- **Wire realisation (implemented):** the PUT document is multi-root
+  XMI following the publish convention — the `ConsumerSession`
+  (consumerId plus capabilities by containment) plus **sibling
+  `ServiceReference` stubs that carry nothing but their `id`**; the
+  stub list *is* the acquisition list. The model feature `acquisitions`
+  is transient and never travels in the XMI (nor does `usingSessions`,
+  nor the `reference`⟷`registration` pair: the provider handles are
+  runtime objects on the broker side with no containment home — a
+  serialised link would tear every snapshot apart). `GET` answers in
+  the same shape. The path owns the identity; a body id that
+  contradicts it is a 400. **A stale acquire** (a reference id that no
+  longer exists — after a broker restart with regenerated ids, say) is
+  skipped and named in the diagnostic, never refused (§5).
+- A side benefit: the same session structure is the natural carrier for
+  the **interests of the event subscription** — the documented A2 hole
+  that `EventSource.open()` carries no interests.
 
-## 5. Semantik und Garantien
+## 5. Semantics and guarantees
 
-- **Over-Claiming ist harmlos** (ein Consumer hält Leases auf Refs, die
-  er nie aufruft — kostet nur verzögertes Drain), **Under-Claiming
-  schadet nur ihm selbst** (wer nicht akquiriert, verliert den
-  Drain-Schutz: sein Service kann unter ihm weg-retired werden). Beides
-  bewusst symmetrisch zur „lieber überzustellen als verwerfen"-Regel
-  der Events.
-- Der Broker darf Leases jederzeit vergessen (Neustart, §6). Consumer
-  müssen mit `RETIRED`/`UNREGISTERING` trotz gehaltener Lease umgehen
-  können — die Lease ist Schutz *im Rahmen der Policy*, kein Vertrag.
+- **Over-claiming is harmless** (a consumer holds leases on references
+  it never calls — it costs only a delayed drain), **under-claiming
+  hurts only itself** (whoever does not acquire loses the drain
+  protection: their service can be retired out from under them). Both
+  deliberately symmetric with the "rather over-deliver than drop" rule
+  of the events.
+- The broker may forget leases at any time (a restart, §6). Consumers
+  have to cope with `RETIRED`/`UNREGISTERING` despite holding a lease —
+  the lease is protection *within the policy*, not a contract.
 
-## 6. Persistenz: bewusst nicht
+## 6. Persistence: deliberately not
 
-Sessions und Leases sind **Laufzeitzustand** und gehören nicht in
-`broker-state.xmi`. Nach einem Broker-Neustart bauen die Consumer die
-Map über ihre regulären `PUT`s selbst wieder auf — dieselbe
-Philosophie wie FR-Sync-Reconnect, und es erspart das
-Verfallsdatum-Problem beim Laden alter Snapshots. (Praktisch:
-Referenz-Ids werden beim Reindex ohnehin regeneriert; persistierte
-Leases zeigten ins Leere.)
+Sessions and leases are **runtime state** and do not belong in
+`broker-state.xmi`. After a broker restart the consumers rebuild the
+map themselves through their regular `PUT`s — the same philosophy as
+FR-Sync-Reconnect, and it spares us the expiry-date problem when
+loading old snapshots. (In practice: reference ids are regenerated on
+reindex anyway; persisted leases would point at nothing.)
 
-**Folge-Regel für DEPRECATE_AND_DRAIN:** Direkt nach einem
-Broker-Neustart ist die Session-Map bis zu einem Heartbeat-Intervall
-lang leer. Auto-Retire darf „keine Nutzer mehr" daher erst glauben,
-wenn der Broker mindestens ein volles Intervall läuft — sonst drained
-ein Neustart versehentlich alles.
+**A consequent rule for DEPRECATE_AND_DRAIN:** right after a broker
+restart the session map is empty for up to one heartbeat interval.
+Auto-retire may therefore believe "no users any more" only once the
+broker has been running for at least one full interval — otherwise a
+restart drains everything by accident.
 
-## 7. Sicherheit (Vorbehalt)
+## 7. Security (a caveat)
 
-`consumerId` ist heute unauthentifiziert (S2). Ein idempotentes
-`PUT /consumers/{id}` mit fremder Id **ersetzt fremde Sessions** —
-damit ließe sich die Drain-Semantik stören (Leases fremder Consumer
-löschen → vorzeitiges Retire) oder aufblähen. Für den Prototyp
-akzeptiert und hier festgehalten; sobald S2 (AuthN) gelöst ist, wird
-die Session an die authentifizierte Identität gebunden und `{id}`
-gegen sie geprüft. In SECURITY.md als Ergänzung zu S2 zu vermerken,
-sobald die Implementierung ansteht.
+`consumerId` is unauthenticated today (S2). An idempotent
+`PUT /consumers/{id}` with somebody else's id **replaces their
+session** — which could be used to disturb the drain semantics (delete
+another consumer's leases → a premature retire) or to inflate it.
+Accepted for the prototype and recorded here; once S2 (authentication)
+is solved, the session is bound to the authenticated identity and
+`{id}` is checked against it. To be noted in SECURITY.md as an addition
+to S2 once the implementation is due.
 
-## 8. Registration als materialisierte Tatsache — die fehlenden Modell-Refs
+## 8. The registration as a materialised fact — the missing model references
 
-Die Registrierung einer Implementation durch einen Provider
-**materialisiert** eine `ServiceRegistration` — sie ist die dauerhafte
-Tatsache „Provider P hat Implementation I publiziert". Heute trägt die
-EClass diese Tatsache aber gar nicht: sie hat nur das
-`reference`-eOpposite und `unregistered`; die Zuordnung zu Provider und
-Implementation lebt im Broker als `implByRegistration`-**Side-Map**
-(IdentityHashMap, mit dokumentiert unspezifizierter
-Iterationsreihenfolge). Das gehört ins Modell:
+A provider registering an implementation **materialises** a
+`ServiceRegistration` — it is the durable fact "provider P published
+implementation I". Today the EClass does not carry that fact at all: it
+has only the `reference` eOpposite and `unregistered`; the mapping to
+provider and implementation lives in the broker as an
+`implByRegistration` **side map** (an IdentityHashMap, with documented
+unspecified iteration order). That belongs in the model:
 
 ```
 ServiceRegistration
   provider       : ServiceProvider        [1]  (non-containment)
   implementation : ServiceImplementation  [1]  (non-containment)
-  reference      : ServiceReference       [1]  (eOpposite, wie bisher)
-  usingSessions  : ConsumerSession[*]          (eOpposite zu acquisitions, §3)
+  reference      : ServiceReference       [1]  (eOpposite, as before)
+  usingSessions  : ConsumerSession[*]          (eOpposite of acquisitions, §3)
 ```
 
-Damit ist das Bild symmetrisch: **Registration = Provider-Seite der
-Nutzungsbeziehung, Session = Consumer-Seite** — beide referenzieren
-ihre Identität non-containment, und die `ServiceReference` bleibt das
-neutrale Wire-Artefakt dazwischen. Die Side-Map im Broker entfällt
-ersatzlos (ihre Scans werden Modell-Navigation).
+The picture is then symmetric: **the registration is the provider side
+of the usage relation, the session is the consumer side** — both
+reference their identity non-containment, and the `ServiceReference`
+stays the neutral wire artefact in between. The side map in the broker
+disappears without replacement (its scans become model navigation).
 
-## 9. Abgeleitete Felder per OCL (fennec m2x)
+## 9. Derived features through OCL (fennec m2x)
 
-Der Consumer-Count wird als **derived/volatile/transient**-Feature
-modelliert, mit fennec-m2x-OCL-Annotation
-(Namespace `http://www.eclipse.org/fennec/m2x/ocl/1.0` — das Ecore
-nutzt ihn bereits für die `unregisteredNotInRegistry`-Invariante an
-genau dieser Klasse):
+The consumer count is modelled as a **derived/volatile/transient**
+feature with a fennec m2x OCL annotation (namespace
+`http://www.eclipse.org/fennec/m2x/ocl/1.0` — the ecore already uses it
+for the `unregisteredNotInRegistry` invariant on exactly this class):
 
 ```
 ServiceRegistration.consumerCount : EInt  (derived, volatile, transient)
   ocl: self.usingSessions->size()
 ```
 
-Das passt doppelt: derived+transient heißt **nie auf dem Wire** (genau
-die §3.1-Anforderung), und „der Count ist eine Abfrage" wird wörtlich —
-die Abfrage steht deklarativ im Modell statt imperativ im Broker.
-Kosten, ehrlich: der Broker bekommt die OCL-Engine als
-Laufzeit-Abhängigkeit, und es wäre die erste *aktive* OCL-Nutzung im
-Projekt (M2 „Constraints nicht aktiv" würde in einem Aufwasch
-angefasst). Die Engine bringt für wiederholte Auswertung ihren
-`FingerprintExpressionCache` mit (m2x-Modul `ocl.fingerprint`,
-Cache-Key nach demselben Modell-Fingerprint-Prinzip wie emf.osgi/sd1) —
-Auswertungskosten pro Zugriff sind also beherrschbar. Fallback bleibt
-eine schlichte Java-Ableitung; die OCL-Variante ist die modellierte.
+That fits twice over: derived+transient means **never on the wire**
+(exactly the §3.1 requirement), and "the count is a query" becomes
+literally true — the query stands declaratively in the model instead of
+imperatively in the broker. The cost, honestly: the broker gains the
+OCL engine as a runtime dependency, and it would be the first *active*
+use of OCL in the project (M2, "constraints not active", would be
+addressed in the same pass). The engine brings its own
+`FingerprintExpressionCache` for repeated evaluation (the m2x module
+`ocl.fingerprint`, keyed on the same model-fingerprint principle as
+emf.osgi/sd1) — the evaluation cost per access is therefore
+manageable. The fallback stays a plain Java derivation; the OCL variant
+is the modelled one.
 
-**Stand 2026-08-25: umgesetzt** (Branch feat/ocl-activation, Issue #7).
-`consumerCount` ist im Modell (derived/volatile/transient, OCL
-`self.usingSessions->size()`), das EPackage deklariert
-setting- UND validationDelegates auf den fennec-OCL-Namespace, und die
-kuratierten Invarianten sind über `constraints`-Annotationen scharf
-(validSemver, Range-/Length-/Size-Bounds, replacedByIsDeprecated,
-atLeastOneInterface, operationFlavorsCoverInterfaces,
-unregisteredNotInRegistry, failureOnlyWhenFailed, die drei
-Registry-Invarianten; `immutableAfterPublish` bleibt Prosa/Doku). Die
-Broker-Launches tragen die OCL-Engine als runrequire — die
-Delegate-Factories kommen als DS-Services, die emf.osgi-Registry
-verdrahtet sie global. Zwei Portabilitäts-Anpassungen an den
-Ausdrücken: Enum-Vergleiche laufen über `toString()` (die Engine
-liefert für EnumLiteralExp das EEnumLiteral, generierte Modelle den
-typsicheren Enumerator — direkte Gleichheit wäre immer false; upstream
-an m2x gemeldet), und `eContainer().oclAsType(...)` wurde durch reine
-Modell-Navigation ersetzt. Achtung Delegate-Caching: EMF cached den
-Setting-Delegate pro Feature und Instanz — die Factory muss vor dem
-ersten `getConsumerCount()`-Zugriff registriert sein.
+**Status 2026-08-25: implemented** (branch feat/ocl-activation, issue
+#7). `consumerCount` is in the model (derived/volatile/transient, OCL
+`self.usingSessions->size()`), the EPackage declares setting *and*
+validation delegates on the fennec OCL namespace, and the curated
+invariants are live through `constraints` annotations (validSemver,
+range/length/size bounds, replacedByIsDeprecated, atLeastOneInterface,
+operationFlavorsCoverInterfaces, unregisteredNotInRegistry,
+failureOnlyWhenFailed, the three registry invariants;
+`immutableAfterPublish` stays prose/documentation). The broker launches
+carry the OCL engine as a runrequire — the delegate factories arrive as
+DS services and the emf.osgi registry wires them globally. Two
+portability adjustments to the expressions: enum comparisons go through
+`toString()` (the engine yields the EEnumLiteral for an EnumLiteralExp
+while generated models yield the type-safe enumerator — direct equality
+would always be false; reported upstream to m2x), and
+`eContainer().oclAsType(...)` was replaced by plain model navigation.
+Mind the delegate caching: EMF caches the setting delegate per feature
+and instance — the factory has to be registered before the first
+`getConsumerCount()` access.
 
-## 10. Hot/Cold-Cache: Registrierungen ohne Consumer auslagern
+## 10. Hot/cold cache: parking registrations with no consumers
 
-Mit belastbarer Nutzungsinformation wird eine Speicher-Policy möglich:
-**hält eine Registration für die Dauer T keine Session** (und gab es
-für T keine Lookups auf ihr Interface), wandert sie von „hot"
-(In-Memory-Registry) nach „cold" (Platte).
+With dependable usage information a storage policy becomes possible:
+**if a registration holds no session for a duration T** (and there were
+no lookups on its interface for T), it moves from "hot" (the in-memory
+registry) to "cold" (disk).
 
-Die eine Regel, die das Design trägt: **kalt ≠ unauffindbar.** Ein
-Service ohne Consumer muss discoverbar bleiben — sonst findet ihn nie
-wieder jemand und kalt wäre für immer kalt. Deshalb bleibt pro kaltem
-Eintrag ein kleiner **In-Memory-Stub** im Lookup-Index:
+The one rule that carries the design: **cold ≠ undiscoverable.** A
+service with no consumers has to stay discoverable — otherwise nobody
+ever finds it again and cold would be cold forever. So a small
+**in-memory stub** stays in the lookup index per cold entry:
 
 ```
 ColdEntry: interfaceName, implementationId, provider.name,
-           sd1-Fingerprint (+ ggf. Impl-Fingerprint, §11),
-           Pfad der Kalt-Datei
+           the sd1 fingerprint (plus the impl fingerprint where applicable, §11),
+           the path of the cold file
 ```
 
-Trifft ein Lookup oder Acquire den Stub, wird der Eintrag lazy
-rehydriert (XMI von Platte, zurück in Registry + Index) und ist wieder
-hot. Die OSGi-Parallele ist die **delayed activation** von DS:
-ein Service ohne Nutzer materialisiert seine Instanz nicht — der
-Cold-Cache ist dasselbe Prinzip eine Ebene höher, auf der Registry.
+When a lookup or an acquire hits the stub, the entry is rehydrated
+lazily (XMI from disk, back into the registry and the index) and is hot
+again. The OSGi parallel is DS's **delayed activation**: a service with
+no users does not materialise its instance — the cold cache is the same
+principle one level up, at the registry.
 
-Einordnung: für den Prototyp ist der Speichergewinn irrelevant (der
-Katalog ist winzig); der Wert ist architektonisch — der Broker skaliert
-mit der Katalog-, nicht mit der Hot-Set-Größe. Entwurf als **optionale
-Policy** (Default aus), Umsetzung frühestens nach §3–§5.
+Perspective: for the prototype the memory saving is irrelevant (the
+catalog is tiny); the value is architectural — the broker then scales
+with the catalog size, not with the hot-set size. Designed as an
+**optional policy** (off by default), to be implemented no earlier than
+after §3–§5.
 
-**Stand 2026-08-25: umgesetzt** (Branch feat/catalog-contract-key,
-Issue #6). Konfiguration `cold.after.seconds` am Broker-Component
-(Default 0 = aus; Sweep bei einem Viertel des Werts). Idle-Regel: kein
-Lease zum Sweep-Zeitpunkt (ein Lease setzt die Idle-Uhr zurück), seit
-dem Cutoff weder publiziert/rehydriert noch ein Lookup auf einem der
-Interface-Namen. Kalt-Ablage als selbst-enthaltenes XMI pro Eintrag
-(Provider-Stub + Impl + volle Contract-Siblings — die Publish-Wire-Form)
-unter `<snapshot>.cold/`; der In-Memory-Stub trägt Interface-Namen,
-Adressierungs-sd1s und implementationId und wird beim Broker-Neustart
-aus dem Cold-Verzeichnis rekonstruiert. Rehydrierung läuft lazy auf dem
-Lookup-Pfad ÜBER den regulären Publish (Katalog-Validierung,
-Dekoration inkl. im1). Lifecycle ehrlich gehalten: Coldify announced
-UNREGISTERING (die Reference-Id wird ungültig — Referenzen sind ohnehin
-nicht restart-stabil), Rehydrierung REGISTERED mit frischer Reference;
-der sd1 an der Reference bleibt identisch. Kalte Einträge zählen für
-den Strict-Reject des Katalogs als lebendig (sie könnten sonst nie
-wieder rehydrieren), und ein Re-Publish gleicher Identität ersetzt den
-kalten Zwilling (Provider-Neustart während kalt).
+**Status 2026-08-25: implemented** (branch feat/catalog-contract-key,
+issue #6). Configuration `cold.after.seconds` on the broker component
+(default 0 = off; the sweep runs at a quarter of that value). The idle
+rule: no lease at sweep time (a lease resets the idle clock), and since
+the cutoff neither published/rehydrated nor a lookup on one of the
+interface names. Cold storage is a self-contained XMI per entry (a
+provider stub plus the implementation plus the full contract siblings —
+the publish wire form) under `<snapshot>.cold/`; the in-memory stub
+carries the interface names, the addressing sd1s and the
+implementationId, and is reconstructed from the cold directory on a
+broker restart. Rehydration runs lazily on the lookup path THROUGH the
+regular publish (catalog validation, decoration including im1). The
+lifecycle is kept honest: coldifying announces UNREGISTERING (the
+reference id becomes invalid — references are not restart-stable
+anyway), rehydration announces REGISTERED with a fresh reference; the
+sd1 on the reference stays identical. Cold entries count as live for
+the catalog's strict reject (otherwise they could never rehydrate), and
+a republish of the same identity replaces the cold twin (a provider
+restarting while cold).
 
-## 11. Fingerprint-gestützter Reconnect und Contract-Adressierung
+## 11. Fingerprint-backed reconnect and contract addressing
 
-### 11.1 Komposition: der Impl-Fingerprint faltet die Vertrags-Fingerprints ein
+### 11.1 Composition: the implementation fingerprint folds in the contract fingerprints
 
-sd1 identifiziert den **Vertrag** (`ServiceInterface`). Die
-Implementation bekommt ein eigenes, separat eingefrorenes Schema
-(Arbeitstitel `im1`), das **komponiert** statt neu zu traversieren —
-das Merkle-Prinzip, exakt das `derivationInputs`-Muster aus emf.osgi:
+sd1 identifies the **contract** (`ServiceInterface`). The
+implementation gets its own, separately frozen scheme (working title
+`im1`) that **composes** rather than traversing anew — the Merkle
+principle, exactly the `derivationInputs` pattern from emf.osgi:
 
 ```
 im1(Impl) = H( sd1(SI₁), …, sd1(SIₙ),
-               implementationId, Flavors/Endpoints, Properties )
+               implementationId, flavors/endpoints, properties )
 ```
 
-Der Reconnect-Check eines Providers — *„hat der Broker meine
-Registrierung noch, und unverändert?"* — wird damit dreistufig
-aussagekräftig (Identitätsschlüssel ist `(provider.name,
-implementationId)`, beides existiert heute):
+A provider's reconnect check — *"does the broker still have my
+registration, and unchanged?"* — thereby says three different things
+(the identity key is `(provider.name, implementationId)`, both of which
+exist today):
 
-| Vergleich | Bedeutung | Aktion |
+| Comparison | Meaning | Action |
 |---|---|---|
-| `im1` gleich | alles unverändert | nur Session/Lease erneuern (`PUT`, §4) |
-| `im1` ungleich, alle `sd1` gleich | Endpoint-/Property-Drift | Re-Publish der Impl |
-| ein `sd1` ungleich | **Contract**-Drift | Katalog-/Policy-Frage (UPDATE_POLICY), nicht bloß Re-Publish |
+| `im1` equal | nothing changed | only renew the session/lease (`PUT`, §4) |
+| `im1` different, every `sd1` equal | endpoint/property drift | republish the implementation |
+| one `sd1` different | **contract** drift | a catalog/policy question (UPDATE_POLICY), not merely a republish |
 
-Consumer haben den sd1-Check heute schon: lokal berechneter Wert gegen
-die `ddsr.fingerprint`-Reference-Property (die FR-P4-Harness prüft
-genau das).
+Consumers have the sd1 check already: a locally computed value against
+the `ddsr.fingerprint` reference property (the FR-P4 harness checks
+exactly that).
 
-**Stand 2026-08-25: umgesetzt** (Branch feat/im1-fingerprint, Issue #6).
-Das Schema ist als `im1` eingefroren — kanonische Grammatik im Javadoc
-von `ServiceImplementationFingerprint` (xmi.codec, geteilt mit dem
-Broker), TS-Spiegel `service-implementation-fingerprint.ts`; beide
-Sprachen sind über die Goldens `itest/fixtures/fingerprint/
-payment-impl.{xmi,canonical.txt,im1}` byte-identisch gepinnt.
-Ausgeschlossen sind `description` und `componentDescription`
-(Doku-/Deployment-Detail, nicht Endpoint-Identität). Der Broker
-dekoriert jede Reference zusätzlich mit `ddsr.impl.fingerprint` —
-berechnet NACH dem Katalog-Rewire, die `c|sd1:…`-Zeilen sind also
-Katalogwahrheit. Der Identitätsvergleich beim Reconnect läuft rein
-inhaltsbasiert: ein im1-Match unter gleichem `provider.name` IST die
-eigene Registrierung (im1 enthält implementationId, Endpoints und die
-sd1-Tokens). `publish()` ist damit in beiden SDKs idempotent: im1-Match
-→ Publish übersprungen, Registration wiederverwendet, Consumer sehen
-keinen UNREGISTERING/REGISTERED-Churn; Drift → Re-Publish (der Broker
-retired den Alt-Eintrag), Richtung wird geloggt (sd1 gleich →
-Endpoint-Drift INFO, sd1 ungleich → Contract-Drift WARNING — Publish
-bleibt der sichere Default, der Broker validiert gegen den Live-Katalog).
-Die Zeile „nur Lease erneuern" aus der Tabelle heißt praktisch: der
-wiederverwendete Publish-Pfad kommt ohne Broker-Mutation aus, die
-Session-Erneuerung (§4) läuft ohnehin.
+**Status 2026-08-25: implemented** (branch feat/im1-fingerprint, issue
+#6). The scheme is frozen as `im1` — the canonical grammar is in the
+javadoc of `ServiceImplementationFingerprint` (xmi.codec, shared with
+the broker), the TypeScript mirror is
+`service-implementation-fingerprint.ts`; both languages are pinned
+byte-identically through the goldens
+`itest/fixtures/fingerprint/payment-impl.{xmi,canonical.txt,im1}`.
+Excluded are `description` and `componentDescription` (documentation
+and deployment detail, not endpoint identity). The broker additionally
+decorates every reference with `ddsr.impl.fingerprint` — computed AFTER
+the catalog rewire, so the `c|sd1:…` lines are catalog truth. The
+identity comparison at reconnect is purely content based: an im1 match
+under the same `provider.name` IS one's own registration (im1 contains
+the implementationId, the endpoints and the sd1 tokens). `publish()` is
+therefore idempotent in both SDKs: an im1 match → the publish is
+skipped, the registration is reused, consumers see no
+UNREGISTERING/REGISTERED churn; drift → a republish (the broker retires
+the old entry), and the direction is logged (sd1 equal → endpoint drift
+at INFO, sd1 different → contract drift at WARNING — a publish stays
+the safe default, the broker validates against the live catalog). The
+"only renew the lease" row of the table means, in practice: the reused
+publish path needs no broker mutation, and the session renewal (§4)
+runs anyway.
 
-### 11.2 Contract-Adressierung: Lookup und Katalog über `(name, sd1)`
+### 11.2 Contract addressing: lookup and catalog keyed on `(name, sd1)`
 
-Interface-Fingerprints tragen auf der Consumer-Seite mehr als den
-Drift-Check: sie machen den Contract **adressierbar**.
+Interface fingerprints carry more than the drift check on the consumer
+side: they make the contract **addressable**.
 
 - **Lookup:** `GET /references?interface=Payment&fingerprint=sd1:…` —
-  oder besser: die `ConsumerCapability` deklariert die Contracts, die
-  der Consumer *spricht* (seine Stubs sind aus einem konkreten SI-Stand
-  generiert, den sd1 exakt benennt), und der Broker filtert jeden
-  Lookup automatisch darauf — analog zu `supportedFlavors`.
-- **Katalog:** der Schlüssel wird `(name, sd1)` statt `name`.
-  Gleichnamige Interfaces mit unterschiedlicher Signatur/Properties
-  sind dann schlicht verschiedene Katalog-Einträge, die koexistieren
-  (heute: `CATALOG_ENTRY_ALREADY_EXISTS`); ein Consumer bekommt
-  konstruktionsbedingt nur Implementierungen des Contracts, den er
-  exakt kennt. Das entschärft nebenbei M1 (Namen nicht global
-  eindeutig).
+  or better: the `ConsumerCapability` declares the contracts the
+  consumer *speaks* (its stubs were generated from one concrete state
+  of the ServiceInterface, which sd1 names exactly), and the broker
+  filters every lookup on that automatically — as it does for
+  `supportedFlavors`.
+- **Catalog:** the key becomes `(name, sd1)` instead of `name`.
+  Interfaces of the same name with a different signature or properties
+  are then simply different catalog entries that coexist (today:
+  `CATALOG_ENTRY_ALREADY_EXISTS`); by construction a consumer only ever
+  gets implementations of the contract it knows exactly. That
+  incidentally defuses M1 (names not globally unique).
 
-**Stand 2026-08-25: der `(name, sd1)`-Schlüssel ist umgesetzt** (Branch
-feat/catalog-contract-key, Issue #6). Regeln:
+**Status 2026-08-25: the `(name, sd1)` key is implemented** (branch
+feat/catalog-contract-key, issue #6). The rules:
 
-- `addCatalogEntry`: identischer Inhalt → idempotentes OK; gleicher
-  Name, anderer Contract → koexistierender Eintrag (Code 202 wird nicht
-  mehr produziert, bleibt aus Wire-Kompatibilität dokumentiert).
-- **Auflösung** (`resolveCatalogEntry`): eine eingehende SI **mit
-  Inhalt** (Operations/Exceptions) adressiert exakt per Inhalt — kein
-  Treffer ist Contract-Drift und wird abgelehnt statt still auf den
-  gleichnamigen Katalog-Contract umverdrahtet (die alte Rewire-Semantik
-  war genau das False-Equal, das Fingerprints ausschließen sollen; der
-  Publisher legt seinen Contract stattdessen selbst in den Katalog —
-  er koexistiert ja). Ein **Stub** (nur Name, Katalog-URL-Proxy oder
-  körperloser REST-Call) löst per Name auf und verlangt Eindeutigkeit —
-  sonst `CODE_CATALOG_ENTRY_AMBIGUOUS` (203).
-- **Adressierungs-Fingerprint** (`ContractAddressing`): der sd1 enthält
-  per eingefrorener Grammatik `status=` — eine Deprecation dürfe die
-  Adresse aber nicht verschieben. Adressiert wird deshalb über den sd1
-  einer lifecycle-normalisierten Kopie (status→ACTIVE,
-  deprecationReason/replacedBy geleert); der rohe sd1 bleibt, was an
-  Referenzen dekoriert und von Consumern verglichen wird.
-- **REST:** `GET/DELETE /catalog/{name}` und `PUT …/deprecate` nehmen
-  optional `?fingerprint=sd1:…`; ein nackter Name antwortet bei
-  Koexistenz mit 409 (GET) bzw. dem Ambiguitäts-Diagnostic. Der
-  Strict-Reject beim Remove prüft per Identität, nicht per Name — ein
-  gleichnamiger Schwester-Contract blockiert nicht.
+- `addCatalogEntry`: identical content → an idempotent OK; the same
+  name with a different contract → a coexisting entry (code 202 is no
+  longer produced but stays documented for wire compatibility).
+- **Resolution** (`resolveCatalogEntry`): an incoming ServiceInterface
+  **with content** (operations/exceptions) addresses exactly by
+  content — no hit is contract drift and is refused rather than
+  silently rewired onto the same-named catalog contract (the old rewire
+  semantics were precisely the false-equal that fingerprints are meant
+  to rule out; the publisher instead puts its contract into the catalog
+  itself — it coexists after all). A **stub** (a name only, a catalog
+  URL proxy, or a bodiless REST call) resolves by name and demands
+  uniqueness — otherwise `CODE_CATALOG_ENTRY_AMBIGUOUS` (203).
+- **The addressing fingerprint** (`ContractAddressing`): by its frozen
+  grammar sd1 contains `status=` — but a deprecation must not move the
+  address. Addressing therefore goes through the sd1 of a
+  lifecycle-normalised copy (status→ACTIVE, deprecationReason and
+  replacedBy cleared); the raw sd1 remains what is decorated onto
+  references and compared by consumers.
+- **REST:** `GET/DELETE /catalog/{name}` and `PUT …/deprecate` take an
+  optional `?fingerprint=sd1:…`; a bare name answers with 409 (GET) or
+  the ambiguity diagnostic when entries coexist. The strict reject on
+  remove checks by identity, not by name — a same-named sibling
+  contract does not block it.
 
-### 11.3 Abgrenzung: Identität gratis, Kompatibilität nicht
+### 11.3 Boundaries: identity comes free, compatibility does not
 
-Was Fingerprints gratis liefern, ist **Identitäts-Versionierung**
-(content-addressed contracts): jedes abweichende Detail trennt sauber.
-Was sie **nicht** liefern können, ist Kompatibilitäts*semantik*:
-Hashes sind ordnungslos — eine abwärtskompatible Ergänzung (neue
-optionale Operation) ändert sd1 genauso stark wie ein harter Bruch.
-„Consumer von 1.4 darf 1.5-Provider binden" kann kein Hash ausdrücken
-(so auch die emf.osgi-Doku wörtlich: *not a version number, no
-compatibility semantics*; konservativ falsch-verschieden, nie
-falsch-gleich). Dafür bleiben deklarierte Versionen/Ranges
-(UPDATE_POLICY §5) oder explizite Kompatibilitäts-Assertions im
-Katalog („ersetzt sd1:X kompatibel" — eine Behauptung des Publishers).
+What fingerprints give away for free is **identity versioning**
+(content-addressed contracts): every differing detail separates
+cleanly. What they **cannot** give is compatibility *semantics*: hashes
+have no ordering — a backward-compatible addition (a new optional
+operation) changes sd1 exactly as much as a hard break. "A consumer of
+1.4 may bind a 1.5 provider" is not something a hash can express (the
+emf.osgi documentation says as much, word for word: *not a version
+number, no compatibility semantics*; conservatively wrongly-different,
+never wrongly-equal). For that, declared versions and ranges remain
+(UPDATE_POLICY §5), or explicit compatibility assertions in the catalog
+("replaces sd1:X compatibly" — an assertion by the publisher).
 
-Beides ergänzt sich: **die Version kommuniziert die Absicht, der
-Fingerprint verifiziert die Realität.** Ein Range-Match, dessen
-Fingerprint-Vergleich scheitert, ist ein gelogenes Versionslabel —
-und wird damit sichtbar.
+The two complement each other: **the version communicates the
+intention, the fingerprint verifies the reality.** A range match whose
+fingerprint comparison fails is a lying version label — and becomes
+visible as one.
 
-**Synergie mit §10:** sd1 und im1 liegen im Cold-Stub — die Frage
-„noch da und unverändert?" beantwortet der Broker, ohne den kalten
-Eintrag zu rehydrieren.
+**Synergy with §10:** sd1 and im1 are in the cold stub — the broker can
+answer "still there and unchanged?" without rehydrating the cold entry.
 
-## 12. Umsetzungsreihenfolge
+## 12. Implementation order
 
-**Stand 2026-08-25: Schritte 1–3 sind umgesetzt** (Branch
-feat/acquisition): Broker hält Sessions als Laufzeit-Map mit
-TTL-Verfall (`org.eclipse.fennec.services.broker.core`,
-`session.expiry.seconds` Default 1200, Sweep bei einem Viertel),
-`PUT/GET/DELETE /consumers/{id}`, Side-Map `implByRegistration` durch
-die Modell-Refs `registration.provider/.implementation` ersetzt
-(deterministische Insertion-Order statt IdentityHashMap-Scan);
-Withdraw/Republish **lösen die Leases der betroffenen Registration**
-(Rollback bei Persist-Fehler stellt sie wieder her); SDKs beidseitig
-(Java: `SessionsHttpProxy` + Renewal-Scheduler im Client-Component,
-`session.interval.seconds` Default 600, DELETE im Shutdown vor dem
-Stream-Close; TS: `putConsumerSession`/`deleteConsumerSession`/
-`getConsumerSession` + Timer in `DdsrClientImpl`, gleiche
-close()-Ordnung). Aus §11.2 ist die **Lookup-Contract-Adressierung**
-umgesetzt: `GET /references?...&fingerprint=sd1:…` filtert exakt gegen
-die broker-berechneten Katalog-Fingerprints (Java via
-`ddsr.fingerprint`-Property an der ConsumerCapability, TS via
-`find(interface, filter, fingerprint)`). Schritt 4 (Auto-Retire/Drain)
-ist bewusst abgetrennt und kommt mit der Policy-Maschinerie.
+**Status 2026-08-25: steps 1–3 are implemented** (branch
+feat/acquisition): the broker holds sessions as a runtime map with TTL
+expiry (`org.eclipse.fennec.services.broker.core`,
+`session.expiry.seconds` default 1200, swept at a quarter of that),
+`PUT/GET/DELETE /consumers/{id}`, and the side map `implByRegistration`
+is replaced by the model references
+`registration.provider`/`.implementation` (deterministic insertion
+order instead of an IdentityHashMap scan); withdraw/republish **release
+the leases of the affected registration** (a rollback on a persist
+failure restores them); both SDKs (Java: `SessionsHttpProxy` plus a
+renewal scheduler in the client component, `session.interval.seconds`
+default 600, DELETE on shutdown before the stream close; TS:
+`putConsumerSession`/`deleteConsumerSession`/`getConsumerSession` plus a
+timer in `DdsrClientImpl`, the same `close()` ordering). From §11.2 the
+**lookup contract addressing** is implemented: `GET
+/references?...&fingerprint=sd1:…` filters exactly against the
+broker-computed catalog fingerprints (Java through the
+`ddsr.fingerprint` property on the ConsumerCapability, TS through
+`find(interface, filter, fingerprint)`). Step 4 (auto-retire/drain) is
+deliberately separated and comes with the policy machinery.
 
-**Stand 2026-08-25, Nachtrag:** aus Schritt 5 ist der
-**Fingerprint-Reconnect für Provider** umgesetzt (im1, §11.1 — Branch
-feat/im1-fingerprint); mit feat/catalog-contract-key sind auch der
-**Katalog-Schlüssel `(name, sd1)`** (§11.2) und der **Cold-Cache**
-(§10) umgesetzt — damit ist Schritt 5 komplett und Issue #6
-abgeschlossen. Offen bleibt Schritt 4 (Auto-Retire/Drain, bewusst
-zurückgestellt).
+**Status 2026-08-25, addendum:** from step 5 the **fingerprint
+reconnect for providers** is implemented (im1, §11.1 — branch
+feat/im1-fingerprint); with feat/catalog-contract-key the **catalog key
+`(name, sd1)`** (§11.2) and the **cold cache** (§10) are implemented as
+well — which completes step 5 and closes issue #6. Step 4
+(auto-retire/drain) remains open, deliberately deferred.
 
-1. Ecore: `ConsumerSession`, `LocalServiceRegistry.sessions`,
-   eOpposite `ServiceRegistration.usingSessions`, dazu
-   `ServiceRegistration.provider`/`.implementation` (§8, ersetzt die
-   `implByRegistration`-Side-Map) und Deprecation
-   `ServiceReference.usingProviders` (M5) — Codegen durch Modell-Owner.
-   Optional im selben Zug: `consumerCount` als OCL-derived Feature (§9).
-2. Broker: die drei Endpoints + TTL-Verfall (ein Scheduler, analog zum
-   SSE-Heartbeat) + Verbindungsabriss-Hook.
-3. SDK Java + TS symmetrisch: `PUT` aus der bestehenden
-   Ref-Buchführung, `DELETE` in den FR-P3-Shutdown-Pfad.
-4. Dann erst konsumieren: `DEPRECATE_AND_DRAIN`-Auto-Retire und
-   C3-Cleanup aus UPDATE_POLICY auf die Session-Map umstellen.
-5. Danach optional: Fingerprint-Reconnect für Provider (§11, braucht
-   nur die vorhandenen sd1-Properties + Identitätsvergleich) und
-   zuletzt der Cold-Cache (§10, eigene Policy).
+1. Ecore: `ConsumerSession`, `LocalServiceRegistry.sessions`, the
+   eOpposite `ServiceRegistration.usingSessions`, plus
+   `ServiceRegistration.provider`/`.implementation` (§8, replacing the
+   `implByRegistration` side map) and deprecating
+   `ServiceReference.usingProviders` (M5) — code generation by the
+   model owner. Optionally in the same pass: `consumerCount` as an
+   OCL-derived feature (§9).
+2. Broker: the three endpoints plus TTL expiry (one scheduler, like the
+   SSE heartbeat) plus the connection-loss hook.
+3. SDK Java and TS symmetrically: the `PUT` out of the existing
+   reference bookkeeping, the `DELETE` into the FR-P3 shutdown path.
+4. Only then consume it: switch `DEPRECATE_AND_DRAIN` auto-retire and
+   the C3 cleanup from UPDATE_POLICY over to the session map.
+5. Afterwards, optionally: the fingerprint reconnect for providers
+   (§11, which needs only the existing sd1 properties plus an identity
+   comparison) and finally the cold cache (§10, its own policy).

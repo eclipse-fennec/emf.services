@@ -1,97 +1,97 @@
-# DDSR — Service-API Update Policy
+# DDSR — Service API Update Policy
 
-**Status:** Broker-Seite implementiert (§9); Consumer-Reaktion auf `UPGRADE_AVAILABLE` und Version-Negotiation (§5) stehen aus.
-**Letzte Aktualisierung:** 2026-09-15.
+**Status:** broker side implemented (§11); consumer reaction to `UPGRADE_AVAILABLE` and version negotiation (§5) are outstanding.
+**Last updated:** 2026-09-15.
 
-Regelt, wie der Broker mit neuen Versionen einer Service-API umgeht, ob und wann alte Versionen verschwinden, und wie Consumer davon erfahren. Komplement zur Architektur-Beschreibung in [ARCHITECTURE.md](ARCHITECTURE.md) und löst implizit OPEN_ISSUES A1 (SSE/Event-Stream), C2 (provider-aware lookup) und C3 (stale providers) mit ab.
+Governs how the broker deals with new versions of a service API, whether and when old versions disappear, and how consumers find out. Complements the architecture description in [ARCHITECTURE.md](ARCHITECTURE.md), and incidentally settles OPEN_ISSUES A1 (SSE/event stream), C2 (provider-aware lookup) and C3 (stale providers).
 
 ---
 
 ## 1. Motivation
 
-Heute (siehe [ARCHITECTURE.md §2.6](ARCHITECTURE.md)) dedupliziert der Broker bei `publishImplementation` über `(name, version)` und retired die alte Impl synchron, wenn eine neue gleicher Identität publisht wird. Das ist gut, aber:
+Today (see [ARCHITECTURE.md §2.6](ARCHITECTURE.md)) the broker deduplicates on `(name, version)` at `publishImplementation` and synchronously retires the old implementation when a new one of the same identity is published. That is good, but:
 
-- **Es gibt nur eine Variante.** Für die Broker-API selbst will man Versionen parallel laufen lassen ("evergreen"); für gewöhnliche APIs will man einen Migrations-Fenster mit Deprecation; manchmal will man einen harten Cut.
-- **Consumer erfahren von Änderungen passiv.** Solange er nicht aktiv re-look-uppt, hängt er auf der alten Reference.
-- **Es gibt keinen sauberen Drain-Mechanismus.** Der Broker weiß nicht, wer eine Reference noch hält, also kann er nicht wissen, wann es sicher ist, eine alte Version wegzuräumen.
+- **There is only one variant.** For the broker API itself you want versions running side by side ("evergreen"); for ordinary APIs you want a migration window with deprecation; sometimes you want a hard cut.
+- **Consumers learn about changes passively.** As long as one does not actively look up again, it stays on the old reference.
+- **There is no clean drain mechanism.** The broker does not know who still holds a reference, so it cannot know when it is safe to clear an old version away.
 
-Diese Doc spezifiziert drei Policies, das Trigger-Modell, und das dafür nötige Heartbeat-Protokoll.
+This document specifies three policies, the trigger model, and the heartbeat protocol they need.
 
-## 2. Die drei Update-Policies
+## 2. The three update policies
 
-Policy wird **am `ServiceInterface`** annotiert (Default für alle Impls dieses Interfaces); per `ServiceImplementation` überschreibbar, wenn eine konkrete Impl abweichendes Verhalten haben soll. Default für Catalog-Einträge ohne explizite Angabe: `DEPRECATE_AND_DRAIN` (sicher, freundlich).
+The policy is annotated **on the `ServiceInterface`** (the default for every implementation of that interface); overridable per `ServiceImplementation` when one concrete implementation should behave differently. Default for catalog entries with no explicit statement: `DEPRECATE_AND_DRAIN` (safe, friendly).
 
 ### 2.1 `EVERGREEN`
 
-Mehrere Major-Versionen laufen unbegrenzt parallel. Keine wird automatisch retired. Soft-Migrations bleiben Consumer-Sache (sie wählen explizit eine Version via `versionRange`).
+Several major versions run side by side indefinitely. None is retired automatically. Soft migrations stay the consumer's business (they pick a version explicitly via `versionRange`).
 
-**Wann:** Broker-API selbst, infrastrukturelle Dienste mit unbekannten Konsumenten, alles wo der Provider keine Kontrolle über die Consumer-Lifecycles hat.
+**When:** the broker API itself, infrastructural services with unknown consumers, anything where the provider has no control over consumer lifecycles.
 
-**Broker-Verhalten:**
+**Broker behaviour:**
 
-- `publishImplementation(v2)` nimmt v2 zusätzlich auf. v1 bleibt unverändert.
-- `find()` ohne `versionRange` returnt die höchste non-deprecated Version (entspricht heutigem Default).
-- `find(versionRange="[1.0,2.0)")` returnt v1, `find(versionRange="[2.0,3.0)")` returnt v2.
-- Retire passiert nur explizit per `withdrawImplementation(v1)` durch den Provider.
+- `publishImplementation(v2)` takes v2 in addition. v1 stays untouched.
+- `find()` without `versionRange` returns the highest non-deprecated version (matches today's default).
+- `find(versionRange="[1.0,2.0)")` returns v1, `find(versionRange="[2.0,3.0)")` returns v2.
+- A retire happens only explicitly, through `withdrawImplementation(v1)` by the provider.
 
 ### 2.2 `DEPRECATE_AND_DRAIN`
 
-Neue Version koexistiert mit der alten; alte wird als `deprecated=true` markiert. Neue `find()`-Aufrufe ohne explizite Range bekommen die neue Version. Existierende Consumer auf der alten Version bekommen ein `UPGRADE_AVAILABLE`-Event und können freiwillig switchen. Sobald der Broker keine aktiven Refs auf v1 mehr sieht (siehe §4), retired er v1 automatisch.
+The new version coexists with the old one; the old one is marked `deprecated=true`. New `find()` calls without an explicit range get the new version. Existing consumers on the old version get an `UPGRADE_AVAILABLE` event and may switch voluntarily. As soon as the broker sees no active references to v1 any more (see §4), it retires v1 automatically.
 
-**Wann:** geplante API-Evolution mit Migrations-Fenster; sanftere Variante als HARD_CUTOVER.
+**When:** planned API evolution with a migration window; the gentler variant of HARD_CUTOVER.
 
-**Broker-Verhalten:**
+**Broker behaviour:**
 
-- `publishImplementation(v2)` nimmt v2 auf, setzt `v1.deprecated = true`, schreibt `v1.replacedBy = v2`.
-- `find("Payment")` returnt **v2** (deprecated wird default ausgefiltert).
-- `find("Payment", versionRange="[1.0,2.0)")` returnt v1 weiterhin (expliziter Bezug auf alte Range).
-- Broker sendet `ServiceEvent.UPGRADE_AVAILABLE` an alle Consumer, die laut Heartbeat-Map noch Refs auf v1 halten.
-- Greedy Consumer (Capability: `ddsr.consumer.greedy=true`) re-binden automatisch beim Eintreffen des Events.
-- Sobald Heartbeat-Map kein Consumer mehr v1-Refs hält, sendet Broker `RETIRED` an niemanden (es gibt ja keinen mehr) und entfernt v1 aus dem Registry.
-- **Kein hartes Timeout.** v1 darf beliebig lange leben, solange Consumer drauf sind.
+- `publishImplementation(v2)` takes v2 in, sets `v1.deprecated = true`, writes `v1.replacedBy = v2`.
+- `find("Payment")` returns **v2** (deprecated is filtered out by default).
+- `find("Payment", versionRange="[1.0,2.0)")` still returns v1 (an explicit reference to the old range).
+- The broker sends `ServiceEvent.UPGRADE_AVAILABLE` to every consumer that, according to the heartbeat map, still holds references to v1.
+- Greedy consumers (capability `ddsr.consumer.greedy=true`) rebind automatically when the event arrives.
+- Once the heartbeat map shows no consumer holding a v1 reference, the broker sends `RETIRED` to nobody (there is nobody left) and removes v1 from the registry.
+- **No hard timeout.** v1 may live for as long as it likes, as long as consumers are on it.
 
 ### 2.3 `HARD_CUTOVER`
 
-Neue Version wird publisht; nach kurzem Failover-Fenster wird die alte zwangsweise retired. Consumer bekommen `UNREGISTERING`, müssen rebinden (oder gehen in Fehler).
+The new version is published; after a short failover window the old one is retired by force. Consumers get `UNREGISTERING` and must rebind (or fail).
 
-**Wann:** Security-Fix, Bug-Killer, breaking change ohne Migrationsbudget.
+**When:** a security fix, a bug killer, a breaking change with no migration budget.
 
-**Broker-Verhalten (Reihenfolge ist load-bearing):**
+**Broker behaviour (the order is load-bearing):**
 
-1. **Phase 1 — Parallel-Aufnahme:** `publishImplementation(v2, policy=HARD_CUTOVER, replaces=v1)` nimmt v2 auf. v1 bleibt momentan noch verfügbar.
-2. **Phase 2 — Failover-Fenster:** Broker wartet konfigurierbares Intervall (Default: `30s`; konfigurierbar pro Impl via `cutoverGraceMillis`). Während dieses Fensters können Consumer parallel sowohl v1 als auch v2 sehen — sie können bewusst auf v2 rebinden, wenn sie wollen.
-3. **Phase 3 — Unregister-Event:** Broker sendet `ServiceEvent.UNREGISTERING(impl=v1, reason=BROKER_CUTOVER)` an alle Consumer aus der Heartbeat-Map, die Refs auf v1 halten. Bei Stream-Channels (siehe `WIRE_CHANNELS.md`) initiiert der Broker den graceful Close auf Provider- und Consumer-Seite.
-4. **Phase 4 — Retire:** Broker entfernt v1 aus Catalog und Registry. `find()` returnt ab jetzt nur noch v2.
+1. **Phase 1 — take both:** `publishImplementation(v2, policy=HARD_CUTOVER, replaces=v1)` takes v2 in. v1 stays available for the moment.
+2. **Phase 2 — failover window:** the broker waits a configurable interval (default `30s`; configurable per implementation via `cutoverGraceMillis`). During this window consumers can see both v1 and v2 — they may deliberately rebind to v2 if they want to.
+3. **Phase 3 — unregister event:** the broker sends `ServiceEvent.UNREGISTERING(impl=v1, reason=BROKER_CUTOVER)` to every consumer in the heartbeat map holding references to v1. For stream channels (see `WIRE_CHANNELS.md`) the broker initiates the graceful close on both the provider and the consumer side.
+4. **Phase 4 — retire:** the broker removes v1 from the catalog and the registry. From then on `find()` returns only v2.
 
-**Warum erst v2 dann v1 retiren, nicht andersrum:** im kurzen Overlap-Fenster (Phase 2) hat der Consumer eine echte Failover-Option. Andernfalls (v1 erst raus, dann v2 rein) gäbe es ein Zeitfenster ohne *irgendeine* Implementation — laufende Calls würden hart fehlschlagen.
+**Why v2 first and only then retire v1, not the other way round:** in the short overlap of phase 2 the consumer has a real failover option. Otherwise (v1 out first, then v2 in) there would be a window with *no* implementation at all — calls in flight would fail hard.
 
-## 3. Trigger-Modell — alles über Events, kein Poll
+## 3. Trigger model — everything over events, no polling
 
-Consumer erfahren von Policy-Wechseln über den Event-Stream (Stufe-3-Feature, OPEN_ISSUES A1). Polling ist explizit nicht vorgesehen — wir wollen reaktive Konsumenten.
+Consumers learn about policy changes through the event stream (a stage-3 feature, OPEN_ISSUES A1). Polling is explicitly not foreseen — we want reactive consumers.
 
-**Event-Typen, die der Broker sendet:**
+**Event types the broker sends:**
 
-| Event | Wann | Reaktion erwartet |
+| Event | When | Reaction expected |
 |---|---|---|
-| `UPGRADE_AVAILABLE` | bei `DEPRECATE_AND_DRAIN`-Publish | Hint; Consumer entscheidet selbst |
-| `UNREGISTERING` | bei `HARD_CUTOVER` Phase 3, oder bei `withdrawImplementation()` | Consumer **muss** rebinden, sonst Fehler |
-| `RETIRED` | nachdem die alte Impl tatsächlich entfernt wurde | Cleanup-Hinweis; kein Action-Required für Consumer (er sollte sich schon längst umgebunden haben) |
-| `REGISTERED` | bei neuer Impl-Publish (egal welche Policy) | Information für interessierte Subscriber |
+| `UPGRADE_AVAILABLE` | on a `DEPRECATE_AND_DRAIN` publish | a hint; the consumer decides for itself |
+| `UNREGISTERING` | on `HARD_CUTOVER` phase 3, or on `withdrawImplementation()` | the consumer **must** rebind, otherwise it fails |
+| `RETIRED` | after the old implementation was actually removed | a cleanup hint; no action required (it should have rebound long since) |
+| `REGISTERED` | on a new implementation publish (whatever the policy) | information for interested subscribers |
 
-**Greediness als Consumer-Property** (`ddsr.consumer.greedy`, Default `false`):
+**Greediness as a consumer property** (`ddsr.consumer.greedy`, default `false`):
 
-- `greedy=true`: Consumer-Facade rebindet auf `UPGRADE_AVAILABLE` automatisch. Geeignet für Long-Running-Services, die immer "die aktuellste API" wollen.
-- `greedy=false`: Consumer-Facade liefert den Event durch zum Application-Code, der selbst entscheidet (Default — defensiver).
+- `greedy=true`: the consumer facade rebinds on `UPGRADE_AVAILABLE` automatically. Suitable for long-running services that always want "the newest API".
+- `greedy=false`: the consumer facade passes the event through to the application code, which decides for itself (the default — more defensive).
 
-`UNREGISTERING` ist nicht greediness-abhängig; der Consumer **muss** in jedem Fall reagieren.
+`UNREGISTERING` does not depend on greediness; the consumer **must** react in any case.
 
-## 4. Heartbeat-Protokoll (Voraussetzung für Drain & C3)
+## 4. Heartbeat protocol (prerequisite for drain and C3)
 
-Der Broker muss zuverlässig wissen, welcher Consumer welche Refs hält, sonst funktioniert weder `DEPRECATE_AND_DRAIN`-auto-retire noch generelles Stale-Cleanup (OPEN_ISSUES C3).
+The broker has to know reliably which consumer holds which references, otherwise neither `DEPRECATE_AND_DRAIN` auto-retire nor general stale cleanup (OPEN_ISSUES C3) works.
 
-> **Präzisiert in [ACQUISITION.md](ACQUISITION.md):** die Session besitzt die Leases (Registration bekommt nur die abgeleitete Sicht), acquire/release/heartbeat kollabieren zu einem idempotenten `PUT /consumers/{id}`-Vollabgleich, Leases werden bewusst nicht persistiert (Neustart-Grace-Regel für Auto-Retire beachten), und `ServiceReference.usingProviders` wird deprecated (M5). Die Skizze unten bleibt als Ursprung stehen; bei Widerspruch gilt ACQUISITION.md.
+> **Made precise in [ACQUISITION.md](ACQUISITION.md):** the session owns the leases (a registration only gets the derived view), acquire/release/heartbeat collapse into one idempotent full replace at `PUT /consumers/{id}`, leases are deliberately not persisted (mind the restart grace rule for auto-retire), and `ServiceReference.usingProviders` is deprecated (M5). The sketch below stays as the origin; where the two disagree, ACQUISITION.md wins.
 
-**Daten-Modell im Broker:**
+**Data model in the broker:**
 
 ```
 Map<ConsumerId, ConsumerState>
@@ -101,95 +101,95 @@ Map<ConsumerId, ConsumerState>
     capabilities  : ConsumerCapability   (greedy, supportedFlavors, …)
 ```
 
-**Heartbeat-Protokoll:**
+**Heartbeat protocol:**
 
-- Consumer sendet alle **10 Minuten** einen `ConsumerHeartbeat` an den Broker mit aktueller `activeRefs`-Liste.
-- Broker aktualisiert `lastHeartbeat` und die Ref-Map.
-- Fehlt ein Heartbeat für **2× das Intervall** (20 Minuten), markiert der Broker den Consumer als tot und gibt alle seine Refs frei.
+- The consumer sends a `ConsumerHeartbeat` to the broker every **10 minutes**, carrying its current `activeRefs` list.
+- The broker updates `lastHeartbeat` and the reference map.
+- If a heartbeat is missing for **2× the interval** (20 minutes), the broker marks the consumer as dead and releases all of its references.
 
-**Shutdown-Notify:**
+**Shutdown notify:**
 
-- Beim regulären Shutdown sendet der Consumer einen `ConsumerShutdown`-Event an den Broker (alle aktiven Refs werden freigegeben). Damit ist Drain auch ohne 20-Minuten-Wartezeit zügig.
-- Best-Effort — wenn der Consumer abstürzt, übernimmt der Heartbeat-Timeout.
+- On a regular shutdown the consumer sends a `ConsumerShutdown` event to the broker (all active references are released). That makes a drain prompt without the 20-minute wait.
+- Best effort — if the consumer crashes, the heartbeat timeout takes over.
 
-**Lösung für OPEN_ISSUES C3 als Side-Effect:** dasselbe Protokoll, applied auf Provider-Seite, gibt uns Provider-Reachability-Probing. Provider sendet alle 10 Min `ProviderHeartbeat`; nach 20 Min ohne Heartbeat retired der Broker den Provider-Eintrag inkl. aller Impls.
+**Solving OPEN_ISSUES C3 as a side effect:** the same protocol applied to the provider side gives us provider reachability probing. A provider sends a `ProviderHeartbeat` every 10 minutes; after 20 minutes without one the broker retires the provider entry including all of its implementations.
 
-**Tradeoff:** ein toter Consumer wird bis zu 20 Minuten lang als Live-Ref-Halter geführt. Für Drain-Semantik nicht ideal, aber pragmatisch — das Alternativ-Modell (jeder `getService`/`ungetService` round-trip zum Broker) wäre eine Größenordnung mehr Traffic für minimal mehr Genauigkeit.
+**Trade-off:** a dead consumer is counted as a live reference holder for up to 20 minutes. Not ideal for drain semantics, but pragmatic — the alternative model (a round trip to the broker per `getService`/`ungetService`) would be an order of magnitude more traffic for marginally more accuracy.
 
-## 5. Version-Negotiation beim Lookup
+## 5. Version negotiation at lookup
 
-Damit Consumer in `EVERGREEN`-Setups gezielt eine Version anfordern können, wird die Lookup-API erweitert:
+So that consumers in `EVERGREEN` setups can ask for a specific version, the lookup API is extended:
 
-- `find("Payment")` — Default: höchste non-deprecated Version, gefiltert durch Consumer-Capabilities.
-- `find("Payment", versionRange="[2.0,3.0)")` — explizite Range nach OSGi-Versionsrange-Syntax.
-- `ConsumerCapability.supportedVersions : Map<InterfaceName, VersionRange>` — Consumer kann pro Interface eine Range deklarieren, die der Broker bei allen Lookups automatisch anwendet (analog zu `supportedFlavors`).
+- `find("Payment")` — the default: the highest non-deprecated version, filtered by consumer capabilities.
+- `find("Payment", versionRange="[2.0,3.0)")` — an explicit range in OSGi version range syntax.
+- `ConsumerCapability.supportedVersions : Map<InterfaceName, VersionRange>` — a consumer can declare a range per interface that the broker applies to all its lookups automatically (as it does for `supportedFlavors`).
 
-**Deprecation-Filter:** by default werden `deprecated=true`-Impls aus dem Lookup-Result entfernt. Mit `find("Payment", includeDeprecated=true)` kann ein Consumer auch deprecated Versions sehen (Management-Use-Case, Migrations-Tools).
+**Deprecation filter:** by default `deprecated=true` implementations are removed from the lookup result. With `find("Payment", includeDeprecated=true)` a consumer can see deprecated versions as well (a management use case, migration tooling).
 
-## 6. Verhältnis zur Hook-Architektur
+## 6. Relation to the hook architecture
 
-Update-Policy ist die erste konkrete Verwendung der drei Hooks aus dem REQUIREMENTS-Dokument:
+The update policy is the first concrete use of the three hooks from the REQUIREMENTS document:
 
-- **`PublishHook`** — enforced Policy auf der Publish-Seite. Wenn ein Provider `publishImplementation(v2)` ohne `replaces`-Hinweis macht, könnte der Hook das in einen `EVERGREEN`-Add verwandeln, oder den Publish ablehnen, wenn Policy `HARD_CUTOVER` verlangt aber `cutoverGraceMillis` fehlt.
-- **`DiscoveryHook`** — filtert `deprecated=true` aus für non-greedy Consumer; appliziert `versionRange`-Filter.
-- **`DistributionHook`** — bei `UNREGISTERING` von Stream-Channels: triggert den graceful Close auf beiden Seiten (siehe `WIRE_CHANNELS.md`, Stream-Termination).
+- **`PublishHook`** — enforces the policy on the publish side. If a provider calls `publishImplementation(v2)` with no `replaces` hint, the hook could turn that into an `EVERGREEN` add, or refuse the publish when the policy demands `HARD_CUTOVER` but `cutoverGraceMillis` is missing.
+- **`DiscoveryHook`** — filters `deprecated=true` out for non-greedy consumers; applies the `versionRange` filter.
+- **`DistributionHook`** — on `UNREGISTERING` of stream channels: triggers the graceful close on both sides (see `WIRE_CHANNELS.md`, stream termination).
 
-Vollständige Hook-Spezifikation kommt in einer eigenen Doc; hier nur die Andockpunkte.
+The full hook specification gets a document of its own; only the attachment points are named here.
 
-## 7. Cross-Constraints zu Streams
+## 7. Cross-constraints with streams
 
-Bei `HARD_CUTOVER` auf einem Stream-Service: das `UNREGISTERING`-Event geht an Consumer und Provider. Beide initiieren graceful Close ihres Stream-Endes (Reason-Code: `BROKER_CUTOVER`). Wer zuerst sendet, der andere kriegt's via Wire-Close-Frame und antwortet symmetrisch. Stream wird sauber beendet, neue Calls gegen v1 schlagen mit `SERVICE_RETIRED` fehl.
+On a `HARD_CUTOVER` of a stream service: the `UNREGISTERING` event goes to the consumer and the provider. Both initiate a graceful close of their end of the stream (reason code `BROKER_CUTOVER`). Whoever sends first, the other receives it as a wire close frame and answers symmetrically. The stream ends cleanly; new calls against v1 fail with `SERVICE_RETIRED`.
 
-Bei `DEPRECATE_AND_DRAIN` auf einem Stream: der Stream zählt als aktive Ref. v1 wird erst retired, wenn alle Stream-Channels graceful beendet sind. Lange Streams können also v1 unbegrenzt am Leben halten — das ist by design.
+On a `DEPRECATE_AND_DRAIN` of a stream: the stream counts as an active reference. v1 is retired only once all stream channels have ended gracefully. Long streams can therefore keep v1 alive indefinitely — that is by design.
 
-Stream-Termination-Mechanismus selbst ist in `WIRE_CHANNELS.md` spezifiziert.
+The stream termination mechanism itself is specified in `WIRE_CHANNELS.md`.
 
-## 8. Implementations-Reihenfolge
+## 8. Implementation order
 
-Die Features bauen aufeinander auf. Vorgeschlagene Reihenfolge:
+The features build on each other. Suggested order:
 
-1. **Heartbeat-Protokoll** (löst C3, ist Voraussetzung für alles andere). Standalone wertvoll.
-2. **Event-Stream** (OPEN_ISSUES A1). Voraussetzung für jegliche aktive Benachrichtigung. Sobald die Stream-Channel-Erweiterung aus `WIRE_CHANNELS.md` da ist, wird daraus ein konkreter Event-Channel.
-3. **Policy-Annotation am Modell** (`ServiceInterface.updatePolicy`, `ServiceImplementation.updatePolicy`, `replaces`-Ref, `deprecated`-Flag, `cutoverGraceMillis`). Modell-Erweiterung; im v2-Workspace direkt mit reinbauen.
-4. **Broker-Logik pro Policy** in der order EVERGREEN → DEPRECATE_AND_DRAIN → HARD_CUTOVER. EVERGREEN ist trivial (heutige Dedup-Logik ohne Retire). DEPRECATE_AND_DRAIN braucht Deprecation-Filter + Drain-Watcher. HARD_CUTOVER braucht Failover-Fenster-Timer + UNREGISTERING-Distribution.
-5. **Version-Range im Lookup** — kann auch früher gehen, ist orthogonal.
+1. **The heartbeat protocol** (solves C3, is the prerequisite for everything else). Valuable standalone.
+2. **The event stream** (OPEN_ISSUES A1). The prerequisite for any active notification. Once the stream channel extension from `WIRE_CHANNELS.md` is there, it becomes a concrete event channel.
+3. **The policy annotation on the model** (`ServiceInterface.updatePolicy`, `ServiceImplementation.updatePolicy`, the `replaces` reference, the `deprecated` flag, `cutoverGraceMillis`). A model extension; build it straight into the v2 workspace.
+4. **Broker logic per policy**, in the order EVERGREEN → DEPRECATE_AND_DRAIN → HARD_CUTOVER. EVERGREEN is trivial (today's dedup logic without the retire). DEPRECATE_AND_DRAIN needs the deprecation filter plus a drain watcher. HARD_CUTOVER needs a failover window timer plus `UNREGISTERING` distribution.
+5. **The version range at lookup** — can come earlier, it is orthogonal.
 
-## 9. Offene Punkte
+## 9. Open points
 
-- **Default-Policy:** ich habe oben `DEPRECATE_AND_DRAIN` als Default vorgeschlagen. Alternativ wäre `EVERGREEN` (sicherer für unbekannte Konsumenten) oder gar **kein Default** (Modell-Validator erzwingt explizite Angabe). Zu entscheiden.
-- **`cutoverGraceMillis` Default:** 30s ist ein Schätzwert. Wahrscheinlich service-typ-abhängig (für interaktive Services länger, für Batch-Backends kürzer).
-- **Heartbeat-Intervall:** 10 Min ist pragmatisch. Falls sich rausstellt dass Drain zu langsam ist, kürzer machen (Tradeoff Traffic).
-- **`replaces`-Semantik bei mehrstufigen Migrations:** wenn v1 → v2 → v3 hintereinander publisht werden, ist v3 die `replaces` von v2 (welches die `replaces` von v1 ist). Reicht das, oder soll der Broker eine Chain auflösen ("retire v1 sobald v3 publisht, nicht erst wenn v2 retired ist")?
-- **Multi-Catalog:** wenn ein Interface in mehreren Catalogs gleichzeitig existiert (Stufe 4+), gilt die Policy pro-Catalog oder global? Erstmal: pro-Catalog. Aber das müssen wir mit der Federation-Diskussion zusammen klären.
+- **The default policy:** `DEPRECATE_AND_DRAIN` is proposed above. The alternatives are `EVERGREEN` (safer for unknown consumers) or **no default at all** (a model validator forces an explicit statement). To be decided.
+- **`cutoverGraceMillis` default:** 30s is a guess. Probably depends on the kind of service (longer for interactive ones, shorter for batch backends).
+- **Heartbeat interval:** 10 minutes is pragmatic. If drain turns out to be too slow, shorten it (a traffic trade-off).
+- **`replaces` semantics for multi-step migrations:** if v1 → v2 → v3 are published one after another, v3 is the `replaces` of v2 (which is the `replaces` of v1). Is that enough, or should the broker resolve a chain ("retire v1 as soon as v3 is published, not only once v2 is retired")?
+- **Multi-catalog:** if an interface exists in several catalogs at once (stage 4+), does the policy apply per catalog or globally? For now: per catalog. But that has to be settled together with the federation discussion.
 
-## 10. Referenzen
+## 10. References
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — heutiger Stand des Brokers, insb. §2.6 (Dedup, Reindex)
-- [WIRE_CHANNELS.md](WIRE_CHANNELS.md) — Channel-Modell, Stream-Termination, Capability/Requirement-System
-- OPEN_ISSUES.md — A1 (SSE/Event-Stream), C2 (provider-aware lookup), C3 (stale providers)
-- REQUIREMENTS.md — Stufe-2-DoD und Cross-Language-Demo-Flow
+- [ARCHITECTURE.md](ARCHITECTURE.md) — the broker as it stands today, especially §2.6 (dedup, reindex)
+- [WIRE_CHANNELS.md](WIRE_CHANNELS.md) — the channel model, stream termination, the capability/requirement system
+- OPEN_ISSUES.md — A1 (SSE/event stream), C2 (provider-aware lookup), C3 (stale providers)
+- REQUIREMENTS.md — the stage-2 DoD and the cross-language demo flow
 
-## 9. Implementierungsstand (2026-09-15, Issue #45)
+## 11. Implementation status (2026-09-15, issue #45)
 
-Der Broker setzt §2 um, sobald ein Publish `ServiceImplementation.replaces` trägt. Ohne `replaces` bleibt alles wie zuvor: gleiche `(name, version)` wird synchron ersetzt (`UNREGISTERING` reason `REPLACED`, dann `REGISTERED`), eine andere Identität koexistiert.
+The broker implements §2 as soon as a publish carries `ServiceImplementation.replaces`. Without `replaces` everything stays as it was: the same `(name, version)` is replaced synchronously (`UNREGISTERING` with reason `REPLACED`, then `REGISTERED`), a different identity coexists.
 
-**Auflösung.** `replaces` kommt als Stub vom Draht und wird auf die live registrierte Implementation mit gleicher `(name, version)` umverdrahtet. Kein Treffer, oder die eigene Identität: WARNING `CODE_IMPL_REPLACES_NOT_FOUND` (213), `replaces` wird gelöscht, der Publish geht als gewöhnlicher Publish durch — ein neu startender Nachfolger, dessen Vorgänger längst weg ist, darf nicht ausgesperrt werden.
+**Resolution.** `replaces` arrives as a stub from the wire and is rewired onto the live registered implementation with the same `(name, version)`. No hit, or its own identity: WARNING `CODE_IMPL_REPLACES_NOT_FOUND` (213), `replaces` is cleared and the publish goes through as an ordinary publish — a successor starting up whose predecessor is long gone must not be locked out.
 
-**Effektive Policy.** `ServiceImplementation.updatePolicy`, sonst die strengste `updatePolicy` der bedienten Interfaces (`HARD_CUTOVER` > `DEPRECATE_AND_DRAIN` > `EVERGREEN`), sonst `DEPRECATE_AND_DRAIN`. `UNSPECIFIED` heißt auf beiden Ebenen „erben".
+**Effective policy.** `ServiceImplementation.updatePolicy`, else the strictest `updatePolicy` among the interfaces it serves (`HARD_CUTOVER` > `DEPRECATE_AND_DRAIN` > `EVERGREEN`), else `DEPRECATE_AND_DRAIN`. `UNSPECIFIED` means "inherit" on both levels.
 
-| Policy | beim Publish des Nachfolgers | Retire des Vorgängers | Events für den Vorgänger |
+| Policy | on publishing the successor | retiring the predecessor | events for the predecessor |
 |---|---|---|---|
-| `EVERGREEN` | nichts | nur per `withdrawImplementation` | keine |
-| `DEPRECATE_AND_DRAIN` | Vorgänger fällt aus `getServiceReferences` (nicht aus `getAllServiceReferences`), Leases bleiben gültig | Sweep, sobald keine `ConsumerSession` mehr eine Lease hält | `UPGRADE_AVAILABLE` nach dem `REGISTERED` des Nachfolgers; beim Retire `UNREGISTERING` + `RETIRED` (reason `REPLACED`) |
-| `HARD_CUTOVER` | beide sichtbar (Failover-Fenster) | Sweep nach `cutoverGraceMillis` (0 = Broker-Default `cutover.grace.seconds`, 30 s), Leases werden ignoriert | `UNREGISTERING` + `RETIRED` (reason `CUTOVER`) |
+| `EVERGREEN` | nothing | only through `withdrawImplementation` | none |
+| `DEPRECATE_AND_DRAIN` | the predecessor drops out of `getServiceReferences` (not out of `getAllServiceReferences`), leases stay valid | a sweep, as soon as no `ConsumerSession` holds a lease any more | `UPGRADE_AVAILABLE` after the successor's `REGISTERED`; on retire `UNREGISTERING` + `RETIRED` (reason `REPLACED`) |
+| `HARD_CUTOVER` | both visible (the failover window) | a sweep after `cutoverGraceMillis` (0 = the broker default `cutover.grace.seconds`, 30 s), leases are ignored | `UNREGISTERING` + `RETIRED` (reason `CUTOVER`) |
 
-**Sweep.** `BrokerImplementations.advanceUpdatePolicies(now)`, im Broker alle `policy.sweep.seconds` (Default 5 s). Withdraw des Vorgängers hebt die Supersession auf; Withdraw des Nachfolgers bricht Drain bzw. Cutover ab, der Vorgänger wird wieder gewöhnlich sichtbar. Beide Parteien einer Supersession werden vom Cold-Cache-Sweep übersprungen.
+**The sweep.** `BrokerImplementations.advanceUpdatePolicies(now)`, run in the broker every `policy.sweep.seconds` (default 5 s). Withdrawing the predecessor cancels the supersession; withdrawing the successor aborts the drain or cutover and the predecessor becomes ordinarily visible again. Both parties of a supersession are skipped by the cold cache sweep.
 
-**Bewusste Abweichungen und Grenzen.**
-- Die Supersession ist Laufzeitzustand wie die Leases: ein Broker-Neustart vergisst laufende Drains und Cutovers (fail-safe, nichts wird versehentlich retired). `replaces` selbst steht im Snapshot; beim Retire wird es am Nachfolger gelöscht, damit nichts ins Leere zeigt.
-- `deprecated=true`/`replacedBy` am *Interface* werden vom Policy-Pfad nicht angefasst — das bleibt `deprecateCatalogEntry`. Die Sichtbarkeitsregel arbeitet auf der Registration, nicht auf dem Katalog.
-- Ein Vorgänger im Cold-Cache wird nicht gedraint; der Publish ist dann ein gewöhnlicher Publish.
-- Kein `UPGRADE_AVAILABLE` bei `HARD_CUTOVER` (§3 sieht den Hint nur für Drain vor); `RETIRED` wird nur vom Policy-Pfad emittiert, ein expliziter Withdraw bleibt beim reinen `UNREGISTERING`.
-- Greedy-Rebind im Consumer (§3) ist in beiden SDKs umgesetzt: `greedy_rebind` (Java, PID `org.eclipse.fennec.services.client`) bzw. `greedyRebind` (TS) lässt einen Locator auf `UPGRADE_AVAILABLE` beim nächsten Aufruf auf den Nachfolger wechseln; ohne die Option bleibt die Bindung bis zum Retire durch den Broker (CLIENT_FRAMEWORK_GUIDE §5.3/§6).
-- Provider-Heartbeat (§4, #52) ist umgesetzt — als eigener, leichter Pfad statt einer Provider-Session: `PUT /references/{id}/heartbeat?intervalSeconds=N` pro Registrierung, Opt-in (wer nie heartbeatet, wird nie wegen Stille retired). Der Broker retired nach `2 × Intervall` Stille (`liveness.sweep.seconds`, Default 5 s) mit `UNREGISTERING` + `RETIRED`, Reason `PROVIDER_LOST`. Verlorener Vorgänger einer Supersession = retired (Drain beendet), verlorener Nachfolger = Drain abgebrochen, Vorgänger wieder sichtbar. SDKs: `provider_heartbeat_seconds` (Java, Default 30) / `providerHeartbeatSeconds` (TS); 404 auf den Heartbeat heißt „Broker kennt uns nicht mehr" und löst einen Republish mit Rebind des `Registration`-Handles aus. Abweichung von der Skizze oben: 30 s statt 10 min Default, weil ein toter Endpoint für Consumer sonst zu lange auflösbar bleibt. Harness-Szenario H (`kill -9`) belegt den Pfad Ende-zu-Ende.
-- Noch offen: `versionRange`/`includeDeprecated` im Lookup (§5), `PublishHook`-Enforcement (§6).
+**Deliberate deviations and limits.**
+- The supersession is runtime state like the leases: a broker restart forgets drains and cutovers in progress (fail-safe, nothing is retired by accident). `replaces` itself is in the snapshot; on retire it is cleared on the successor so that nothing dangles.
+- `deprecated=true`/`replacedBy` on the *interface* are not touched by the policy path — that stays `deprecateCatalogEntry`. The visibility rule works on the registration, not on the catalog.
+- A predecessor in the cold cache is not drained; the publish is then an ordinary publish.
+- No `UPGRADE_AVAILABLE` on `HARD_CUTOVER` (§3 foresees the hint only for a drain); `RETIRED` is emitted only by the policy path, an explicit withdraw stays at the plain `UNREGISTERING`.
+- Greedy rebind in the consumer (§3) is implemented in both SDKs: `greedy_rebind` (Java, PID `org.eclipse.fennec.services.client`) or `greedyRebind` (TS) makes a locator move to the successor on its next call after `UPGRADE_AVAILABLE`; without the option the binding stays until the broker retires it (CLIENT_FRAMEWORK_GUIDE §5.3/§6).
+- The provider heartbeat (§4, #52) is implemented — as its own light path rather than a provider session: `PUT /references/{id}/heartbeat?intervalSeconds=N` per registration, opt-in (whoever never heartbeats is never retired for silence). The broker retires after `2 × interval` of silence (`liveness.sweep.seconds`, default 5 s) with `UNREGISTERING` + `RETIRED`, reason `PROVIDER_LOST`. A lost predecessor of a supersession = retired (the drain ends), a lost successor = the drain is aborted and the predecessor becomes visible again. SDKs: `provider_heartbeat_seconds` (Java, default 30) / `providerHeartbeatSeconds` (TS); a 404 on the heartbeat means "the broker does not know us any more" and triggers a republish with a rebind of the `Registration` handle. A deviation from the sketch above: 30 s instead of a 10 minute default, because otherwise a dead endpoint stays resolvable for consumers far too long. Harness scenario H (`kill -9`) proves the path end to end.
+- Still open: `versionRange`/`includeDeprecated` at lookup (§5), `PublishHook` enforcement (§6).

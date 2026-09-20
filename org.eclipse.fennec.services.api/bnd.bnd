@@ -1,0 +1,27 @@
+Bundle-Name: Fennec Services API
+Bundle-Description: \
+	The contract everything else agrees on: what a broker offers, and \
+	what both sides of the wire need to know about the model. The four \
+	role interfaces with their diagnostics, event sink and event \
+	document; the sd1 and im1 fingerprints; the flavor list convention; \
+	deriving a contract from a Java interface. No implementation, no \
+	components, no configuration. \
+	\
+	Deliberately free of the XMI codec. A fingerprint is computed over \
+	the in-memory model and never over serialised bytes, so the two only \
+	shared a bundle by accident — and keeping them apart is what lets \
+	the codec be donated to emf.osgi without taking this project's \
+	frozen wire schemes with it.
+
+-library: enableEMF
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot
+
+# ContractAddressing decides what a catalog entry is addressed by, and
+# the fingerprints are pinned byte for byte against golden files that
+# the TypeScript side reads too.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

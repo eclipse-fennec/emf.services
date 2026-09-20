@@ -17,7 +17,7 @@ Bundle-Description: \
 	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
-	org.eclipse.fennec.services.broker.api;version=snapshot
+	org.eclipse.fennec.services.api;version=snapshot
 
 # Plain JUnit 5, no OSGi runtime: the dispatcher decides in model terms
 # and takes its service lookup as a supplier, so nothing here needs a

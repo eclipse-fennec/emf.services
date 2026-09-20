@@ -19,7 +19,7 @@ Bundle-Description: \
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
-	org.eclipse.fennec.services.derive;version=snapshot
+	org.eclipse.fennec.services.api;version=snapshot
 
 # What the Remote Service Admin specification asks a distribution provider
 # to say about itself (122.10): which configuration types it exports with.

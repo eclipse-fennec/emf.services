@@ -70,14 +70,12 @@ jersey.deps:
 	org.eclipse.osgitech.rest;version='[1.2.3,1.2.4)',\
 	org.eclipse.osgitech.rest.servlet.whiteboard;version='[1.2.3,1.2.4)',\
 	org.eclipse.parsson.jakarta.json;version='[1.1.7,1.1.8)',\
-	org.eclipse.fennec.services.broker.api;version=snapshot,\
-	org.eclipse.fennec.services.shutdown;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.eclipse.fennec.services.client.rest;version=snapshot,\
 	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
 	org.eclipse.fennec.services.examples.rsa.consumer;version=snapshot,\
 	org.eclipse.fennec.services.examples.rsa.api;version=snapshot,\
-	org.eclipse.fennec.services.derive;version=snapshot,\
 	org.eclipse.fennec.services.rsa;version=snapshot,\
 	org.eclipse.fennec.services.rsa.config;version=snapshot,\
 	org.eclipse.fennec.services.rsa.discovery.rest;version=snapshot,\

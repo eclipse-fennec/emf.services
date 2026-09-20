@@ -183,4 +183,40 @@ describe('ServiceListenerRegistry', () => {
     registry.add('Other', undefined, () => undefined);
     expect(registry.subscribedInterfaces().sort()).toEqual(['Other', 'Payment']);
   });
+
+  // ------------------------------------------------------------------
+  // Letting go of a claim (parity with the Java DdsrConsumer.release)
+  // ------------------------------------------------------------------
+
+  it('forgetReference drops the claim a lookup made', () => {
+    const registry = new ServiceListenerRegistry(new FakeSource(), noRefresh);
+    registry.noteReference('ref-1', ['Payment']);
+    registry.noteReference('ref-2', ['Payment']);
+
+    registry.forgetReference('ref-1');
+
+    expect(registry.knownReferenceIds()).toEqual(['ref-2']);
+  });
+
+  it('forgetting something never claimed is harmless', () => {
+    const registry = new ServiceListenerRegistry(new FakeSource(), noRefresh);
+    registry.noteReference('ref-1', ['Payment']);
+
+    registry.forgetReference('never-heard-of-it');
+    registry.forgetReference(undefined);
+
+    expect(registry.knownReferenceIds()).toEqual(['ref-1']);
+  });
+
+  it('a released reference is no longer claimed in the next session renewal', () => {
+    const registry = new ServiceListenerRegistry(new FakeSource(), noRefresh);
+    registry.noteReference('ref-1', ['Payment']);
+    registry.noteReference('ref-2', ['Payment']);
+
+    registry.forgetReference('ref-2');
+
+    // knownReferenceIds IS what the session PUT sends as acquisitions,
+    // so this list is the drain's view of who is still holding on.
+    expect(registry.knownReferenceIds()).not.toContain('ref-2');
+  });
 });

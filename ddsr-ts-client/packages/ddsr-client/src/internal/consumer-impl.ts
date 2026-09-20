@@ -152,6 +152,10 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     return this.listeners.add(interfaceName, filter, listener);
   }
 
+  release(referenceId: string): void {
+    this.listeners.forgetReference(referenceId);
+  }
+
   removeServiceListener(listener: DdsrServiceListener): void {
     this.listeners.remove(listener);
   }

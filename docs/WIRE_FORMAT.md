@@ -209,6 +209,22 @@ Two extension attributes, because CloudEvents defines neither and MQTT
 - `replyto` — the topic an answer is expected on
 - `correlationid` — the id of the request an answer belongs to
 
+### Where it appears on the REST side, and where it does not
+
+A service invocation carries it in both directions: the consumer's
+invoker sends the `ce-*` headers, the generic distribution's dispatcher
+answers with the reply pair. Since the broker's own `/catalog` and
+`/implementations` are served by that same distribution (#76), their
+answers carry a reply envelope too.
+
+What carries none: the SDK's broker proxies do not put an envelope on
+their requests (a catalog read is not an invocation of a contract this
+registry brokered), and the two hand-written resources — the lookup
+answer and the event stream — are not dispatched, so no envelope is
+added around them. None of that is load-bearing: binary mode is
+additive, and every one of those answers is readable exactly as it was
+before.
+
 A reader that meets a `type` it does not know has an envelope it
 understands carrying something it does not. Both SDKs skip such a
 message and say so at FINE: sharing a transport with somebody else's

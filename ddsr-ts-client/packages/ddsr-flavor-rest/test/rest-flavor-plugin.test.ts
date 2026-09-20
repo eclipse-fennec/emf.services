@@ -92,3 +92,70 @@ describe('RestFlavorPlugin timeouts', () => {
     expect(seenSignal).toBeUndefined();
   });
 });
+
+/**
+ * Binary mode (#101): the attributes ride as ce-* headers and the body
+ * stays exactly the payload it was — which is why the envelope cost
+ * nothing over HTTP and must keep costing nothing.
+ */
+describe('RestFlavorPlugin envelope', () => {
+  function recordingFetch(): { fetchFn: typeof fetch; seen: () => Record<string, string> } {
+    let headers: Record<string, string> = {};
+    const fetchFn = (async (_url: any, init?: any) => {
+      headers = { ...(init?.headers ?? {}) };
+      return new Response('990.0', { status: 200, headers: { 'Content-Type': 'text/plain' } });
+    }) as unknown as typeof fetch;
+    return { fetchFn, seen: () => headers };
+  }
+
+  it('sends the call as a CloudEvent in binary mode', async () => {
+    const { fetchFn, seen } = recordingFetch();
+    const plugin = new RestFlavorPlugin({ fetchFn, originLabel: 'probe' });
+    const { operation, flavor, opFlavor } = charge();
+
+    await plugin.invoke(operation, { amount: 10 }, flavor, opFlavor);
+
+    const headers = seen();
+    expect(headers['ce-specversion']).toBe('1.0');
+    expect(headers['ce-type']).toBe('org.eclipse.fennec.services.invoke');
+    expect(headers['ce-source']).toBe('/consumer/probe');
+    expect(headers['ce-subject']).toBe('charge');
+    expect(headers['ce-id']).toBeTruthy();
+    expect(headers['ce-datacontenttype'])
+      .toBeUndefined();
+    expect(headers.Accept)
+      .toBe('application/xml');
+  });
+
+  it('lets a contract-bound header win over the envelope', async () => {
+    const { fetchFn, seen } = recordingFetch();
+    const plugin = new RestFlavorPlugin({ fetchFn });
+    const f = DDSRFactory.eINSTANCE;
+    const { operation, flavor, opFlavor } = charge();
+    const binding = f.createRestParameterBinding();
+    binding.parameter = operation.parameters[0];
+    binding.binding = 'HEADER';
+    binding.wireName = 'ce-subject';
+    opFlavor.parameterBindings.push(binding);
+
+    await plugin.invoke(operation, { amount: 7 }, flavor, opFlavor);
+
+    expect(seen()['ce-subject'])
+      .toBe('7');
+  });
+
+  it('notices an answer that correlates with a different call', async () => {
+    const wrongAnswer = (async () => new Response('990.0', {
+      status: 200,
+      headers: { 'Content-Type': 'text/plain', 'ce-correlationid': 'somebody-elses-call' },
+    })) as unknown as typeof fetch;
+    const complaints: string[] = [];
+    const plugin = new RestFlavorPlugin({ fetchFn: wrongAnswer, log: (m) => complaints.push(m) });
+    const { operation, flavor, opFlavor } = charge();
+
+    await plugin.invoke(operation, { amount: 1 }, flavor, opFlavor);
+
+    expect(complaints).toHaveLength(1);
+    expect(complaints[0]).toContain('somebody-elses-call');
+  });
+});

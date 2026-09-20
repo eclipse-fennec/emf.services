@@ -12,7 +12,10 @@
  ********************************************************************/
 
 import type { FlavorPlugin } from '@ddsr/client';
-import { DdsrTransportError } from '@ddsr/client';
+import {
+  CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrTransportError,
+  newEnvelope, toHeaders,
+} from '@ddsr/client';
 import type {
   ServiceFlavor,
   ServiceOperationFlavor,
@@ -40,18 +43,30 @@ export interface RestFlavorPluginOptions {
    * Default 10000.
    */
   timeoutMillis?: number;
+  /**
+   * Which system this is, for the CloudEvents `source` of every call
+   * (#101). The same identity the origin header carries, worn twice
+   * because the readers are different: the header is read by this
+   * registry, the attribute by anything that reads CloudEvents.
+   */
+  originLabel?: string;
+  log?: (message: string) => void;
 }
 
 export class RestFlavorPlugin implements FlavorPlugin {
   readonly flavorKind = 'REST';
   private readonly fetchFn: typeof fetch;
   private readonly timeoutMillis: number;
+  private readonly source: string;
+  private readonly log: (message: string) => void;
 
   constructor(fetchFnOrOptions?: typeof fetch | RestFlavorPluginOptions) {
     const options: RestFlavorPluginOptions =
       typeof fetchFnOrOptions === 'function' ? { fetchFn: fetchFnOrOptions } : (fetchFnOrOptions ?? {});
     this.fetchFn = options.fetchFn ?? globalThis.fetch.bind(globalThis);
     this.timeoutMillis = options.timeoutMillis ?? 10_000;
+    this.source = `/consumer/${options.originLabel ?? 'ts'}`;
+    this.log = options.log ?? ((m) => console.error(`[ddsr-rest] ${m}`));
   }
 
   canHandle(flavor: ServiceFlavor): boolean {
@@ -71,9 +86,17 @@ export class RestFlavorPlugin implements FlavorPlugin {
     const restOpFlavor = operationFlavor as RestOperationFlavor;
 
     const request = buildRequest(operation, params, restFlavor, restOpFlavor);
-    const init: RequestInit = this.timeoutMillis > 0
-      ? { ...request.init, signal: AbortSignal.timeout(this.timeoutMillis) }
-      : request.init;
+    // Binary mode (#101): the attributes as ce-* headers, the body
+    // untouched. The envelope goes in FIRST, so a contract that binds a
+    // parameter to a header wins over it — the call is what the
+    // contract says, the envelope is what carries it.
+    const envelope = newEnvelope(CE_TYPE_INVOKE, this.source);
+    envelope.subject = operation.name ?? undefined;
+    const init: RequestInit = {
+      ...request.init,
+      headers: { ...toHeaders(envelope), ...(request.init.headers as Record<string, string>) },
+      ...(this.timeoutMillis > 0 ? { signal: AbortSignal.timeout(this.timeoutMillis) } : {}),
+    };
     let response: Response;
     try {
       response = await this.fetchFn(request.url, init);
@@ -83,6 +106,15 @@ export class RestFlavorPlugin implements FlavorPlugin {
       // registered but not answering (#59).
       throw new DdsrTransportError(
         `invoking ${operation.name} at ${request.url} failed: ${describe(error)}`, error);
+    }
+
+    // An answer says which call it answers. Over HTTP the connection
+    // already said it, so a mismatch cannot normally happen — which is
+    // why it is worth a line if it ever does.
+    const correlation = response.headers.get(`${CE_HEADER_PREFIX}${CE_EXTENSION_CORRELATION_ID}`);
+    if (correlation && correlation !== envelope.id) {
+      this.log(`the answer to ${operation.name} correlates with ${correlation},`
+        + ` not with the request ${envelope.id}`);
     }
 
     if (!response.ok) {

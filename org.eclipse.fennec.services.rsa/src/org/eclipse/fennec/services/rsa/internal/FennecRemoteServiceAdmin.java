@@ -30,7 +30,10 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.ServiceProxyFactory;
@@ -276,9 +279,16 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 			// nothing can tell which it was.
 			ServiceInterface contract = models.contractFor(exportedAs, effective);
 			endpoint = distribution.export(service, contract, effective);
+			String frameworkUuid = context.getProperty(Constants.FRAMEWORK_UUID);
+			// Who exported it, on the implementation itself and before
+			// anyone hears about it. A node that both exports a contract
+			// and waits for one has to be able to tell its own
+			// announcement from everyone else's — otherwise it imports
+			// itself, and a local call leaves the framework, crosses the
+			// network and comes back to the service it started from.
+			stamp(endpoint.implementation(), frameworkUuid);
 			inRegistry = models.add(endpoint.implementation());
 			announcement = discovery.announce(endpoint);
-			String frameworkUuid = context.getProperty(Constants.FRAMEWORK_UUID);
 			EndpointDescription description = Endpoints.describe(effective, reference, exportedAs,
 					endpoint.contract(), endpoint.implementation(), frameworkUuid, configType, intents,
 					endpoint.properties());
@@ -437,6 +447,25 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 
 
 
+
+	/**
+	 * Say on the implementation which framework exported it.
+	 *
+	 * <p>A property rather than a field of the model: it is deployment
+	 * fact, not contract, and it has to survive the wire in a form
+	 * anything can read — the name is the specification's own.
+	 */
+	private static void stamp(ServiceImplementation implementation, String frameworkUuid) {
+		if (frameworkUuid == null || frameworkUuid.isBlank()) {
+			return;
+		}
+		StringProperty origin = ServicesFactory.eINSTANCE.createStringProperty();
+		origin.setName(RsaProperties.FRAMEWORK_UUID);
+		origin.setValue(frameworkUuid);
+		implementation.getProperties().removeIf(
+				property -> RsaProperties.FRAMEWORK_UUID.equals(property.getName()));
+		implementation.getProperties().add(origin);
+	}
 
 	/** Whether the bound distribution can serve the type this admin is for. */
 	private boolean serves(String type) {

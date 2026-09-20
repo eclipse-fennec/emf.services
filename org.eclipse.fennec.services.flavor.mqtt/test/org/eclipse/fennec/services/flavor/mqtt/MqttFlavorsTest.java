@@ -147,4 +147,36 @@ class MqttFlavorsTest {
 		assertThatThrownBy(() -> MqttMessages.replyTopicOf(withoutReply))
 			.isInstanceOf(CloudEventException.class);
 	}
+
+	@Test
+	void one_consumers_answers_live_under_its_own_name() {
+		MqttFlavor flavor = payments();
+
+		assertThat(MqttFlavors.replySubtree(flavor, first(flavor), "node-a"))
+			.as("a broker ACL is written against a name, not against an unguessable id")
+			.isEqualTo("ddsr/rpc/payments/charge/reply/node-a");
+		assertThat(MqttFlavors.replyTopic(flavor, first(flavor), "node-a", "call-1"))
+			.isEqualTo("ddsr/rpc/payments/charge/reply/node-a/call-1");
+	}
+
+	@Test
+	void a_separate_response_tree_is_used_when_the_flavor_names_one() {
+		MqttFlavor flavor = payments();
+		flavor.setResponseTopic("ddsr/rpc/res/payments/charge");
+
+		assertThat(MqttFlavors.replyTopic(flavor, first(flavor), "node-a", "call-1"))
+			.as("requests and answers are two permissions, so a deployment may keep them two trees")
+			.isEqualTo("ddsr/rpc/res/payments/charge/node-a/call-1");
+		assertThat(MqttFlavors.requestTopic(flavor, first(flavor)))
+			.isEqualTo("ddsr/rpc/payments/charge");
+	}
+
+	@Test
+	void a_name_with_a_wildcard_in_it_cannot_claim_a_subtree_it_was_not_given() {
+		assertThat(MqttFlavors.topicSegment("a/#")).isEqualTo("a__");
+		assertThat(MqttFlavors.topicSegment("+")).isEqualTo("_");
+		assertThat(MqttFlavors.topicSegment(null)).isEqualTo("anonymous");
+		assertThat(MqttFlavors.replySubtree(payments(), first(payments()), "a/#"))
+			.isEqualTo("ddsr/rpc/payments/charge/reply/a__");
+	}
 }

@@ -19,8 +19,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -105,19 +103,29 @@ public class MqttServiceInvoker implements ServiceInvoker {
 
 	private final Map<String, MqttAsyncClient> clientsByUrl = new LinkedHashMap<>();
 
+	/** One inbox per reply subtree, shared by every call that uses it. */
+	private final Map<String, ReplyInbox> inboxes = new LinkedHashMap<>();
+
 	private Config config;
 
 	private String source;
+
+	/** This runtime, as a topic level — the segment its answers arrive under. */
+	private String consumerSegment;
 
 	@Activate
 	void activate(BundleContext context, Config config) {
 		this.config = config;
 		String uuid = context.getProperty(Constants.FRAMEWORK_UUID);
 		this.source = "/consumer/" + (uuid == null ? ClientOrigin.ANONYMOUS : uuid);
+		this.consumerSegment = MqttFlavors.topicSegment(uuid == null ? ClientOrigin.ANONYMOUS : uuid);
 	}
 
 	@Deactivate
 	void deactivate() {
+		synchronized (inboxes) {
+			inboxes.clear();
+		}
 		synchronized (clientsByUrl) {
 			for (MqttAsyncClient client : clientsByUrl.values()) {
 				close(client);
@@ -156,7 +164,11 @@ public class MqttServiceInvoker implements ServiceInvoker {
 			// because the call carries it — so the envelope is built
 			// first and its own id names the topic it answers on.
 			request = CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE, source, consumes);
-			replyTopic = MqttFlavors.replyBase(flavor, operationFlavor) + "/" + request.getEventId();
+			// Under this consumer's own subtree, not merely under an
+			// unguessable id: a broker can be told who may read what only
+			// if there is a name to write the rule against.
+			replyTopic = MqttFlavors.replyTopic(flavor, operationFlavor, consumerSegment,
+					request.getEventId());
 			request.setSubject(operation.getName());
 			request.getExtensions().put(CloudEvents.EXTENSION_REPLY_TO, replyTopic);
 			message = MqttMessages.write(request, document);
@@ -166,21 +178,17 @@ public class MqttServiceInvoker implements ServiceInvoker {
 		}
 
 		MqttAsyncClient client = clientFor(flavor);
-		BlockingQueue<byte[]> answers = new ArrayBlockingQueue<>(1);
-		IMqttMessageListener listener = (topic, received) -> answers.offer(received.getPayload());
-		try {
-			client.subscribe(replyTopic, qos, listener).waitForCompletion();
-		} catch (Exception unsubscribable) {
-			throw DdsrException.transport("could not listen for the answer to " + operationName
-					+ " on " + replyTopic + ": " + unsubscribable.getMessage(), unsubscribable);
-		}
+		String subtree = MqttFlavors.replySubtree(flavor, operationFlavor, consumerSegment);
+		ReplyInbox inbox = inboxFor(client, subtree, qos);
+		inbox.expect(request.getEventId());
 		try {
 			MqttMessage published = new MqttMessage(message);
 			published.setQos(qos);
 			published.setRetained(MqttFlavors.retained());
 			client.publish(requestTopic, published).waitForCompletion();
 
-			byte[] answer = answers.poll(config.reply_timeout_seconds(), TimeUnit.SECONDS);
+			byte[] answer = inbox.await(request.getEventId(), config.reply_timeout_seconds(),
+					TimeUnit.SECONDS);
 			if (answer == null) {
 				throw DdsrException.transport("no answer to " + operationName + " on " + replyTopic
 						+ " within " + config.reply_timeout_seconds() + "s", null);
@@ -196,11 +204,40 @@ public class MqttServiceInvoker implements ServiceInvoker {
 			throw DdsrException.transport("calling " + operationName + " over MQTT failed: "
 					+ failed.getMessage(), failed);
 		} finally {
-			try {
-				client.unsubscribe(replyTopic);
-			} catch (Exception alreadyGone) {
-				// The call is over either way.
+			// The subscription stays: it is this consumer's inbox, not
+			// this call's. What goes is the expectation of an answer.
+			inbox.forget(request.getEventId());
+		}
+	}
+
+	/**
+	 * The inbox for one reply subtree, subscribed once.
+	 *
+	 * <p>Once rather than per call, because the subtree is this
+	 * consumer's and the correlation in the envelope is what tells the
+	 * calls apart. Several calls in flight then cost several entries in
+	 * a map instead of several subscribe/unsubscribe round trips — and
+	 * an answer that arrives while a caller is still setting up is
+	 * waited for rather than missed.
+	 */
+	private ReplyInbox inboxFor(MqttAsyncClient client, String subtree, int qos) {
+		synchronized (inboxes) {
+			ReplyInbox inbox = inboxes.get(subtree);
+			if (inbox != null) {
+				return inbox;
 			}
+			ReplyInbox fresh = new ReplyInbox(subtree);
+			try {
+				client.subscribe(fresh.filter(), qos,
+						(IMqttMessageListener) (topic, received) -> fresh.deliver(received.getPayload()))
+						.waitForCompletion();
+			} catch (Exception unsubscribable) {
+				throw DdsrException.transport("could not listen for answers on " + fresh.filter()
+						+ ": " + unsubscribable.getMessage(), unsubscribable);
+			}
+			inboxes.put(subtree, fresh);
+			LOG.info("[DDSR-MQTT] listening for answers on " + fresh.filter());
+			return fresh;
 		}
 	}
 

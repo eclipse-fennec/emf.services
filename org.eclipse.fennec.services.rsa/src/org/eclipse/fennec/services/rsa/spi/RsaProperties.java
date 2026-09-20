@@ -31,6 +31,20 @@ public final class RsaProperties {
 	/** The implementation id the broker registered it under. */
 	public static final String IMPLEMENTATION = "ddsr.implementation";
 
+	/**
+	 * Which framework exported this — on the announced implementation,
+	 * so that a node can tell its own exports from everyone else's.
+	 *
+	 * <p>The name is the specification's own
+	 * ({@code endpoint.framework.uuid}, 122.10), because that is what an
+	 * `EndpointDescription` carries it as and what a foreign reader
+	 * recognises. Without it a node that both exports a contract and
+	 * waits for one imports itself: a proxy that leaves the framework,
+	 * crosses the network and comes back to the service it started
+	 * from.
+	 */
+	public static final String FRAMEWORK_UUID = "endpoint.framework.uuid";
+
 	private RsaProperties() {
 	}
 }

@@ -27,12 +27,16 @@
  *
  * - request topic:  MqttOperationFlavor.requestTopic, else
  *                   `<MqttFlavor.requestTopic>/<operation.name>`
- * - reply topic:    chosen by the CONSUMER as `<base>/<event id>`
- *                   with base = MqttOperationFlavor.responseTopic, else
+ * - reply topic:    `<base>/<consumer>/<event id>` with base =
+ *                   MqttOperationFlavor.responseTopic, else
  *                   MqttFlavor.responseTopic, else
- *                   `<requestTopic>/reply` — one topic per request, so
- *                   a subscription never sees a foreign answer, and the
- *                   correlation is still checked in the envelope
+ *                   `<requestTopic>/reply`. The CONSUMER segment is what
+ *                   makes the separation writable: a broker ACL can
+ *                   grant `subscribe <base>/<me>/#` and nothing wider,
+ *                   where a topic separated only by an unguessable id
+ *                   keeps peers apart by obscurity. It also lets a
+ *                   caller subscribe once for all its calls and tell
+ *                   them apart by `correlationid`.
  * - request:        CloudEvent, structured mode, `type` …invoke,
  *                   `replyto` = the reply topic, data = the invocation
  * - response:       CloudEvent, `type` …invoke.reply, `correlationid` =
@@ -138,6 +142,30 @@ export function replyBaseFor(flavor: FlavorLike, opFlavor: OperationFlavorLike):
     ?? flavor.responseTopic
     ?? `${requestTopicFor(flavor, opFlavor)}/reply`
   ).replace(/\/+$/, '');
+}
+
+/**
+ * A name as a topic level: MQTT's own separator and wildcards cannot
+ * appear in one, and a consumer calling itself `a/#` must not thereby
+ * name a subtree it was never given.
+ */
+export function topicSegment(name: string | undefined): string {
+  if (!name || !name.trim()) return 'anonymous';
+  return name.replace(/[/+#\s]/g, '_');
+}
+
+/** Where one consumer's answers arrive: its own subtree under the base. */
+export function replySubtreeFor(
+  flavor: FlavorLike, opFlavor: OperationFlavorLike, consumer: string,
+): string {
+  return `${replyBaseFor(flavor, opFlavor)}/${topicSegment(consumer)}`;
+}
+
+/** The topic one call's answer arrives on. */
+export function replyTopicFor(
+  flavor: FlavorLike, opFlavor: OperationFlavorLike, consumer: string, requestId: string,
+): string {
+  return `${replySubtreeFor(flavor, opFlavor, consumer)}/${topicSegment(requestId)}`;
 }
 
 /**

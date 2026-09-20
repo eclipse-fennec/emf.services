@@ -71,6 +71,47 @@ public final class MqttFlavors {
 	}
 
 	/**
+	 * Where one consumer's answers arrive: its own subtree under the
+	 * reply base.
+	 *
+	 * <p>The consumer's segment is what makes this separable at all. A
+	 * reply topic that is only {@code <base>/<request id>} keeps
+	 * consumers apart by unguessability and nothing else — a broker
+	 * cannot be told who may read what, because there is no name to
+	 * write the rule against. With a segment per consumer, an ACL that
+	 * grants {@code subscribe <base>/<me>/#} and nothing wider is one
+	 * line, and the request topic stays what it always was: the
+	 * provider's address, which everyone may publish to and nobody
+	 * should be able to read.
+	 *
+	 * <p>It also lets a caller subscribe once instead of once per call:
+	 * everything it will ever be sent is under one filter, and the
+	 * correlation in the envelope says which call an answer belongs to.
+	 */
+	public static String replySubtree(MqttFlavor flavor, MqttOperationFlavor operationFlavor,
+			String consumer) {
+		return replyBase(flavor, operationFlavor) + "/" + topicSegment(consumer);
+	}
+
+	/** The topic one call's answer arrives on. */
+	public static String replyTopic(MqttFlavor flavor, MqttOperationFlavor operationFlavor,
+			String consumer, String requestId) {
+		return replySubtree(flavor, operationFlavor, consumer) + "/" + topicSegment(requestId);
+	}
+
+	/**
+	 * A name as a topic level: MQTT's own separator and wildcards cannot
+	 * appear in one, and a consumer that calls itself {@code a/#} must
+	 * not thereby name a subtree it was never given.
+	 */
+	public static String topicSegment(String name) {
+		if (name == null || name.isBlank()) {
+			return "anonymous";
+		}
+		return name.replaceAll("[/+#\\s]", "_");
+	}
+
+	/**
 	 * The QoS of one operation: its own when it states one, else the
 	 * flavor's default, else at-least-once.
 	 *

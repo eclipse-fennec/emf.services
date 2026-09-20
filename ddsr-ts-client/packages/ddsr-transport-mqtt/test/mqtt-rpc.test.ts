@@ -18,7 +18,7 @@ import type { MqttFlavor, MqttOperationFlavor, ServiceOperation } from '@ddsr/mo
 import { MqttFlavorPlugin } from '../src/mqtt-flavor-plugin';
 import { MqttOperationServer } from '../src/mqtt-operation-server';
 import type { MqttRpcClientLike } from '../src/mqtt-rpc';
-import { qosFor, replyBaseFor, requestTopicFor } from '../src/mqtt-rpc';
+import { qosFor, replyBaseFor, requestTopicFor, topicSegment } from '../src/mqtt-rpc';
 
 function firstOpFlavor(flavor: MqttFlavor): MqttOperationFlavor {
   const list = flavor.operationFlavors as unknown as
@@ -32,6 +32,23 @@ function firstOpFlavor(flavor: MqttFlavor): MqttOperationFlavor {
  * of connected clients — enough for the request/response convention,
  * which never uses wildcards (one reply topic per request).
  */
+/**
+ * MQTT topic matching, as a real broker does it: `+` is one level, `#`
+ * is the rest. The consumer subscribes its whole reply subtree since
+ * the topics gained a consumer segment, so an exact-match fake would
+ * be a fake that cannot see what the code now does.
+ */
+function matches(filter: string, topic: string): boolean {
+  const f = filter.split('/');
+  const t = topic.split('/');
+  for (let i = 0; i < f.length; i++) {
+    if (f[i] === '#') return true;
+    if (i >= t.length) return false;
+    if (f[i] !== '+' && f[i] !== t[i]) return false;
+  }
+  return f.length === t.length;
+}
+
 class FakeBroker {
   private readonly subscriptions = new Map<string, Set<FakeClient>>();
 
@@ -48,8 +65,9 @@ class FakeBroker {
 
   route(topic: string, payload: Uint8Array): void {
     for (const watcher of this.watchers) watcher(topic, payload);
-    for (const client of this.subscriptions.get(topic) ?? []) {
-      client.deliver(topic, payload);
+    for (const [filter, clients] of this.subscriptions) {
+      if (!matches(filter, topic)) continue;
+      for (const client of clients) client.deliver(topic, payload);
     }
   }
 
@@ -316,6 +334,90 @@ describe('MQTT invocation honours the declared encoding', () => {
     await expect(plugin.invoke(charge, { amount: 1 }, flavor, opFlavor))
       .rejects.toThrow(/x-protobuf/);
 
+    await plugin.close();
+    await server.stop();
+  });
+});
+
+/**
+ * Who may read what. The reply subtree carries the consumer's name
+ * because that is the only thing a broker ACL can be written against —
+ * an unguessable id separates by obscurity, which is not a separation
+ * a deployment can enforce.
+ */
+describe('MQTT reply isolation', () => {
+  it('puts a consumer\'s answers under its own subtree', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const { broker, clientFactory } = testHarness();
+    const published: Array<{ topic: string; payload: Uint8Array }> = [];
+    broker.onPublish((topic, payload) => published.push({ topic, payload }));
+
+    const plugin = new MqttFlavorPlugin({
+      clientFactory, log: () => undefined, timeoutMs: 40, originLabel: 'probe-a',
+    });
+    await plugin.invoke(charge, { amount: 1 }, flavor, firstOpFlavor(flavor)).catch(() => undefined);
+
+    const request = published.find(p => p.topic === 'ddsr/rpc/payments/charge');
+    expect(readStructured(request!.payload).attributes.extensions.replyto)
+      .toMatch(/^ddsr\/rpc\/payments\/charge\/reply\/probe-a\/.+/);
+    await plugin.close();
+  });
+
+  it('a name with a wildcard in it cannot claim a subtree it was not given', () => {
+    expect(topicSegment('a/#')).toBe('a__');
+    expect(topicSegment('+')).toBe('_');
+    expect(topicSegment(undefined)).toBe('anonymous');
+  });
+
+  it('two consumers of one provider do not share a reply subtree', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const { broker, clientFactory } = testHarness();
+    const published: Array<{ topic: string; payload: Uint8Array }> = [];
+    broker.onPublish((topic, payload) => published.push({ topic, payload }));
+    const server = new MqttOperationServer(flavor, {
+      charge: (args) => 1000 - Number(args.amount),
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+
+    const one = new MqttFlavorPlugin({ clientFactory, log: () => undefined, originLabel: 'one' });
+    const two = new MqttFlavorPlugin({ clientFactory, log: () => undefined, originLabel: 'two' });
+    const [first, second] = await Promise.all([
+      one.invoke(charge, { amount: 1 }, flavor, firstOpFlavor(flavor)),
+      two.invoke(charge, { amount: 2 }, flavor, firstOpFlavor(flavor)),
+    ]);
+
+    expect(first).toBe(999);
+    expect(second).toBe(998);
+    const answers = published.filter(p => p.topic.includes('/reply/'));
+    expect(answers.some(p => p.topic.startsWith('ddsr/rpc/payments/charge/reply/one/'))).toBe(true);
+    expect(answers.some(p => p.topic.startsWith('ddsr/rpc/payments/charge/reply/two/'))).toBe(true);
+
+    await one.close();
+    await two.close();
+    await server.stop();
+  });
+
+  it('several calls of one consumer share the subscription and are told apart by correlation', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, {
+      charge: async (args) => {
+        // Answered out of order on purpose: the correlation decides, not
+        // the order and not a topic per call.
+        await new Promise(resolve => setTimeout(resolve, Number(args.amount) === 1 ? 30 : 1));
+        return 1000 - Number(args.amount);
+      },
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined, originLabel: 'busy' });
+    const [slow, quick] = await Promise.all([
+      plugin.invoke(charge, { amount: 1 }, flavor, firstOpFlavor(flavor)),
+      plugin.invoke(charge, { amount: 2 }, flavor, firstOpFlavor(flavor)),
+    ]);
+
+    expect(slow).toBe(999);
+    expect(quick).toBe(998);
     await plugin.close();
     await server.stop();
   });

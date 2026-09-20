@@ -1,0 +1,24 @@
+Bundle-Name: Fennec Services RSA MQTT Discovery
+Bundle-Description: \
+	Discovery over the broker with the events heard over MQTT: the same \
+	registry, the same announcement, a different way of learning what \
+	changed. Selected by the RSA configuration type fennec.mqtt. Dormant \
+	unless an MQTT event source is present, because a deployment that \
+	names this type is saying which transport it listens on and should \
+	not silently get another.
+
+-library: enableEMF
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.rsa;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

@@ -23,7 +23,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * The order in which a role's configurations appear and disappear.
+ * The order in which a node's configurations appear and disappear.
  *
  * <p>Both directions matter. Forwards, because a topology manager that
  * starts exporting before the transports are configured exports into
@@ -47,7 +47,7 @@ class DerivedConfigurationsTest {
 	void writesInOrder() throws IOException {
 		FakeConfigurationAdmin admin = new FakeConfigurationAdmin();
 
-		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "role")) {
+		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "a node")) {
 			derived.apply(List.of(FIRST, SECOND, THIRD));
 		}
 
@@ -59,7 +59,7 @@ class DerivedConfigurationsTest {
 	void removesInReverse() throws IOException {
 		FakeConfigurationAdmin admin = new FakeConfigurationAdmin();
 
-		DerivedConfigurations derived = new DerivedConfigurations(admin, "role");
+		DerivedConfigurations derived = new DerivedConfigurations(admin, "a node");
 		derived.apply(List.of(FIRST, SECOND, THIRD));
 		derived.close();
 
@@ -73,7 +73,7 @@ class DerivedConfigurationsTest {
 	void unchangedIsLeftAlone() throws IOException {
 		FakeConfigurationAdmin admin = new FakeConfigurationAdmin();
 
-		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "role")) {
+		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "a node")) {
 			derived.apply(List.of(FIRST, SECOND));
 			admin.journal.clear();
 			derived.apply(List.of(FIRST, SECOND));
@@ -87,7 +87,7 @@ class DerivedConfigurationsTest {
 	void onlyTheChangedOneIsWritten() throws IOException {
 		FakeConfigurationAdmin admin = new FakeConfigurationAdmin();
 
-		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "role")) {
+		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "a node")) {
 			derived.apply(List.of(FIRST, SECOND));
 			admin.journal.clear();
 			derived.apply(List.of(FIRST, DerivedConfiguration.ofFactory("second", "name", Map.of("b", "9"))));
@@ -101,7 +101,7 @@ class DerivedConfigurationsTest {
 	void droppedEntriesAreRemoved() throws IOException {
 		FakeConfigurationAdmin admin = new FakeConfigurationAdmin();
 
-		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "role")) {
+		try (DerivedConfigurations derived = new DerivedConfigurations(admin, "a node")) {
 			derived.apply(List.of(FIRST, SECOND, THIRD));
 			admin.journal.clear();
 			derived.apply(List.of(FIRST));
@@ -115,20 +115,20 @@ class DerivedConfigurationsTest {
 	@DisplayName("a provider's plan ends with the topology manager and therefore starts unwinding there")
 	void providerUnwindsFromTheTopologyManager() throws IOException {
 		FakeConfigurationAdmin admin = new FakeConfigurationAdmin();
-		RoleSettings settings = new RoleSettings("http://broker:8887/ddsr/rest", "", "", 9095, "0.0.0.0",
+		RsaSettings settings = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095, "0.0.0.0",
 				"services", true, "ddsrHttp", "node-a", "1.0.0", "fennec.rest", "promiscuous",
 				"promiscuous", 30, 0, "");
 
 		DerivedConfigurations derived = new DerivedConfigurations(admin, "RSA provider");
-		derived.apply(RolePlans.provider(settings));
+		derived.apply(Derivation.forProvider(settings));
 		admin.journal.clear();
 		derived.close();
 
-		assertThat(admin.journal.get(0)).isEqualTo("delete " + RolePlans.TOPOLOGY_PID);
+		assertThat(admin.journal.get(0)).isEqualTo("delete " + Derivation.TOPOLOGY_PID);
 		assertThat(admin.journal)
-				.containsSubsequence("delete " + RolePlans.TOPOLOGY_PID,
+				.containsSubsequence("delete " + Derivation.TOPOLOGY_PID,
 						"delete org.eclipse.fennec.services.rsa~fennec-rest",
-						"delete " + RolePlans.DISCOVERY_PID,
-						"delete " + RolePlans.CLIENT_REST_PID);
+						"delete " + Derivation.DISCOVERY_PID,
+						"delete " + Derivation.CLIENT_REST_PID);
 	}
 }

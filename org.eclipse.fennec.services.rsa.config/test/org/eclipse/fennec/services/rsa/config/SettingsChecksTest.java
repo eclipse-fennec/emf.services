@@ -19,62 +19,62 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * What the role says before anything comes up, and what it only
+ * What a node says before anything comes up, and what it only
  * mentions.
  */
-class RoleChecksTest {
+class SettingsChecksTest {
 
-	private static RoleSettings with(String brokerUrl, String policy, String registryName) {
-		return new RoleSettings(brokerUrl, "", "", 9095, "0.0.0.0", "services", true, "ddsrHttp",
+	private static RsaSettings with(String brokerUrl, String policy, String registryName) {
+		return new RsaSettings(brokerUrl, "", "", 9095, "0.0.0.0", "services", true, "ddsrHttp",
 				registryName, "1.0.0", "fennec.rest", policy, "promiscuous", 30, 0, "");
 	}
 
 	@Test
 	@DisplayName("a usable provider configuration has nothing to report")
 	void silentWhenSound() {
-		assertThat(RoleChecks.problems(with("http://broker:8887/ddsr/rest", "promiscuous", "node-a"), true))
+		assertThat(SettingsChecks.problems(with("http://broker:8887/ddsr/rest", "promiscuous", "node-a"), true))
 				.isEmpty();
 	}
 
 	@Test
 	@DisplayName("a broker URL that is not a URL is named, not swallowed")
 	void brokerUrlChecked() {
-		assertThat(RoleChecks.problems(with("broker:8887", "promiscuous", "node-a"), true))
+		assertThat(SettingsChecks.problems(with("broker:8887", "promiscuous", "node-a"), true))
 				.anySatisfy(problem -> assertThat(problem).contains("broker.url").contains("absolute"));
 	}
 
 	@Test
 	@DisplayName("an unknown policy is named together with the ones that exist")
 	void policyChecked() {
-		assertThat(RoleChecks.problems(with("http://broker:8887/ddsr/rest", "eager", "node-a"), true))
+		assertThat(SettingsChecks.problems(with("http://broker:8887/ddsr/rest", "eager", "node-a"), true))
 				.anySatisfy(problem -> assertThat(problem).contains("eager").contains("promiscuous"));
 	}
 
 	@Test
 	@DisplayName("an empty registry name is a problem, because it is what services are registered under")
 	void registryNameChecked() {
-		assertThat(RoleChecks.problems(with("http://broker:8887/ddsr/rest", "promiscuous", " "), true))
+		assertThat(SettingsChecks.problems(with("http://broker:8887/ddsr/rest", "promiscuous", " "), true))
 				.anySatisfy(problem -> assertThat(problem).contains("registry.name"));
 	}
 
 	@Test
 	@DisplayName("a consumer is not asked about ports it does not open")
 	void consumerHasNoPort() {
-		RoleSettings consumer = new RoleSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",
+		RsaSettings consumer = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",
 				false, "", "node-b", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "node-b");
 
-		assertThat(RoleChecks.problems(consumer, false)).isEmpty();
+		assertThat(SettingsChecks.problems(consumer, false)).isEmpty();
 	}
 
 	@Test
 	@DisplayName("a public URL on another port is mentioned, not refused — that is what a proxy looks like")
 	void mismatchIsMentioned() {
-		RoleSettings proxied = new RoleSettings("http://broker:8887/ddsr/rest",
+		RsaSettings proxied = new RsaSettings("http://broker:8887/ddsr/rest",
 				"https://edge.example.org:443/api", "", 9095, "0.0.0.0", "services", true, "ddsrHttp",
 				"node-a", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "");
 
-		assertThat(RoleChecks.problems(proxied, true)).isEmpty();
-		assertThat(RoleChecks.mismatches(proxied))
+		assertThat(SettingsChecks.problems(proxied, true)).isEmpty();
+		assertThat(SettingsChecks.mismatches(proxied))
 				.anySatisfy(note -> assertThat(note).contains("443").contains("9095"))
 				.anySatisfy(note -> assertThat(note).contains("api").contains("services"));
 	}
@@ -82,7 +82,7 @@ class RoleChecksTest {
 	@Test
 	@DisplayName("a derived public URL cannot disagree with the stack it was derived from")
 	void derivedNeverMismatches() {
-		assertThat(RoleChecks.mismatches(with("http://broker:8887/ddsr/rest", "promiscuous", "node-a")))
+		assertThat(SettingsChecks.mismatches(with("http://broker:8887/ddsr/rest", "promiscuous", "node-a")))
 				.isEmpty();
 	}
 }

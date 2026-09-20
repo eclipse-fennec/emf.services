@@ -31,7 +31,7 @@ import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 
 /**
- * The set of configurations a role owns: written in the order the plan
+ * The set of configurations a node owns: written in the order the plan
  * gives them, and removed in the opposite order.
  *
  * <p>The order is the whole point. Writing runs from infrastructure
@@ -44,7 +44,7 @@ import org.osgi.service.cm.ConfigurationAdmin;
  *
  * <p>Nothing here writes a configuration that already says the same
  * thing. Configuration Admin delivers an update per write, every
- * delivery restarts or modifies components below, and a role that
+ * delivery restarts or modifies components below, and a node that
  * rewrites its nine configurations on every change would shake the stack
  * for nothing.
  */
@@ -83,7 +83,7 @@ final class DerivedConfigurations implements AutoCloseable {
 	 * Brings the derived set to exactly this plan.
 	 *
 	 * <p>Entries are written in plan order, and anything written earlier
-	 * that the plan no longer contains is removed afterwards — a role that
+	 * that the plan no longer contains is removed afterwards — a node that
 	 * turns off its own HTTP stack takes those two configurations with it
 	 * rather than leaving them behind.
 	 */

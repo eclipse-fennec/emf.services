@@ -41,12 +41,12 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  *
  * <p>So this states each fact once and derives the rest. What a
  * deployment still decides is here; what follows from a decision is in
- * {@link RolePlans}.
+ * {@link Derivation}.
  */
 @Designate(ocd = RsaProvider.Config.class)
 @Component(name = RsaProvider.PID, configurationPid = RsaProvider.PID,
 		configurationPolicy = ConfigurationPolicy.REQUIRE, immediate = true)
-public class RsaProvider extends RsaRoleConfiguration {
+public class RsaProvider extends NodeConfiguration {
 
 	public static final String PID = "org.eclipse.fennec.services.rsa.provider";
 
@@ -74,12 +74,12 @@ public class RsaProvider extends RsaRoleConfiguration {
 		String context_path() default "services";
 
 		@AttributeDefinition(name = "Manage the HTTP stack",
-				description = "Whether this role writes the HTTP runtime and whiteboard configurations. "
+				description = "Whether this node writes the HTTP runtime and whiteboard configurations. "
 						+ "Turn it off where something else already owns them; then state the public URL.")
 		boolean manage_http() default true;
 
 		@AttributeDefinition(name = "HTTP id",
-				description = "Ties the whiteboard to the HTTP runtime this role writes. Only matters "
+				description = "Ties the whiteboard to the HTTP runtime this node writes. Only matters "
 						+ "where several HTTP runtimes exist in one framework.")
 		String http_id() default "ddsrHttp";
 
@@ -151,17 +151,17 @@ public class RsaProvider extends RsaRoleConfiguration {
 	}
 
 	@Override
-	List<DerivedConfiguration> plan(RoleSettings settings) {
-		return RolePlans.provider(settings);
+	List<DerivedConfiguration> plan(RsaSettings settings) {
+		return Derivation.forProvider(settings);
 	}
 
 	@Override
-	String role() {
+	String name() {
 		return "RSA provider";
 	}
 
-	static RoleSettings settings(Config config) {
-		return new RoleSettings(config.broker_url(), config.public_url(), config.public_host(),
+	static RsaSettings settings(Config config) {
+		return new RsaSettings(config.broker_url(), config.public_url(), config.public_host(),
 				config.http_port(), config.http_host(), config.context_path(), config.manage_http(),
 				config.http_id(), config.registry_name(), config.default_version(), config.flavor(),
 				config.policy(), config.import_policy(), config.provider_heartbeat_seconds(),

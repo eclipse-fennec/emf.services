@@ -27,7 +27,7 @@ import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 
 /**
- * Enough Configuration Admin to see what a role wrote, in what order,
+ * Enough Configuration Admin to see what a node wrote, in what order,
  * and what it took back.
  *
  * <p>A fake rather than a mock because the order of the calls is the

@@ -14,7 +14,7 @@
 package org.eclipse.fennec.services.rsa.config;
 
 /**
- * The facts a role configuration states, as a value a test can build
+ * What a node states about itself, as a value a test can build
  * without a running framework.
  *
  * <p>Everything a deployment has to decide is here, and everything that
@@ -30,7 +30,7 @@ package org.eclipse.fennec.services.rsa.config;
  * @param httpPort the port this node serves on
  * @param httpHost the interface to bind, usually {@code 0.0.0.0}
  * @param contextPath the servlet context, without slashes
- * @param manageHttp whether this role writes the HTTP and whiteboard configurations
+ * @param manageHttp whether this node writes the HTTP and whiteboard configurations
  * @param httpId the id that ties the whiteboard to the HTTP runtime
  * @param registryName the name of this node's local service registry
  * @param defaultVersion the version a contract gets when it names none
@@ -41,7 +41,7 @@ package org.eclipse.fennec.services.rsa.config;
  * @param sessionIntervalSeconds the consumer session interval, 0 to switch it off
  * @param consumerId how this node names itself to the broker
  */
-public record RoleSettings(
+public record RsaSettings(
 		String brokerUrl,
 		String publicUrl,
 		String publicHost,

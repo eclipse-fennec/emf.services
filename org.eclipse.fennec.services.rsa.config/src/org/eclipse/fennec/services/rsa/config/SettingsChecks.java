@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * What a role configuration has to say before anything comes up.
+ * What a node has to say before anything comes up.
  *
  * <p>Every one of these used to surface much later and much further
  * away: a broker URL with a typo as a client that never connects, a
@@ -28,15 +28,15 @@ import java.util.Set;
  * serves, an unknown policy as a topology manager that quietly exports
  * nothing. Saying it here costs one message at activation.
  */
-final class RoleChecks {
+final class SettingsChecks {
 
 	private static final Set<String> POLICIES = Set.of("promiscuous", "manual");
 
-	private RoleChecks() {
+	private SettingsChecks() {
 	}
 
 	/** Everything wrong with these settings, in the order it was found. */
-	static List<String> problems(RoleSettings settings, boolean serves) {
+	static List<String> problems(RsaSettings settings, boolean serves) {
 		List<String> problems = new ArrayList<>();
 		checkUrl(problems, "broker.url", settings.brokerUrl());
 		if (settings.registryName().isBlank()) {
@@ -61,7 +61,7 @@ final class RoleChecks {
 	}
 
 	/**
-	 * Where the derived public URL and the HTTP runtime this role
+	 * Where the derived public URL and the HTTP runtime this node
 	 * configures disagree.
 	 *
 	 * <p>Not a problem in itself: a node behind a reverse proxy states a
@@ -70,7 +70,7 @@ final class RoleChecks {
 	 * mismatch is a typo, and that one is invisible until a consumer
 	 * fails to reach the endpoint.
 	 */
-	static List<String> mismatches(RoleSettings settings) {
+	static List<String> mismatches(RsaSettings settings) {
 		if (!settings.manageHttp() || settings.publicUrl().isBlank()) {
 			return List.of();
 		}

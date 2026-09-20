@@ -92,6 +92,15 @@ public class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	protected MqttQos qos = QOS_EDEFAULT;
 
 	/**
+	 * This is true if the Qos attribute has been set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	protected boolean qosESet;
+
+	/**
 	 * The default value of the '{@link #isRetained() <em>Retained</em>}' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -110,6 +119,15 @@ public class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	 * @ordered
 	 */
 	protected boolean retained = RETAINED_EDEFAULT;
+
+	/**
+	 * This is true if the Retained attribute has been set.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	protected boolean retainedESet;
 
 	/**
 	 * The default value of the '{@link #isCorrelation() <em>Correlation</em>}' attribute.
@@ -235,8 +253,35 @@ public class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	public void setQos(MqttQos newQos) {
 		MqttQos oldQos = qos;
 		qos = newQos == null ? QOS_EDEFAULT : newQos;
+		boolean oldQosESet = qosESet;
+		qosESet = true;
 		if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.MQTT_OPERATION_FLAVOR__QOS, oldQos, qos));
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.MQTT_OPERATION_FLAVOR__QOS, oldQos, qos, !oldQosESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void unsetQos() {
+		MqttQos oldQos = qos;
+		boolean oldQosESet = qosESet;
+		qos = QOS_EDEFAULT;
+		qosESet = false;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.UNSET, ServicesPackage.MQTT_OPERATION_FLAVOR__QOS, oldQos, QOS_EDEFAULT, oldQosESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public boolean isSetQos() {
+		return qosESet;
 	}
 
 	/**
@@ -258,8 +303,35 @@ public class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 	public void setRetained(boolean newRetained) {
 		boolean oldRetained = retained;
 		retained = newRetained;
+		boolean oldRetainedESet = retainedESet;
+		retainedESet = true;
 		if (eNotificationRequired())
-			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.MQTT_OPERATION_FLAVOR__RETAINED, oldRetained, retained));
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.MQTT_OPERATION_FLAVOR__RETAINED, oldRetained, retained, !oldRetainedESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void unsetRetained() {
+		boolean oldRetained = retained;
+		boolean oldRetainedESet = retainedESet;
+		retained = RETAINED_EDEFAULT;
+		retainedESet = false;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.UNSET, ServicesPackage.MQTT_OPERATION_FLAVOR__RETAINED, oldRetained, RETAINED_EDEFAULT, oldRetainedESet));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public boolean isSetRetained() {
+		return retainedESet;
 	}
 
 	/**
@@ -377,10 +449,10 @@ public class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 				setResponseTopic(RESPONSE_TOPIC_EDEFAULT);
 				return;
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__QOS:
-				setQos(QOS_EDEFAULT);
+				unsetQos();
 				return;
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__RETAINED:
-				setRetained(RETAINED_EDEFAULT);
+				unsetRetained();
 				return;
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__CORRELATION:
 				setCorrelation(CORRELATION_EDEFAULT);
@@ -405,9 +477,9 @@ public class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC:
 				return RESPONSE_TOPIC_EDEFAULT == null ? responseTopic != null : !RESPONSE_TOPIC_EDEFAULT.equals(responseTopic);
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__QOS:
-				return qos != QOS_EDEFAULT;
+				return isSetQos();
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__RETAINED:
-				return retained != RETAINED_EDEFAULT;
+				return isSetRetained();
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__CORRELATION:
 				return correlation != CORRELATION_EDEFAULT;
 			case ServicesPackage.MQTT_OPERATION_FLAVOR__RETURN_PATH:
@@ -431,9 +503,9 @@ public class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
 		result.append(", responseTopic: ");
 		result.append(responseTopic);
 		result.append(", qos: ");
-		result.append(qos);
+		if (qosESet) result.append(qos); else result.append("<unset>");
 		result.append(", retained: ");
-		result.append(retained);
+		if (retainedESet) result.append(retained); else result.append("<unset>");
 		result.append(", correlation: ");
 		result.append(correlation);
 		result.append(", returnPath: ");

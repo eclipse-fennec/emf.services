@@ -108,6 +108,8 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_INTERFACE__INVARIANTS: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__STATUS: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__DEPRECATION_REASON: null as unknown as EAttribute | EReference,
+    SERVICE_INTERFACE__ADDED_BY: null as unknown as EAttribute | EReference,
+    SERVICE_INTERFACE__DEPRECATED_BY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__REPLACED_BY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__UPDATE_POLICY: null as unknown as EAttribute | EReference,
     LIFECYCLE_HOOK: null as unknown as EClass,
@@ -204,9 +206,11 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_REGISTRATION__PROVIDER: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__IMPLEMENTATION: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__USING_SESSIONS: null as unknown as EAttribute | EReference,
+    SERVICE_REGISTRATION__PUBLISHED_BY: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__CONSUMER_COUNT: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION: null as unknown as EClass,
     CONSUMER_SESSION__CONSUMER_ID: null as unknown as EAttribute | EReference,
+    CONSUMER_SESSION__ORIGIN: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__LAST_RENEWAL: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__CAPABILITIES: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__ACQUISITIONS: null as unknown as EAttribute | EReference,
@@ -956,6 +960,22 @@ export class DDSRPackage extends BasicEPackage {
     serviceInterface_deprecationReason.setUpperBound(1);
     serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_deprecationReason);
     DDSRPackage.Literals.SERVICE_INTERFACE__DEPRECATION_REASON = serviceInterface_deprecationReason;
+
+    // Create addedBy feature
+    const serviceInterface_addedBy = new BasicEAttribute();
+    serviceInterface_addedBy.setName('addedBy');
+    serviceInterface_addedBy.setLowerBound(0);
+    serviceInterface_addedBy.setUpperBound(1);
+    serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_addedBy);
+    DDSRPackage.Literals.SERVICE_INTERFACE__ADDED_BY = serviceInterface_addedBy;
+
+    // Create deprecatedBy feature
+    const serviceInterface_deprecatedBy = new BasicEAttribute();
+    serviceInterface_deprecatedBy.setName('deprecatedBy');
+    serviceInterface_deprecatedBy.setLowerBound(0);
+    serviceInterface_deprecatedBy.setUpperBound(1);
+    serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_deprecatedBy);
+    DDSRPackage.Literals.SERVICE_INTERFACE__DEPRECATED_BY = serviceInterface_deprecatedBy;
 
     // Create replacedBy feature
     const serviceInterface_replacedBy = new BasicEReference();
@@ -1771,6 +1791,14 @@ export class DDSRPackage extends BasicEPackage {
     serviceRegistrationClass.getEStructuralFeatures().push(serviceRegistration_usingSessions);
     DDSRPackage.Literals.SERVICE_REGISTRATION__USING_SESSIONS = serviceRegistration_usingSessions;
 
+    // Create publishedBy feature
+    const serviceRegistration_publishedBy = new BasicEAttribute();
+    serviceRegistration_publishedBy.setName('publishedBy');
+    serviceRegistration_publishedBy.setLowerBound(0);
+    serviceRegistration_publishedBy.setUpperBound(1);
+    serviceRegistrationClass.getEStructuralFeatures().push(serviceRegistration_publishedBy);
+    DDSRPackage.Literals.SERVICE_REGISTRATION__PUBLISHED_BY = serviceRegistration_publishedBy;
+
     // Create consumerCount feature
     const serviceRegistration_consumerCount = new BasicEAttribute();
     serviceRegistration_consumerCount.setName('consumerCount');
@@ -1795,6 +1823,14 @@ export class DDSRPackage extends BasicEPackage {
     consumerSession_consumerId.setUpperBound(1);
     consumerSessionClass.getEStructuralFeatures().push(consumerSession_consumerId);
     DDSRPackage.Literals.CONSUMER_SESSION__CONSUMER_ID = consumerSession_consumerId;
+
+    // Create origin feature
+    const consumerSession_origin = new BasicEAttribute();
+    consumerSession_origin.setName('origin');
+    consumerSession_origin.setLowerBound(0);
+    consumerSession_origin.setUpperBound(1);
+    consumerSessionClass.getEStructuralFeatures().push(consumerSession_origin);
+    DDSRPackage.Literals.CONSUMER_SESSION__ORIGIN = consumerSession_origin;
 
     // Create lastRenewal feature
     const consumerSession_lastRenewal = new BasicEAttribute();
@@ -2713,6 +2749,8 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_INTERFACE__EXCEPTIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
     (DDSRPackage.Literals.SERVICE_INTERFACE__INVARIANTS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
     (DDSRPackage.Literals.SERVICE_INTERFACE__DEPRECATION_REASON as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_INTERFACE__ADDED_BY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_INTERFACE__DEPRECATED_BY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_INTERFACE__REPLACED_BY as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
     (DDSRPackage.Literals.LIFECYCLE_HOOK__PARAMETER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.COMPONENT_REFERENCE__INTERFACE_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
@@ -2776,8 +2814,10 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_REGISTRATION__PROVIDER as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__IMPLEMENTATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__USING_SESSIONS as BasicEReference).setEType(DDSRPackage.Literals.CONSUMER_SESSION);
+    (DDSRPackage.Literals.SERVICE_REGISTRATION__PUBLISHED_BY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__CONSUMER_COUNT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__CONSUMER_ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.CONSUMER_SESSION__ORIGIN as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__LAST_RENEWAL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EDate')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CONSUMER_CAPABILITY);
     (DDSRPackage.Literals.CONSUMER_SESSION__ACQUISITIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REGISTRATION);

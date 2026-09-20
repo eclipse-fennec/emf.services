@@ -30,8 +30,10 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   static readonly INVARIANTS: number = 5;
   static readonly STATUS: number = 6;
   static readonly DEPRECATION_REASON: number = 7;
-  static readonly REPLACED_BY: number = 8;
-  static readonly UPDATE_POLICY: number = 9;
+  static readonly ADDED_BY: number = 8;
+  static readonly DEPRECATED_BY: number = 9;
+  static readonly REPLACED_BY: number = 10;
+  static readonly UPDATE_POLICY: number = 11;
   static readonly NAME: number = 0;
   static readonly VERSION: number = 1;
 
@@ -42,6 +44,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   private _invariants!: EList<Invariant>;
   private _status: CatalogStatus = CatalogStatus.ACTIVE;
   private _deprecationReason?: string;
+  private _addedBy?: string;
+  private _deprecatedBy?: string;
   private _replacedBy?: ServiceInterface;
   private _updatePolicy: UpdatePolicy = UpdatePolicy.UNSPECIFIED;
   private _name: string = "";
@@ -148,6 +152,54 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
     }
   }
 
+  get addedBy(): string {
+    return this._addedBy!;
+  }
+
+  set addedBy(value: string) {
+    const oldValue = this._addedBy;
+    this._addedBy = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceInterfaceImpl.ADDED_BY),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceInterfaceImpl.ADDED_BY,
+        merge: () => false
+      });
+    }
+  }
+
+  get deprecatedBy(): string {
+    return this._deprecatedBy!;
+  }
+
+  set deprecatedBy(value: string) {
+    const oldValue = this._deprecatedBy;
+    this._deprecatedBy = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceInterfaceImpl.DEPRECATED_BY),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceInterfaceImpl.DEPRECATED_BY,
+        merge: () => false
+      });
+    }
+  }
+
   get replacedBy(): ServiceInterface {
     return this._replacedBy!;
   }
@@ -232,6 +284,10 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this.status;
       case ServiceInterfaceImpl.DEPRECATION_REASON:
         return this.deprecationReason;
+      case ServiceInterfaceImpl.ADDED_BY:
+        return this.addedBy;
+      case ServiceInterfaceImpl.DEPRECATED_BY:
+        return this.deprecatedBy;
       case ServiceInterfaceImpl.REPLACED_BY:
         return this.replacedBy;
       case ServiceInterfaceImpl.UPDATE_POLICY:
@@ -278,6 +334,14 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         this.deprecationReason = newValue as string;
         super.eSet(feature, newValue);
         break;
+      case ServiceInterfaceImpl.ADDED_BY:
+        this.addedBy = newValue as string;
+        super.eSet(feature, newValue);
+        break;
+      case ServiceInterfaceImpl.DEPRECATED_BY:
+        this.deprecatedBy = newValue as string;
+        super.eSet(feature, newValue);
+        break;
       case ServiceInterfaceImpl.REPLACED_BY:
         this.replacedBy = newValue as ServiceInterface;
         super.eSet(feature, newValue);
@@ -317,6 +381,10 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this._status !== CatalogStatus.ACTIVE;
       case ServiceInterfaceImpl.DEPRECATION_REASON:
         return this._deprecationReason !== undefined;
+      case ServiceInterfaceImpl.ADDED_BY:
+        return this._addedBy !== undefined;
+      case ServiceInterfaceImpl.DEPRECATED_BY:
+        return this._deprecatedBy !== undefined;
       case ServiceInterfaceImpl.REPLACED_BY:
         return this._replacedBy !== undefined;
       case ServiceInterfaceImpl.UPDATE_POLICY:
@@ -353,6 +421,12 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return;
       case ServiceInterfaceImpl.DEPRECATION_REASON:
         this._deprecationReason = undefined;
+        return;
+      case ServiceInterfaceImpl.ADDED_BY:
+        this._addedBy = undefined;
+        return;
+      case ServiceInterfaceImpl.DEPRECATED_BY:
+        this._deprecatedBy = undefined;
         return;
       case ServiceInterfaceImpl.REPLACED_BY:
         this._replacedBy = undefined;

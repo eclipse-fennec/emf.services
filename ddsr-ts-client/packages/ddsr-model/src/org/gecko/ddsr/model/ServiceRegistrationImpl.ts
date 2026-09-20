@@ -27,7 +27,8 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
   static readonly PROVIDER: number = 2;
   static readonly IMPLEMENTATION: number = 3;
   static readonly USING_SESSIONS: number = 4;
-  static readonly CONSUMER_COUNT: number = 5;
+  static readonly PUBLISHED_BY: number = 5;
+  static readonly CONSUMER_COUNT: number = 6;
 
   // Private fields
   private _reference?: ServiceReference;
@@ -35,6 +36,7 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
   private _provider?: ServiceProvider;
   private _implementation?: ServiceImplementation;
   private _usingSessions!: EList<ConsumerSession>;
+  private _publishedBy?: string;
   private _consumerCount?: number;
 
   /**
@@ -148,6 +150,30 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
     return this._usingSessions;
   }
 
+  get publishedBy(): string {
+    return this._publishedBy!;
+  }
+
+  set publishedBy(value: string) {
+    const oldValue = this._publishedBy;
+    this._publishedBy = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistrationImpl.PUBLISHED_BY),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceRegistrationImpl.PUBLISHED_BY,
+        merge: () => false
+      });
+    }
+  }
+
   get consumerCount(): number {
     return this._consumerCount!;
   }
@@ -190,6 +216,8 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return this.implementation;
       case ServiceRegistrationImpl.USING_SESSIONS:
         return this.usingSessions;
+      case ServiceRegistrationImpl.PUBLISHED_BY:
+        return this.publishedBy;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         return this.consumerCount;
       default:
@@ -224,6 +252,10 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         this.usingSessions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
+      case ServiceRegistrationImpl.PUBLISHED_BY:
+        this.publishedBy = newValue as string;
+        super.eSet(feature, newValue);
+        break;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         this.consumerCount = newValue as number;
         super.eSet(feature, newValue);
@@ -249,6 +281,8 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return this._implementation !== undefined;
       case ServiceRegistrationImpl.USING_SESSIONS:
         return this._usingSessions !== undefined && !this._usingSessions.isEmpty();
+      case ServiceRegistrationImpl.PUBLISHED_BY:
+        return this._publishedBy !== undefined;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         return this._consumerCount !== undefined;
       default:
@@ -276,6 +310,9 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return;
       case ServiceRegistrationImpl.USING_SESSIONS:
         if (this._usingSessions) this._usingSessions.clear();
+        return;
+      case ServiceRegistrationImpl.PUBLISHED_BY:
+        this._publishedBy = undefined;
         return;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         this._consumerCount = undefined;

@@ -20,12 +20,14 @@ import { DDSRPackage } from './DDSRPackage.js';
 export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession {
   // Feature ID Constants (eLiterals)
   static readonly CONSUMER_ID: number = 0;
-  static readonly LAST_RENEWAL: number = 1;
-  static readonly CAPABILITIES: number = 2;
-  static readonly ACQUISITIONS: number = 3;
+  static readonly ORIGIN: number = 1;
+  static readonly LAST_RENEWAL: number = 2;
+  static readonly CAPABILITIES: number = 3;
+  static readonly ACQUISITIONS: number = 4;
 
   // Private fields
   private _consumerId: string = "";
+  private _origin?: string;
   private _lastRenewal?: Date;
   private _capabilities?: ConsumerCapability;
   private _acquisitions!: EList<ServiceRegistration>;
@@ -57,6 +59,30 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         isTouch: () => false,
         isReset: () => false,
         getFeatureID: () => ConsumerSessionImpl.CONSUMER_ID,
+        merge: () => false
+      });
+    }
+  }
+
+  get origin(): string {
+    return this._origin!;
+  }
+
+  set origin(value: string) {
+    const oldValue = this._origin;
+    this._origin = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ConsumerSessionImpl.ORIGIN),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ConsumerSessionImpl.ORIGIN,
         merge: () => false
       });
     }
@@ -127,6 +153,8 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
     switch (featureID) {
       case ConsumerSessionImpl.CONSUMER_ID:
         return this.consumerId;
+      case ConsumerSessionImpl.ORIGIN:
+        return this.origin;
       case ConsumerSessionImpl.LAST_RENEWAL:
         return this.lastRenewal;
       case ConsumerSessionImpl.CAPABILITIES:
@@ -146,6 +174,10 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
     switch (featureID) {
       case ConsumerSessionImpl.CONSUMER_ID:
         this.consumerId = newValue as string;
+        super.eSet(feature, newValue);
+        break;
+      case ConsumerSessionImpl.ORIGIN:
+        this.origin = newValue as string;
         super.eSet(feature, newValue);
         break;
       case ConsumerSessionImpl.LAST_RENEWAL:
@@ -174,6 +206,8 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
     switch (featureID) {
       case ConsumerSessionImpl.CONSUMER_ID:
         return this._consumerId !== "";
+      case ConsumerSessionImpl.ORIGIN:
+        return this._origin !== undefined;
       case ConsumerSessionImpl.LAST_RENEWAL:
         return this._lastRenewal !== undefined;
       case ConsumerSessionImpl.CAPABILITIES:
@@ -193,6 +227,9 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
     switch (featureID) {
       case ConsumerSessionImpl.CONSUMER_ID:
         this._consumerId = "";
+        return;
+      case ConsumerSessionImpl.ORIGIN:
+        this._origin = undefined;
         return;
       case ConsumerSessionImpl.LAST_RENEWAL:
         this._lastRenewal = undefined;

@@ -14,8 +14,9 @@
 package org.eclipse.fennec.services.client.internal;
 
 import java.util.logging.Logger;
-import org.eclipse.fennec.services.client.DdsrClient;
+
 import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.client.DdsrClient;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;

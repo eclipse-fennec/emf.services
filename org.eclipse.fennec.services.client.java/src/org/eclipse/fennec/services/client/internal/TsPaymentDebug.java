@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.client.internal;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;

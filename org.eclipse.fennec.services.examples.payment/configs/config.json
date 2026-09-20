@@ -34,6 +34,17 @@
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
   },
+  "org.eclipse.fennec.services.provider.rest~personStore":
+  {
+    "ddsr.contract": "PersonStore",
+    "service.filter": "(ddsr.contract=PersonStore)",
+    "model.bundle": "org.eclipse.fennec.services.examples.payment",
+    "model.entry": "model/person-store.xmi",
+    "osgi.jakartars.application.base": "/persons",
+    "publish": "$[env:PAYMENTS_PUBLISH_PERSON_STORE;default=false]",
+    "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+  },
   "org.eclipse.fennec.services.examples.payment":
   {
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",

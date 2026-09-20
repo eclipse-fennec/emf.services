@@ -213,6 +213,91 @@ how to read them back on the way in, and which HTTP status a failure
 travels as. Consumer, provider dispatcher and the code-generation
 template all use this one copy, which is the point of it existing.
 
+## The payload encoding is the contract's choice
+
+How an argument or a result becomes bytes used to be decided inside
+each transport, and nobody could say otherwise: XMI over REST, because
+the wire resource was created as `ddsr-wire.xmi` and the extension
+picked the factory; hand-rolled JSON over MQTT. The same operation
+called two ways was two encodings.
+
+Since #100 the codec asks the ResourceSet which factory serves a
+content type. That is EMF's own mechanism, so **an encoding exists
+exactly when someone registered a `Resource.Factory` for it** — there
+is no serializer abstraction of ours on top, and adding a format is a
+deployment decision rather than a code change.
+
+Two rules make that safe to rely on:
+
+- **An unregistered content type is refused**, never quietly served as
+  XMI. A provider that declared one encoding and got another would be
+  a wire bug that only surfaces at the far end.
+- **The hardening moves with the format.** The size cap and the
+  refusal to fetch what a document points at apply to every read —
+  those are questions about what a body may cost and reach, not about
+  XML. The XML parser features are set only for an XML resource. A new
+  format brings its own exposure and has to bring its own answer.
+
+The contract is where the choice is written down, and it already had
+the words for it:
+
+| Says | Means |
+| --- | --- |
+| `RestOperationFlavor.consumes` | how the provider reads the request body |
+| `RestOperationFlavor.produces` | how it writes the response |
+| `RestFlavor.contentTypes` | what the flavor speaks as a whole |
+
+`consumes` and `produces` are two different questions: an operation may
+take protobuf and answer XML. Empty means XMI, which is what every
+caller had before.
+
+### Protobuf, and where it is deliberately absent
+
+`org.eclipse.fennec.protobuf` (Eclipse Fennec emf.util) registers an
+EMF `Resource.Factory` for `application/x-protobuf`. It is in the
+**client and provider runs and deliberately not in the broker's**.
+
+That asymmetry is the point rather than an oversight. Broker traffic —
+catalog, publish, lookup, events — is the cross-language contract, and
+the TypeScript track has no protobuf-to-EMF binding. With the factory
+absent from the broker, XMI there is a property of the deployment; with
+it present, cross-language parity would depend on content negotiation
+going right every single time, and a mistake would be a silent break.
+
+An invocation is the opposite case: two parties the flavor names, and
+what they agree on is nobody else's business.
+
+**The limit that follows:** a contract that declares protobuf is one a
+TypeScript consumer cannot read, and nothing in the registry stops it
+being offered one. The `PersonStore` example is therefore Java on both
+ends, and says so in the contract document itself.
+
+### The example
+
+`model/person-store.xmi` in `examples.payment` is the smallest thing
+that shows it: one operation, a modelled argument and a modelled
+result, `consumes`/`produces` = `application/x-protobuf`, and a BODY
+binding. Nothing else. The provider side is a five-line service; the
+generic distribution serves it from the document, and the consumer in
+`examples.persons` calls it through an ordinary Java interface.
+
+Neither side mentions an encoding. Change one word in the contract and
+the same call travels as XMI — which is the only honest test of
+whether the choice is really the contract's.
+
+Scenario P of the host harness runs it and reads the result back:
+
+```
+[DDSR-Protobuf] stored Ada Lovelace and got id=… back
+                — argument and result travelled as protobuf
+```
+
+One thing the example could not use: the m2t interface template maps
+the model's primitive type names to Java, and an `eType` that is an
+`EClass` has no such mapping yet, so it generates an empty type. The
+`PersonStore` interface is therefore hand-written and says why — the
+template gap belongs to [#25](https://github.com/eclipse-fennec/emf.services/issues/25).
+
 ## Read next
 
 - [Eventing](EVENTING.md) — what the two event transports guarantee

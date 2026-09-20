@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A contract whose argument and result are MODELS, not primitives, and
+  which says on the wire that it speaks protobuf (#100).
+
+  The point of this example is that nothing here is code: the operation
+  declares consumes/produces, the parameter binds to the BODY, and its
+  eType is an EClass of another model. The generic REST distribution
+  serves it, the client proxy calls it, and both encode in what this
+  document says — which is what "the encoding is the provider's choice"
+  has to mean if it means anything.
+
+  Java on both ends, deliberately: the TypeScript track has no
+  protobuf-to-EMF binding, so a TS consumer of this contract would be
+  offered an encoding it cannot read. That is a property of the
+  deployment and not something to paper over — see docs/guide/05.
+-->
+<xmi:XMI xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="person-store-java">
+    <implementations name="person-store-java" version="1.0.0"
+        implementationId="person-store:java:1.0.0"
+        serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="person-store-rest" kind="REST"
+          basePath="/persons" contentTypes="application/x-protobuf">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="store"
+            method="POST" path="/" returnCodes="200"
+            consumes="application/x-protobuf" produces="application/x-protobuf"
+            operation="/1/@operations.0">
+          <parameterBindings parameter="/1/@operations.0/@parameters.0" binding="BODY"/>
+        </operationFlavors>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceInterface name="PersonStore" version="1.0.0"
+      description="Takes a Person and gives it back with an id. Exists to prove that a modelled argument and a modelled result travel in the encoding the contract declares — here protobuf, not the XMI the transport used to assume.">
+    <operations name="store"
+        description="Stores the person and returns it with an id assigned.">
+      <parameters name="person" description="The person to store; travels as the request body, encoded as protobuf.">
+        <eType xsi:type="ecore:EClass" href="http://geckoprojects.org/ddsr/example#//Person"/>
+      </parameters>
+      <returnValue name="stored" description="The same person, with an id.">
+        <eType xsi:type="ecore:EClass" href="http://geckoprojects.org/ddsr/example#//Person"/>
+      </returnValue>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

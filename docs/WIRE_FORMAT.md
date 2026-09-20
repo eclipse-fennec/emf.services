@@ -49,6 +49,33 @@ publish went through), 214 a modify tried to change the contract, 230
 session invalid, 300 interface deprecated (warning), 500 persistence
 failed.
 
+## Payload encoding
+
+A body is XMI unless the contract says otherwise. Since #100 the
+operation flavor decides: `consumes` for the request, `produces` for
+the response, and they are two different questions — an operation may
+take protobuf and answer XML. An encoding is available exactly when
+the runtime has an EMF `Resource.Factory` registered for that content
+type; one that nobody registered is **refused**, not quietly served as
+XMI.
+
+| Content type | Encoding | Registered by |
+| --- | --- | --- |
+| absent, `application/xml`, `text/xml`, `*+xml` | XMI, the hardened wire resource | always |
+| `application/x-protobuf` | protobuf | `org.eclipse.fennec.protobuf` (emf.util) |
+
+**Broker traffic is XMI and stays XMI.** The protobuf factory is in the
+client and provider runs and deliberately not in the broker's: the
+broker's documents are the cross-language contract and the TypeScript
+track cannot read protobuf. A contract that declares protobuf is one
+only a Java consumer can use — see
+[Transports](TRANSPORTS.md#the-payload-encoding-is-the-contracts-choice).
+
+The **fingerprints are unaffected**. `sd1` and `im1` are computed over
+the model in memory, never over serialised bytes: a contract has one
+address whatever encoding it happens to travel in, which is the whole
+reason a consumer can address it at all.
+
 ## XMI document conventions
 
 - **Multi-root documents** use an `xmi:XMI` wrapper; cross-references

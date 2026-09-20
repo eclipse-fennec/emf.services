@@ -13,12 +13,12 @@
 
 package org.eclipse.fennec.services.client.internal;
 
-import org.eclipse.fennec.services.client.Registration;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.client.Registration;
 
 final class RegistrationImpl implements Registration {
 

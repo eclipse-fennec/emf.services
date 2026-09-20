@@ -22,14 +22,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
-import org.eclipse.fennec.services.client.DdsrServiceListener;
-import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.eclipse.fennec.services.client.DdsrServiceListener;
+import org.eclipse.fennec.services.client.EventSource;
 
 /**
  * Keeps the registered {@link DdsrServiceListener}s and routes incoming

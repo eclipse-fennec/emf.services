@@ -1,0 +1,15 @@
+Bundle-Name: Fennec Services PersonStore Example Consumer
+Bundle-Description: \
+	Calls the PersonStore contract, whose argument and result are models and \
+	whose wire encoding is protobuf. Lives in its own bundle because the SDK \
+	must not depend on an example model, and because the provider bundle \
+	brings its own configuration — putting this in either would publish a \
+	second provider or drag a demo model into the broker.
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.eclipse.emf.common;version=latest,\
+	org.eclipse.emf.ecore;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
+	org.eclipse.fennec.services.examples.model;version=snapshot

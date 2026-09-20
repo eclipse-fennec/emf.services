@@ -18,12 +18,23 @@ import type { ConsumerSession, Diagnostic, ServiceInterface, ServiceProvider, Se
 import { DDSRFactory } from '@ddsr/model';
 import { serializeToXmi, deserializeFromXmi } from '../xmi/xmi-support';
 import { asRoots, eClassName, firstOfClass, toArray } from './emf-util';
+import { clientOrigin, withOrigin, type ClientOrigin } from './client-origin';
 
 export interface BrokerHttpOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
   brokerUrl: string;
   /** X-DDSR-Requestor value for catalog operations (audit). */
   requestor?: string;
+  /**
+   * Which system this is, for the X-DDSR-Origin header every call
+   * carries (#132): a deployment name such as payments-prod-eu. The
+   * other half of the origin is a per-process id and comes from the
+   * runtime. Deliberately not a host name — name the system, not the
+   * machine.
+   */
+  originLabel?: string;
+  /** Overrides the per-process runtime id; for tests. */
+  originRuntimeId?: string;
   fetchFn?: typeof fetch;
 }
 
@@ -51,12 +62,28 @@ const SOURCE = 'org.gecko.ddsr.client.ts';
 export class BrokerHttp {
   private readonly base: string;
   private readonly requestor: string;
+  private readonly origin: ClientOrigin;
   private readonly fetchFn: typeof fetch;
 
   constructor(options: BrokerHttpOptions) {
     this.base = options.brokerUrl.replace(/\/+$/, '');
-    this.requestor = options.requestor ?? 'anonymous';
-    this.fetchFn = options.fetchFn ?? globalThis.fetch.bind(globalThis);
+    this.origin = clientOrigin(options.originLabel, options.originRuntimeId);
+    // The fallback is this client's own origin, not "anonymous". A
+    // caller that names a requestor on purpose still wins; one that
+    // does not is no longer anonymous by accident.
+    this.requestor = options.requestor ?? this.origin.token;
+    // Wrapped once, here, rather than added at each of the ten call
+    // sites: #132 asks for the origin on EVERY call, and this is the
+    // only place where that is true by construction. A new request
+    // cannot forget a wrapper; it can forget a header. Mirrors the Java
+    // client, where the same job is done by a ClientRequestFilter on
+    // the shared JAX-RS client.
+    this.fetchFn = withOrigin(options.fetchFn ?? globalThis.fetch.bind(globalThis), this.origin);
+  }
+
+  /** The origin token this client stamps on every request. */
+  get originToken(): string {
+    return this.origin.token;
   }
 
   get brokerUrl(): string {

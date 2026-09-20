@@ -72,6 +72,10 @@ async function main(): Promise<void> {
   const client = DdsrClientImpl.create({
     brokerUrl: BROKER_URL,
     requestor: `${PROVIDER_NAME}-publisher`,
+    // Which system this is, for X-DDSR-Origin (#132). The harness reads
+    // it back off the registration, which is how the cross-language
+    // half of the origin is demonstrated rather than assumed.
+    originLabel: process.env.DDSR_ORIGIN_LABEL ?? 'payments-ts-harness',
   });
 
   const payment = buildPaymentInterface();

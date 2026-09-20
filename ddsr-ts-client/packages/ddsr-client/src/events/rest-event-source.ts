@@ -16,6 +16,7 @@ import { deserializeFromXmi } from '../xmi/xmi-support';
 import { asRoots, firstOfClass } from '../internal/emf-util';
 import { SseParser } from './sse-parser';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from './event-source';
+import { clientOrigin, withOrigin } from '../internal/client-origin';
 
 export interface RestEventSourceOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -24,6 +25,14 @@ export interface RestEventSourceOptions {
   flavors?: string;
   /** Flat reconnect delay — same fixed-delay policy as the Java client. */
   reconnectSeconds?: number;
+  /**
+   * Which system this is, for the X-DDSR-Origin header (#132). The
+   * stream carries it like every other call: on the Java side the same
+   * job is done by a filter on the shared client, which covers the
+   * event stream too, and a consumer that only ever listens would
+   * otherwise be the one party the broker cannot place.
+   */
+  originLabel?: string;
   fetchFn?: typeof fetch;
   log?: (message: string) => void;
 }
@@ -48,7 +57,9 @@ export class RestEventSource implements DdsrEventSource {
       ? `${base}/events?flavors=${encodeURIComponent(flavors)}`
       : `${base}/events`;
     this.reconnectMillis = (options.reconnectSeconds ?? 3) * 1000;
-    this.fetchFn = options.fetchFn ?? globalThis.fetch.bind(globalThis);
+    this.fetchFn = withOrigin(
+      options.fetchFn ?? globalThis.fetch.bind(globalThis),
+      clientOrigin(options.originLabel));
     this.log = options.log ?? ((m) => console.error(`[ddsr-events] ${m}`));
   }
 

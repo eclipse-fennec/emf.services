@@ -17,7 +17,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -191,7 +193,7 @@ public class SseEventBridge implements EventSink {
 	void subscribe(Sse sse, SseEventSink sink, Set<FlavorKind> flavors, String consumerId) {
 		this.sse = sse;
 		subscriptions.add(new Subscription(sink, flavors, consumerId));
-		sessions.consumerConnected(consumerId);
+		arrived(consumerId);
 		LOG.info("[DDSR] SSE subscriber added, now " + subscriptions.size()
 				+ (flavors.isEmpty() ? " (no flavor filter)" : " (flavors=" + flavors + ")")
 				+ (consumerId == null || consumerId.isBlank() ? "" : " for " + consumerId));
@@ -207,13 +209,40 @@ public class SseEventBridge implements EventSink {
 	 */
 	private void drop(Subscription subscription) {
 		subscriptions.remove(subscription);
-		String consumerId = subscription.consumerId;
+		left(subscription.consumerId);
+	}
+
+	/**
+	 * How many streams a consumer currently holds.
+	 *
+	 * <p>A counter rather than a scan of the subscription list, because
+	 * the two ends of a connection are reported by different threads and
+	 * the answer has to be decided in one step. Counting the list meant
+	 * removing a subscription, looking, and reporting — and a reconnect
+	 * landing in that gap left a consumer that is demonstrably here
+	 * carrying a disconnect deadline, after which its session expired
+	 * and its leases were released underneath it (#127).
+	 */
+	private final Map<String, Integer> streamsPerConsumer = new ConcurrentHashMap<>();
+
+	/** Reports a consumer as present on its first stream, and only then. */
+	private void arrived(String consumerId) {
 		if (consumerId == null || consumerId.isBlank()) {
 			return;
 		}
-		boolean stillHere = subscriptions.stream()
-				.anyMatch(other -> consumerId.equals(other.consumerId));
-		if (!stillHere) {
+		if (streamsPerConsumer.merge(consumerId, 1, Integer::sum) == 1) {
+			sessions.consumerConnected(consumerId);
+		}
+	}
+
+	/** Reports a consumer as gone when its last stream ends, and only then. */
+	private void left(String consumerId) {
+		if (consumerId == null || consumerId.isBlank()) {
+			return;
+		}
+		Integer remaining = streamsPerConsumer.computeIfPresent(consumerId,
+				(id, count) -> count <= 1 ? null : count - 1);
+		if (remaining == null) {
 			sessions.consumerDisconnected(consumerId);
 		}
 	}

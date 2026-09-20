@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.rsa.topology;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
@@ -128,7 +129,17 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 	}
 
 	private void add(EndpointDescription endpoint) {
-		if (manual || imported.containsKey(endpoint.getId())) {
+		String id = endpoint.getId();
+		if (manual || imported.containsKey(id)) {
+			return;
+		}
+		// Claim the endpoint before the slow part. Importing registers a
+		// service and fires the whole component cascade, and two threads
+		// reach here routinely — a discovery event and an admin arriving.
+		// Both used to pass the check above, both imported, and the loser's
+		// registration was dropped on the floor: a proxy in the framework
+		// that nothing can ever close (#124).
+		if (!importing.add(id)) {
 			return;
 		}
 		try {
@@ -147,20 +158,50 @@ public class ImportWhatIsDiscovered implements EndpointEventListener {
 				LOG.fine(() -> "[DDSR] no admin speaks " + endpoint.getId() + " yet; it waits for one");
 				return;
 			}
-			waiting.remove(endpoint.getId());
-			imported.put(endpoint.getId(), registration);
-			LOG.info("[DDSR] imported the discovered endpoint " + endpoint.getId() + " " + endpoint.getInterfaces());
+			waiting.remove(id);
+			if (withdrawnWhileImporting.remove(id)) {
+				// The endpoint went away while we were importing it.
+				// Discovery reports a disappearance once, so nothing will
+				// come back to clean this up: close it here or it stays.
+				close(id, registration);
+				LOG.fine(() -> "[DDSR] " + id + " was withdrawn while it was being imported");
+				return;
+			}
+			imported.put(id, registration);
+			LOG.info("[DDSR] imported the discovered endpoint " + id + " " + endpoint.getInterfaces());
 		} catch (RuntimeException failure) {
 			// A discovery is calling us and has nowhere to put an
 			// exception; one endpoint that cannot be imported must not
 			// stop the next.
 			LOG.log(Level.WARNING, "[DDSR] importing the discovered endpoint " + endpoint.getId() + " failed",
 					failure);
+		} finally {
+			importing.remove(id);
+		}
+	}
+
+	/** Endpoint ids currently being imported, so a second thread does not repeat it. */
+	private final Set<String> importing = ConcurrentHashMap.newKeySet();
+
+	/** Ids whose removal arrived while the import was still in flight. */
+	private final Set<String> withdrawnWhileImporting = ConcurrentHashMap.newKeySet();
+
+	private static void close(String id, ImportRegistration registration) {
+		try {
+			registration.close();
+		} catch (RuntimeException failure) {
+			LOG.log(Level.WARNING, "[DDSR] closing the import of " + id + " failed", failure);
 		}
 	}
 
 	private void remove(String endpointId) {
 		waiting.remove(endpointId);
+		if (importing.contains(endpointId)) {
+			// An import is in flight for this id. Leaving a note is the
+			// only way to reach it: imported.remove would find nothing and
+			// the import would install a proxy for something already gone.
+			withdrawnWhileImporting.add(endpointId);
+		}
 		ImportRegistration registration = imported.remove(endpointId);
 		if (registration == null) {
 			return;

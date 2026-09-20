@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.rsa.discovery.rest;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -265,7 +266,8 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 					+ endpoint.getFrameworkUUID());
 			return;
 		}
-		Announcements.Announced known = announced.get(endpoint.getId());
+		String id = endpoint.getId();
+		Announcements.Announced known = announced.get(id);
 		if (known != null) {
 			// A modification, and it has to reach the other side as one:
 			// withdrawing and announcing again would tell every consumer
@@ -273,6 +275,14 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 			// listener waiting for a change would wait forever. The
 			// registry modifies in place when the identity is unchanged.
 			modify(endpoint, known);
+			return;
+		}
+		// Claim it before publishing. Announcing means two HTTP calls to
+		// the broker, and two threads passing the check above both
+		// published — leaving a duplicate registration in a REMOTE
+		// registry that nobody holds a handle to and therefore nobody can
+		// withdraw (#124).
+		if (!announcing.add(id)) {
 			return;
 		}
 		try {
@@ -290,15 +300,25 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 			implementation.getServiceInterfaces().add(contract);
 			implementation.getProperties().addAll(OsgiProperties.toModel(endpoint.getProperties()));
 
-			announced.put(endpoint.getId(), Announcements.publish(client, resourceSets, brokerUrl, contract,
-					implementation, "rsa-endpoints-" + frameworkUuid));
-			LOG.info("[DDSR] announced foreign-format endpoint " + endpoint.getId() + " "
-					+ endpoint.getInterfaces());
+			Announcements.Announced fresh = Announcements.publish(client, resourceSets, brokerUrl, contract,
+					implementation, "rsa-endpoints-" + frameworkUuid);
+			if (withdrawnWhileAnnouncing.remove(id)) {
+				// It was withdrawn while we were publishing it. Take it
+				// back at once: the withdrawal found nothing to remove and
+				// will not come again.
+				closeQuietly(id, fresh);
+				LOG.fine(() -> "[DDSR] " + id + " was withdrawn while it was being announced");
+				return;
+			}
+			announced.put(id, fresh);
+			LOG.info("[DDSR] announced foreign-format endpoint " + id + " " + endpoint.getInterfaces());
 		} catch (RuntimeException failure) {
 			// A topology manager is calling us; it has nowhere to put an
 			// exception, and one endpoint that cannot be announced must
 			// not stop the next.
-			LOG.log(Level.WARNING, "[DDSR] announcing " + endpoint.getId() + " failed", failure);
+			LOG.log(Level.WARNING, "[DDSR] announcing " + id + " failed", failure);
+		} finally {
+			announcing.remove(id);
 		}
 	}
 
@@ -316,15 +336,33 @@ public class EndpointBridge implements EndpointEventListener, EndpointListener {
 	}
 
 	private void unannounce(EndpointDescription endpoint) {
-		Announcements.Announced announcement = announced.remove(endpoint.getId());
+		String id = endpoint.getId();
+		if (announcing.contains(id)) {
+			// An announcement is in flight. Leaving a note is the only way
+			// to reach it; removing from `announced` would find nothing
+			// and the publish would leave an entry in a remote registry
+			// that this framework no longer has a handle to.
+			withdrawnWhileAnnouncing.add(id);
+		}
+		Announcements.Announced announcement = announced.remove(id);
 		if (announcement == null) {
 			return;
 		}
+		closeQuietly(id, announcement);
+	}
+
+	/** Endpoint ids currently being announced, so a second thread does not repeat it. */
+	private final Set<String> announcing = ConcurrentHashMap.newKeySet();
+
+	/** Ids withdrawn while their announcement was still in flight. */
+	private final Set<String> withdrawnWhileAnnouncing = ConcurrentHashMap.newKeySet();
+
+	private static void closeQuietly(String id, Announcements.Announced announcement) {
 		try {
 			announcement.close();
-			LOG.info("[DDSR] withdrew endpoint " + endpoint.getId());
+			LOG.info("[DDSR] withdrew endpoint " + id);
 		} catch (RuntimeException failure) {
-			LOG.log(Level.WARNING, "[DDSR] withdrawing " + endpoint.getId() + " failed", failure);
+			LOG.log(Level.WARNING, "[DDSR] withdrawing " + id + " failed", failure);
 		}
 	}
 

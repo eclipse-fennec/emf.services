@@ -1,54 +1,54 @@
-# Eclipse Fennec Services (Arbeitsname DDSR) — Architektur (Stand der Prototyp-Iteration)
+# Eclipse Fennec Services (working name DDSR) — architecture (state of the prototype iteration)
 
-Schnappschuss vom Stand nach der Cross-Language-Demo. Ergänzt
-`CLIENT_FRAMEWORK_GUIDE.md` und `REQUIREMENTS.md` — wo die beiden
-sich widersprechen, gilt dieses Dokument.
+A snapshot of the state after the cross-language demo. It complements
+`CLIENT_FRAMEWORK_GUIDE.md` and `REQUIREMENTS.md` — where those two
+contradict it, this document wins.
 
 ---
 
-## 0. Überblick (Diagramme)
+## 0. Overview (diagrams)
 
-Komponentensicht — der Broker ist Discovery+Acquisition, die Invocation
-läuft peer-to-peer über den annoncierten Flavor:
+The component view — the broker is discovery + acquisition, the
+invocation runs peer to peer over the announced flavor:
 
 ```mermaid
 flowchart LR
   subgraph Broker["Broker (Java)"]
-    core["broker.core<br/>Registry + Katalog + Sessions<br/>+ Fingerprints + Cold-Cache"]
+    core["broker.core<br/>registry + catalog + sessions<br/>+ fingerprints + cold cache"]
     rest["broker.rest<br/>JAX-RS + SSE"]
     bmqtt["broker.mqtt<br/>EventSink"]
     core --- rest
     core --- bmqtt
   end
-  codec["xmi.codec<br/>Wire-Codec + sd1/im1"]
-  subgraph JavaSDK["Java-SDK"]
-    cj["client.java<br/>Provider/Consumer/Locator"]
+  codec["xmi.codec<br/>wire codec + sd1/im1"]
+  subgraph JavaSDK["Java SDK"]
+    cj["client.java<br/>provider/consumer/locator"]
     cr["client.rest"]
     cm["client.mqtt<br/>EventSource"]
     cj --- cr
     cj --- cm
   end
-  subgraph TS["TypeScript-SDK"]
+  subgraph TS["TypeScript SDK"]
     tsc["ddsr-client"]
     tsr["ddsr-flavor-rest"]
-    tsm["ddsr-transport-mqtt<br/>Events + RPC"]
+    tsm["ddsr-transport-mqtt<br/>events + RPC"]
     tsc --- tsr
     tsc --- tsm
   end
   cr <-- "REST /ddsr/rest + SSE" --> rest
   tsc <-- "REST + SSE" --> rest
-  bmqtt -- "ddsr/events/#" --> mq[("MQTT-Broker<br/>(z. B. Mosquitto)")]
+  bmqtt -- "ddsr/events/#" --> mq[("MQTT broker<br/>(e.g. Mosquitto)")]
   mq --> cm
   mq --> tsm
-  tsr <-. "Invocation: RestFlavor.host" .-> prov["Provider-Endpoint<br/>(REST oder MQTT-Topics)"]
-  tsm <-. "Invocation: MqttFlavor.brokers" .-> mq
+  tsr <-. "invocation: RestFlavor.host" .-> prov["provider endpoint<br/>(REST or MQTT topics)"]
+  tsm <-. "invocation: MqttFlavor.brokers" .-> mq
   Broker --- codec
   JavaSDK --- codec
 ```
 
-Lifecycle-Garantie (FR-P3): Consumer werden informiert, **bevor** der
-Provider-Endpoint verschwindet — der Shutdown blockiert auf die
-Broker-Bestätigung:
+The lifecycle guarantee (FR-P3): consumers are told **before** the
+provider endpoint disappears — the shutdown blocks on the broker's
+acknowledgement:
 
 ```mermaid
 sequenceDiagram
@@ -57,218 +57,219 @@ sequenceDiagram
   participant C as Consumer
   Note over P: SIGTERM / deactivate
   P->>B: POST /implementations/withdraw
-  B->>B: Registration retiren,<br/>Leases lösen
+  B->>B: retire the registration,<br/>release the leases
   B-->>C: UNREGISTERING (SSE/MQTT)
-  B->>B: Snapshot persistieren
+  B->>B: persist the snapshot
   B-->>P: Diagnostic OK
-  Note over P: erst JETZT:<br/>Endpoint stoppen
+  Note over P: only NOW:<br/>stop the endpoint
 ```
 
-Die drei Nutzungsstufen und wo Fingerprints greifen
-(Details: ACQUISITION.md, FINGERPRINTS.md):
+The three usage stages and where fingerprints take hold
+(details: ACQUISITION.md, FINGERPRINTS.md):
 
 ```mermaid
 flowchart TD
-  D["1 · Discovery<br/>GET /references?interface=…&fingerprint=sd1:…<br/>Events: REGISTERED/UNREGISTERING"]
-  A["2 · Acquisition<br/>PUT /consumers/{id} — Session mit Leases<br/>(idempotenter Vollabgleich, TTL)"]
-  I["3 · Invocation<br/>peer-to-peer über den Flavor<br/>(REST-URL oder MQTT-Topics)"]
+  D["1 · discovery<br/>GET /references?interface=…&fingerprint=sd1:…<br/>events: REGISTERED/UNREGISTERING"]
+  A["2 · acquisition<br/>PUT /consumers/{id} — a session with leases<br/>(an idempotent full replace, TTL)"]
+  I["3 · invocation<br/>peer to peer over the flavor<br/>(a REST URL or MQTT topics)"]
   D --> A --> I
-  D -. "sd1 adressiert den Contract" .-> D
-  A -. "im1 beantwortet den Provider-Reconnect" .-> A
+  D -. "sd1 addresses the contract" .-> D
+  A -. "im1 answers the provider reconnect" .-> A
 ```
 
 ---
 
-## 1. Bundle-Layout
+## 1. Bundle layout
 
 ```
-org.eclipse.fennec.services.model               # ecore-generierte Modellklassen
-                                   #   - NamedElement.name: KEIN iD mehr
-                                   #     (Cross-Refs laufen positional)
-                                   #   - ServiceReference.id: bleibt iD (UUID)
+org.eclipse.fennec.services.model               # ecore-generated model classes
+                                   #   - NamedElement.name: no longer iD
+                                   #     (cross-refs run positionally)
+                                   #   - ServiceReference.id: stays iD (UUID)
 
-org.eclipse.fennec.services.broker.api          # NUR die API (#105): ein Launch, der
-                                   #   nur mit einem Broker spricht, nimmt dieses
-                                   #   Bundle und bekommt damit keinen Broker
+org.eclipse.fennec.services.broker.api          # the API ONLY (#105): a launch that
+                                   #   only talks TO a broker takes this bundle
+                                   #   and does not get a broker with it
 
-org.eclipse.fennec.services.shutdown            # ein Component: sauberer Framework-Stop
-                                   #   bei SIGTERM. In jeden Launch; lag vorher in
-                                   #   broker.core und wirkte dort per Zufall
+org.eclipse.fennec.services.shutdown            # one component: a clean framework stop
+                                   #   on SIGTERM. Into every launch; it used to sit
+                                   #   in broker.core and worked there by accident
 
-org.eclipse.fennec.services.broker.core         # der Broker selbst
-                                   #   role-Interfaces:
+org.eclipse.fennec.services.broker.core         # the broker itself
+                                   #   role interfaces:
                                    #     BrokerCatalog
                                    #     BrokerImplementations
                                    #     BrokerLookup
-                                   #   DdsrBroker = composite extends alle drei
-                                   #   DdsrBrokerImpl: Fassade, nur Konstruktion
-                                   #     und Weiterreichen (#110)
-                                   #   dahinter, je ein Belang:
-                                   #     BrokerState    Registry, Sperre, Snapshot
+                                   #   DdsrBroker = composite, extends all three
+                                   #   DdsrBrokerImpl: a facade, construction
+                                   #     and delegation only (#110)
+                                   #   behind it, one concern each:
+                                   #     BrokerState    registry, lock, snapshot
                                    #     Registrations  publish/modify/withdraw
-                                   #     CatalogStore   Governance + Auflösung
-                                   #     Lookups        wer bedient dieses Interface
-                                   #     UpdatePolicies Supersession, Drain, Cutover
-                                   #     Liveness       Leases, Heartbeat, Sweep
-                                   #     Sessions       Erwerbe (nie persistiert)
-                                   #     ColdCache      geparkte Registrierungen
-                                   #     Announcements  EventSink-Zugang
-                                   #   Retirement / Republication: die zwei Nähte,
-                                   #     über die Belange einander aufrufen
+                                   #     CatalogStore   governance + resolution
+                                   #     Lookups        who serves this interface
+                                   #     UpdatePolicies supersession, drain, cutover
+                                   #     Liveness       leases, heartbeat, sweep
+                                   #     Sessions       acquisitions (never persisted)
+                                   #     ColdCache      parked registrations
+                                   #     Announcements  access to the EventSink
+                                   #   Retirement / Republication: the two seams
+                                   #     over which the concerns call each other
 
-org.eclipse.fennec.services.broker.rest         # JAX-RS-Endpoints
-                                   #   /catalog und /implementations werden NICHT
-                                   #     mehr von Hand bedient: zwei Konfigurationen
-                                   #     der generischen Distribution servieren sie
-                                   #     aus resources/broker-*-api.xmi (#76)
-                                   #   vollständige Endpoint-Tabelle: WIRE_FORMAT.md
+org.eclipse.fennec.services.broker.rest         # JAX-RS endpoints
+                                   #   /catalog and /implementations are NOT
+                                   #     hand-served any more: two configurations
+                                   #     of the generic distribution serve them
+                                   #     out of resources/broker-*-api.xmi (#76)
+                                   #   the full endpoint table: WIRE_FORMAT.md
                                    #   /catalog, /catalog/{name}[?fingerprint=],
                                    #     /catalog/{name}/deprecate
                                    #   /implementations (publish),
-                                   #     /implementations/withdraw (POST — kanonisch, D15)
+                                   #     /implementations/withdraw (POST — canonical, D15)
                                    #   /references?interface=&filter=&flavors=&consumerId=&fingerprint=
-                                   #   /consumers/{id} (Sessions, PUT/GET/DELETE)
-                                   #   /events (SSE; Heartbeat-PID
+                                   #   /consumers/{id} (sessions, PUT/GET/DELETE)
+                                   #   /events (SSE; heartbeat PID
                                    #     org.eclipse.fennec.services.broker.rest.sse)
                                    #   /registry
-                                   #   BrokerSelfPublisher: liest die drei
-                                   #     API-Dokumente, legt jeden Vertrag in den
-                                   #     Katalog und meldet die Implementierung an —
-                                   #     kein Flavor mehr im Code
-                                   #   LookupResource + EventsResource bleiben
-                                   #     handgeschrieben: die Lookup-Antwort ist
-                                   #     mehrwurzelig (#88), SSE ist kein Aufruf
+                                   #   BrokerSelfPublisher: reads the three
+                                   #     API documents, puts every contract into
+                                   #     the catalog and publishes the
+                                   #     implementation — no flavor in code any more
+                                   #   LookupResource + EventsResource stay
+                                   #     hand-written: the lookup answer is
+                                   #     multi-root (#88), SSE is not a call
 
-org.eclipse.fennec.services.xmi.codec           # geteilt: Server- + Client-Seite
+org.eclipse.fennec.services.xmi.codec           # shared: server and client side
                                    #   XmiCodec (CSO<ResourceSet>)
-                                   #   XmiBundle (Multi-Root-Wrapper)
+                                   #   XmiBundle (multi-root wrapper)
                                    #   XmiMessageBodyReader/Writer (EObject)
                                    #   XmiBundleMessageBodyReader/Writer
-                                   #   DS-Components mit constructor-injection
-                                   #   → broker.rest nutzt sie als Whiteboard-
-                                   #     Extensions, client.rest als manuell
-                                   #     registrierte Jakarta-Client-Providers
+                                   #   DS components with constructor injection
+                                   #   → broker.rest uses them as whiteboard
+                                   #     extensions, client.rest as manually
+                                   #     registered Jakarta client providers
 
-org.eclipse.fennec.services.client.java         # transport-agnostische SDK
+org.eclipse.fennec.services.client.java         # the transport-agnostic SDK
                                    #   DdsrClient/Provider/Consumer/Registration
                                    #   ServiceLocator + ServiceInvoker + ServiceProxyFactory
-                                   #   referenziert die drei role-Interfaces
+                                   #   references the three role interfaces
                                    #   via @Reference(target="(ddsr.broker.transport=rest)")
 
-org.eclipse.fennec.services.client.rest         # REST-Flavor
-                                   #   RestTransport (Jakarta Client + ClientBuilder
-                                   #     aus osgitech.rest 1.2.3)
+org.eclipse.fennec.services.client.rest         # the REST flavor
+                                   #   RestTransport (Jakarta client + ClientBuilder
+                                   #     from osgitech.rest 1.2.3)
                                    #   CatalogHttpProxy / ImplementationsHttpProxy /
-                                   #     LookupHttpProxy implementieren die
-                                   #     role-Interfaces als HTTP-Proxies
-                                   #   RestServiceInvoker: reflective wire-call
+                                   #     LookupHttpProxy implement the role
+                                   #     interfaces as HTTP proxies
+                                   #   RestServiceInvoker: the reflective wire call
                                    #   ReflectiveServiceProxyFactory: java.lang.reflect.Proxy
 
-org.eclipse.fennec.services.flavor.rest         # geteilt: die Platzierungsregeln
-                                   #   RestPlacement: wohin ein Argument geht
-                                   #   RestArguments: wo es wieder herkommt
-                                   #   RestRoute: welche Operation ein Request meint
-                                   #   KEIN JAX-RS: dieselbe Regel gilt für den
-                                   #     Consumer, den Dispatcher und das Template
+org.eclipse.fennec.services.flavor.rest         # shared: the placement rules
+                                   #   RestPlacement: where an argument goes
+                                   #   RestArguments: where it comes back from
+                                   #   RestRoute: which operation a request means
+                                   #   NO JAX-RS: the same rule holds for the
+                                   #     consumer, the dispatcher and the template
 
-org.eclipse.fennec.services.provider.rest       # generische REST-Distribution (#84)
-                                   #   GenericRestDistribution: eine Application pro
-                                   #     konfigurierter Implementierung, Factory-PID
+org.eclipse.fennec.services.provider.rest       # the generic REST distribution (#84)
+                                   #   GenericRestDistribution: one Application per
+                                   #     configured implementation, factory PID
                                    #     org.eclipse.fennec.services.provider.rest
-                                   #   RestDispatcher: @Path("{path:.*}") je Verb,
-                                   #     entscheidet in Modellbegriffen und ruft
-                                   #     reflektiv auf
-                                   #   mit publish=true auch der kopflose Provider:
-                                   #     eine Konfiguration und ein Service, kein Code
+                                   #   RestDispatcher: @Path("{path:.*}") per verb,
+                                   #     decides in model terms and calls
+                                   #     reflectively
+                                   #   with publish=true it is also the headless
+                                   #     provider: one configuration and one
+                                   #     service, no code
 
-org.eclipse.fennec.services.rsa                 # OSGi Remote Service Admin auf DDSR (#24)
-                                   #   Kern kennt zwei SPIs und keinen Transport:
-                                   #     FlavorDistribution  (erreichbar machen)
-                                   #     ServiceDiscovery    (ankündigen, hören)
-                                   #   gewählt über RSA-Config-Types
-                                   #   registry/: lokale Service-Registry auf der
-                                   #     EObject-Registry (emf.osgi); Verträge aus
-                                   #     Bundle-Capability oder Ableitung, danach
-                                   #     nicht mehr unterscheidbar
+org.eclipse.fennec.services.rsa                 # OSGi Remote Service Admin on DDSR (#24)
+                                   #   the core knows two SPIs and no transport:
+                                   #     FlavorDistribution  (make reachable)
+                                   #     ServiceDiscovery    (announce, listen)
+                                   #   chosen through RSA config types
+                                   #   registry/: a local service registry on the
+                                   #     EObject registry (emf.osgi); contracts from
+                                   #     a bundle capability or derived, and after
+                                   #     that indistinguishable
 
-org.eclipse.fennec.services.rsa.distribution.rest  # fennec.rest: Flavor ableiten,
-                                   #   generisch servieren (provider.rest)
-org.eclipse.fennec.services.rsa.discovery.rest     # Broker + SSE als Discovery
-                                   #   EndpointBridge: fremde EndpointDescriptions
-                                   #     als Vertrag osgi.rsa.endpoint über den Broker
-org.eclipse.fennec.services.rsa.discovery.local    # Extender nach 122.6.2: Endpoints aus
-                                   #   dem Remote-Service-Header eines Bundles
-org.eclipse.fennec.services.rsa.topology           # exportiert, was darum bittet, importiert,
-                                   #   worauf gewartet wird und was eine Discovery
-                                   #   meldet; policy / import.policy =
+org.eclipse.fennec.services.rsa.distribution.rest  # fennec.rest: derive a flavor,
+                                   #   serve it generically (provider.rest)
+org.eclipse.fennec.services.rsa.discovery.rest     # the broker + SSE as discovery
+                                   #   EndpointBridge: foreign EndpointDescriptions
+                                   #     as the contract osgi.rsa.endpoint via the broker
+org.eclipse.fennec.services.rsa.discovery.local    # an extender per 122.6.2: endpoints from
+                                   #   a bundle's remote-service header
+org.eclipse.fennec.services.rsa.topology           # exports whatever asks for it, imports
+                                   #   whatever is being waited for and whatever a
+                                   #   discovery reports; policy / import.policy =
                                    #   promiscuous|manual
-org.eclipse.fennec.services.rsa.config             # eine Konfiguration je Rolle statt neun je
-                                   #   Deployment: PID …rsa.provider bzw.
-                                   #   …rsa.consumer; leitet ab, prüft vor dem
-                                   #   Start, schreibt von innen nach außen und
-                                   #   räumt in der Gegenrichtung ab (#109)
+org.eclipse.fennec.services.rsa.config             # one configuration per role instead of
+                                   #   nine per deployment: PID …rsa.provider or
+                                   #   …rsa.consumer; it derives, checks before the
+                                   #   start, writes from the inside out and tears
+                                   #   down in the other direction (#109)
 
-org.eclipse.fennec.services.rsa.tck                # OSGi-RSA-TCK 8.1.0 (Central) als Launch
-                                   #   gegen die vier Bundles (#99); Broker läuft
-                                   #   außerhalb: itest/run-tck.sh
+org.eclipse.fennec.services.rsa.tck                # the OSGi RSA TCK 8.1.0 (Central) as a launch
+                                   #   against the four bundles (#99); the broker runs
+                                   #   outside: itest/run-tck.sh
 
-org.eclipse.fennec.services.examples.rsa     # ein simpler OSGi-Service, exportiert
-                                    #   ohne Vertragsdokument, Flavor, Publisher
+org.eclipse.fennec.services.examples.rsa     # a simple OSGi service, exported
+                                    #   with no contract document, flavor, publisher
 
-org.eclipse.fennec.services.examples.payment # Demo-Java-Provider
-                                    #   PaymentResource (JAX-RS auf 9091)
+org.eclipse.fennec.services.examples.payment # the demo Java provider
+                                    #   PaymentResource (JAX-RS on 9091)
                                     #   PaymentPublisher: addCatalogEntry + publish
-                                    #   BindingProbe: nichts davon — Vertrag im
-                                    #     Modell, serviert und angemeldet von
+                                    #   BindingProbe: none of that — the contract is
+                                    #     in the model, served and published by
                                     #     provider.rest
-                                    #   Eigene Launch: payment-provider.bndrun
+                                    #   Its own launch: payment-provider.bndrun
 ```
 
-Demo-Klassen in `client.java/internal/` (gehen weg, sobald Codegen
-da ist):
+Demo classes in `client.java/internal/` (they go away once code
+generation is here):
 - `BrokerCatalogRemote` + `BrokerCatalogProxyRegistrar`
-- `PaymentRemote` + `PaymentProxyRegistrar` (registriert pro Provider
-  einen Proxy mit Property `ddsr.provider.name=<name>`)
-- `ClientRoundtripDebug` (testet `BrokerCatalogRemote.listCatalog()`)
-- `PaymentDebug` (gegen `payments-java`)
-- `TsPaymentDebug` (gegen `payments-ts`)
+- `PaymentRemote` + `PaymentProxyRegistrar` (registers one proxy per
+  provider with the property `ddsr.provider.name=<name>`)
+- `ClientRoundtripDebug` (exercises `BrokerCatalogRemote.listCatalog()`)
+- `PaymentDebug` (against `payments-java`)
+- `TsPaymentDebug` (against `payments-ts`)
 
 ---
 
-## 2. Architektur-Entscheidungen
+## 2. Architectural decisions
 
-### 2.1 Role-Interface-Splitt statt Mono-`DdsrBroker`
+### 2.1 A role-interface split instead of a monolithic `DdsrBroker`
 
-`broker.core` exportiert vier Services: `DdsrBroker` (composite) plus
-die drei Slices `BrokerCatalog`, `BrokerImplementations`,
-`BrokerLookup`. Consumer referenzieren nur die Slice, die sie
-brauchen — und können dabei via `(ddsr.broker.transport=rest|embedded)`
-Property zwischen In-Process-Broker und HTTP-Proxy wählen.
+`broker.core` exports four services: `DdsrBroker` (the composite) plus
+the three slices `BrokerCatalog`, `BrokerImplementations`,
+`BrokerLookup`. Consumers reference only the slice they need — and can
+pick between the in-process broker and the HTTP proxy through the
+`(ddsr.broker.transport=rest|embedded)` property while they are at it.
 
-### 2.2 Embedded vs. Remote = nur eine Service-Property
+### 2.2 Embedded vs. remote = one service property
 
-Beide Seiten exportieren dieselben drei Interfaces:
-- `broker.core/DdsrBrokerComponent` → ohne extra Property (embedded)
+Both sides export the same three interfaces:
+- `broker.core/DdsrBrokerComponent` → with no extra property (embedded)
 - `client.rest/CatalogHttpProxy` etc. → `ddsr.broker.transport=rest`
 
-`client.java/DdsrClientComponent` und die Publisher targeten
-deterministisch `(ddsr.broker.transport=rest)` — keine Mehrdeutigkeit,
-egal ob der Broker im gleichen Runtime mitläuft (Package-Export wird
-gebraucht für die Interfaces) oder remote ist.
+`client.java/DdsrClientComponent` and the publishers target
+`(ddsr.broker.transport=rest)` deterministically — no ambiguity,
+whether the broker runs in the same runtime (the package export is
+needed for the interfaces) or remotely.
 
-### 2.3 XMI als Wire-Format, EMF rules everywhere
+### 2.3 XMI as the wire format, EMF rules everywhere
 
-`xmi.codec` ist die einzige Schicht, die XMI ↔ EObject übersetzt.
-`ComponentServiceObjects<ResourceSet>` aus emf.osgi liefert pro Call
-eine konfigurierte Prototype-RS; der Helper gibt sie nach
-`ungetService` zurück. Damit funktioniert das Codec sowohl in
-DS-managed Form (Server-Whiteboard) als auch als Instanz (Client
-registriert auf Jakarta-Client).
+`xmi.codec` is the only layer that translates XMI ↔ EObject.
+`ComponentServiceObjects<ResourceSet>` from emf.osgi hands out a
+configured prototype RS per call; the helper gives it back on
+`ungetService`. That way the codec works both in DS-managed form (the
+server whiteboard) and as an instance (the client registers it on the
+Jakarta client).
 
-### 2.4 Catalog-URL als kanonische SI-Referenz
+### 2.4 The catalog URL as the canonical SI reference
 
-`impl.serviceInterfaces` wird **nicht** mit einem SI-Sibling im Publish-
-Body geschickt, sondern als cross-doc `href` auf die Broker-URL:
+`impl.serviceInterfaces` is **not** sent with an SI sibling in the
+publish body but as a cross-document `href` onto the broker URL:
 
 ```xml
 <implementations …>
@@ -281,20 +282,21 @@ Body geschickt, sondern als cross-doc `href` auf die Broker-URL:
 </implementations>
 ```
 
-Publisher legt `paymentApi` in eine `Resource` mit URI =
-`<brokerUrl>/catalog/<name>` ab — EMF emittiert die Cross-Refs dann
-automatisch als href. Broker erkennt EMF-Proxies (`eIsProxy()`),
-liest Catalog-Namen aus dem URI-Path und Operation-Index aus dem
-Fragment (`//@operations.N`) **ohne HTTP-Fetch** und rewired auf
-die lebenden Catalog-Einträge.
+The publisher puts `paymentApi` into a `Resource` with the URI
+`<brokerUrl>/catalog/<name>` — EMF then emits the cross-refs as hrefs
+by itself. The broker recognises EMF proxies (`eIsProxy()`), reads the
+catalog name out of the URI path and the operation index out of the
+fragment (`//@operations.N`) **without an HTTP fetch**, and rewires
+onto the live catalog entries.
 
-Trade-off: Publisher braucht die Broker-URL (Config-Attribute
-`broker.url`). Ergebnis: Publish-Body schrumpft um die Größe der
-SI; konzeptionell sauber (Catalog ist die Quelle, Impl referenziert).
+The trade-off: the publisher needs the broker URL (the config attribute
+`broker.url`). The result: the publish body shrinks by the size of the
+SI, and it is conceptually clean (the catalog is the source, the impl
+references it).
 
-### 2.5 Reflective Proxy + ServiceInvoker statt Codegen
+### 2.5 A reflective proxy + ServiceInvoker instead of code generation
 
-Eingangsskelett für später-zu-generierende Stubs:
+The entry skeleton for the stubs to be generated later:
 
 ```java
 public interface PaymentRemote {
@@ -303,93 +305,91 @@ public interface PaymentRemote {
 }
 ```
 
-Hand-geschrieben. Der `ReflectiveServiceProxyFactory` baut zur Laufzeit
-einen `java.lang.reflect.Proxy`, der jeden Methodencall in
-`ServiceInvoker.invoke(locator, method.getName(), argsMap)` übersetzt.
+Hand-written. The `ReflectiveServiceProxyFactory` builds a
+`java.lang.reflect.Proxy` at runtime that translates every method call
+into `ServiceInvoker.invoke(locator, method.getName(), argsMap)`.
 
-**Argument-Namen kommen aus dem Modell**, nicht aus Java-Reflection:
-der Proxy holt sich `ServiceLocator → RestFlavor → OperationFlavor →
-ServiceOperation → Parameter[].name` und mappt positionally
-`args[i] → modelParameterNames.get(i)`. Damit funktioniert das
-**unabhängig vom `-parameters`-Compile-Flag** und folgt dem Modell als
-Wahrheit.
+**Argument names come from the model**, not from Java reflection: the
+proxy fetches `ServiceLocator → RestFlavor → OperationFlavor →
+ServiceOperation → Parameter[].name` and maps `args[i] →
+modelParameterNames.get(i)` positionally. That works **independently of
+the `-parameters` compile flag** and follows the model as the truth.
 
-Wire-Konvention im `RestServiceInvoker`:
-- `GET` → Args als Query-Params
-- `POST`/`PUT`/`DELETE` mit einem EObject-Arg → XMI-Body
-- `POST`/`PUT`/`DELETE` mit primitive/string Args → Query-Params, kein Body
-- Accept-Header aus `RestOperationFlavor.produces[0]`
-- Return-Coercion: `application/xml` → EObject; sonst String mit
-  primitive-Parsing (`Double.parseDouble` etc.) im Proxy
+The wire convention in `RestServiceInvoker`:
+- `GET` → args as query params
+- `POST`/`PUT`/`DELETE` with one EObject arg → an XMI body
+- `POST`/`PUT`/`DELETE` with primitive/string args → query params, no body
+- the Accept header from `RestOperationFlavor.produces[0]`
+- return coercion: `application/xml` → EObject; otherwise a String with
+  primitive parsing (`Double.parseDouble` etc.) in the proxy
 
-### 2.6 Idempotenz und Dedup im Broker
+### 2.6 Idempotence and dedup in the broker
 
-Auf der Broker-Seite (`DdsrBrokerImpl.publishImplementation`):
+On the broker side (`DdsrBrokerImpl.publishImplementation`):
 
-1. **SI-Validierung**: Name aus EObject oder Proxy-URI ziehen,
-   gegen `catalog` matchen.
-2. **Provider-Dedup** (`findProviderByNameVersion`): existiert
-   Provider mit gleichem `(name, version)`, wird er wiederverwendet;
-   neue Impl wird per Containment dort eingehängt.
-3. **Impl-Dedup neu** (`findImplementationByNameVersion`):
-   existiert Impl mit gleichem `(name, version)`, wird die alte
-   per `retireImplementation` abgemeldet (aus Provider, aus
-   `registry.implementations`, aus `implByRegistration`-Map, plus
-   `lookup.serviceRemoved`) bevor die neue eingefügt wird.
-4. **Operation-Rewire**: Flavor-`operation`-Refs werden auf live
-   Catalog-Operations gemappt (entweder via aufgelöster Ref oder
-   Proxy-URI-Fragment `//@operations.N`).
+1. **SI validation**: pull the name out of the EObject or the proxy URI
+   and match it against the `catalog`.
+2. **Provider dedup** (`findProviderByNameVersion`): if a provider with
+   the same `(name, version)` exists it is reused; the new impl is hung
+   into it by containment.
+3. **Impl dedup, new** (`findImplementationByNameVersion`): if an impl
+   with the same `(name, version)` exists, the old one is retired via
+   `retireImplementation` (out of the provider, out of
+   `registry.implementations`, out of the `implByRegistration` map, plus
+   `lookup.serviceRemoved`) before the new one is inserted.
+4. **Operation rewire**: the flavor's `operation` refs are mapped onto
+   live catalog operations (either through the resolved ref or through
+   the proxy URI fragment `//@operations.N`).
 
-5. **Modify statt Republish** (`modifyImplementation`, `PUT
-   /implementations`, #55): ändert sich nur *was registriert ist*
-   (Endpoint, Properties, Capabilities, Beschreibung, Policy-Knöpfe),
-   nicht der Vertrag, wird die live Registration in place
-   aktualisiert — gleiche Referenz-ID, alle Leases bleiben, die
-   Referenz-Dekoration (im1, Properties) wird erneuert, Consumer
-   bekommen `MODIFIED`. Eine Vertragsänderung (andere `(name, sd1)`-
-   Einträge) wird mit Code 214 abgelehnt; das ist ein Publish,
-   optional mit `replaces`. Die SDKs nutzen Modify für Zeile 2 des
-   Reconnect-Checks (sd1 gleich, im1 verschieden) und bieten es als
-   `Registration.update()` an.
+5. **Modify instead of republish** (`modifyImplementation`, `PUT
+   /implementations`, #55): if only *what is registered* changes (the
+   endpoint, properties, capabilities, description, the policy knobs)
+   and not the contract, the live registration is updated in place —
+   the same reference id, every lease survives, the reference
+   decoration (im1, properties) is refreshed, and consumers get
+   `MODIFIED`. A contract change (different `(name, sd1)` entries) is
+   refused with code 214; that is a publish, optionally with
+   `replaces`. The SDKs use modify for row 2 of the reconnect check
+   (sd1 equal, im1 different) and offer it as `Registration.update()`.
 
-Damit überleben Publishes Restarts ohne Akkumulation, und Lookups
-returnen genau eine Reference pro `(provider, impl)`-Kombination.
+That way publishes survive restarts without accumulating, and lookups
+return exactly one reference per `(provider, impl)` combination.
 
-### 2.7 Persistenz und Rehydration
+### 2.7 Persistence and rehydration
 
-`broker-state.xmi` enthält alles: Catalog, Provider als Sibling-
-Roots, Impls als Containment-Children der Provider. Beim Start
-liest `DdsrBrokerImpl` das File ein. `reindex()` läuft über jede
-`ServiceImplementation` in `registry.implementations` und erzeugt
-frische `ServiceReference`+`ServiceRegistration`-Paare (mit neuen
-UUIDs — Refs sind nicht stabil über Restarts, Consumer muss
-re-look-upen). Lookup-Backend wird neu indexiert.
+`broker-state.xmi` holds everything: the catalog, providers as sibling
+roots, impls as containment children of the providers. At startup
+`DdsrBrokerImpl` reads the file. `reindex()` walks every
+`ServiceImplementation` in `registry.implementations` and creates fresh
+`ServiceReference`+`ServiceRegistration` pairs (with new UUIDs — refs
+are not stable across restarts, a consumer has to look up again). The
+lookup backend is reindexed.
 
-### 2.8 Diagnostic statt HTTP-Exception
+### 2.8 A Diagnostic instead of an HTTP exception
 
-Alle HTTP-Proxies (`CatalogHttpProxy`, `ImplementationsHttpProxy`)
-nutzen `.post(entity)` / `.delete()` **ohne typed Class**, lesen den
-Response manuell und parsen den Body als `Diagnostic` egal welcher
-HTTP-Status. Damit kommen 4xx mit Diagnostic-Body (z. B.
-`code=202 CATALOG_ENTRY_ALREADY_EXISTS`) sauber durch — Caller
-können `severity` und `code` inspizieren statt `ClientErrorException`
-zu fangen.
+All the HTTP proxies (`CatalogHttpProxy`, `ImplementationsHttpProxy`)
+use `.post(entity)` / `.delete()` **without a typed class**, read the
+response by hand and parse the body as a `Diagnostic` whatever the HTTP
+status is. That lets a 4xx with a Diagnostic body (e.g.
+`code=202 CATALOG_ENTRY_ALREADY_EXISTS`) through cleanly — callers can
+inspect `severity` and `code` instead of catching a
+`ClientErrorException`.
 
 ---
 
-## 3. Wire-Beispiele
+## 3. Wire examples
 
-### 3.1 Self-Publish (Broker registriert sich selbst)
+### 3.1 Self-publish (the broker registers itself)
 
-In-Process — kein Wire. Der `BrokerSelfPublisher` legt drei
+In process — no wire. The `BrokerSelfPublisher` puts three
 ServiceInterfaces (`BrokerCatalog`, `BrokerImplementations`,
-`BrokerLookup`) in den Catalog und published den Provider
-`ddsr-broker` mit RestFlavor `host=<public.url-Authority>`,
-`basePath=<public.url-Path>`.
+`BrokerLookup`) into the catalog and publishes the provider
+`ddsr-broker` with a RestFlavor `host=<the public.url authority>`,
+`basePath=<the public.url path>`.
 
-### 3.2 Remote Publish (`PaymentPublisher` → Broker)
+### 3.2 A remote publish (`PaymentPublisher` → broker)
 
-Wire-Body Post `/implementations`:
+The wire body of `POST /implementations`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -414,17 +414,17 @@ Wire-Body Post `/implementations`:
 </services:ServiceProvider>
 ```
 
-### 3.3 Lookup-Response (`GET /references?interface=Payment`)
+### 3.3 The lookup response (`GET /references?interface=Payment`)
 
-Multi-Root mit `LocalServiceRegistry`-Envelope (Refs + Provider-
-Tree als Containment) plus den referenzierten ServiceInterfaces als
-Sibling-Roots — siehe LookupResource. Diese Form behält die
-Cross-Refs intra-document.
+Multi-root with a `LocalServiceRegistry` envelope (refs + the provider
+tree by containment) plus the referenced ServiceInterfaces as sibling
+roots — see LookupResource. This shape keeps the cross-refs
+intra-document.
 
-### 3.4 Cross-Language-Call
+### 3.4 A cross-language call
 
 ```
-Java-Client                            TS-Server (192.168.1.5:9090)
+Java client                            TS server (192.168.1.5:9090)
   payment.charge(10.0, "EUR")  ←→
     │
     ↓ (java.lang.reflect.Proxy)
@@ -441,44 +441,45 @@ Java-Client                            TS-Server (192.168.1.5:9090)
   return 990.0
 ```
 
-Selbes Pattern für Java-Provider, nur andere `host` im Locator.
+The same pattern for the Java provider, only a different `host` in the
+locator.
 
-### 3.x MQTT-Invocation (A2 Etappe 2): Request/Response über Topics
+### 3.x MQTT invocation (A2 stage 2): request/response over topics
 
-Eingefroren mit der TS-Referenzimplementierung
-(`ddsr-transport-mqtt/src/mqtt-rpc.ts`); MQTT 3.1.1-kompatibel — die
-MQTT-5-Properties `response-topic`/`correlation-data` existieren im
-paho-v3-Stack nicht, also reisen beide im Envelope:
+Frozen with the TypeScript reference implementation
+(`ddsr-transport-mqtt/src/mqtt-rpc.ts`); MQTT 3.1.1 compatible — the
+MQTT 5 properties `response-topic`/`correlation-data` do not exist in
+the paho v3 stack, so both travel in the envelope:
 
 ```
-Request-Topic:   MqttOperationFlavor.requestTopic,
-                 sonst <MqttFlavor.requestTopic>/<operation.name>
-Reply-Topic:     vom CONSUMER gewählt: <base>/<correlationId> mit
+request topic:   MqttOperationFlavor.requestTopic,
+                 otherwise <MqttFlavor.requestTopic>/<operation.name>
+reply topic:     chosen by the CONSUMER: <base>/<correlationId> with
                  base = MqttOperationFlavor.responseTopic
                       | MqttFlavor.responseTopic
                       | <requestTopic>/reply
-Request (JSON):  {"correlationId":"<uuid>","replyTo":"<topic>","args":{…}}
-Response (JSON): {"correlationId":"<uuid>","result":<wert>}
-                 | {"correlationId":"<uuid>","error":"<meldung>"}
+request (JSON):  {"correlationId":"<uuid>","replyTo":"<topic>","args":{…}}
+response (JSON): {"correlationId":"<uuid>","result":<value>}
+                 | {"correlationId":"<uuid>","error":"<message>"}
 QoS:             MqttOperationFlavor.qos | MqttFlavor.defaultQos
-                 | AT_LEAST_ONCE;   retained: nie
+                 | AT_LEAST_ONCE;   retained: never
 ```
 
-Ein Reply-Topic pro Request: die Subscription sieht nie eine fremde
-Antwort, die Korrelation ist trotzdem doppelt abgesichert
-(correlationId im Envelope). Der DDSR-Broker ist an der Invocation
-nicht beteiligt — Discovery/Acquisition only (ACQUISITION.md §1); die
-Adresse des MQTT-Brokers kommt aus `MqttFlavor.brokers`, exakt wie
-`RestFlavor.host` beim REST-Pfad. Handler-Fehler antworten mit dem
-error-Envelope statt eines Consumer-Timeouts.
+One reply topic per request: the subscription never sees somebody
+else's answer, and the correlation is still doubly secured (the
+correlationId in the envelope). The DDSR broker takes no part in the
+invocation — discovery/acquisition only (ACQUISITION.md §1); the MQTT
+broker's address comes from `MqttFlavor.brokers`, exactly like
+`RestFlavor.host` on the REST path. A handler error answers with the
+error envelope instead of a consumer timeout.
 
 ---
 
-## 4. Konfiguration
+## 4. Configuration
 
-Aktuell auf LAN-IPs verdrahtet:
+Currently wired to LAN IPs:
 
-| Bundle | PID | Attribute | Wert |
+| Bundle | PID | Attribute | Value |
 |---|---|---|---|
 | broker.rest | `org.eclipse.fennec.services.broker.rest` | `public.url` | `http://192.168.1.6:8887/ddsr/rest` |
 | broker.rest | `org.apache.felix.http~ddsrHttp` | port / host | `8887` / `0.0.0.0` |
@@ -486,58 +487,60 @@ Aktuell auf LAN-IPs verdrahtet:
 | client.java | `org.eclipse.fennec.services.client` | `supported.flavors`, `consumer.id` | `REST`, — |
 | example.payment | `org.eclipse.fennec.services.examples.payment` | `public.url`, `broker.url`, `provider.name` | `http://192.168.1.6:9091/payments`, `http://192.168.1.6:8887/ddsr/rest`, `payments-java` |
 | example.payment | `org.apache.felix.http~paymentsHttp` | port / context | `9091` / `payments` |
-| provider.rest | `org.eclipse.fennec.services.provider.rest~<name>` (Factory) | `ddsr.contract`, `service.filter`, `model.bundle`, `model.entry`, `osgi.jakartars.application.base` | eine Distribution pro Vertrag |
-| provider.rest | dieselbe Factory-PID | `publish`, `public.url`, `broker.url` | mit `publish=true` meldet sie sich auch selbst an |
+| provider.rest | `org.eclipse.fennec.services.provider.rest~<name>` (factory) | `ddsr.contract`, `service.filter`, `model.bundle`, `model.entry`, `osgi.jakartars.application.base` | one distribution per contract |
+| provider.rest | the same factory PID | `publish`, `public.url`, `broker.url` | with `publish=true` it also publishes itself |
 
-Die drei Broker-Werte (`public.url`, Port, Host) sind in
-`broker.rest/configs/config.json` nicht mehr fest verdrahtet, sondern
-`$[env:...]`-Platzhalter mit genau diesen Defaults, aufgelöst vom
-`org.apache.felix.configadmin.plugin.interpolation` (im Launch über
-`felix.cm.config.plugins` erzwungen, damit keine Konfiguration vor dem
-Plugin ausgeliefert wird). Damit konfiguriert `DDSR_PUBLIC_URL` /
-`DDSR_HTTP_PORT` / `DDSR_HTTP_HOST` denselben Launch auf dem Host wie im
-Container — siehe [DEPLOYMENT.md](DEPLOYMENT.md).
+The three broker values (`public.url`, port, host) are no longer
+hard-wired in `broker.rest/configs/config.json` but are
+`$[env:...]` placeholders with exactly these defaults, resolved by
+`org.apache.felix.configadmin.plugin.interpolation` (enforced in the
+launch through `felix.cm.config.plugins`, so that no configuration is
+delivered before the plugin is there). That makes `DDSR_PUBLIC_URL` /
+`DDSR_HTTP_PORT` / `DDSR_HTTP_HOST` configure the same launch on the
+host as in the container — see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
-## 5. Offene Punkte
+## 5. Open points
 
-| Thema | Status |
+| Topic | Status |
 |---|---|
-| Modell: ggf. iD wieder zurück auf gezielte Klassen (ServiceInterface, ServiceProvider) — wenn globale Eindeutigkeit gewünscht | offen |
-| `/registry`-Response: Provider als Sibling-Roots (statt Cross-Doc-hrefs) | erledigt (XmiBundle-Pattern in LookupResource) |
-| Operationen / Parameter-Marshalling für komplexe Payloads (z. B. nested DTO als JSON oder XMI) | teilweise — die generische Distribution liest einen Body nach dem Typ, den der Vertrag deklariert (EClass → XMI, sonst Text); JSON gibt es nicht |
-| Reihenfolge beim kopflosen Provider: die Anmeldung geht raus, bevor das Whiteboard die Application gemountet hat, und beim Deaktivieren stirbt der Endpunkt vor der Abmeldung (DS nimmt den Service vor `deactivate` weg) | offen — wer FR-P3 braucht, meldet aus einer eigenen Komponente an |
-| Service-Health / Reachability-Probing im Client (filter dead locators) | offen — heute pickt `PaymentProxyRegistrar` jeden Provider, Caller filtern via `ddsr.provider.name` |
-| Code-Generator für Service-Stubs (`PaymentRemote`-style) aus dem Catalog | offen |
-| Wire-Konvention für POST/PUT mit gemischten EObject + primitive Args | offen |
-| SSE / Event-Stream für ServiceListener-Modell | offen |
-| OCL / Constraint-Validation im Modell aktivieren | offen |
-| Cleanup-Pass im `reindex` für persistierte Duplikate aus älteren Versionen | offen (manueller `rm broker-state.xmi` reicht aktuell) |
+| Model: possibly put iD back on selected classes (ServiceInterface, ServiceProvider) — if global uniqueness is wanted | open |
+| The `/registry` response: providers as sibling roots (instead of cross-document hrefs) | done (the XmiBundle pattern in LookupResource) |
+| Operation / parameter marshalling for complex payloads (e.g. a nested DTO as JSON or XMI) | partly — the generic distribution reads a body by the type the contract declares (EClass → XMI, otherwise text); there is no JSON |
+| Ordering in the headless provider: the publish goes out before the whiteboard has mounted the application, and on deactivation the endpoint dies before the withdraw (DS takes the service away before `deactivate`) | open — whoever needs FR-P3 publishes from a component of their own |
+| Service health / reachability probing in the client (filtering dead locators) | open — today `PaymentProxyRegistrar` picks every provider, callers filter via `ddsr.provider.name` |
+| A code generator for service stubs (`PaymentRemote` style) out of the catalog | open |
+| A wire convention for POST/PUT with mixed EObject + primitive args | open |
+| SSE / an event stream for a ServiceListener model | open |
+| Activating OCL / constraint validation in the model | open |
+| A cleanup pass in `reindex` for persisted duplicates from older versions | open (a manual `rm broker-state.xmi` is enough for now) |
 
 ---
 
-## 6. Demo-Reproduktion
+## 6. Reproducing the demo
 
-1. **Broker starten**: `broker.bndrun` aus `org.eclipse.fennec.services.broker.rest`
-   in Eclipse, oder `./gradlew :org.eclipse.fennec.services.broker.rest:run.broker`.
-   Hört auf `http://192.168.1.6:8887/ddsr/rest`. Self-published seine
-   drei Broker-APIs.
+1. **Start the broker**: `broker.bndrun` from
+   `org.eclipse.fennec.services.broker.rest` in Eclipse, or
+   `./gradlew :org.eclipse.fennec.services.broker.rest:run.broker`.
+   It listens on `http://192.168.1.6:8887/ddsr/rest` and self-publishes
+   its three broker APIs.
 
-2. **Java-Payment-Provider starten**: `payment-provider.bndrun` aus
-   `org.eclipse.fennec.services.examples.payment`. Hört auf
-   `http://192.168.1.6:9091/payments`. Published Payment-Catalog-
-   Entry + Provider `payments-java` automatisch beim Activate.
+2. **Start the Java payment provider**: `payment-provider.bndrun` from
+   `org.eclipse.fennec.services.examples.payment`. It listens on
+   `http://192.168.1.6:9091/payments` and publishes the Payment catalog
+   entry plus the provider `payments-java` automatically on activate.
 
-3. **Optional TS-Payment-Provider**: Kollege auf `192.168.1.5:9090`,
-   eigene Firewall öffnen (`firewall-cmd --add-port=9090/tcp`),
-   gleicher Catalog-Eintrag `Payment` v1.0.0.
+3. **Optionally the TS payment provider**: a colleague on
+   `192.168.1.5:9090`, open your own firewall
+   (`firewall-cmd --add-port=9090/tcp`), the same catalog entry
+   `Payment` v1.0.0.
 
-4. **Client starten**: `client.bndrun` aus `org.eclipse.fennec.services.client.java`.
-   Erwartung im Log:
-   - `BrokerCatalogRemote.listCatalog()` → 4 Catalog-Einträge
-   - `PaymentDebug.payment.getBalance("42")` gegen Java-Provider →
+4. **Start the client**: `client.bndrun` from
+   `org.eclipse.fennec.services.client.java`. What to expect in the log:
+   - `BrokerCatalogRemote.listCatalog()` → 4 catalog entries
+   - `PaymentDebug.payment.getBalance("42")` against the Java provider →
      `STARTING_BALANCE`
-   - `TsPaymentDebug.ts.getBalance("account-1")` gegen TS-Provider →
-     dessen Balance
-   - `ts.charge(10.0, "EUR")` → neue Balance
+   - `TsPaymentDebug.ts.getBalance("account-1")` against the TS provider →
+     its balance
+   - `ts.charge(10.0, "EUR")` → the new balance

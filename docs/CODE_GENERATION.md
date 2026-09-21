@@ -60,6 +60,7 @@ sources checked in beside them exist to prove the templates compile.
 | --- | --- |
 | `service-interface.mtl` | one Java interface per contract, plus `package-info` |
 | `rest-resource.mtl` | one JAX-RS resource class per REST flavor, delegating to that interface |
+| `service-publisher.mtl` | one component per implementation that announces it and withdraws it in the FR-P3 order |
 | `java-types.mtl` | shared: type mapping, imports, file header |
 
 Generation is again a bnd instruction, with the generator `fennecM2T`.
@@ -83,24 +84,46 @@ it is not part of a fingerprint.
 attributes yet — a place to hang language specifics when a generator
 for them arrives.
 
+### When you need generated code at all
+
+Less often than it looks, and that is worth knowing before you generate
+anything:
+
+| You have | You need |
+| --- | --- |
+| a contract and an implementation, and no wish to write transport code | a factory configuration of the generic REST or MQTT distribution — it serves *and* announces from the document, with no code at all |
+| a hand-written implementation you want served generically | the same configuration, with `service.filter` pointing at your service |
+| an endpoint you write yourself | the JAX-RS resource template, and your own implementation behind it |
+| a lifecycle of your own — publish once your endpoint serves, a version you supersede, your own configuration | the publisher template |
+| to call a contract from Java | the interface template plus `ServiceProxyFactory.newProxy(Contract.class, locator)` — no stub is generated, and none is needed |
+
+### The publisher template
+
+What it writes is the part that is easy to get subtly wrong: the order.
+Announce after the endpoint serves, and on the way down withdraw
+*before* stopping it, so a consumer is told while the endpoint still
+answers (FR-P3).
+
+What it does **not** write is the contract. The component reads the
+document that ships with its bundle — the same one a generic
+distribution would serve from — so the contract is stated once and has
+one fingerprint. Its configuration is deployment only: where this
+instance runs, which document to read, and what it supersedes.
+
 ### What exists today, and what does not
 
-Working and in use: the Java interface template and the JAX-RS resource
-template. The example provider generates its probe interface from a
-model document this way.
+Not built yet, part of the open issue #25:
 
-Not built yet, all part of the open issue #25:
-
-- **No TypeScript stub generation.** The TypeScript `generate` script
-  regenerates model code from the ecore; it does not produce per-contract
-  stubs. `TypeScriptBinding` is an empty discriminator.
-- **No MQTT templates.** Nothing generates an operation handler from an
-  `MqttOperationFlavor`. REST went first on purpose, to settle the
-  template structure.
-- **No consumer stub template.** The consumer-side proxies in the
-  client bundle are hand-written demos.
+- **No TypeScript stub generation** — split out as its own issue,
+  because the decision it carries is where the generator runs and in
+  what. `TypeScriptBinding` is still an empty discriminator.
+- **No MQTT template.** There is no generated MQTT handler, and since
+  the generic MQTT distribution arrived there is less reason for one:
+  serving a contract over topics is a factory configuration.
 - **The template tests assert on content, not on byte-pinned golden
-  files** the way the fingerprint fixtures do.
+  files** the way the fingerprint fixtures do. Deliberate: a golden file
+  for a template churns on every whitespace change, and what protects
+  here is that the generated output is checked in and compiles.
 
 ### Why the demo provider does not use the generated resource
 

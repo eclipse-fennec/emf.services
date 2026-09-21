@@ -3,11 +3,12 @@
 What this starts:
 
 ```
-  fennec-consumer ──lookup──▶ fennec-broker
-        │                         ▲
-        └──── call ──▶ fennec-payment-provider ──publish──┘
+  fennec-consumer     (Java)   ──lookup──▶ fennec-broker
+  fennec-ts-consumer  (Node)   ──lookup──▶     ▲
+        │                                      │
+        └──── call ──▶ fennec-payment-provider ─┘ publish
 
-  all three ──OTLP──▶ collector ──▶ Tempo · Prometheus · Loki ──▶ Grafana
+  all four ──OTLP──▶ collector ──▶ Tempo · Prometheus · Loki ──▶ Grafana
 ```
 
 One command:
@@ -30,6 +31,13 @@ lookup it sent to the broker, the broker answering it, the Payment call
 and the provider answering it, a second lookup and the
 `BindingProbe/echo` that the provider answers.
 Nothing was passed between the processes but a `traceparent` header.
+
+**And one of those consumers is not Java.** Filter the traces by
+service `fennec-ts-consumer` and the same tree appears with a Node
+process at its root: a TypeScript consumer, a Java broker answering its
+lookup and a Java provider answering its call, in one trace. Nothing
+was shared between them but a `traceparent` header — which is the claim
+this project makes, in one picture.
 
 **Every span says who called.** `fennec.origin` carries the identity of
 #125, so the trace answers *which system told which system what* and not

@@ -6,7 +6,8 @@
   "scripts": {
     "provider": "tsx provider.ts",
     "consumer": "tsx consumer.ts",
-    "smoke": "tsx smoke-test.ts"
+    "smoke": "tsx smoke-test.ts",
+    "demo-traffic": "tsx demo-traffic.ts"
   },
   "dependencies": {
     "@ddsr/client": "workspace:*",
@@ -14,7 +15,8 @@
     "@ddsr/model": "workspace:*",
     "@ddsr/transport-mqtt": "workspace:*",
     "@emfts/core": "0.1.1-next.18",
-    "mqtt": "^5.15.2"
+    "mqtt": "^5.15.2",
+    "@ddsr/telemetry-otel": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

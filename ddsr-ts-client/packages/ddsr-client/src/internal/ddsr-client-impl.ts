@@ -21,6 +21,7 @@ import { DdsrCatalogImpl } from './catalog-impl';
 import { ServiceListenerRegistry } from './service-listener-registry';
 import { RestEventSource } from '../events/rest-event-source';
 import type { DdsrEventSource } from '../events/event-source';
+import type { CallTracer } from '@ddsr/telemetry';
 
 export interface DdsrClientOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -68,6 +69,17 @@ export interface DdsrClientOptions {
    * registration until the broker retires it (false, default).
    */
   greedyRebind?: boolean;
+  /**
+   * Whoever is watching calls (#146). Optional in the same way it is
+   * on the Java side: a runtime without telemetry installs none, and
+   * nothing on the wire changes when it does.
+   */
+  tracer?: CallTracer;
+  /**
+   * Fixes the per-process half of the origin, so that a runtime which
+   * also builds a flavor plugin can wear one identity in both (#125).
+   */
+  originRuntimeId?: string;
 }
 
 /**
@@ -115,6 +127,8 @@ export class DdsrClientImpl implements DdsrClient {
       requestor: options.requestor,
       originLabel: options.originLabel,
       fetchFn: options.fetchFn,
+      tracer: options.tracer,
+      originRuntimeId: options.originRuntimeId,
     });
     const eventSource = options.eventSource ?? new RestEventSource({
       brokerUrl: options.brokerUrl,

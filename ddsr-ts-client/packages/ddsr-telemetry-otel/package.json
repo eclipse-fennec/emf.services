@@ -1,8 +1,8 @@
 {
-  "name": "@ddsr/client",
+  "name": "@ddsr/telemetry-otel",
   "version": "1.0.0",
   "type": "module",
-  "description": "DDSR Client Framework",
+  "description": "OpenTelemetry behind the DDSR telemetry seam",
   "license": "EPL-2.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,13 +17,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ddsr/model": "workspace:*",
-    "@emfts/core": "0.3.0-next.1",
-    "@ddsr/telemetry": "workspace:*"
+    "@ddsr/telemetry": "workspace:*",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
+    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/semantic-conventions": "^1.43.0"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
-    "sax": "^1.4.3",
     "typescript": "~5.8.0",
     "vitest": "^4.1.11"
   }

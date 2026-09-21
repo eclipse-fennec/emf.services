@@ -17,6 +17,7 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$DIR/../.." && pwd)"
+TS="$ROOT/ddsr-ts-client"
 WORK="$DIR/work"
 BROKER_URL="${BROKER_URL:-http://localhost:8887/ddsr/rest}"
 OTLP="${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
@@ -119,10 +120,26 @@ wait_for_line "$WORK/payment-provider.log" "published payments-java" 90
 echo "provider up — http://localhost:9091/payments"
 
 # ------------------------------------------------------------- consumer
-log "consumer"
+log "consumer (Java)"
 start_jar consumer "$CLIENT_JAR" fennec-consumer
 wait_for_line "$WORK/consumer.log" "calling Payment every" 90
 echo "consumer up — calling Payment on a timer"
+
+# -------------------------------------------------- consumer (TypeScript)
+# The cross-language half (#146): the same three stages from a Node
+# process, reporting to the same collector. A trace that starts here
+# and ends in the Java provider is the claim this project makes, in
+# one picture.
+log "consumer (TypeScript)"
+(cd "$TS" && corepack pnpm install --frozen-lockfile && corepack pnpm -r build) >"$WORK/pnpm.log" 2>&1 \
+  || { tail -30 "$WORK/pnpm.log"; exit 1; }
+mkdir -p "$WORK/ts-consumer"
+(cd "$TS/examples/payment" \
+  && OTEL_SERVICE_NAME=fennec-ts-consumer OTEL_EXPORTER_OTLP_ENDPOINT="$OTLP" \
+     BROKER_URL="$BROKER_URL" exec node --import tsx demo-traffic.ts) >"$WORK/ts-consumer.log" 2>&1 &
+PIDS+=("$!")
+wait_for_line "$WORK/ts-consumer.log" "calling Payment every" 120
+echo "TypeScript consumer up — same broker, same provider, same trace"
 
 cat <<ENDPOINTS
 
@@ -131,12 +148,15 @@ cat <<ENDPOINTS
   Broker REST    $BROKER_URL
   Provider       http://localhost:9091/payments
 
-  logs           $WORK/{broker,payment-provider,consumer}.log
+  logs           $WORK/{broker,payment-provider,consumer,ts-consumer}.log
 
   What to show: the traces panel has one trace per call — the consumer's
   span, the broker lookup it needed and the provider that answered, in
-  one tree. The gauges beside it come from the runtime services, and the
-  lease count is the number no consumer of the wire can work out.
+  one tree. Two of those consumers are different languages: filter the
+  traces by service fennec-ts-consumer and the same tree appears with a
+  Node process at its root. The gauges beside it come from the runtime
+  services, and the lease count is the number no consumer of the wire
+  can work out.
 
   Ctrl-C stops the frameworks.
 ENDPOINTS

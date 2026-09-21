@@ -19,6 +19,8 @@ import { DDSRFactory } from '@ddsr/model';
 import { serializeToXmi, deserializeFromXmi } from '../xmi/xmi-support';
 import { asRoots, eClassName, firstOfClass, toArray } from './emf-util';
 import { clientOrigin, withOrigin, type ClientOrigin } from './client-origin';
+import { NO_TRACER, type CallTracer } from '@ddsr/telemetry';
+import { withTracing } from './broker-tracing';
 
 export interface BrokerHttpOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -36,6 +38,11 @@ export interface BrokerHttpOptions {
   /** Overrides the per-process runtime id; for tests. */
   originRuntimeId?: string;
   fetchFn?: typeof fetch;
+  /**
+   * Whoever is watching calls, if anyone is (#146). Without one the
+   * client is exactly what it was.
+   */
+  tracer?: CallTracer;
 }
 
 const REQUESTOR_HEADER = 'X-DDSR-Requestor';
@@ -78,7 +85,14 @@ export class BrokerHttp {
     // cannot forget a wrapper; it can forget a header. Mirrors the Java
     // client, where the same job is done by a ClientRequestFilter on
     // the shared JAX-RS client.
-    this.fetchFn = withOrigin(options.fetchFn ?? globalThis.fetch.bind(globalThis), this.origin);
+    // Two wrappers, for one reason: the origin and the trace context
+    // both have to be on EVERY call, and this is the only place where
+    // that is true by construction.
+    this.fetchFn = withTracing(
+      withOrigin(options.fetchFn ?? globalThis.fetch.bind(globalThis), this.origin),
+      options.tracer ?? NO_TRACER,
+      this.base,
+      this.origin.token);
   }
 
   /** The origin token this client stamps on every request. */

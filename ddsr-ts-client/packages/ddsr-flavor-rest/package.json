@@ -19,7 +19,8 @@
   "dependencies": {
     "@emfts/core": "0.3.0-next.1",
     "@ddsr/model": "workspace:*",
-    "@ddsr/client": "workspace:*"
+    "@ddsr/client": "workspace:*",
+    "@ddsr/telemetry": "workspace:*"
   },
   "devDependencies": {
     "typescript": "~5.8.0",

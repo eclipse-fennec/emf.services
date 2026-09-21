@@ -78,8 +78,17 @@ with an id in it is a name nobody can group by.
 
 Attributes follow the OpenTelemetry semantic conventions where they
 fit — `rpc.system`, `rpc.service`, `rpc.method`, `server.address`,
-`http.request.method`, `http.response.status_code` — plus
-`fennec.flavor`, which says REST or MQTT.
+`http.request.method`, `http.response.status_code` — plus two of ours:
+
+- `fennec.flavor` — REST or MQTT
+- `fennec.origin` — **who made this call**, the identity of
+  [#125](https://github.com/eclipse-fennec/emf.services/issues/125). On
+  a client span it is this runtime, on a server span the caller, read
+  off the `X-DDSR-Origin` header over REST and off the CloudEvents
+  `source` over MQTT. It is the difference between a trace that says
+  what happened and one that says which system told which system what.
+  A caller that named nobody is `anonymous`, which is a statement, not
+  a gap.
 
 ## Logs
 

@@ -34,6 +34,7 @@ import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.client.ServiceLocator;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -141,7 +142,8 @@ public final class RestServiceInvoker implements ServiceInvoker {
 			span.attribute("rpc.system", "fennec.services")
 					.attribute("rpc.method", operationName)
 					.attribute("server.address", url)
-					.attribute("fennec.flavor", "REST");
+					.attribute("fennec.flavor", "REST")
+					.attribute(ClientOrigin.ATTRIBUTE, tx.originToken());
 			try {
 				response = send(target, method, RestPlacement.of(op, safeArgs), accept, contentType,
 						headers);

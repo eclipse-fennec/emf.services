@@ -256,7 +256,12 @@ public final class RestTransport {
 			}
 			span.attribute("rpc.system", "fennec.services")
 					.attribute("server.address", baseUrl == null ? null : baseUrl.toString())
-					.attribute("fennec.flavor", "REST");
+					.attribute("fennec.flavor", "REST")
+					// Who is calling (#125). The same identity the origin
+					// header carries, on the span as well, so a trace
+					// answers "which system told which system what" and
+					// not only "what happened".
+					.attribute(ClientOrigin.ATTRIBUTE, origin == null ? null : origin.token());
 			try {
 				T answer = verb.apply(traced);
 				if (answer instanceof Response response) {

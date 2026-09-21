@@ -27,6 +27,7 @@ import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
@@ -124,6 +125,29 @@ class RestDispatcherTracingTest {
 			.containsEntry("http.request.method", "GET")
 			.containsEntry("fennec.flavor", "REST")
 			.containsEntry("http.response.status_code", "200");
+	}
+
+	@Test
+	@DisplayName("the span says who called, which is the half a trace cannot infer")
+	void theCallerIsNamedOnTheSpan() {
+		Watching watching = new Watching();
+
+		dispatch(watching, Map.of(ClientOrigin.HEADER, "payment-demo/7f3a"));
+
+		assertThat(watching.attributes)
+			.as("the same identity the origin header carries (#125), so a trace answers "
+					+ "which system told which system what")
+			.containsEntry(ClientOrigin.ATTRIBUTE, "payment-demo/7f3a");
+	}
+
+	@Test
+	@DisplayName("a caller that named nobody is anonymous, not absent")
+	void anUnnamedCallerIsAnonymous() {
+		Watching watching = new Watching();
+
+		dispatch(watching, Map.of());
+
+		assertThat(watching.attributes).containsEntry(ClientOrigin.ATTRIBUTE, ClientOrigin.ANONYMOUS);
 	}
 
 	@Test

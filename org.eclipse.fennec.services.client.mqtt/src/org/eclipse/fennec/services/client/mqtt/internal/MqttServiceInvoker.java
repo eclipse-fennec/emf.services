@@ -210,7 +210,11 @@ public class MqttServiceInvoker implements ServiceInvoker {
 			span.attribute("rpc.system", "fennec.services")
 					.attribute("rpc.method", operationName)
 					.attribute("server.address", requestTopic)
-					.attribute("fennec.flavor", "MQTT");
+					.attribute("fennec.flavor", "MQTT")
+					// Who is calling (#125): the same identity the envelope's
+					// source carries, which over MQTT is the only place it
+					// travels.
+					.attribute(ClientOrigin.ATTRIBUTE, source);
 			try {
 				MqttMessage published = new MqttMessage(MqttMessages.write(request, document));
 				published.setQos(qos);

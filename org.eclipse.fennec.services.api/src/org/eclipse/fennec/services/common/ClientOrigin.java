@@ -59,6 +59,16 @@ public final class ClientOrigin {
 	 */
 	public static final String HEADER = "X-DDSR-Origin";
 
+	/**
+	 * The same identity as a span attribute (#126).
+	 *
+	 * <p>On both halves of a call it names the side that <em>made</em>
+	 * it: this runtime on a client span, the caller on a server span.
+	 * That is what turns a trace from "what happened" into "which
+	 * system told which system what".
+	 */
+	public static final String ATTRIBUTE = "fennec.origin";
+
 	/** The OSGi framework property that names the framework instance. */
 	public static final String FRAMEWORK_UUID = "org.osgi.framework.uuid";
 

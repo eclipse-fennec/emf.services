@@ -15,8 +15,8 @@ package org.eclipse.fennec.services.client.rest.internal;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.logging.Logger;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.HttpMethod;
@@ -27,28 +27,27 @@ import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.client.DdsrException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
+import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
-import org.eclipse.fennec.services.client.ServiceLocator;
-import org.eclipse.fennec.services.common.ClientOrigin;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
+import io.cloudevents.model.ce.CloudEvent;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
-import io.cloudevents.model.ce.CloudEvent;
 
 /**
  * REST-flavor implementation of {@link ServiceInvoker}.

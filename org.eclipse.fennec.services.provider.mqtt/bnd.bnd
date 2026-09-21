@@ -20,7 +20,9 @@ Bundle-Description: \
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
 	io.cloudevents.model;version=latest,\
 	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
-	org.eclipse.fennec.services.xmi.codec;version=snapshot
+	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
+	osgi.core;version=latest
 
 # Plain JUnit 5: the dispatcher takes its publisher and its service as
 # seams, so what it decides is exercised without a broker.

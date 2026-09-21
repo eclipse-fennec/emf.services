@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.provider.mqtt;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -72,6 +73,11 @@ public class MqttDistributionComponent implements MqttDistribution {
 
 	@Override
 	public Served serve(MqttFlavor flavor, Object service, String name) {
+		return serve(flavor, () -> service, name);
+	}
+
+	@Override
+	public Served serve(MqttFlavor flavor, Supplier<Object> service, String name) {
 		if (flavor == null || service == null) {
 			throw new IllegalArgumentException("a flavor and the service behind it are both needed");
 		}
@@ -81,7 +87,7 @@ public class MqttDistributionComponent implements MqttDistribution {
 		}
 		String url = flavor.getBrokers().get(0);
 		Connection connection = connect(url);
-		MqttOperationDispatcher dispatcher = new MqttOperationDispatcher(flavor, () -> service,
+		MqttOperationDispatcher dispatcher = new MqttOperationDispatcher(flavor, service,
 				"/provider/" + (name == null ? flavor.getName() : name), resourceSets,
 				connection::publish, CallTracer.deferred(() -> tracer));
 

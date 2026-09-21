@@ -21,10 +21,10 @@
     "@emfts/core": "0.3.0-next.1"
   },
   "devDependencies": {
-    "@emfts/codegen": "0.0.2-next.5",
+    "@emfts/codegen": "0.0.2-next.6",
+    "sax": "^1.4.3",
     "tsx": "^4.21.0",
     "typescript": "~5.8.0",
-    "vitest": "^4.1.11",
-    "sax": "^1.4.3"
+    "vitest": "^4.1.11"
   }
 }

@@ -22,3 +22,5 @@ export {
   encodeRequest, decodeRequest, encodeResponse, decodeResponse, connectMqtt,
 } from './mqtt-rpc';
 export type { MqttRpcRequest, MqttRpcResponse, MqttRpcClientLike } from './mqtt-rpc';
+export { operationHandlers } from './operation-target.js';
+export type { OperationTarget, HandlersOptions } from './operation-target.js';

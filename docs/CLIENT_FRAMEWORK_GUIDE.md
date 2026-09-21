@@ -383,6 +383,40 @@ Use `ecore.ts` for the EMF POJOs (they should be generated from the same `ddsr.e
 
 For the TSM integration: register the `DdsrClient` as a TSM service so consumer modules can `@inject` it.
 
+### Serving a contract in TypeScript
+
+A provider is an object and a flavor — no routing code, and no handler
+per operation (#154):
+
+```ts
+const payments = {
+  charge(amount: number, currency?: string) { … },
+  getBalance(accountId?: string) { … },
+};
+
+// REST: the flavor says where each argument travels, and this reads it
+// back with the same statements a consumer writes a request by.
+const dispatch = restDispatcher(restFlavor, payments, { basePath });
+createServer((request, response) => { /* hand the four fields over */ });
+
+// MQTT: the contract says what the operations are called and in which
+// order their arguments come.
+new MqttOperationServer(mqttFlavor, operationHandlers(contract, payments));
+```
+
+`restDispatcher` answers `undefined` when no operation of the flavor
+matches, so a host keeps its own routes. A missing required argument is
+a 400, a failing implementation a 500, no result a 204 — the same
+answers the Java dispatcher gives, because they are HTTP's and not a
+language's.
+
+**What a TypeScript provider still states in code**, and Java does not:
+the contract itself. `payment-api.ts` builds `ServiceInterface` and the
+flavors with the factory, where a Java provider reads a model document
+and a configuration serves it. That second statement of the contract is
+the remaining half of #154 — until then the two languages agree because
+the harness pins the sd1 golden hash beside them, not by construction.
+
 ---
 
 ## 7. Behavioral-Parity contract

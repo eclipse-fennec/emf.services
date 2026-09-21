@@ -24,44 +24,73 @@
 
 import { createServer } from 'node:http';
 import { DdsrClientImpl, attachShutdownHooks, fingerprint, toArray } from '@ddsr/client';
-import type { MqttFlavor } from '@ddsr/model';
-import { MqttOperationServer } from '@ddsr/transport-mqtt';
+import type { MqttFlavor, RestFlavor } from '@ddsr/model';
+import { MqttOperationServer, operationHandlers } from '@ddsr/transport-mqtt';
+import { restDispatcher } from '@ddsr/flavor-rest';
 import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, buildPaymentInterface, buildPaymentProvider } from './payment-api';
 
 const log = (m: string) => console.log(`[ts-provider] ${m}`);
 
 // --- the actual service ------------------------------------------------
+// An object whose methods are named after the contract's operations, and
+// nothing else (#154). Where an argument travels, which topic carries a
+// call and what a REST answer looks like are the flavor's business; this
+// is the business logic, on both transports at once.
 const balances = new Map<string, number>();
 const DEFAULT_ACCOUNT = 'default';
+
+const payments = {
+  charge(amount: number, currency?: string): number {
+    const balance = (balances.get(DEFAULT_ACCOUNT) ?? 1000) - amount;
+    balances.set(DEFAULT_ACCOUNT, balance);
+    log(`charge(${amount} ${currency ?? 'EUR'}) -> ${balance}`);
+    return balance;
+  },
+  getBalance(accountId?: string): number {
+    const account = accountId ?? DEFAULT_ACCOUNT;
+    return balances.get(account) ?? balances.get(DEFAULT_ACCOUNT) ?? 1000;
+  },
+};
 
 const serviceUrl = new URL(SERVICE_URL);
 const basePath = serviceUrl.pathname.replace(/\/+$/, '');
 
+const paymentInterface = buildPaymentInterface();
+const paymentProvider = buildPaymentProvider(PROVIDER_NAME, SERVICE_URL, paymentInterface, MQTT_URL);
+const restFlavor = toArray<RestFlavor>(paymentProvider.implementation.flavors)
+  .find(f => (f as { eClass?: () => { name?: string } }).eClass?.()?.name === 'RestFlavor')!;
+
+// The routing is the flavor's, read back with the same statements a
+// consumer writes a request by (#154). Nothing below knows that
+// `charge` takes its amount from the path and its currency from a
+// header — the published flavor says so, and both ends read it.
+const dispatch = restDispatcher(restFlavor, payments, {
+  basePath,
+  log: (m) => log(`rest: ${m}`),
+});
+
 const server = createServer((request, response) => {
-  const url = new URL(request.url ?? '/', SERVICE_URL);
-  const reply = (status: number, body: string) => {
-    response.writeHead(status, { 'Content-Type': 'text/plain' });
-    response.end(body);
-  };
-  // charge/{amount} with the currency in X-Currency — the shape the
-  // published flavor declares. Deliberately NOT readable from the
-  // query: a caller that ignored the bindings must fail here, not
-  // silently succeed (#82).
-  if (request.method === 'POST' && url.pathname.startsWith(`${basePath}/charge/`)) {
-    const amount = Number(decodeURIComponent(url.pathname.slice(`${basePath}/charge/`.length)));
-    if (Number.isNaN(amount)) return reply(400, 'amount required in the path');
-    const currency = request.headers['x-currency'];
-    if (typeof currency !== 'string' || !currency) return reply(400, 'X-Currency required');
-    const balance = (balances.get(DEFAULT_ACCOUNT) ?? 1000) - amount;
-    balances.set(DEFAULT_ACCOUNT, balance);
-    log(`charge(${amount} ${currency}) -> ${balance}`);
-    return reply(200, String(balance));
-  }
-  if (request.method === 'GET' && url.pathname === `${basePath}/balance`) {
-    const account = url.searchParams.get('accountId') ?? DEFAULT_ACCOUNT;
-    return reply(200, String(balances.get(account) ?? balances.get(DEFAULT_ACCOUNT) ?? 1000));
-  }
-  reply(404, 'not found');
+  const chunks: Buffer[] = [];
+  request.on('data', chunk => chunks.push(chunk as Buffer));
+  request.on('end', () => {
+    void dispatch({
+      method: request.method ?? 'GET',
+      url: request.url ?? '/',
+      headers: request.headers,
+      body: chunks.length > 0 ? Buffer.concat(chunks).toString('utf8') : undefined,
+    }).then(answer => {
+      if (!answer) {
+        response.writeHead(404, { 'Content-Type': 'text/plain' });
+        response.end('not found');
+        return;
+      }
+      response.writeHead(answer.status, { 'Content-Type': answer.contentType });
+      response.end(answer.body ?? '');
+    }).catch(error => {
+      response.writeHead(500, { 'Content-Type': 'text/plain' });
+      response.end(String(error));
+    });
+  });
 });
 
 // --- registration lifecycle --------------------------------------------
@@ -78,11 +107,11 @@ async function main(): Promise<void> {
     originLabel: process.env.DDSR_ORIGIN_LABEL ?? 'payments-ts-harness',
   });
 
-  const payment = buildPaymentInterface();
+  const payment = paymentInterface;
   log(`local fingerprint: ${fingerprint(payment)}`);
   await client.catalog.ensureEntry(payment);
 
-  const { provider, implementation } = buildPaymentProvider(PROVIDER_NAME, SERVICE_URL, payment, MQTT_URL);
+  const { provider, implementation } = paymentProvider;
 
   // The MQTT endpoint listens BEFORE the implementation is announced —
   // same order as the HTTP server above (never advertise a dead
@@ -91,19 +120,11 @@ async function main(): Promise<void> {
   if (MQTT_URL) {
     const mqttFlavor = toArray<MqttFlavor>(implementation.flavors)
       .find(f => (f as { eClass?: () => { name?: string } }).eClass?.()?.name === 'MqttFlavor')!;
-    mqttServer = new MqttOperationServer(mqttFlavor, {
-      charge: (args) => {
-        const amount = Number(args.amount);
-        const balance = (balances.get(DEFAULT_ACCOUNT) ?? 1000) - amount;
-        balances.set(DEFAULT_ACCOUNT, balance);
-        log(`mqtt charge(${amount} ${args.currency ?? 'EUR'}) -> ${balance}`);
-        return balance;
-      },
-      getBalance: (args) => {
-        const account = String(args.accountId ?? DEFAULT_ACCOUNT);
-        return balances.get(account) ?? balances.get(DEFAULT_ACCOUNT) ?? 1000;
-      },
-    }, { log: (m) => log(`mqtt: ${m}`) });
+    // The same object as over REST, and no handler written per
+    // operation: the contract says what they are called and in which
+    // order their arguments come (#154).
+    mqttServer = new MqttOperationServer(mqttFlavor, operationHandlers(payment, payments),
+      { log: (m) => log(`mqtt: ${m}`) });
     await mqttServer.start();
     log(`serving Payment over MQTT at ${MQTT_URL}`);
   }

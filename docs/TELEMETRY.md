@@ -99,6 +99,38 @@ fit — `rpc.system`, `rpc.service`, `rpc.method`, `server.address`,
   A caller that named nobody is `anonymous`, which is a statement, not
   a gap.
 
+## The TypeScript side
+
+The TS client has the same seam, for the same reason: `@ddsr/telemetry`
+is `CallTracer`, `CallSpan` and `TraceCarrier` with no dependencies,
+and `@ddsr/telemetry-otel` is the implementation a deployment can leave
+out. `@ddsr/client` and `@ddsr/flavor-rest` take a tracer and do
+nothing without one.
+
+```ts
+const telemetry = startTelemetry({ serviceName: 'my-consumer' });
+const client = DdsrClientImpl.create({
+  brokerUrl,
+  flavorPlugins: [new RestFlavorPlugin({ tracer: telemetry.tracer, origin: origin.token })],
+  tracer: telemetry.tracer,
+});
+```
+
+Traced on that side: every call the SDK makes to the broker (one
+wrapper around its `fetch`, the twin of `RestTransport.send`), and every
+service invocation through the REST flavor plugin.
+
+One difference is the language's, not a decision: Java makes a span
+current for a scope with try-with-resources, and JavaScript can only
+enter a context inside a callback. So the unit-of-work span is
+`telemetry.during('Demo/tick', run)` rather than a `doing` that is
+closed later.
+
+Because both sides write and read the same W3C header, a trace crosses
+them: a `Demo/tick` from the TypeScript consumer has the Java broker's
+lookup and the Java provider's answer under it, and every span carries
+the same `fennec.origin`.
+
 ## Logs
 
 This project logs with JUL by convention, and the OSGi integration

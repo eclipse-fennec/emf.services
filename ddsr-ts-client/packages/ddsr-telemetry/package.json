@@ -1,8 +1,8 @@
 {
-  "name": "@ddsr/client",
+  "name": "@ddsr/telemetry",
   "version": "1.0.0",
   "type": "module",
-  "description": "DDSR Client Framework",
+  "description": "DDSR telemetry seam: what a call site needs to be traceable, and nothing more",
   "license": "EPL-2.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,14 +16,7 @@
     "build": "tsc",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@ddsr/model": "workspace:*",
-    "@emfts/core": "0.3.0-next.1",
-    "@ddsr/telemetry": "workspace:*"
-  },
   "devDependencies": {
-    "@types/node": "^24.13.3",
-    "sax": "^1.4.3",
     "typescript": "~5.8.0",
     "vitest": "^4.1.11"
   }

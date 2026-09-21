@@ -26,6 +26,7 @@ import type {
 import { FlavorKind, HttpMethod } from '@ddsr/model';
 import { buildRequest } from './request-builder';
 import { parseResponse } from './response-parser';
+import { NO_TRACER, carrierOver, type CallTracer } from '@ddsr/telemetry';
 
 /**
  * REST FlavorPlugin — translates ServiceOperation invocations into
@@ -51,6 +52,19 @@ export interface RestFlavorPluginOptions {
    */
   originLabel?: string;
   log?: (message: string) => void;
+  /**
+   * Whoever is watching calls (#146). The invocation is the half a
+   * cross-language trace hangs on: the context written here is what a
+   * Java provider reads back out.
+   */
+  tracer?: CallTracer;
+  /**
+   * The origin token of the runtime this plugin belongs to (#125), for
+   * the `X-DDSR-Origin` header of an invocation and for the span. The
+   * Java client puts it on every call through one filter; here the
+   * broker calls get it from the client and an invocation from this.
+   */
+  origin?: string;
 }
 
 export class RestFlavorPlugin implements FlavorPlugin {
@@ -59,6 +73,8 @@ export class RestFlavorPlugin implements FlavorPlugin {
   private readonly timeoutMillis: number;
   private readonly source: string;
   private readonly log: (message: string) => void;
+  private readonly tracer: CallTracer;
+  private readonly origin: string | undefined;
 
   constructor(fetchFnOrOptions?: typeof fetch | RestFlavorPluginOptions) {
     const options: RestFlavorPluginOptions =
@@ -67,6 +83,8 @@ export class RestFlavorPlugin implements FlavorPlugin {
     this.timeoutMillis = options.timeoutMillis ?? 10_000;
     this.source = `/consumer/${options.originLabel ?? 'ts'}`;
     this.log = options.log ?? ((m) => console.error(`[ddsr-rest] ${m}`));
+    this.tracer = options.tracer ?? NO_TRACER;
+    this.origin = options.origin;
   }
 
   canHandle(flavor: ServiceFlavor): boolean {
@@ -92,15 +110,34 @@ export class RestFlavorPlugin implements FlavorPlugin {
     // contract says, the envelope is what carries it.
     const envelope = newEnvelope(CE_TYPE_INVOKE, this.source);
     envelope.subject = operation.name ?? undefined;
+    // The trace context travels as the W3C header, which is what an
+    // instrumented provider reads — in any language. Written after the
+    // span exists, because what travels must name THIS call.
+    const context: Record<string, string> = {};
+    const span = this.tracer.calling(spanNameOf(operation), carrierOver(context));
+    span
+      .attribute('rpc.system', 'fennec.services')
+      .attribute('rpc.method', operation.name ?? undefined)
+      .attribute('server.address', request.url)
+      .attribute('fennec.flavor', 'REST')
+      .attribute('fennec.origin', this.origin);
     const init: RequestInit = {
       ...request.init,
-      headers: { ...toHeaders(envelope), ...(request.init.headers as Record<string, string>) },
+      headers: {
+        ...toHeaders(envelope),
+        ...(this.origin ? { 'X-DDSR-Origin': this.origin } : {}),
+        ...(request.init.headers as Record<string, string>),
+        ...context,
+      },
       ...(this.timeoutMillis > 0 ? { signal: AbortSignal.timeout(this.timeoutMillis) } : {}),
     };
     let response: Response;
     try {
       response = await this.fetchFn(request.url, init);
+      span.attribute('http.response.status_code', String(response.status));
     } catch (error) {
+      span.failed(error);
+      span.end();
       // fetch rejects (TypeError) when the peer is unreachable, and with an
       // AbortError/TimeoutError when the signal fires: the provider is
       // registered but not answering (#59).
@@ -119,13 +156,32 @@ export class RestFlavorPlugin implements FlavorPlugin {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(
+      const failed = new Error(
         `REST call failed: ${response.status} ${response.statusText} — ${request.url}\n${body}`
       );
+      span.failed(failed);
+      span.end();
+      throw failed;
     }
 
-    return parseResponse(response);
+    try {
+      return await parseResponse(response);
+    } finally {
+      span.end();
+    }
   }
+}
+
+/**
+ * What to call this call in a trace: the contract and the operation,
+ * which is what a reader groups by and what the Java side calls the
+ * serving half. Never the URL — a path with an id in it is a name
+ * nobody can group by.
+ */
+function spanNameOf(operation: ServiceOperation): string {
+  const contract = (operation as { eContainer?: () => unknown }).eContainer?.() as
+    { name?: string } | undefined;
+  return contract?.name ? `${contract.name}/${operation.name}` : String(operation.name);
 }
 
 function describe(error: unknown): string {

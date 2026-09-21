@@ -25,6 +25,11 @@ export { DdsrClientImpl } from './internal/ddsr-client-impl';
 export type { DdsrClientOptions } from './internal/ddsr-client-impl';
 export { ServiceLocatorImpl } from './proxy/service-locator-impl';
 export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http';
+// One runtime, one identity: a caller that builds both a client and a
+// flavor plugin needs the same origin token in both, and the token is
+// this function's answer rather than something to reassemble by hand.
+export { clientOrigin, ORIGIN_HEADER } from './internal/client-origin';
+export type { ClientOrigin } from './internal/client-origin';
 export type { BrokerHttpOptions } from './internal/broker-http';
 export { ServiceListenerRegistry } from './internal/service-listener-registry';
 export type { DdsrEventSource, EventSourceHandler, EventSubscription } from './events/event-source';

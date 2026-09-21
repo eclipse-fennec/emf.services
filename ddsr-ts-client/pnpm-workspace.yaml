@@ -3,6 +3,11 @@ packages:
   - examples/*
 allowBuilds:
   esbuild: true
+  # Pulled in transitively by the OpenTelemetry OTLP exporter (#146).
+  # Its postinstall only regenerates its own CLI helpers; the exporter
+  # we use talks JSON over HTTP and needs none of it. Denied rather
+  # than approved, so an install stays a download and nothing else.
+  protobufjs: false
 minimumReleaseAgeExclude:
   - '@emfts/codegen@0.0.1-next.8 || 0.0.2-next.5'
   - '@emfts/core@0.1.1-next.18 || 0.3.0-next.1'

@@ -159,3 +159,70 @@ describe('RestFlavorPlugin envelope', () => {
     expect(complaints[0]).toContain('somebody-elses-call');
   });
 });
+
+/**
+ * #146: the call a cross-language trace hangs on. What this side
+ * writes is what a Java provider reads back out — the format is W3C,
+ * and neither end knows the other's language.
+ */
+describe('RestFlavorPlugin tracing', () => {
+  function watching() {
+    const state = { called: undefined as string | undefined, failure: undefined as string | undefined,
+      attributes: {} as Record<string, string | undefined>, ended: false };
+    const tracer = {
+      calling(operation: string, outbound: { set(name: string, value: string): void }) {
+        state.called = operation;
+        outbound.set('traceparent', '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01');
+        const span: any = {
+          attribute(name: string, value?: string) { state.attributes[name] = value; return span; },
+          failed(error: unknown) { state.failure = String((error as Error)?.message ?? error); },
+          end() { state.ended = true; },
+        };
+        return span;
+      },
+      serving() { throw new Error('a consumer calls, it does not serve'); },
+    };
+    return { state, tracer: tracer as any };
+  }
+
+  function recordingFetch(): { fetchFn: typeof fetch; seen: () => Record<string, string> } {
+    let headers: Record<string, string> = {};
+    const fetchFn = (async (_url: any, init?: any) => {
+      headers = { ...(init?.headers ?? {}) };
+      return new Response('990.0', { status: 200, headers: { 'Content-Type': 'text/plain' } });
+    }) as unknown as typeof fetch;
+    return { fetchFn, seen: () => headers };
+  }
+
+  it('writes the caller context beside the envelope, and names the contract operation', async () => {
+    const { state, tracer } = watching();
+    const { fetchFn, seen } = recordingFetch();
+    const plugin = new RestFlavorPlugin({ fetchFn, tracer, originLabel: 'ts-consumer' });
+    const { operation, flavor, opFlavor } = charge();
+    const contract = DDSRFactory.eINSTANCE.createServiceInterface();
+    contract.name = 'Payment';
+    contract.operations.push(operation);
+
+    await plugin.invoke(operation, { amount: 10 }, flavor, opFlavor);
+
+    expect(seen().traceparent).toBe('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01');
+    expect(seen()['ce-type'])
+      .toBe('org.eclipse.fennec.services.invoke');
+    expect(state.called).toBe('Payment/charge');
+    expect(state.attributes['http.response.status_code']).toBe('200');
+    expect(state.ended).toBe(true);
+  });
+
+  it('marks a provider that does not answer', async () => {
+    const { state, tracer } = watching();
+    const refused = (async () => { throw new TypeError('fetch failed'); }) as unknown as typeof fetch;
+    const plugin = new RestFlavorPlugin({ fetchFn: refused, tracer });
+    const { operation, flavor, opFlavor } = charge();
+
+    await expect(plugin.invoke(operation, { amount: 10 }, flavor, opFlavor))
+      .rejects.toBeInstanceOf(DdsrTransportError);
+
+    expect(state.failure).toBe('fetch failed');
+    expect(state.ended).toBe(true);
+  });
+});

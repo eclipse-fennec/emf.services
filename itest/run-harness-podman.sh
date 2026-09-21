@@ -79,17 +79,19 @@ rm -rf "$WORK"; mkdir -p "$WORK"
 podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java \
   ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
   ddsr-rsa-export ddsr-rsa-import \
-  ddsr-payment-h ddsr-probe-h \
+  ddsr-payment-h ddsr-probe-h ddsr-probe-mqtt-config ddsr-probe-j \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
       "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client.jar
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker-mqtt.jar \
-      "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client-mqtt.jar
+      "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client-mqtt.jar \
+      "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider-mqtt.jar
 (cd "$ROOT" && ./gradlew build \
   :org.eclipse.fennec.services.broker.rest:export.broker \
   :org.eclipse.fennec.services.broker.rest:export.broker-mqtt \
   :org.eclipse.fennec.services.examples.payment:export.payment-provider \
+  :org.eclipse.fennec.services.examples.payment:export.payment-provider-mqtt \
   :org.eclipse.fennec.services.client.java:export.client \
   :org.eclipse.fennec.services.client.java:export.client-mqtt \
   :org.eclipse.fennec.services.examples.rsa:export.rsa-example \
@@ -106,6 +108,8 @@ podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=b
   -t ddsr/broker-mqtt "$ROOT/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=client-mqtt.jar \
   -t ddsr/client-mqtt "$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/"
+podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=payment-provider-mqtt.jar \
+  -t ddsr/payment-java-mqtt "$ROOT/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=rsa-example.jar \
   -t ddsr/rsa-example "$ROOT/org.eclipse.fennec.services.examples.rsa/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=rsa-consumer.jar \
@@ -328,6 +332,43 @@ grep -q "ddsr/rpc/req/" "$WORK/rsa-export.log" \
 podman stop -t 20 ddsr-rsa-import >/dev/null 2>&1 || true
 podman stop -t 20 ddsr-rsa-export >/dev/null 2>&1 || true
 echo "Scenario I OK: an OSGi service exported over MQTT and bound by @Reference in another framework"
+
+# ============================================================ Scenario J
+log "Scenario J: MQTT with no provider code — a factory configuration serves BindingProbe over topics"
+# The twin of #84 on this transport (#25). The implementation is an
+# ordinary OSGi service; the generic MQTT distribution reads the
+# contract from a model document, subscribes per operation and
+# announces what it serves. Nothing in the provider knows about Paho,
+# topics or the envelope, and no code was generated for it either.
+#
+# The probe reads the announced MqttFlavor and calls echo over
+# mosquitto: the three arguments come back in the contract's order, so
+# both ends read one document the same way.
+run_container ddsr-probe-mqtt-config ddsr/payment-java-mqtt \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e PAYMENTS_PUBLIC_URL="http://localhost:9091/payments" \
+  -e PAYMENTS_PUBLISH_BINDING_PROBE_MQTT=true \
+  -e PAYMENTS_MQTT_URL="tcp://localhost:1883"
+wait_for_log ddsr-probe-mqtt-config "serving BindingProbe generically on" 150
+wait_for_log ddsr-probe-mqtt-config "published BindingProbe" 60
+
+podman run -d --replace --name ddsr-probe-j --network=host \
+  -e BROKER_URL="$BROKER_URL" -e EXPECT_LANG=java -e EXPECT_MQTT_PROBE=1 \
+  ddsr/ts harness-probe.ts >/dev/null
+CONTAINERS+=(ddsr-probe-j)
+wait_for_log ddsr-probe-j "PROBE_READY" 150
+podman stop -t 20 ddsr-probe-mqtt-config >/dev/null 2>&1 || true
+probe_j_rc=$(podman wait ddsr-probe-j)
+podman logs ddsr-probe-j >"$WORK/probe-j.log" 2>&1
+if [ "$probe_j_rc" != "0" ]; then
+  echo "SCENARIO J FAILED"; cat "$WORK/probe-j.log"; exit 1
+fi
+grep -q "✓ mqtt-probe-flavor-announced" "$WORK/probe-j.log" \
+  || { echo "SCENARIO J FAILED: the configuration announced no MqttFlavor"; cat "$WORK/probe-j.log"; exit 1; }
+grep -q "✓ mqtt-probe-echo" "$WORK/probe-j.log" \
+  || { echo "SCENARIO J FAILED: the call over topics did not come back"; cat "$WORK/probe-j.log"; exit 1; }
+echo "Scenario J OK: a contract served and announced over MQTT by configuration alone"
+grep -E '  [✓✗] mqtt-probe' "$WORK/probe-j.log" || true
 grep -E "RSA-Consumer" "$WORK/rsa-import.log" | tail -2
 
 # ============================================================ Scenario F
@@ -406,4 +447,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + I + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + J + F + G + H)"

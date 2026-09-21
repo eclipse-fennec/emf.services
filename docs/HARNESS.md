@@ -14,7 +14,7 @@ over a real wire.
 # host processes (no containers; scenarios A + B + F + G + H)
 ./itest/run-harness.sh
 
-# containerized incl. Mosquitto (scenarios A–H) — podman is the
+# containerized incl. Mosquitto (scenarios A–J) — podman is the
 # vehicle, not a requirement
 ./itest/run-harness-podman.sh
 ```
@@ -40,6 +40,7 @@ under `itest/work-podman/`.
 | **C** | TS MQTT wire probe | a broker-shaped event document is delivered and decoded over a real Mosquitto TCP connection |
 | **D** | Java broker sink + Java client source over Mosquitto | lifecycle events (REGISTERED + UNREGISTERING) delivered over real MQTT/TCP; ordering control pins the events onto the MQTT path (the last stream (re)open before the events is the MQTT subscription — the SDK hands the stream over when a higher-ranked transport appears) |
 | **P** | Java provider → Java consumer, protobuf body | a modelled argument and a modelled result travel in the encoding the contract declares (#100): `PersonStore` says `consumes`/`produces` = `application/x-protobuf`, and neither side mentions an encoding in code. **Java on both ends on purpose** — the TypeScript track has no protobuf-to-EMF binding, so this contract is one a TS consumer cannot read |
+| **J** | Java provider serves `BindingProbe` over MQTT from a factory configuration; TS probe invokes it | the provider side needed no code at all: an ordinary OSGi service, a model document and a configuration (#25). The probe's client speaks MQTT for this scenario, because a lookup is filtered by the flavors a consumer states — an MQTT-only implementation is invisible to a REST-only consumer, and rightly so |
 | **E** | TS provider announces `MqttFlavor` beside `RestFlavor`; probe invokes over MQTT | the DoD's "same interface, different transports": `getBalance` is invoked over the announced MQTT flavor, broker address taken from `MqttFlavor.brokers`, request/response via the frozen envelope ([WIRE_FORMAT.md](WIRE_FORMAT.md)) |
 
 Scenario D runs the `-mqtt` launch variants: the MQTT transports ship

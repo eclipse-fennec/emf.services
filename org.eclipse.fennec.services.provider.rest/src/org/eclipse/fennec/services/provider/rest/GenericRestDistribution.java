@@ -90,8 +90,15 @@ import jakarta.ws.rs.core.Application;
  * separate component and leaves {@code publish} off here.
  */
 @Designate(ocd = GenericRestDistribution.Config.class, factory = true)
+// `ddsr.distribution` says what this service is. Declarative Services
+// copies a component's configuration onto the service it registers, so
+// this application carries `ddsr.contract=<name>` — the very property a
+// transport searches an implementation by. Without the marker the MQTT
+// distribution of the same contract finds this application and tries to
+// invoke the contract's operations on it (found in harness scenario J).
 @Component(
 		service = Application.class,
+		property = "ddsr.distribution=rest",
 		configurationPid = "org.eclipse.fennec.services.provider.rest",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class GenericRestDistribution extends Application {
@@ -392,6 +399,12 @@ public class GenericRestDistribution extends Application {
 			return null;
 		}
 		for (ServiceReference<?> candidate : candidates) {
+			// Not this component, and not another transport of the same
+			// contract either: a distribution serves an implementation,
+			// it is not one.
+			if (candidate.getProperty("ddsr.distribution") != null) {
+				continue;
+			}
 			if (self == null || !self.equals(candidate.getProperty("component.id"))) {
 				return candidate;
 			}

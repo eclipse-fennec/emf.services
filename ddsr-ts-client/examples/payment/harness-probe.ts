@@ -51,6 +51,11 @@ const EXPECT_MQTT = process.env.EXPECT_MQTT === '1';
 // the probe checks that its three arguments arrive where the flavor says
 // (#74) — in the path, in the query and in a header.
 const EXPECT_BINDINGS = process.env.EXPECT_BINDINGS === '1';
+// When set, a Java provider serves BindingProbe over MQTT — from a
+// factory configuration and a model document, with no transport code
+// anywhere (#25). The probe calls it over topics and checks that the
+// three arguments come back in the contract's order.
+const EXPECT_MQTT_PROBE = process.env.EXPECT_MQTT_PROBE === '1';
 const GOLDEN = 'sd1:baafb26e152b76e0e6e713bb86a5e418c2d014d855b24df4d938a517c59807c0';
 
 const failures: string[] = [];
@@ -65,9 +70,14 @@ function fail(reason: string): never {
 }
 
 async function main(): Promise<void> {
+  // Which transports this consumer speaks is what the broker filters a
+  // lookup by: an implementation announced over MQTT alone is invisible
+  // to a REST-only consumer, and rightly so. Scenario J is the case
+  // where that matters, so the plugin joins only there.
+  const mqttPlugin = EXPECT_MQTT_PROBE ? new MqttFlavorPlugin({ timeoutMs: 15000 }) : undefined;
   const client = DdsrClientImpl.create({
     brokerUrl: BROKER_URL,
-    flavorPlugins: [new RestFlavorPlugin()],
+    flavorPlugins: mqttPlugin ? [new RestFlavorPlugin(), mqttPlugin] : [new RestFlavorPlugin()],
     consumerId: 'harness-probe-ts',
     reconnectSeconds: 1,
     sessionIntervalSeconds: 0, // renewed explicitly below, deterministic
@@ -163,6 +173,35 @@ async function main(): Promise<void> {
     }
   }
 
+  // 4d. a contract served over MQTT by configuration alone. What is
+  // proven here is not the transport — scenario E did that — but that
+  // the provider side needed no code: an ordinary OSGi service, a model
+  // document and a factory configuration.
+  if (EXPECT_MQTT_PROBE) {
+    let probeLocator;
+    for (let attempt = 0; attempt < 60 && !probeLocator; attempt++) {
+      probeLocator = await client.consumer.findOne('BindingProbe').catch(() => undefined);
+      if (!probeLocator) await new Promise(r => setTimeout(r, 500));
+    }
+    if (!probeLocator) fail('no BindingProbe locator within 30s');
+    const probeFlavors = probeLocator.flavors() as Array<{ eClass?: () => { name?: string } }>;
+    const probeMqtt = probeFlavors.find(f => f.eClass?.()?.name === 'MqttFlavor') as MqttFlavor | undefined;
+    check('mqtt-probe-flavor-announced', probeMqtt !== undefined,
+      `${probeFlavors.map(f => f.eClass?.()?.name).join(',')}`);
+    if (probeMqtt) {
+      try {
+        // Through the locator, not through a plugin held here: the
+        // consumer just calls, and the announced flavor decides which
+        // transport carries it.
+        const echoed = String(await probeLocator.invoke('echo',
+          { id: 'acct-42', currency: 'EUR', tenant: 'acme' }));
+        check('mqtt-probe-echo', echoed === 'acct-42|EUR|acme', `${echoed}`);
+      } catch (error) {
+        check('mqtt-probe-echo', false, String(error));
+      }
+    }
+  }
+
   // 4b. acquisition stage (ACQUISITION §3/§4): after the session PUT the
   // broker must list our lease on the Payment reference; contract
   // addressing must find the impl by its sd1 and reject a foreign hash.
@@ -178,6 +217,8 @@ async function main(): Promise<void> {
     'sd1:0000000000000000000000000000000000000000000000000000000000000000');
   check('lookup-wrong-fingerprint-empty', byWrongFingerprint.length === 0,
     `${byWrongFingerprint.length} hit(s)`);
+
+  if (mqttPlugin) await mqttPlugin.close();
 
   if (failures.length > 0) fail(failures.join(' | '));
 

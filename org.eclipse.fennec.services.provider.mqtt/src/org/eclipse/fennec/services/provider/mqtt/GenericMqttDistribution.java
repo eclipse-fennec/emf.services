@@ -70,6 +70,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * announcement.
  */
 @Component(configurationPid = "org.eclipse.fennec.services.provider.mqtt",
+		property = "ddsr.distribution=mqtt",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 @Designate(ocd = GenericMqttDistribution.Config.class, factory = true)
 public class GenericMqttDistribution {
@@ -185,6 +186,16 @@ public class GenericMqttDistribution {
 		ServiceImplementation implementation = load(context, config, publishedFrom);
 		MqttFlavor flavor = listenOn(mqttFlavorOf(implementation), config.mqtt_broker());
 		String contract = implementation.getServiceInterfaces().get(0).getName();
+		if (flavor.getBrokers().isEmpty()) {
+			// Nothing to connect to, said plainly and once. A document
+			// that leaves the broker to the deployment is the normal
+			// case here, and a deployment that has not named one yet is
+			// not an error — it is a component with nothing to do. The
+			// alternative, failing activation, turns every launch that
+			// merely carries this configuration into a broken one.
+			LOG.info("[DDSR] " + contract + " is not served over MQTT: no broker configured");
+			return;
+		}
 
 		this.served = distribution.serve(flavor,
 				() -> service(context, config.service_filter(), self), contract);
@@ -331,6 +342,14 @@ public class GenericMqttDistribution {
 				return null;
 			}
 			for (ServiceReference<?> candidate : candidates) {
+				// Another transport of the same contract is not an
+				// implementation of it: DS copies `ddsr.contract` from a
+				// distribution's configuration onto the service it
+				// registers, so without this the two generic
+				// distributions serve each other.
+				if (candidate.getProperty("ddsr.distribution") != null) {
+					continue;
+				}
 				if (self == null || !self.equals(candidate.getProperty("component.id"))) {
 					ServiceObjects<?> objects = context.getServiceObjects(candidate);
 					return objects == null ? null : objects.getService();

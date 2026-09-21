@@ -34,6 +34,16 @@
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
   },
+  "org.eclipse.fennec.services.provider.mqtt~bindingProbeMqtt":
+  {
+    "ddsr.contract": "BindingProbe",
+    "service.filter": "(ddsr.contract=BindingProbe)",
+    "model.bundle": "org.eclipse.fennec.services.examples.payment",
+    "model.entry": "model/binding-probe-mqtt.xmi",
+    "publish": "$[env:PAYMENTS_PUBLISH_BINDING_PROBE_MQTT;default=false]",
+    "mqtt.broker": "$[env:PAYMENTS_MQTT_URL;default=]",
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+  },
   "org.eclipse.fennec.services.provider.rest~personStore":
   {
     "ddsr.contract": "PersonStore",

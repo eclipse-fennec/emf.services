@@ -1,0 +1,24 @@
+# The Java payment provider, with the MQTT transport beside its REST one.
+#
+# What it exists for (harness scenario J): serving a contract over
+# topics is a factory configuration here, not code. The BindingProbe
+# implementation is an ordinary OSGi service; the generic MQTT
+# distribution reads the contract from `model/binding-probe-mqtt.xmi`,
+# subscribes per operation and — with PAYMENTS_PUBLISH_BINDING_PROBE_MQTT
+# — announces it. The deployment names the broker through
+# PAYMENTS_MQTT_URL; without one the configuration serves nothing.
+#
+# `-include` takes the ordinary launch whole and the three bundles below
+# are added to its list: resolving this file from its requirements alone
+# would drop what that launch carries on purpose.
+
+-include: payment-provider.bndrun
+
+-runrequires.mqtt: \
+	bnd.identity;id='org.eclipse.fennec.services.provider.mqtt',\
+	bnd.identity;id='org.eclipse.fennec.services.flavor.mqtt'
+
+-runbundles.mqtt: \
+	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.provider.mqtt;version=snapshot,\
+	org.eclipse.paho.client.mqttv3;version='[1.2.5,1.2.6)'

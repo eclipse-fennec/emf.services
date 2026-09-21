@@ -25,9 +25,10 @@ Java 21 — newer JVMs break the SPI Fly weaving these launches need.
 ## What to show
 
 **One call is one trace.** In the traces panel, a `Demo/tick` trace has
-eight spans across three services: the consumer's unit of work, the
-lookup it sent to the broker, the broker answering it, the Payment call,
-a second lookup and the `BindingProbe/echo` that the provider answers.
+nine spans across three services: the consumer's unit of work, the
+lookup it sent to the broker, the broker answering it, the Payment call
+and the provider answering it, a second lookup and the
+`BindingProbe/echo` that the provider answers.
 Nothing was passed between the processes but a `traceparent` header.
 
 **Every span says who called.** `fennec.origin` carries the identity of
@@ -51,16 +52,23 @@ views of one thing.
 | --- | --- |
 | a call the SDK makes to the broker — publish, lookup, heartbeat, session | both halves |
 | a contract served by the generic REST distribution (`BindingProbe`, `PersonStore`, the broker's own contracts) | both halves |
+| a hand-written `@JakartarsResource`, like the example's `PaymentResource` | both halves, through `…telemetry.rest` |
 | a contract served over MQTT | both halves |
-| **Payment itself** | the calling half only |
+| an SSE subscription | not at all, on purpose |
 
-Payment's endpoint is a hand-written JAX-RS resource in the example, and
-nothing instruments those. That is why the demo also calls
-`BindingProbe`, which the generic distribution serves: its trace has the
-provider's span in it. The OSGi Technology project has a whiteboard
-weaver for hand-written resources; it does not extract the incoming
-context yet, so its spans would start a new trace rather than continue
-one (eclipse-osgi-technology/opentelemetry#22).
+A hand-written resource is covered by a whiteboard extension
+(`…telemetry.rest`) that reaches the default application, which is where
+a plain `@JakartarsResource` lands. It deliberately does not reach the
+generic distribution's named applications — those bring their own
+providers and their dispatcher is instrumented already, so a call is
+traced once wherever it is served. That is why a tick shows
+`PaymentResource/getBalance` and `BindingProbe/echo` and never both
+namings of one call.
+
+A subscription is one request that lasts as long as the consumer does,
+so the filter leaves `text/event-stream` alone: a span around it would
+be open for hours and would say nothing that
+`fennec_services_client_stream_connected` does not say better.
 
 ## The pieces
 

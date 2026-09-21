@@ -59,6 +59,15 @@ name the call it belongs to.
 - the **client transport** — every call the SDK itself makes to the
   broker: publish, modify, withdraw, heartbeat, lookup, the session
   PUT and DELETE, the catalogue operations
+- **`…telemetry.rest`** — a Jakarta REST whiteboard extension, for
+  resources somebody wrote by hand: it continues the caller's trace in
+  the default application, which is where a plain
+  `@JakartarsResource` lands
+
+The extension and the dispatcher do not overlap. A named application
+brings its own providers, so the whiteboard's extension is never asked
+there — which is the same rule that once cost us an afternoon (#125)
+and here keeps a call from being traced twice.
 
 Because all three broker contracts are served generically since #88,
 the broker's own lookups, publishes and withdrawals pass through the
@@ -193,7 +202,8 @@ wiring out without the stack.
   bundle can stop bringing propagators of its own.
 - **The event stream.** SSE and the MQTT event subscription are
   long-lived streams rather than calls, and a span per stream would
-  either last for days or say nothing. What a watcher wants of them is
+  either last for days or say nothing. The REST extension skips
+  `text/event-stream` for that reason. What a watcher wants of them is
   in the runtime services already: whether the stream is connected, and
   how many events the broker had to drop.
 - **A collector in the harness.** The harness proves the wire, not the

@@ -14,6 +14,7 @@
 
 -runrequires.otel: \
 	bnd.identity;id='org.eclipse.fennec.services.telemetry',\
+	bnd.identity;id='org.eclipse.fennec.services.telemetry.rest',\
 	bnd.identity;id='org.eclipse.fennec.services.demo.telemetry',\
 	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.sender.http',\
 	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.commons',\
@@ -25,6 +26,7 @@
 -runbundles.otel: \
 	org.eclipse.fennec.services.demo.telemetry;version=snapshot,\
 	org.eclipse.fennec.services.telemetry;version=snapshot,\
+	org.eclipse.fennec.services.telemetry.rest;version=snapshot,\
 	org.eclipse.osgi-technology.opentelemetry.core.commons;version='[0.1.0,0.1.1)',\
 	org.eclipse.osgi-technology.opentelemetry.core.sender.http;version='[0.1.0,0.1.1)',\
 	org.eclipse.osgi-technology.opentelemetry.integration.cm;version='[0.1.0,0.1.1)',\

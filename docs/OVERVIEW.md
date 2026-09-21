@@ -26,6 +26,7 @@ not built, the page says so and names the issue.
 | write a Java provider or consumer by hand | [Client framework](CLIENT_FRAMEWORK_GUIDE.md) |
 | watch what a broker or a client holds | [Runtime services](RUNTIME.md) |
 | trace a call across consumer, broker and provider | [Telemetry](TELEMETRY.md) |
+| see all of it in Grafana | [the demo](../demo/observability/README.md) |
 
 
 ## Three parties and one thing the broker does not do

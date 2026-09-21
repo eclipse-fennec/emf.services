@@ -1,0 +1,9 @@
+{
+	":configurator:resource-version": 1,
+
+	"org.eclipse.fennec.services.demo.traffic.TrafficGenerator": {
+		"contract": "Payment",
+		"interval": 2000,
+		"account": "demo-account"
+	}
+}

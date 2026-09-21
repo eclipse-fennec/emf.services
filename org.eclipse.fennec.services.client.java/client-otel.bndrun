@@ -1,0 +1,36 @@
+# A consumer that keeps calling, reporting to an OpenTelemetry collector.
+#
+# The ordinary launch plus telemetry: `-include` takes client.bndrun
+# whole and the bundles below are ADDED to its list. Resolving this
+# file from its requirements instead would drop what that launch
+# carries on purpose but does not require — which is why the list here
+# is a hand-kept delta and not a resolve result.
+#
+# Run it through demo/observability/run-demo.sh, which starts the
+# observability stack and names each framework through
+# OTEL_SERVICE_NAME.
+
+-include: client.bndrun
+
+-runrequires.otel: \
+	bnd.identity;id='org.eclipse.fennec.services.demo.traffic',\
+	bnd.identity;id='org.eclipse.fennec.services.telemetry',\
+	bnd.identity;id='org.eclipse.fennec.services.demo.telemetry',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.sender.http',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.commons',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.cm',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.scr',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.jakarta.rest',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.jakarta.servlet'
+
+-runbundles.otel: \
+	org.eclipse.fennec.services.demo.telemetry;version=snapshot,\
+	org.eclipse.fennec.services.demo.traffic;version=snapshot,\
+	org.eclipse.fennec.services.telemetry;version=snapshot,\
+	org.eclipse.osgi-technology.opentelemetry.core.commons;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.core.sender.http;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.cm;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.jakarta.rest;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.jakarta.servlet;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.scr;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.repack;version='[0.1.0,0.1.1)'

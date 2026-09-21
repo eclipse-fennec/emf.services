@@ -166,9 +166,22 @@ and this bundle's own configuration, if the defaults do not fit:
 }
 ```
 
-`org.eclipse.fennec.services.telemetry/telemetry-demo.bndrun` is a
-framework with a broker, this bundle and the SDK, for trying the wiring
-out.
+## Seeing it
+
+```bash
+demo/observability/run-demo.sh
+```
+
+starts a collector with Tempo, Prometheus, Loki and Grafana as one
+podman pod, then a broker, a provider and a consumer that keeps calling
+it — all three reporting. Grafana is at http://localhost:3000 with a
+provisioned dashboard, and a `Demo/tick` trace has eight spans across
+the three processes. [demo/observability/README.md](../demo/observability/README.md)
+says what to show and what is not traced.
+
+`org.eclipse.fennec.services.telemetry/telemetry-demo.bndrun` is the
+smaller thing: one framework with a broker and the SDK, for trying the
+wiring out without the stack.
 
 ## What is not built yet
 

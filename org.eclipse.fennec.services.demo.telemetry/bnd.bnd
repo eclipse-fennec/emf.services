@@ -1,0 +1,18 @@
+Bundle-Name: Fennec Services Telemetry Demo
+Bundle-Description: \
+	What a presentation needs and a deployment does not: the \
+	configuration that points the OpenTelemetry SDK at the collector of \
+	the observability stack. \
+	\
+	A bundle rather than `configurator.initial`, for the reason the \
+	harness configuration bundle gives: the initial property is parsed \
+	before the JSON provider is up. \
+	\
+	Configuration and nothing else, so that a framework which only \
+	needs to report telemetry — the broker, a provider — does not also \
+	have to install a consumer SDK it never uses. The traffic generator \
+	is a bundle of its own for that reason.
+
+-includeresource: \
+	OSGI-INF/configurator/=configs/
+Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'

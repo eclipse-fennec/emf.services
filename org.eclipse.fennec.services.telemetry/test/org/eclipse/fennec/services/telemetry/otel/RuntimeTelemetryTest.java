@@ -125,8 +125,7 @@ class RuntimeTelemetryTest {
 	void setUp() {
 		reader = new OnDemand();
 		meters = SdkMeterProvider.builder().registerMetricReader(reader).build();
-		telemetry = new RuntimeTelemetry();
-		telemetry.meters = meters;
+		telemetry = new RuntimeTelemetry(meters);
 		telemetry.configure(Configs.defaults());
 	}
 
@@ -169,6 +168,22 @@ class RuntimeTelemetryTest {
 		assertThat(broker.asked.get())
 			.as("asked again at the second collection, without anything having told this component")
 			.isGreaterThan(askedOnce);
+	}
+
+	@Test
+	@DisplayName("a runtime bound before the configuration arrives is still instrumented")
+	void boundBeforeConfigured() {
+		// What DS actually does: bind first, activate second. A component
+		// that takes its meter in the activate method has none while the
+		// first service is being bound — and in a framework that starts
+		// everything at once, that is every service.
+		RuntimeTelemetry beforeConfigure = new RuntimeTelemetry(meters);
+		beforeConfigure.setBroker(new FakeBroker(), Map.of());
+		beforeConfigure.configure(Configs.defaults());
+
+		assertThat(readingsOf(reader.collect()))
+			.containsEntry("fennec.services.broker.registrations", 1L);
+		beforeConfigure.deactivate();
 	}
 
 	@Test

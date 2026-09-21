@@ -23,6 +23,8 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.ServiceEvent;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -41,8 +43,15 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * starts where someone configured it. Nothing else has to know it
  * exists.
  */
+// Registers its EventSink itself rather than letting DS do it, and the
+// reason is the container (#156): a deployable image ships this
+// configuration so that MQTT is one environment variable away, and a
+// deployment that does not want MQTT leaves the variable unset. A
+// component that registered the sink regardless would offer the broker
+// a transport that cannot deliver; one that failed activation would
+// make every REST-only container log an error about a transport nobody
+// asked for. So: no broker URL, no sink, one line in the log.
 @Component(
-		service = EventSink.class,
 		configurationPid = "org.eclipse.fennec.services.broker.mqtt",
 		configurationPolicy = org.osgi.service.component.annotations.ConfigurationPolicy.REQUIRE)
 @Designate(ocd = MqttEventTransport.Config.class)
@@ -54,7 +63,9 @@ public final class MqttEventTransport implements EventSink {
 			description = "Publishes lifecycle events to MQTT. Requires configuration to start.")
 	public @interface Config {
 
-		@AttributeDefinition(name = "MQTT broker URL", description = "e.g. tcp://localhost:1883")
+		@AttributeDefinition(name = "MQTT broker URL",
+				description = "e.g. tcp://localhost:1883. Empty means this broker publishes no MQTT "
+						+ "events at all — the deployment did not ask for them.")
 		String broker_url() default "tcp://localhost:1883";
 
 		@AttributeDefinition(name = "Topic prefix",
@@ -91,16 +102,32 @@ public final class MqttEventTransport implements EventSink {
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
+	private final BundleContext context;
+
 	private MqttAsyncClient client;
 
 	private MqttEventSink sink;
+
+	private ServiceRegistration<EventSink> registration;
 
 	private int qos;
 
 	private long publishTimeoutMillis;
 
 	@Activate
+	public MqttEventTransport(BundleContext context) {
+		this.context = context;
+	}
+
+	@Activate
 	void activate(Config config) throws Exception {
+		if (config.broker_url() == null || config.broker_url().isBlank()) {
+			// Configured to do nothing, which is a normal state for a
+			// container that speaks REST only. Said once, at INFO,
+			// because silence here reads like a broken transport.
+			LOG.info("[DDSR-MQTT] no broker configured — this broker publishes its events over SSE only");
+			return;
+		}
 		this.qos = config.qos();
 		this.publishTimeoutMillis = config.publish_timeout_millis();
 		this.client = new MqttAsyncClient(config.broker_url(), config.client_id(), new MemoryPersistence());
@@ -110,6 +137,9 @@ public final class MqttEventTransport implements EventSink {
 		client.connect(options).waitForCompletion();
 		this.sink = new MqttEventSink(this::send, broker, rsObjects, config.topic_prefix(),
 				config.event_source());
+		// Registered only now: a sink that is offered before it can
+		// deliver is a sink the broker counts on for nothing.
+		this.registration = context.registerService(EventSink.class, this, null);
 		LOG.info("[DDSR-MQTT] event transport connected to " + config.broker_url()
 				+ ", topic prefix " + config.topic_prefix());
 	}
@@ -144,6 +174,14 @@ public final class MqttEventTransport implements EventSink {
 
 	@Deactivate
 	void deactivate() {
+		if (registration != null) {
+			try {
+				registration.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// The framework got there first.
+			}
+			registration = null;
+		}
 		sink = null;
 		if (client != null) {
 			try {

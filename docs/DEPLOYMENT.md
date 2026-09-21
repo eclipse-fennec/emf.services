@@ -57,6 +57,38 @@ interpolation plugin. The defaults are the ones
 The context path (`/ddsr/rest`) is a frozen wire contract, not a
 configuration — see the wire-name note in [CLAUDE.md](https://github.com/eclipse-fennec/emf.services/blob/snapshot/CLAUDE.md).
 
+### Events over MQTT, when a deployment wants them
+
+The image carries the MQTT event transport and leaves it asleep. One
+variable turns it on; nothing else about the container changes, and
+there is no second image:
+
+```bash
+docker run -d --name ddsr-broker \
+  -p 8887:8887 \
+  -e DDSR_PUBLIC_URL=http://broker.example.com:8887/ddsr/rest \
+  -e DDSR_MQTT_URL=tcp://mosquitto:1883 \
+  docker.io/eclipsefennec/emf.services:broker-snapshot
+```
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `DDSR_MQTT_URL` | *(empty)* | Where lifecycle events are published. **Empty means no MQTT at all**: the transport registers no sink, logs one line saying so, and the broker serves its events over SSE alone. |
+| `DDSR_MQTT_TOPIC_PREFIX` | `ddsr/events` | Events go to `<prefix>/<interface>`. A frozen wire name until #4 — change it only if both sides of your deployment agree. |
+| `DDSR_MQTT_CLIENT_ID` | `ddsr-broker` | MQTT client identifier. Two brokers on one MQTT broker need two, or they disconnect each other. |
+| `DDSR_MQTT_EVENT_SOURCE` | `/fennec/services/broker` | The CloudEvents `source` of every event this broker sends — what a reader uses to tell two brokers apart. |
+| `DDSR_MQTT_QOS` | `0` | Fits a stream whose consumers re-snapshot on reconnect anyway; raise it if your consumers do not. |
+
+Both transports run side by side: a consumer that subscribes over SSE
+and one that subscribes over MQTT see the same events, and
+[EVENTING.md](EVENTING.md) says what each is guaranteed.
+
+What the image does **not** carry yet is OpenTelemetry. The SDK is a
+snapshot dependency whose propagators are still a no-op upstream
+(eclipse-osgi-technology/opentelemetry#22), and
+[TELEMETRY.md](TELEMETRY.md) describes how a deployment adds it in the
+meantime.
+
 ### State and the data volume
 
 The broker persists its registry as a synchronous XMI snapshot after
@@ -87,17 +119,6 @@ persist fails is **rolled back**, so the broker starts, answers, and
 reports `cannot self-publish: at least one API interface is missing from
 the catalog` — an empty catalog rather than a crash.
 
-### MQTT
-
-The image carries the MQTT bundles but no MQTT configuration, so the
-transport stays dormant and the broker is REST/SSE-only — that is the
-deliberate split described in
-[the harness MQTT config bundle](https://github.com/eclipse-fennec/emf.services/blob/snapshot/org.eclipse.fennec.services.itest.mqtt.config/bnd.bnd):
-production launches ship the MQTT bundles unconfigured, and the
-`broker-mqtt` launch variant that wakes them is harness-only (it hard-wires
-`tcp://localhost:1883`). An MQTT-enabled image therefore needs its own
-configuration bundle and image variant; it does not exist yet.
-
 ## Building the image locally
 
 ```bash
@@ -118,7 +139,7 @@ push to snapshot / main
       └─ release       (reusable-release) — build + testOSGi + export.broker + publish
           │              uploads broker.jar and the broker.rest bundle jar as "release-jars"
           ├─ docs       (reusable-docs)
-          └─ container  (.github/workflows/reusable-container.yml)
+          └─ container  (reusable-container, eclipse-fennec/.github)
                          downloads "release-jars", reads Bundle-Version off the
                          bundle jar, buildx-builds docker/broker/ for amd64+arm64,
                          pushes to Docker Hub and GHCR
@@ -127,6 +148,12 @@ push to snapshot / main
 The container job never rebuilds the jar — that is what keeps the image
 from drifting away from the published bundles.
 
+All four jobs are central workflows owned by `eclipse-fennec/.github`
+and pinned here by commit. This repository states only what is its own:
+the image name, the variant prefix, the build context and the two jar
+names. The tags that come out are `broker-<label>` and
+`broker-<Bundle-Version>`, in both registries.
+
 Prerequisites on the repository:
 
 - secrets `DOCKER_USERNAME` and `DOCKER_API_TOKEN` (Docker Hub); GHCR
@@ -134,6 +161,13 @@ Prerequisites on the repository:
   raise `packages: write`.
 
 To add a second variant, add a `docker/<variant>/` context with its
-`Dockerfile` and `prepareDocker` task, then call
-`reusable-container.yml` once more with that variant's
-`runtime-jar`/`docker-context`.
+`Dockerfile` and `prepareDocker` task, then add a second `container-*`
+job with that variant's `runtime-jar`/`docker-context`; the variants
+then build in parallel and a broken one does not block the others.
+
+A variant is for an image that is genuinely a different thing to run.
+Something a deployment merely switches — a second transport, an
+exporter, a port — belongs in an environment variable of the one image,
+which is exactly why MQTT is a variable here and not a `broker-mqtt`
+image: two images that differ by a configuration are two images to
+build, scan, sign and keep in step.

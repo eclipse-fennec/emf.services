@@ -43,14 +43,20 @@ jobs:
     needs: release
     uses: eclipse-fennec/.github/.github/workflows/reusable-docs.yml@2a98ad6e2459556b858e1273bff2f8d87fc11a06 # v1.3.0
 
-  # image tagging follows the data.atlas scheme: broker-latest
+  # One image, one variant prefix, as data.atlas tags its own: broker-latest
+  # plus broker-<Bundle-Version>. The template is pinned to a commit like every
+  # other central workflow here; v1.4.0 will be the first tag that carries it.
   container-broker:
     needs: release
-    uses: ./.github/workflows/reusable-container.yml
+    uses: eclipse-fennec/.github/.github/workflows/reusable-container.yml@ff0237b059b28c6c2c62dfa68b521971ce00327f # main, post-v1.3.0
     with:
+      image-name: emf.services
       docker-label: latest
       variant: broker
+      docker-context: docker/broker
+      # Declarative staging: the jar lands in content/broker.jar, which is what
+      # the Dockerfile COPYs and what :docker:broker:prepareDocker writes for a
+      # local build. No runtime-dir — this image carries nothing but the jar.
       runtime-jar: broker.jar
-      version-bundle-jar: org.eclipse.fennec.services.broker.rest.jar
-      docker-context: docker/broker/
+      version-jar: org.eclipse.fennec.services.broker.rest.jar
     secrets: inherit

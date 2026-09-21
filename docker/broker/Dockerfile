@@ -51,13 +51,23 @@ ARG BROKER_JAR
 # any deployment other than --network=host: it is the address the broker
 # advertises for itself in the catalog, so consumers in other containers
 # or on other hosts dial exactly this URL.
+#
+# MQTT ships in this image and stays asleep: with DDSR_MQTT_URL empty the
+# event transport registers no sink and says so once, so a REST-only
+# deployment carries the bundles and notices nothing. Setting the URL is
+# the whole difference between the two — there is no second image.
 ENV APP_HOME=${APP_HOME} \
     DATA_DIR=${DATA_DIR} \
     TMPDIR=${TMPDIR} \
     BROKER_JAR=${BROKER_JAR} \
     DDSR_HTTP_PORT=8887 \
     DDSR_HTTP_HOST=0.0.0.0 \
-    DDSR_PUBLIC_URL=http://localhost:8887/ddsr/rest
+    DDSR_PUBLIC_URL=http://localhost:8887/ddsr/rest \
+    DDSR_MQTT_URL= \
+    DDSR_MQTT_TOPIC_PREFIX=ddsr/events \
+    DDSR_MQTT_CLIENT_ID=ddsr-broker \
+    DDSR_MQTT_EVENT_SOURCE=/fennec/services/broker \
+    DDSR_MQTT_QOS=0
 
 COPY --from=builder --chown=65532:65532 ${APP_HOME} ${APP_HOME}
 COPY --from=builder --chown=65532:65532 ${TMPDIR} ${TMPDIR}

@@ -159,10 +159,41 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     const opFlavor = firstOpFlavor(flavor);
     expect(requestTopicFor(flavor, opFlavor)).toBe('ddsr/rpc/payments/charge');
     expect(replyBaseFor(flavor, opFlavor)).toBe('ddsr/rpc/payments/charge/reply');
-    // The operation states no QoS, so the flavor's default applies. It
-    // reads back as AT_MOST_ONCE because the model has no way to say
-    // "unset" (#81) — qosFor treats that as silence.
+    // The operation states no QoS, so the flavor's default applies —
+    // and since #81 that is real unset state rather than a value that
+    // happens to look like silence.
     expect(qosFor(flavor, opFlavor)).toBe(1);
+  });
+
+  /**
+   * #81: an operation can say that it does not override, and it can
+   * also override downwards. Both need unset state, which the model
+   * has (`unsettable="true"`) and the generated TypeScript carries
+   * since `@emfts/codegen` 0.0.2-next.6.
+   */
+  it('lets an operation step down to at-most-once under a higher default', () => {
+    const { flavor } = paymentMqttFlavor();
+    const opFlavor = firstOpFlavor(flavor);
+    expect(flavor.defaultQos).toBe('AT_LEAST_ONCE');
+
+    opFlavor.qos = 'AT_MOST_ONCE' as typeof opFlavor.qos;
+
+    expect(qosFor(flavor, opFlavor))
+      .toBe(0);
+  });
+
+  it('takes an operation that says nothing as saying nothing, whatever the enum starts with', () => {
+    const { flavor } = paymentMqttFlavor();
+    const opFlavor = firstOpFlavor(flavor);
+    flavor.defaultQos = 'EXACTLY_ONCE' as typeof flavor.defaultQos;
+
+    expect(qosFor(flavor, opFlavor)).toBe(2);
+  });
+
+  it('reads a plain object as stating what it holds — it has no unset state to ask about', () => {
+    const flavor = { defaultQos: 'EXACTLY_ONCE' };
+    expect(qosFor(flavor as never, { qos: 'AT_MOST_ONCE' } as never)).toBe(0);
+    expect(qosFor(flavor as never, {} as never)).toBe(2);
   });
 
   it('puts the call on the wire as a CloudEvent carrying a ServiceInvocation', async () => {

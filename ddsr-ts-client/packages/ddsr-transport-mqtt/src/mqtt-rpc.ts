@@ -171,34 +171,43 @@ export function replyTopicFor(
 /**
  * The QoS of one operation: its own, or the flavor's default.
  *
- * An operation that says nothing reads back as `AT_MOST_ONCE`, because
- * that is the first literal of the enum and the model gives
- * `MqttOperationFlavor.qos` no default of its own — EMF reports it on
- * both sides of the wire, so there is no value that means "unset". This
- * function therefore treats `AT_MOST_ONCE` from an operation as silence
- * and lets `defaultQos` apply, which is the precedence the model
- * documents.
+ * The model makes `MqttOperationFlavor.qos` unsettable (#81), and that
+ * is what makes the precedence expressible at all: without unset state
+ * an operation reads back as `AT_MOST_ONCE` — the enum's first literal
+ * — so every operation looks like an override and `defaultQos` could
+ * never apply.
  *
- * The price: an operation cannot deliberately step DOWN to at-most-once
- * under a higher flavor default.
+ * Asked through `eIsSet`, which is real state since
+ * `@emfts/codegen` 0.0.2-next.6 and the same question the Java side
+ * asks with `isSetQos()`. An operation can now step DOWN to
+ * at-most-once under a higher flavor default, which the earlier
+ * workaround here could not express.
  *
- * #81 made `qos` unsettable, which fixed this on the Java side —
- * `isSetQos()` there is real state. It does NOT fix it here, and the
- * generated code says why: `@emfts/codegen` initialises the field to
- * the type default and derives "is set" from the value,
- * `this._qos !== MqttQos.AT_MOST_ONCE`. That is the same conflation
- * this function works around, one layer down, so the workaround stays
- * and stays exact. Lifting it needs unset state in the TypeScript
- * codegen, not another change to the model.
+ * A plain object — a fixture, a hand-built flavor — has no unset state
+ * to ask about, so its value counts as stated. That is the honest
+ * reading: something that is not a model cannot distinguish silence
+ * from a choice.
  */
 export function qosFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): 0 | 1 | 2 {
-  const stated = opFlavor.qos === 'AT_MOST_ONCE' ? undefined : opFlavor.qos;
-  const literal = stated ?? flavor.defaultQos ?? 'AT_LEAST_ONCE';
+  const literal = statedQos(opFlavor) ?? flavor.defaultQos ?? 'AT_LEAST_ONCE';
   switch (literal) {
     case 'AT_MOST_ONCE': return 0;
     case 'EXACTLY_ONCE': return 2;
     default: return 1;
   }
+}
+
+/** What the operation itself says about QoS, or nothing. */
+function statedQos(opFlavor: OperationFlavorLike): string | undefined {
+  const reflective = opFlavor as {
+    eClass?: () => { getEStructuralFeature(name: string): unknown } | undefined;
+    eIsSet?: (feature: unknown) => boolean;
+  };
+  const feature = reflective.eClass?.()?.getEStructuralFeature('qos');
+  if (feature && reflective.eIsSet) {
+    return reflective.eIsSet(feature) ? opFlavor.qos : undefined;
+  }
+  return opFlavor.qos;
 }
 
 /**

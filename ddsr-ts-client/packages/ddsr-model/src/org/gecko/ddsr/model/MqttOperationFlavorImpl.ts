@@ -29,7 +29,9 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
   private _requestTopic?: string;
   private _responseTopic?: string;
   private _qos: MqttQos = MqttQos.AT_MOST_ONCE;
+  private _qosIsSet = false;
   private _retained?: boolean;
+  private _retainedIsSet = false;
   private _correlation: boolean = true;
   private _returnPath?: string;
 
@@ -96,6 +98,7 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
   set qos(value: MqttQos) {
     const oldValue = this._qos;
     this._qos = value;
+    this._qosIsSet = true;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
@@ -120,6 +123,7 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
   set retained(value: boolean) {
     const oldValue = this._retained;
     this._retained = value;
+    this._retainedIsSet = true;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
@@ -256,9 +260,9 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
       case MqttOperationFlavorImpl.RESPONSE_TOPIC:
         return this._responseTopic !== undefined;
       case MqttOperationFlavorImpl.QOS:
-        return this._qos !== MqttQos.AT_MOST_ONCE;
+        return this._qosIsSet;
       case MqttOperationFlavorImpl.RETAINED:
-        return this._retained !== undefined;
+        return this._retainedIsSet;
       case MqttOperationFlavorImpl.CORRELATION:
         return this._correlation !== true;
       case MqttOperationFlavorImpl.RETURN_PATH:
@@ -282,9 +286,11 @@ export class MqttOperationFlavorImpl extends ServiceOperationFlavorImpl implemen
         return;
       case MqttOperationFlavorImpl.QOS:
         this._qos = MqttQos.AT_MOST_ONCE;
+        this._qosIsSet = false;
         return;
       case MqttOperationFlavorImpl.RETAINED:
         this._retained = undefined;
+        this._retainedIsSet = false;
         return;
       case MqttOperationFlavorImpl.CORRELATION:
         this._correlation = true;

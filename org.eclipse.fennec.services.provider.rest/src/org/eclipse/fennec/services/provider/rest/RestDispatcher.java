@@ -179,7 +179,8 @@ public class RestDispatcher {
 		// already has the headers because HEADER-bound parameters need
 		// them. Unconditional, including the absent case, so a pooled
 		// thread cannot carry a previous caller's origin.
-		CallOrigin.set(ClientOrigin.parse(headerValue.apply(ClientOrigin.HEADER)));
+		ClientOrigin caller = ClientOrigin.parse(headerValue.apply(ClientOrigin.HEADER));
+		CallOrigin.set(caller);
 		// The caller's trace, continued here rather than started here
 		// (#126). The same place and the same reason as the origin above:
 		// every dispatched call passes through, and the headers are
@@ -191,7 +192,13 @@ public class RestDispatcher {
 			span.attribute("rpc.system", "fennec.services")
 					.attribute("rpc.service", contract)
 					.attribute("http.request.method", httpMethod)
-					.attribute("fennec.flavor", "REST");
+					.attribute("fennec.flavor", "REST")
+					// Who called (#125), read off the header this dispatcher
+					// already binds for the length of the call. On the span
+					// too, because a trace that says what happened without
+					// saying who asked answers half the question.
+					.attribute(ClientOrigin.ATTRIBUTE,
+							caller == null ? ClientOrigin.ANONYMOUS : caller.token());
 			CloudEvent request = CloudEventCodec.fromHeaders(headerValue::apply,
 					headerValue.apply(HttpHeaders.CONTENT_TYPE));
 			Response answer = withReplyEnvelope(

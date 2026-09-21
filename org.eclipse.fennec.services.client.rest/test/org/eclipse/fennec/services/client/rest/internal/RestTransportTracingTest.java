@@ -22,6 +22,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
@@ -103,6 +104,7 @@ class RestTransportTracingTest {
 		RestTransport transport = new RestTransport();
 		set(transport, "tracer", tracer);
 		set(transport, "baseUrl", URI.create("http://localhost:9090/ddsr/rest"));
+		set(transport, "origin", ClientOrigin.of("payment-demo", "7f3a"));
 		return transport;
 	}
 
@@ -131,6 +133,9 @@ class RestTransportTracingTest {
 			.containsEntry("server.address", "http://localhost:9090/ddsr/rest")
 			.containsEntry("fennec.flavor", "REST")
 			.containsEntry("http.response.status_code", "200");
+		assertThat(watching.attributes.get(ClientOrigin.ATTRIBUTE))
+			.as("who is calling (#125), the same identity the header carries")
+			.isEqualTo("payment-demo/7f3a");
 	}
 
 	@Test

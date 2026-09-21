@@ -36,6 +36,7 @@ import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.mqtt.MqttFlavors;
 import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 import org.eclipse.fennec.services.invocation.Invocations;
@@ -163,7 +164,13 @@ public final class MqttOperationDispatcher {
 				TraceCarrier.over(request.getExtensions().map()))) {
 			span.attribute("rpc.system", "fennec.services")
 					.attribute("server.address", topic)
-					.attribute("fennec.flavor", "MQTT");
+					.attribute("fennec.flavor", "MQTT")
+					// Who called (#125). Over MQTT there is no origin header;
+					// the envelope's source is where that identity travels,
+					// and it is the same one the REST side reads off a
+					// header.
+					.attribute(ClientOrigin.ATTRIBUTE,
+							request.getSource() == null ? ClientOrigin.ANONYMOUS : request.getSource());
 			ServiceInvocationResult result;
 			try {
 				result = Invocations.result(invoke(operationFlavor, invocation));

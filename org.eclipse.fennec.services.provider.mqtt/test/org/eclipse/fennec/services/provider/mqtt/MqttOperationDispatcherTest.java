@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,6 +39,7 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -148,6 +150,8 @@ class MqttOperationDispatcherTest {
 
 		private String failure;
 
+		private final Map<String, String> attributes = new LinkedHashMap<>();
+
 		@Override
 		public CallSpan calling(String operation, TraceCarrier outbound) {
 			throw new AssertionError("a dispatcher serves, it does not call");
@@ -161,6 +165,7 @@ class MqttOperationDispatcherTest {
 
 				@Override
 				public CallSpan attribute(String name, String value) {
+					attributes.put(name, value);
 					return this;
 				}
 
@@ -208,6 +213,9 @@ class MqttOperationDispatcherTest {
 		assertThat(sent)
 			.as("and the call was served as it always was")
 			.hasSize(1);
+		assertThat(watching.attributes)
+			.as("who called (#125) — over MQTT the envelope's source is where that travels")
+			.containsEntry(ClientOrigin.ATTRIBUTE, "/consumer/probe");
 	}
 
 	@Test

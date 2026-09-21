@@ -1,0 +1,25 @@
+Bundle-Name: Fennec Services Telemetry for hand-written REST resources
+Bundle-Description: \
+	A Jakarta REST whiteboard extension that gives a hand-written \
+	resource the same server span the generic distribution's dispatcher \
+	already has: the caller's trace continued, not a new one started. \
+	\
+	It reaches the default application, which is where a plain \
+	@JakartarsResource lands — and deliberately not the named \
+	applications of the generic REST distribution, which bring their \
+	own providers and whose dispatcher is instrumented already. So a \
+	call is traced once, wherever it is served. \
+	\
+	Knows no OpenTelemetry: it uses the CallTracer seam like every \
+	other call site, and without a tracer it does nothing at all.
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.jakartars;version=latest,\
+	jakarta.ws.rs-api;version=latest,\
+	org.eclipse.fennec.services.api;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

@@ -1,11 +1,18 @@
 Bundle-Name: Gecko DDSR Harness MQTT Configuration
 Bundle-Description: \
 	Harness-only configuration bundle (FR-P4 Scenario D): wakes the \
-	dormant MQTT event transports (configurationPolicy REQUIRE) with \
-	localhost Mosquitto settings. Included ONLY in the broker-mqtt / \
-	client-mqtt launch variants — production launches ship the MQTT \
-	bundles unconfigured. A configuration for a component that is not \
-	in the launch is ignored, so one bundle serves both variants. \
+	dormant MQTT client transport (configurationPolicy REQUIRE) with \
+	localhost Mosquitto settings and points the client's eventSource \
+	reference at the MQTT source. Included ONLY in the client-mqtt \
+	launch variant. \
+	\
+	It deliberately does NOT configure the broker's PID any more: the \
+	broker reads DDSR_MQTT_URL from its environment, so the harness \
+	runs the shipped broker image with that variable and exercises the \
+	documented surface. Two bundles configuring one PID is a contest \
+	the configurator decides by ranking, and without one the winner \
+	depended on the machine — green here, red in CI. \
+	\
 	Deliberately a bundle rather than configurator.initial: the initial \
 	property is parsed while the jakarta.json provider bundle may not \
 	be started yet, and JAVA_TOOL_OPTIONS strips the double quotes any \

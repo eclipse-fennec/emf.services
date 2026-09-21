@@ -39,10 +39,11 @@ as an XMI snapshot (`./broker-state.xmi`, configurable via the
 curl http://localhost:8887/ddsr/rest/catalog
 ```
 
-There is a second launch variant, `export.broker-mqtt`, that
-additionally publishes lifecycle events to an MQTT broker at
-`tcp://localhost:1883` — same bundles, plus a configuration that wakes
-the dormant MQTT transport. That variant is harness-only.
+The launch already carries the MQTT event transport, asleep. Set
+`DDSR_MQTT_URL=tcp://localhost:1883` and the broker publishes its
+lifecycle events there as well as over SSE; leave it empty and the
+bundles sit idle. There is no second launch and no second image —
+[DEPLOYMENT.md](DEPLOYMENT.md) lists the five variables.
 
 Port, bind address and the URL the broker advertises for itself are
 environment variables, so nothing has to be rebuilt to move the broker

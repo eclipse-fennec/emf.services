@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="binding-probe-java-mqtt">
+    <implementations name="binding-probe-java-mqtt" version="1.0.0"
+        implementationId="binding-probe:java:mqtt:1.0.0"
+        serviceInterfaces="/1">
+      <flavors xsi:type="services:MqttFlavor" name="binding-probe-mqtt" kind="MQTT"
+          requestTopic="ddsr/rpc/binding-probe" defaultQos="AT_LEAST_ONCE">
+        <operationFlavors xsi:type="services:MqttOperationFlavor" name="echo"
+            operation="/1/@operations.0"/>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceInterface name="BindingProbe" version="1.0.0"
+      description="Answers with where each of its arguments arrived. Exists to prove that a consumer places every value where the published flavor says — and nowhere else.">
+    <operations name="echo" description="Returns '&lt;id&gt;|&lt;currency&gt;|&lt;tenant&gt;' from wherever the three values arrived.">
+      <parameters name="id" type="string" description="Travels in the path template."/>
+      <parameters name="currency" index="1" type="string" description="Travels as a query parameter."/>
+      <parameters name="tenant" index="2" type="string" description="Travels as the X-Tenant header."/>
+      <returnValue name="result" type="string" description="The three values, separated by a pipe, in the order the contract declares them."/>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

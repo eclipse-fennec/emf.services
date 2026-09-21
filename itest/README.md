@@ -44,6 +44,14 @@ broker. Requirements and decisions:
   invocation path. Deliberately MQTT distribution with REST discovery:
   the announcement is a publish to the broker as always, only the calls
   travel over mosquitto (#98).
+- **J (podman only) — MQTT with no provider code:** the implementation
+  is an ordinary OSGi service; a factory configuration of
+  `provider.mqtt` reads the contract from a model document, subscribes
+  per operation and announces what it serves. The probe reads the
+  announced `MqttFlavor` and calls `echo` over mosquitto, and the three
+  arguments come back in the contract's order — both ends read one
+  document the same way (#25). The twin of #84 on this transport: what
+  the deployment states is the broker, nothing else.
 - **H — provider liveness:** the Java provider heartbeats every 2 s
   (`DDSR_PROVIDER_HEARTBEAT_SECONDS=2`) and is killed with SIGKILL — no
   withdraw, no shutdown hook. Expected: the broker retires the
@@ -66,7 +74,7 @@ drain in scenario G.
 
 ```bash
 ./itest/run-harness.sh          # host processes (no podman needed): A + B + F + G + H
-./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + F + G + H
+./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + J + F + G + H
 ```
 
 Both build first (`./gradlew build` + the bnd exports, `pnpm install` +

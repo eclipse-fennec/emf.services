@@ -33,11 +33,23 @@ import org.osgi.framework.ServiceReference;
  */
 class ImplementationLookupTest {
 
-	/** A candidate with just the one property this rule reads. */
+	/** A candidate with just the properties this rule reads. */
 	private static ServiceReference<?> candidate(Object componentId) {
+		return candidate(componentId, null);
+	}
+
+	/** A candidate that is itself a transport of the contract. */
+	private static ServiceReference<?> distribution(Object componentId, String transport) {
+		return candidate(componentId, transport);
+	}
+
+	private static ServiceReference<?> candidate(Object componentId, String distribution) {
 		return new ServiceReference<Object>() {
 			@Override
 			public Object getProperty(String key) {
+				if ("ddsr.distribution".equals(key)) {
+					return distribution;
+				}
 				return "component.id".equals(key) ? componentId : null;
 			}
 
@@ -101,6 +113,27 @@ class ImplementationLookupTest {
 	void withOnlyItselfThereIsNoImplementation() {
 		assertThat(GenericRestDistribution.someoneElse(new ServiceReference<?>[] { candidate(7L) }, 7L))
 				.as("answering 503 is right; invoking the contract on ourselves is not")
+				.isNull();
+	}
+
+	/**
+	 * Found in harness scenario J: a contract served over both
+	 * transports has two distributions, each carrying
+	 * {@code ddsr.contract} from its own configuration. Left alone they
+	 * find each other and try to invoke the contract's operations on a
+	 * transport.
+	 */
+	@Test
+	void anotherTransportIsNotAnImplementation() {
+		ServiceReference<?> otherTransport = distribution(8L, "mqtt");
+		ServiceReference<?> implementation = candidate(9L);
+
+		assertThat(GenericRestDistribution.someoneElse(
+				new ServiceReference<?>[] { otherTransport, implementation }, 7L))
+				.isSameAs(implementation);
+		assertThat(GenericRestDistribution.someoneElse(
+				new ServiceReference<?>[] { otherTransport }, 7L))
+				.as("a transport alone is no implementation, and 503 is the honest answer")
 				.isNull();
 	}
 

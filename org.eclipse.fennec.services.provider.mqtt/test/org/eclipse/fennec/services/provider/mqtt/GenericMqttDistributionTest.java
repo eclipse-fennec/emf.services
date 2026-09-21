@@ -73,6 +73,16 @@ class GenericMqttDistributionTest {
 	}
 
 	@Test
+	@DisplayName("a document that leaves the broker to the deployment, and a deployment that says nothing")
+	void nobodyNamedABroker() {
+		MqttFlavor flavor = flavorOn(null);
+
+		assertThat(GenericMqttDistribution.listenOn(flavor, "").getBrokers())
+			.as("there is nothing to connect to — which is a component with nothing to do, not a failure")
+			.isEmpty();
+	}
+
+	@Test
 	@DisplayName("an implementation without an MQTT flavor says so, rather than serving nothing")
 	void noMqttFlavor() {
 		ServiceImplementation implementation = F.createServiceImplementation();

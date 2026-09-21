@@ -3,7 +3,7 @@ Bundle-Description: MOFM2T templates that turn a ServiceInterface into language 
  plus the example that exercises them. The templates are the deliverable; the generated \
  sources are here to prove they compile.
 
-src=${^src},src-gen,src-gen-rest
+src=${^src},src-gen,src-gen-rest,src-gen-publisher
 
 # The contract is read through its JavaBinding: the binding references the
 # ServiceInterface, so handing the generator the binding brings both.
@@ -21,11 +21,17 @@ src=${^src},src-gen,src-gen-rest
 		template = "templates/service-interface.mtl"; \
 		modules  = "templates/java-types.mtl"
 
--library: enableJakartaREST
+-library: enableJakartaREST, enableEMF
 
 -buildpath: \
 	org.eclipse.fennec.services.examples.model;version=snapshot,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	osgi.core;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
 	org.osgi.service.jakartars;version=latest
 
 # Plain JUnit: the test reads what the generator wrote into src-gen. It is the
@@ -41,6 +47,19 @@ src=${^src},src-gen,src-gen-rest
 # empties the output of a generation before it runs, so two generations must
 # not share one. Keeping them apart also keeps the layering visible — the
 # interface comes from the contract, the resource from the flavor.
+# The announcement, from the same provider document: a component that
+# publishes and withdraws in the FR-P3 order. Its own output directory
+# for the reason the REST generation gives — bnd empties an output
+# before it runs.
+-generate.publisher: \
+	"../org.eclipse.fennec.services.model/model/services.ecore,model/*.xmi,templates/service-publisher.mtl,templates/java-types.mtl"; \
+		output   = src-gen-publisher/; \
+		generate = fennecM2T; \
+		ecore    = "../org.eclipse.fennec.services.model/model/services.ecore,../org.eclipse.fennec.services.examples.model/model/example.ecore"; \
+		model    = "model/example-java.xmi,model/persons-impl.xmi"; \
+		template = "templates/service-publisher.mtl"; \
+		modules  = "templates/java-types.mtl"
+
 -generate.rest: \
 	"../org.eclipse.fennec.services.model/model/services.ecore,model/*.xmi,templates/rest-resource.mtl,templates/java-types.mtl"; \
 		output   = src-gen-rest/; \

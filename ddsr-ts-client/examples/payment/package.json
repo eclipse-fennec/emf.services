@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc --noEmit",
     "provider": "tsx provider.ts",
     "consumer": "tsx consumer.ts",
     "smoke": "tsx smoke-test.ts",

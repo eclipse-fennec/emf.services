@@ -85,7 +85,9 @@ async function tick(): Promise<void> {
       if (locator.reference?.id) {
         // The claim goes back, so the broker's lease count stays
         // honest — and a graceful handover does not wait for us.
-        await client.consumer.release(locator.reference.id).catch(() => undefined);
+        // Synchronous, unlike its Java twin: it only forgets a
+        // reference here, the session is renewed on its own schedule.
+        client.consumer.release(locator.reference.id);
       }
     }
   });

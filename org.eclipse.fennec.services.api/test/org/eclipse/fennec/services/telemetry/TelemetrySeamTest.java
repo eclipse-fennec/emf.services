@@ -81,6 +81,38 @@ class TelemetrySeamTest {
 	}
 
 	@Test
+	@DisplayName("work that stays here is a span with nothing to carry")
+	void localWork() {
+		AtomicReference<String> started = new AtomicReference<>();
+		Map<String, String> wire = new HashMap<>();
+		CallTracer tracer = new CallTracer() {
+
+			@Override
+			public CallSpan calling(String operation, TraceCarrier outbound) {
+				started.set(operation);
+				// What a real tracer does here: write the context. The
+				// carrier of a local span has nowhere to put it.
+				outbound.set("traceparent", "00-abc-def-01");
+				return CallSpan.NONE;
+			}
+
+			@Override
+			public CallSpan serving(String operation, TraceCarrier inbound) {
+				throw new AssertionError("not this direction");
+			}
+		};
+
+		try (CallSpan span = tracer.doing("Demo/tick")) {
+			wire.putAll(Map.of());
+		}
+
+		assertThat(started).hasValue("Demo/tick");
+		assertThat(wire)
+			.as("a span that does not leave the process puts nothing on a wire")
+			.isEmpty();
+	}
+
+	@Test
 	@DisplayName("a deferred tracer follows what is bound, in both directions")
 	void deferredFollowsTheBinding() {
 		AtomicReference<CallTracer> bound = new AtomicReference<>();

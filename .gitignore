@@ -22,3 +22,6 @@ broker-state.xmi
 
 # Python bytecode from tools/
 __pycache__/
+
+# demo runs (logs, exported launches)
+demo/observability/work/

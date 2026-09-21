@@ -1,0 +1,17 @@
+{
+	":configurator:resource-version": 1,
+
+	"org.eclipse.osgi.technology.opentelemetry.core.sender.http": {
+		"serviceName": "$[env:OTEL_SERVICE_NAME;default=fennec-node]",
+		"serviceVersion": "0.1.0",
+		"serviceNamespace": "fennec.services",
+		"endpoint": "$[env:OTEL_EXPORTER_OTLP_ENDPOINT;default=http://localhost:4318]",
+		"metricExportInterval": 5000,
+		"spanScheduleDelay": 1000
+	},
+
+	"org.eclipse.fennec.services.telemetry": {
+		"scope": "org.eclipse.fennec.services",
+		"logs": true
+	}
+}

@@ -1,0 +1,42 @@
+# The broker, reporting to an OpenTelemetry collector.
+#
+# The launch of the deployable broker plus telemetry, and nothing else
+# changed: `-include` takes broker.bndrun whole, and the bundles below
+# are ADDED to its list rather than resolved over it. That matters —
+# resolving this file from its requirements alone drops fifteen bundles
+# the broker launch carries on purpose (gogo, the codec metadata, the
+# MCP stack), because nothing in `-runrequires` implies them.
+#
+# What this adds:
+#   the OpenTelemetry SDK with the OTLP/HTTP sender
+#   the framework integrations for Configuration Admin, DS, the Jakarta
+#     REST whiteboard and the HTTP whiteboard
+#   this project's telemetry bundle (spans, gauges, the JUL bridge)
+#   the demo configuration that points the sender at localhost:4318
+#
+# Run it with demo/observability/run-demo.sh, which starts the stack
+# first and gives each framework its OTEL_SERVICE_NAME.
+
+-include: broker.bndrun
+
+-runrequires.otel: \
+	bnd.identity;id='org.eclipse.fennec.services.telemetry',\
+	bnd.identity;id='org.eclipse.fennec.services.demo.telemetry',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.sender.http',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.core.commons',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.cm',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.scr',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.jakarta.rest',\
+	bnd.identity;id='org.eclipse.osgi-technology.opentelemetry.integration.jakarta.servlet'
+
+-runbundles.otel: \
+	org.eclipse.fennec.services.demo.telemetry;version=snapshot,\
+	org.eclipse.fennec.services.telemetry;version=snapshot,\
+	org.eclipse.osgi-technology.opentelemetry.core.commons;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.core.sender.http;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.cm;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.jakarta.rest;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.jakarta.servlet;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.integration.scr;version='[0.1.0,0.1.1)',\
+	org.eclipse.osgi-technology.opentelemetry.repack;version='[0.1.0,0.1.1)',\
+	org.osgi.service.servlet;version='[2.0.0,2.0.1)'

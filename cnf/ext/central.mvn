@@ -267,3 +267,10 @@ org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.openteleme
 org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.core.commons:0.1.0-SNAPSHOT
 org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.core.sender.http:0.1.0-SNAPSHOT
 org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.core.sender.logging:0.1.0-SNAPSHOT
+# The framework-side integrations, for the demo runs: what Configuration
+# Admin, Declarative Services, the Jakarta REST whiteboard and the HTTP
+# whiteboard are doing, beside what this project's own services report.
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.integration.cm:0.1.0-SNAPSHOT
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.integration.scr:0.1.0-SNAPSHOT
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.integration.jakarta.rest:0.1.0-SNAPSHOT
+org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.integration.jakarta.servlet:0.1.0-SNAPSHOT

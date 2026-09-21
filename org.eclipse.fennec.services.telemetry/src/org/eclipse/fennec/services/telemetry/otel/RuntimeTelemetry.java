@@ -38,7 +38,6 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.metrics.MeterProvider;
 import io.opentelemetry.api.metrics.ObservableLongGauge;
 
@@ -71,18 +70,75 @@ public class RuntimeTelemetry {
 
 	private static final AttributeKey<String> NODE = AttributeKey.stringKey("fennec.node");
 
-	@Reference
-	MeterProvider meters;
+	/**
+	 * Where the instruments come from, taken in the constructor.
+	 *
+	 * <p>Not a field reference, and that is the whole lesson of this
+	 * class: DS binds the dynamic references below while it is building
+	 * the component, and a field reference may not be injected yet at
+	 * that moment. A constructor parameter is: it is the one thing that
+	 * is certainly there before any bind method runs.
+	 */
+	private final MeterProvider meters;
 
-	/** The instruments of one watched runtime, closed when it goes. */
-	private final Map<Object, List<ObservableLongGauge>> watched = new ConcurrentHashMap<>();
+	/** What is watched, and the instruments that watch it. */
+	private final Map<Object, Watched> watched = new ConcurrentHashMap<>();
 
-	private volatile Meter meter;
+	/**
+	 * The instrumentation scope, with a default that holds before the
+	 * configuration arrives.
+	 *
+	 * <p>It has to: DS binds a reference <em>before</em> it activates the
+	 * component, so the first runtime can be bound before
+	 * {@link #configure} has run. A meter taken in the activate method
+	 * and used in a bind method is a null meter on exactly the service
+	 * that was there first — which is every service, in a framework that
+	 * starts everything at once.
+	 */
+	private volatile String scope = "org.eclipse.fennec.services";
+
+	@Activate
+	public RuntimeTelemetry(@Reference MeterProvider meters) {
+		this.meters = meters;
+	}
 
 	@Activate
 	@Modified
 	void configure(TelemetryConfig config) {
-		this.meter = meters.get(config.scope());
+		if (config.scope().equals(scope)) {
+			return;
+		}
+		this.scope = config.scope();
+		// A new scope is a new meter, so the instruments have to be built
+		// again under it.
+		for (Watched entry : watched.values()) {
+			entry.rebuild();
+		}
+	}
+
+	/** One watched runtime: how to instrument it, and what is live. */
+	private final class Watched {
+
+		private final Supplier<List<ObservableLongGauge>> instruments;
+
+		private List<ObservableLongGauge> live;
+
+		Watched(Supplier<List<ObservableLongGauge>> instruments) {
+			this.instruments = instruments;
+			this.live = instruments.get();
+		}
+
+		synchronized void rebuild() {
+			close();
+			this.live = instruments.get();
+		}
+
+		synchronized void close() {
+			for (ObservableLongGauge gauge : live) {
+				gauge.close();
+			}
+			live = List.of();
+		}
 	}
 
 	@Deactivate
@@ -96,6 +152,11 @@ public class RuntimeTelemetry {
 	void setBroker(BrokerRuntime broker, Map<String, Object> properties) {
 		BrokerRuntimeDTO first = broker.snapshot();
 		Attributes node = Attributes.of(NODE, first.name == null ? "broker" : first.name);
+		watched.put(broker, new Watched(() -> brokerGauges(broker, node)));
+		LOG.info("[DDSR] watching broker '" + first.name + "'");
+	}
+
+	private List<ObservableLongGauge> brokerGauges(BrokerRuntime broker, Attributes node) {
 		List<ObservableLongGauge> gauges = new ArrayList<>();
 		gauges.add(gauge("fennec.services.broker.registrations", "{registration}",
 				"Live registrations this broker holds.", node, () -> broker.snapshot(),
@@ -118,8 +179,7 @@ public class RuntimeTelemetry {
 		gauges.add(gauge("fennec.services.broker.changes", "{change}",
 				"How often this broker's state has changed since it started.", node,
 				() -> broker.snapshot(), snapshot -> snapshot.changeCount));
-		watched.put(broker, gauges);
-		LOG.info("[DDSR] watching broker '" + first.name + "'");
+		return gauges;
 	}
 
 	/**
@@ -149,6 +209,11 @@ public class RuntimeTelemetry {
 	void setClient(ClientRuntime client, Map<String, Object> properties) {
 		ClientRuntimeDTO first = client.snapshot();
 		Attributes node = Attributes.of(NODE, first.consumerId == null ? "client" : first.consumerId);
+		watched.put(client, new Watched(() -> clientGauges(client, node)));
+		LOG.info("[DDSR] watching client runtime '" + first.consumerId + "'");
+	}
+
+	private List<ObservableLongGauge> clientGauges(ClientRuntime client, Attributes node) {
 		List<ObservableLongGauge> gauges = new ArrayList<>();
 		gauges.add(gauge("fennec.services.client.published", "{implementation}",
 				"Implementations this runtime published.", node, () -> client.snapshot(),
@@ -168,8 +233,7 @@ public class RuntimeTelemetry {
 		gauges.add(gauge("fennec.services.client.changes", "{change}",
 				"How often this runtime's state has changed since it started.", node,
 				() -> client.snapshot(), snapshot -> snapshot.changeCount));
-		watched.put(client, gauges);
-		LOG.info("[DDSR] watching client runtime '" + first.consumerId + "'");
+		return gauges;
 	}
 
 	void updatedClient(ClientRuntime client, Map<String, Object> properties) {
@@ -190,7 +254,7 @@ public class RuntimeTelemetry {
 	 */
 	private <T> ObservableLongGauge gauge(String name, String unit, String description, Attributes node,
 			Supplier<T> snapshot, ToLongFunction<T> reading) {
-		return meter.gaugeBuilder(name)
+		return meters.get(scope).gaugeBuilder(name)
 				.ofLongs()
 				.setUnit(unit)
 				.setDescription(description)
@@ -198,12 +262,9 @@ public class RuntimeTelemetry {
 	}
 
 	private void close(Object runtime) {
-		List<ObservableLongGauge> gauges = watched.remove(runtime);
-		if (gauges == null) {
-			return;
-		}
-		for (ObservableLongGauge gauge : gauges) {
-			gauge.close();
+		Watched entry = watched.remove(runtime);
+		if (entry != null) {
+			entry.close();
 		}
 	}
 

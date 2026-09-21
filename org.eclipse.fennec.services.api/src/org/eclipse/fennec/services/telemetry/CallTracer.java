@@ -107,6 +107,23 @@ public interface CallTracer {
 	CallSpan calling(String operation, TraceCarrier outbound);
 
 	/**
+	 * Work that stays here, as the parent of the calls it makes.
+	 *
+	 * <p>For a caller whose unit of work is several calls — discover,
+	 * invoke, release — and who wants them in one trace rather than
+	 * three. Nothing is injected, because nothing travels; what makes
+	 * this useful is that the calls made inside it find it as their
+	 * parent.
+	 *
+	 * @param operation what this unit of work is called
+	 */
+	default CallSpan doing(String operation) {
+		return calling(operation, TraceCarrier.writing((field, value) -> {
+			// Nowhere to write: this span does not leave the process.
+		}));
+	}
+
+	/**
 	 * A call this runtime is about to answer.
 	 *
 	 * <p>Reads the caller's context out of {@code inbound}. A request

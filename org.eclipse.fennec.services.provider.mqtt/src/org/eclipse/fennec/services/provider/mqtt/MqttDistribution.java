@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.provider.mqtt;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.eclipse.fennec.services.MqttFlavor;
 
@@ -43,6 +44,17 @@ public interface MqttDistribution {
 	 * @return closing it stops answering. Idempotent.
 	 */
 	Served serve(MqttFlavor flavor, Object service, String name);
+
+	/**
+	 * The same, for a caller that resolves the service per call.
+	 *
+	 * <p>What a generic distribution needs: the implementation behind a
+	 * contract comes and goes, and a transport that captured it once
+	 * would answer on behalf of a service that is no longer there. The
+	 * supplier is asked per call and may answer null, which the caller
+	 * is told about as a failed invocation rather than as silence.
+	 */
+	Served serve(MqttFlavor flavor, Supplier<Object> service, String name);
 
 	/** A contract being served. */
 	interface Served extends AutoCloseable {

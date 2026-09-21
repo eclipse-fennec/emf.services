@@ -114,9 +114,34 @@ flavor, a dispatcher that reads the call, invokes the service and
 answers on the topic the call named. Nothing in it is written per
 contract.
 
-It has no configuration of its own. Where it listens is the flavor's
-own statement — the brokers it announces — and connections are pooled
-per broker URL, opened with the first export and closed with the last.
+Connections are pooled per broker URL, opened with the first export and
+closed with the last.
+
+Since #25 it also has the configuration-driven half, the twin of
+`provider.rest`: one factory configuration serves one contract from a
+model document and, if asked, announces it.
+
+Factory PID `org.eclipse.fennec.services.provider.mqtt`
+
+| Property | Default | |
+| --- | --- | --- |
+| `service.filter` | — | **required**, usually `(ddsr.contract=<name>)` |
+| `model.bundle` | — | **required**, the bundle carrying the document |
+| `model.entry` | — | **required**, the path inside it |
+| `ddsr.contract` | `""` | the contract's name |
+| `publish` | `false` | announce to a broker as well as serve |
+| `mqtt.broker` | `""` | where this instance listens; empty keeps what the document says |
+| `broker.url` | `""` | only used to name the contract in the announcement |
+
+Topics and QoS are **not** in that table, and that is the point: they
+are the contract's, read from the same document that is announced. What
+a deployment states is where it runs.
+
+Unlike the REST twin it goes down in the right order by construction:
+the withdrawal is awaited first and the subscription closed afterwards,
+so a consumer is told while the topics still answer. A subscription can
+do that; a whiteboard application cannot, because Declarative Services
+unregisters it before the component's own deactivation runs.
 
 ## `client.java` — the SDK
 

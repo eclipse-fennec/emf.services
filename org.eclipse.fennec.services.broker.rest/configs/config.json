@@ -19,6 +19,14 @@
 	{
 		"public.url": "$[env:DDSR_PUBLIC_URL;default=http://localhost:8887/ddsr/rest]"
 	},
+	"org.eclipse.fennec.services.broker.mqtt":
+	{
+		"broker.url": "$[env:DDSR_MQTT_URL;default=]",
+		"topic.prefix": "$[env:DDSR_MQTT_TOPIC_PREFIX;default=ddsr/events]",
+		"client.id": "$[env:DDSR_MQTT_CLIENT_ID;default=ddsr-broker]",
+		"event.source": "$[env:DDSR_MQTT_EVENT_SOURCE;default=/fennec/services/broker]",
+		"qos": "$[env:DDSR_MQTT_QOS;default=0]"
+	},
 	"org.eclipse.fennec.services.provider.rest~brokerCatalog":
 	{
 		"ddsr.contract": "BrokerCatalog",

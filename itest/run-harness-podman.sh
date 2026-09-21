@@ -84,12 +84,10 @@ podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-clie
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
       "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client.jar
-rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker-mqtt.jar \
-      "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client-mqtt.jar \
+rm -f "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client-mqtt.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider-mqtt.jar
 (cd "$ROOT" && ./gradlew build \
   :org.eclipse.fennec.services.broker.rest:export.broker \
-  :org.eclipse.fennec.services.broker.rest:export.broker-mqtt \
   :org.eclipse.fennec.services.examples.payment:export.payment-provider \
   :org.eclipse.fennec.services.examples.payment:export.payment-provider-mqtt \
   :org.eclipse.fennec.services.client.java:export.client \
@@ -104,8 +102,6 @@ podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=p
   -t ddsr/payment-java "$ROOT/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=client.jar \
   -t ddsr/client-java "$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/"
-podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=broker-mqtt.jar \
-  -t ddsr/broker-mqtt "$ROOT/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=client-mqtt.jar \
   -t ddsr/client-mqtt "$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/"
 podman build -q -f "$ROOT/itest/containers/Containerfile.java" --build-arg JAR=payment-provider-mqtt.jar \
@@ -222,16 +218,20 @@ echo "Scenario C OK: broker-shaped event document delivered and decoded over rea
 
 # ============================================================ Scenario D
 log "Scenario D: Java MQTT wire proof (broker sink + client source over mosquitto TCP)"
-# Fresh broker+client pair from the -mqtt launch variants: same
-# bundles plus org.eclipse.fennec.services.itest.mqtt.config, which
-# wakes the dormant MQTT transports (configurationPolicy REQUIRE) with
-# localhost Mosquitto settings and points the client's eventSource
-# reference at the MQTT source. Config as a BUNDLE on purpose: configurator.initial is
+# The broker is the SHIPPED image with one variable set — the same
+# surface DEPLOYMENT.md documents, so this scenario fails if that
+# surface ever stops working. There is no broker launch variant for
+# MQTT: the bundles are in every launch and the URL wakes them.
+#
+# The client has no such surface, so it keeps its -mqtt variant with
+# org.eclipse.fennec.services.itest.mqtt.config, which configures the
+# client transport and points the eventSource reference at the MQTT
+# source. Config as a BUNDLE on purpose: configurator.initial is
 # parsed before the jakarta.json provider bundle starts ("Invalid
 # JSON"), and JAVA_TOOL_OPTIONS strips the double quotes inline JSON
 # would need.
 podman rm -f ddsr-client-java ddsr-broker >/dev/null 2>&1 || true
-run_container ddsr-broker-mqtt ddsr/broker-mqtt
+run_container ddsr-broker-mqtt ddsr/broker -e DDSR_MQTT_URL=tcp://localhost:1883
 wait_for_url "$BROKER_URL/catalog" 60
 wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883" 60
 

@@ -20,8 +20,8 @@ over a real wire.
 ```
 
 The podman variant builds four images from the exported BND launches
-(`ddsr/broker`, `ddsr/broker-mqtt`, `ddsr/payment-java`,
-`ddsr/client-java`, `ddsr/client-mqtt`) plus one TS image, all on
+(`ddsr/broker`, `ddsr/payment-java`, `ddsr/client-java`,
+`ddsr/client-mqtt`) plus one TS image, all on
 `--network=host` so every localhost default applies unchanged. The TS
 image is also *built* with `--network=host`: its build installs
 dependencies from the npm registry, and rootless podman 5.x (pasta)
@@ -43,9 +43,12 @@ under `itest/work-podman/`.
 | **J** | Java provider serves `BindingProbe` over MQTT from a factory configuration; TS probe invokes it | the provider side needed no code at all: an ordinary OSGi service, a model document and a configuration (#25). The probe's client speaks MQTT for this scenario, because a lookup is filtered by the flavors a consumer states — an MQTT-only implementation is invisible to a REST-only consumer, and rightly so |
 | **E** | TS provider announces `MqttFlavor` beside `RestFlavor`; probe invokes over MQTT | the DoD's "same interface, different transports": `getBalance` is invoked over the announced MQTT flavor, broker address taken from `MqttFlavor.brokers`, request/response via the frozen envelope ([WIRE_FORMAT.md](WIRE_FORMAT.md)) |
 
-Scenario D runs the `-mqtt` launch variants: the MQTT transports ship
-dormant (`configurationPolicy = REQUIRE`) in every launch and are woken
-by the harness-only configuration bundle
+The MQTT transports ship dormant (`configurationPolicy = REQUIRE`) in
+every launch. Scenario D wakes the broker's the way a deployment does —
+the shipped `ddsr/broker` image with `DDSR_MQTT_URL` set — so the
+documented environment surface is under test here and not only in a
+`docker run` example. The client has no such surface and keeps its
+`-mqtt` launch variant with the harness-only configuration bundle
 `org.eclipse.fennec.services.itest.mqtt.config`.
 
 **F — same identity restarts on a new port.** A second instance of the

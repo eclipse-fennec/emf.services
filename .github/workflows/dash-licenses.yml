@@ -49,7 +49,7 @@ jobs:
         continue-on-error: true
         run: bash tools/dash-licenses.sh
       - name: Upload DEPENDENCIES
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: DEPENDENCIES

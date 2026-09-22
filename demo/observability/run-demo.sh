@@ -13,6 +13,9 @@
 # so the last minutes stay readable, and stop.sh takes it down.
 #
 # Java 21: newer JVMs break the SPI Fly weaving these launches need.
+# Node 24 with corepack for the TypeScript consumer: pnpm 11 does not
+# start on Node 20. An nvm that is installed but not on the PATH is
+# picked up below.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -73,6 +76,36 @@ start_jar() { # name jar service-name
   PIDS+=("$LAST_PID")
 }
 
+# ------------------------------------------------------------- the tools
+# Checked first, so a missing tool is one line here and not a bare
+# "corepack: command not found" a minute into the build (#146 added the
+# Node half; a shell whose nvm default points at a version that is not
+# installed has no node on its PATH at all).
+log "tools"
+if ! command -v corepack >/dev/null 2>&1; then
+  NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # nvm.sh is not written for `set -u`.
+    set +u
+    # shellcheck disable=SC1091
+    . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 || true
+    nvm use --silent 24 >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
+    set -u
+  fi
+fi
+command -v corepack >/dev/null 2>&1 \
+  || { echo "no node/corepack on the PATH — the TypeScript consumer needs Node 24 (nvm install 24)" >&2; exit 1; }
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+[ "$NODE_MAJOR" -ge 22 ] \
+  || { echo "Node $(node --version) is too old — pnpm 11 needs Node 22+, the demo runs on 24 (nvm use 24)" >&2; exit 1; }
+JAVA_VERSION="$(java -version 2>&1 | head -1)"
+case "$JAVA_VERSION" in
+  *'"21.'*) ;;
+  *) echo "WARNING: the launches are known to work on Java 21, this is: $JAVA_VERSION" >&2 ;;
+esac
+echo "java: $JAVA_VERSION"
+echo "node: $(node --version), pnpm: $(corepack pnpm --version)"
+
 # ------------------------------------------------------------ the stack
 log "observability stack"
 "$DIR/deploy.sh"
@@ -96,6 +129,12 @@ rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/ex
   :org.eclipse.fennec.services.examples.payment:export.payment-provider-otel \
   :org.eclipse.fennec.services.client.java:export.client-otel) >"$WORK/gradle.log" 2>&1 \
   || { tail -30 "$WORK/gradle.log"; exit 1; }
+
+# The TypeScript workspace too, before any framework is started: a
+# consumer that cannot be built should fail the demo here, not after
+# three JVMs are up.
+(cd "$TS" && corepack pnpm install --frozen-lockfile && corepack pnpm -r build) >"$WORK/pnpm.log" 2>&1 \
+  || { tail -30 "$WORK/pnpm.log"; exit 1; }
 
 BROKER_JAR="$ROOT/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker-otel.jar"
 PROVIDER_JAR="$ROOT/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider-otel.jar"
@@ -131,8 +170,6 @@ echo "consumer up — calling Payment on a timer"
 # and ends in the Java provider is the claim this project makes, in
 # one picture.
 log "consumer (TypeScript)"
-(cd "$TS" && corepack pnpm install --frozen-lockfile && corepack pnpm -r build) >"$WORK/pnpm.log" 2>&1 \
-  || { tail -30 "$WORK/pnpm.log"; exit 1; }
 mkdir -p "$WORK/ts-consumer"
 (cd "$TS/examples/payment" \
   && OTEL_SERVICE_NAME=fennec-ts-consumer OTEL_EXPORTER_OTLP_ENDPOINT="$OTLP" \

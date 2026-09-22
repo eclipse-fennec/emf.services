@@ -8,7 +8,7 @@ daemon; the first build downloads the BND/Maven world once.
 ## Prerequisites
 
 - **Java 21** (the BND workspace builds and runs on 21)
-- **Node.js 20+ with pnpm** for the TypeScript track
+- **Node.js 24 with corepack (pnpm 11)** for the TypeScript track — pnpm 11 does not start on Node 20
 - optional: **podman** for the containerized harness, which also runs
   the MQTT scenarios against an Eclipse Mosquitto container
 

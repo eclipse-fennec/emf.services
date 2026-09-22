@@ -22,6 +22,9 @@ Then open **http://localhost:3000** (no login) and pick the dashboard
 running so the last minutes stay readable. `stop.sh` takes it down.
 
 Java 21 — newer JVMs break the SPI Fly weaving these launches need.
+Node 24 with corepack for the TypeScript consumer — pnpm 11 does not
+start on Node 20. `run-demo.sh` checks both before it builds anything,
+and picks up an nvm that is installed but not on the PATH.
 
 ## What to show
 

@@ -81,6 +81,31 @@ require_port_free() { # port
   fi
 }
 
+# ---------------------------------------------------------------- tools
+# Node 24 with corepack for the TypeScript half: pnpm 11 does not start
+# on Node 20, and a shell whose nvm default points at a version that is
+# not installed has no node on its PATH at all. Checked before the build,
+# so the failure is one line here and not a bare "corepack: command not
+# found" in pnpm.log a minute later (same block as run-demo.sh).
+if ! command -v corepack >/dev/null 2>&1; then
+  NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # nvm.sh is not written for `set -u`.
+    set +u
+    # shellcheck disable=SC1091
+    . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 || true
+    nvm use --silent 24 >/dev/null 2>&1 || nvm use --silent node >/dev/null 2>&1 || true
+    set -u
+  fi
+fi
+command -v corepack >/dev/null 2>&1 \
+  || { echo "no node/corepack on the PATH — the TypeScript half needs Node 24 (nvm install 24)" >&2; exit 1; }
+NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
+[ "$NODE_MAJOR" -ge 22 ] \
+  || { echo "Node $(node --version) is too old — pnpm 11 needs Node 22+, the harness runs on 24 (nvm use 24)" >&2; exit 1; }
+echo "java: $(java -version 2>&1 | head -1)"
+echo "node: $(node --version), pnpm: $(corepack pnpm --version)"
+
 # ---------------------------------------------------------------- build
 log "build + export"
 rm -rf "$WORK"

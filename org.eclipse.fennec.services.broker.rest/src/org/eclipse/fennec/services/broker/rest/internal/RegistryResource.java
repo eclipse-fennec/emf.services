@@ -14,6 +14,8 @@
 package org.eclipse.fennec.services.broker.rest.internal;
 
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
+import org.eclipse.fennec.services.invocation.ResultDocument;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ServiceScope;
@@ -45,12 +47,17 @@ import jakarta.ws.rs.core.Response;
 @Path("/registry")
 public class RegistryResource {
 
+	// Package-private so a test can hand it a registry without a broker.
 	@Reference
-	private BrokerCatalog broker;
+	BrokerCatalog broker;
 
 	@GET
 	@Produces(MediaType.APPLICATION_XML)
 	public Response snapshot() {
-		return Response.ok(broker.getRegistry()).build();
+		// With its providers as sibling roots, by the rule every other
+		// answer follows (#88): the registry names its implementations
+		// and providers without containing them, and a reader can only
+		// resolve what it was sent (#174).
+		return Response.ok(new XmiBundle(ResultDocument.roots(broker.getRegistry()))).build();
 	}
 }

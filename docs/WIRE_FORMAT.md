@@ -19,8 +19,8 @@ Base URL: `http://<host>:8887/ddsr/rest` — everything speaks
 
 | Method & path | Purpose | Notes |
 |---|---|---|
-| `GET /registry` | full registry document | detached, consistent snapshot |
-| `GET /catalog` | the registry incl. all catalog entries | |
+| `GET /registry` | full registry document | detached, consistent snapshot; multi-root: the registry, then the providers it names, so `implementations` and `providers` resolve within the document (#174) |
+| `GET /catalog` | the registry incl. all catalog entries | the same document as `/registry` |
 | `GET /catalog/{name}` | one catalog contract | with the `(name, sd1)` key several contracts may share a name: `?fingerprint=sd1:…` addresses one exactly; a bare ambiguous name answers **409** listing the coexisting fingerprints |
 | `POST /catalog` | add a catalog entry | idempotent for identical content; a different contract under the same name **coexists**; the OK diagnostic returns the broker-computed sd1 |
 | `PUT /catalog/{name}/deprecate` | soft-deprecate | optional body with `deprecationReason`/`replacedBy`; optional `?fingerprint=` |

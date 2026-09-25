@@ -22,6 +22,7 @@ import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;
@@ -98,9 +99,22 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 
 	@Override
 	public RemoteServiceRegistry getRegistry() {
-		return tx.send("BrokerCatalog/getRegistry",
+		// One document with several roots: the registry first, then the
+		// providers it names without containing (#174). Read as a bundle,
+		// so the siblings share the registry's resource and its
+		// references resolve instead of staying proxies.
+		XmiBundle bundle = tx.send("BrokerCatalog/getRegistry",
 				tx.target().path("registry").request(MediaType.APPLICATION_XML),
-				request -> request.get(RemoteServiceRegistry.class));
+				request -> request.get(XmiBundle.class));
+		return registryOf(bundle);
+	}
+
+	/** The registry a /registry answer starts with; its siblings stay in its resource. */
+	static RemoteServiceRegistry registryOf(XmiBundle bundle) {
+		if (bundle.roots().isEmpty() || !(bundle.roots().get(0) instanceof RemoteServiceRegistry registry)) {
+			throw new IllegalStateException("the broker's /registry answer does not start with a registry");
+		}
+		return registry;
 	}
 
 	@Override

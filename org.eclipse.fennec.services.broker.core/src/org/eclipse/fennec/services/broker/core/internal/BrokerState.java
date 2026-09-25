@@ -34,7 +34,6 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
-import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.RegistryKind;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
@@ -274,10 +273,15 @@ final class BrokerState {
 	 * outside the lock was a torn-document race, and it leaked
 	 * {@code file:} hrefs of the snapshot path into responses (W1).
 	 * <p>
-	 * The copy (registry plus provider roots, cross-references rewired)
-	 * is parked in a throwaway in-memory resource with the opaque URI
-	 * {@code services:registry}, so downstream XMI serialization has
-	 * resolvable targets for the registry's non-containment references.
+	 * The copy is the registry plus its providers, cross-references
+	 * rewired, and the providers are left in no resource at all. That is
+	 * what makes them travel with an answer (#88): a value that
+	 * references an object nobody contains carries it as a sibling root,
+	 * so {@code /registry} and {@code listCatalog} are one document whose
+	 * {@code implementations} and {@code providers} point into it. They
+	 * used to be parked in a throwaway resource {@code services:registry},
+	 * which gave the references a target in memory and left them as
+	 * hrefs into a document nobody was sent (#174).
 	 */
 	RemoteServiceRegistry getRegistry() {
 		lock.readLock().lock();
@@ -286,15 +290,6 @@ final class BrokerState {
 			RemoteServiceRegistry registryCopy = (RemoteServiceRegistry) copier.copy(registry);
 			copier.copyAll(new ArrayList<>(registry.getProviders()));
 			copier.copyReferences();
-
-			Resource holder = new XMIResourceImpl(URI.createURI("services:registry"));
-			holder.getContents().add(registryCopy);
-			for (ServiceProvider provider : registry.getProviders()) {
-				EObject providerCopy = copier.get(provider);
-				if (providerCopy != null && providerCopy.eContainer() == null) {
-					holder.getContents().add(providerCopy);
-				}
-			}
 			return registryCopy;
 		} finally {
 			lock.readLock().unlock();

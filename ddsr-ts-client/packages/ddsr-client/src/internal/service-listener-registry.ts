@@ -45,6 +45,8 @@ export class ServiceListenerRegistry {
   private readonly interfacesByReference = new Map<string, Set<string>>();
   private eventSource: DdsrEventSource | undefined;
   private subscription: EventSubscription | undefined;
+  /** Whether the stream is established right now, as the event source last said (#167). */
+  private connected = false;
   private readonly onSnapshotRefresh: () => void | Promise<void>;
   private readonly log: (message: string) => void;
 
@@ -92,6 +94,16 @@ export class ServiceListenerRegistry {
    * exactly the acquisition list of the session protocol
    * (ACQUISITION.md §4).
    */
+  /** Whether events are being heard right now. */
+  isStreamConnected(): boolean {
+    return this.connected;
+  }
+
+  /** Which transport carries the events, when the event source says. */
+  eventTransport(): string | undefined {
+    return this.eventSource?.transport;
+  }
+
   knownReferenceIds(): string[] {
     return [...this.interfacesByReference.keys()];
   }
@@ -122,6 +134,7 @@ export class ServiceListenerRegistry {
     const sub = this.subscription;
     this.subscription = undefined;
     if (sub) await sub.close();
+    this.connected = false;
   }
 
   onEvent(event: ServiceEvent): void {
@@ -140,7 +153,13 @@ export class ServiceListenerRegistry {
     if (this.subscription || this.entries.length === 0 || !this.eventSource) return;
     this.subscription = this.eventSource.open({
       onEvent: (event) => this.onEvent(event),
-      onStreamEstablished: () => this.onSnapshotRefresh(),
+      onStreamEstablished: () => {
+        this.connected = true;
+        return this.onSnapshotRefresh();
+      },
+      onStreamLost: () => {
+        this.connected = false;
+      },
     });
   }
 
@@ -149,6 +168,7 @@ export class ServiceListenerRegistry {
     const sub = this.subscription;
     this.subscription = undefined;
     await sub.close();
+    this.connected = false;
   }
 
   /**

@@ -85,6 +85,23 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     return locators;
   }
 
+  /** Every locator this consumer tracks, for the runtime snapshot (#167). */
+  tracked(): ServiceLocatorImpl[] {
+    const all: ServiceLocatorImpl[] = [];
+    for (const set of this.trackedByReference.values()) all.push(...set);
+    return all;
+  }
+
+  /** How this consumer names itself to the broker, when it does. */
+  identity(): string | undefined {
+    return this.consumerId;
+  }
+
+  /** The transports this consumer told the broker it speaks. */
+  flavorsSpoken(): string[] {
+    return [...this.supportedFlavors];
+  }
+
   // ------------------------------------------------------------------
   // Locator tracking (#57): locators follow their service
   // ------------------------------------------------------------------

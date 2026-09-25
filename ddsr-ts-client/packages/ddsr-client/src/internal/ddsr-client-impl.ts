@@ -18,6 +18,7 @@ import { BrokerHttp } from './broker-http';
 import { DdsrProviderImpl } from './provider-impl';
 import { DdsrConsumerImpl } from './consumer-impl';
 import { DdsrCatalogImpl } from './catalog-impl';
+import { ClientRuntimeImpl } from './client-runtime-impl';
 import { ServiceListenerRegistry } from './service-listener-registry';
 import { RestEventSource } from '../events/rest-event-source';
 import type { DdsrEventSource } from '../events/event-source';
@@ -92,6 +93,7 @@ export class DdsrClientImpl implements DdsrClient {
   readonly provider: DdsrProviderImpl;
   readonly consumer: DdsrConsumerImpl;
   readonly catalog: DdsrCatalog;
+  readonly runtime: ClientRuntimeImpl;
 
   private constructor(
     brokerUrl: string,
@@ -103,6 +105,7 @@ export class DdsrClientImpl implements DdsrClient {
     this.provider = provider;
     this.consumer = consumer;
     this.catalog = catalog;
+    this.runtime = new ClientRuntimeImpl(provider, consumer, consumer.listeners);
   }
 
   /**

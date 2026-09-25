@@ -14,6 +14,7 @@
 import type { DdsrProvider } from './ddsr-provider';
 import type { DdsrConsumer } from './ddsr-consumer';
 import type { DdsrCatalog } from './ddsr-catalog';
+import type { ClientRuntime } from './client-runtime';
 
 /**
  * Main entry point for the DDSR client framework.
@@ -27,6 +28,9 @@ export interface DdsrClient {
 
   /** Catalog-side API (ensure/add/deprecate/remove entries). */
   readonly catalog: DdsrCatalog;
+
+  /** What this client holds, for whoever watches it (#167). */
+  readonly runtime: ClientRuntime;
 
   /** The broker base URL this client talks to. */
   readonly brokerUrl: string;

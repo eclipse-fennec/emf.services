@@ -127,6 +127,32 @@ describe('RestEventSource', () => {
     expect(connects()).toBeGreaterThanOrEqual(2);
   });
 
+  it('reports a stream the server closed as lost, before it reconnects (#167)', async () => {
+    const { fetchFn, connects } = streamingFetch([[]]);
+    const order: string[] = [];
+    const source = new RestEventSource({
+      brokerUrl: 'http://broker.test/ddsr/rest',
+      flavors: 'REST',
+      reconnectSeconds: 0,
+      fetchFn,
+      log: () => undefined,
+    });
+    const subscription = source.open({
+      onStreamEstablished: () => {
+        order.push('established');
+      },
+      onStreamLost: () => {
+        order.push('lost');
+      },
+      onEvent: () => undefined,
+    });
+    await until(() => connects() >= 2);
+    await subscription.close();
+
+    expect(source.transport).toBe('rest');
+    expect(order.slice(0, 3)).toEqual(['established', 'lost', 'established']);
+  });
+
   it('an undecodable payload is skipped without tearing the stream down', async () => {
     const { fetchFn } = streamingFetch([
       [sseFrame('<not-xmi>'), sseFrame(lifecycleMessage(UNREGISTERING_XMI))],

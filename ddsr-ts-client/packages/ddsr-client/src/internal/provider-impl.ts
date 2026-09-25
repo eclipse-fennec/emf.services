@@ -49,6 +49,11 @@ export class DdsrProviderImpl implements DdsrProvider {
     this.broker = broker;
   }
 
+  /** What this provider published and has not withdrawn, for the runtime snapshot (#167). */
+  published(): RegistrationImpl[] {
+    return [...this.registrations.values()];
+  }
+
   async publish(
     provider: ServiceProvider,
     implementation: ServiceImplementation
@@ -345,7 +350,7 @@ function pendingReference(implementation: ServiceImplementation): ServiceReferen
   return reference;
 }
 
-class RegistrationImpl implements Registration {
+export class RegistrationImpl implements Registration {
   private readonly broker: BrokerHttp;
   readonly provider: ServiceProvider;
   readonly implementation: ServiceImplementation;

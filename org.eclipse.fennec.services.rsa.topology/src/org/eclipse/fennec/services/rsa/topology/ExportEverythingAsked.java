@@ -343,10 +343,12 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 		// no longer looks exported (#164).
 		if (!stillTracked(reference, registrations)) {
 			// The service left, or the policy was applied anew, while the
-			// admin was exporting it. Nothing will close this later.
+			// admin was exporting it. Nothing will close this later. The
+			// claim stays: whoever stopped tracking it has queued its own
+			// cleanup behind this task, and dropping it here would let a
+			// task queued in between export the same service again.
 			close(registrations);
 			registrations.clear();
-			alreadyAsked.remove(asked);
 		}
 		return !failed;
 	}

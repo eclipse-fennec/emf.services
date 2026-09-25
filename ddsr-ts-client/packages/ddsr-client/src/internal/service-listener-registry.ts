@@ -160,6 +160,12 @@ export class ServiceListenerRegistry {
       onStreamLost: () => {
         this.connected = false;
       },
+      // Dropped, not closed: the source has stopped already, and the
+      // next listener must open a new stream rather than find this one.
+      onStreamEnded: () => {
+        this.connected = false;
+        this.subscription = undefined;
+      },
     });
   }
 

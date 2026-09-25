@@ -197,6 +197,16 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 		}
 	}
 
+	/**
+	 * The source stopped for good (#171). The handle is dropped, not
+	 * closed — there is nothing left to close — so the next listener
+	 * opens a new stream instead of finding a dead one.
+	 */
+	@Override
+	public synchronized void onStreamEnded() {
+		subscription = null;
+	}
+
 	@Override
 	public void onEvent(ServiceEvent event) {
 		if (event == null) {

@@ -37,6 +37,14 @@ export interface EventSourceHandler {
    * (#167). Recovery is the transport's business, not the handler's.
    */
   onStreamLost?(): void;
+
+  /**
+   * The server said to stop, and the source will not reconnect on its
+   * own (#171) — what a 204 No Content answer to the stream request
+   * means (WHATWG EventSource). Whoever holds the subscription drops
+   * it, so that asking for the stream again opens a new one.
+   */
+  onStreamEnded?(): void;
 }
 
 /** Handle for an open event subscription. */

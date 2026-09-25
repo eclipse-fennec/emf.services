@@ -46,6 +46,19 @@ public interface EventSource {
 		 * exactly one code path for "my view may be stale".
 		 */
 		void onStreamEstablished();
+
+		/**
+		 * The server said to stop, and the source will not reconnect on
+		 * its own (#171).
+		 * <p>
+		 * That is what a 204 No Content answer to the stream request means
+		 * (WHATWG EventSource). Whoever holds the subscription treats it
+		 * as gone, so that asking for the stream again opens a new one.
+		 * A default, because a source that never ends a stream on its own
+		 * has nothing to call.
+		 */
+		default void onStreamEnded() {
+		}
 	}
 
 	/**

@@ -153,6 +153,77 @@ describe('RestEventSource', () => {
     expect(order.slice(0, 3)).toEqual(['established', 'lost', 'established']);
   });
 
+  describe('204 No Content (#171)', () => {
+    /** Answers each connect with the next status; 200 is an empty stream that closes at once. */
+    function answering(statuses: number[]): { fetchFn: typeof fetch; connects: () => number } {
+      let connects = 0;
+      const fetchFn = (async () => {
+        const status = statuses[Math.min(connects, statuses.length - 1)];
+        connects++;
+        if (status === 204) return new Response(null, { status: 204 });
+        if (status !== 200) return new Response('no', { status });
+        return new Response(new ReadableStream<Uint8Array>({ start: c => c.close() }), {
+          status: 200, headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }) as typeof fetch;
+      return { fetchFn, connects: () => connects };
+    }
+
+    function source(fetchFn: typeof fetch): RestEventSource {
+      return new RestEventSource({
+        brokerUrl: 'http://broker.test/ddsr/rest', flavors: 'REST', reconnectSeconds: 0, fetchFn, log: () => undefined,
+      });
+    }
+
+    it('204 on the first connect ends the stream: no establish, no reconnect', async () => {
+      const { fetchFn, connects } = answering([204]);
+      const order: string[] = [];
+      const subscription = source(fetchFn).open({
+        onStreamEstablished: () => void order.push('established'),
+        onStreamEnded: () => void order.push('ended'),
+        onEvent: () => undefined,
+      });
+      await until(() => order.includes('ended'));
+      await new Promise(resolve => setTimeout(resolve, 50));
+      await subscription.close();
+
+      expect(order).toEqual(['ended']);
+      expect(connects()).toBe(1);
+    });
+
+    it('204 on a reconnect ends a stream that was established before', async () => {
+      const { fetchFn, connects } = answering([200, 204]);
+      const order: string[] = [];
+      const subscription = source(fetchFn).open({
+        onStreamEstablished: () => void order.push('established'),
+        onStreamLost: () => void order.push('lost'),
+        onStreamEnded: () => void order.push('ended'),
+        onEvent: () => undefined,
+      });
+      await until(() => order.includes('ended'));
+      await subscription.close();
+
+      expect(order).toEqual(['established', 'lost', 'ended']);
+      expect(connects()).toBe(2);
+    });
+
+    it('any other failure is reconnected to, as FR-Sync-Reconnect wants', async () => {
+      const { fetchFn, connects } = answering([503, 404, 204]);
+      let ended = false;
+      const subscription = source(fetchFn).open({
+        onStreamEstablished: () => undefined,
+        onStreamEnded: () => {
+          ended = true;
+        },
+        onEvent: () => undefined,
+      });
+      await until(() => ended);
+      await subscription.close();
+
+      expect(connects()).toBe(3);
+    });
+  });
+
   it('an undecodable payload is skipped without tearing the stream down', async () => {
     const { fetchFn } = streamingFetch([
       [sseFrame('<not-xmi>'), sseFrame(lifecycleMessage(UNREGISTERING_XMI))],

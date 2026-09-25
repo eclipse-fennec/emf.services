@@ -54,6 +54,19 @@ describe('ServiceListenerRegistry', () => {
     expect(source.opened).toBe(1);
   });
 
+  it('a stream the server ended is dropped, and the next listener opens a new one (#171)', () => {
+    const source = new FakeSource();
+    const registry = new ServiceListenerRegistry(source, noRefresh);
+    registry.add('Payment', undefined, () => undefined);
+
+    source.handler?.onStreamEnded?.();
+
+    expect(registry.isStreamConnected()).toBe(false);
+    expect(source.opened).toBe(1);
+    registry.add('Payment', undefined, () => undefined);
+    expect(source.opened).toBe(2);
+  });
+
   it('closes the stream when the last listener is removed', () => {
     const source = new FakeSource();
     const registry = new ServiceListenerRegistry(source, noRefresh);

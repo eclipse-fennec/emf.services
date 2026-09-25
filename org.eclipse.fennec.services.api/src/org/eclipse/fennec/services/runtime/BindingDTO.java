@@ -36,6 +36,9 @@ public class BindingDTO extends DTO {
 	/** Where it calls, when the flavor says. */
 	public String endpoint;
 
-	/** LIVE or REBIND. */
+	/**
+	 * The locator's state: LIVE, MODIFIED (changed in place, refreshed on
+	 * next use), STALE (parked in the cold cache) or REBIND.
+	 */
 	public String state;
 }

@@ -106,7 +106,9 @@ the next update, and it does not reach the broker.
 - `catalog` — every known contract with its status, its `sd1`
   fingerprint, and how many implementations currently serve it
 - `sessions` — each consumer session: what it has acquired, when it
-  last renewed, and whether its event stream is connected
+  last renewed, whether its event stream is connected, and its
+  `origin`: the token `label/runtimeId` the session reached the broker
+  from, the same one a span carries as `fennec.origin`
 - `delivery` — how many events were dropped, and whether the broker
   owes a resync
 - `coldEntries` — how many registrations the cold cache holds
@@ -125,7 +127,9 @@ broker never announces it.
   holding it (`live`), and `failure` when the broker objected
 - `bindings` — what it is bound to: the contract, the filter it was
   tracked with, the reference id, the endpoint the flavor announced,
-  and whether the binding is `LIVE` or rebinding
+  and the locator's state: `LIVE`, `MODIFIED` (changed in place,
+  refreshed on next use), `STALE` (parked in the cold cache) or
+  `REBIND`
 - `eventStreamConnected` and `eventTransport` — the one thing nobody
   else can answer. The broker sees a subscription; only the consumer
   knows whether it is currently reading one.

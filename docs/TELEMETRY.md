@@ -147,7 +147,7 @@ time. `logs=false` turns it off.
 
 ## What a watcher sees of a node
 
-Six gauges per bound runtime, read at collection time from the
+Counts per bound runtime, read at collection time from the
 [runtime services](RUNTIME.md):
 
 ```
@@ -169,6 +169,50 @@ Observed rather than pushed: an instrument asks its runtime for a
 snapshot when the exporter collects. A number recorded when it changed
 stops being true between changes, and a runtime that goes quiet would
 export a stale reading forever.
+
+### Who uses what
+
+The counts say how many, not which. Beside them, three gauges report
+one series per relationship (#166), so a view can draw the deployment
+as a graph:
+
+```
+fennec.services.broker.registration   one per registration and contract
+    fennec.node, fennec.reference, fennec.provider, fennec.implementation,
+    rpc.service, fennec.flavor (comma-joined)
+
+fennec.services.broker.lease          one per registration and holder
+    fennec.node, fennec.reference, fennec.consumer, fennec.origin
+
+fennec.services.client.binding        one per binding
+    fennec.node, rpc.service, fennec.reference, fennec.state
+```
+
+The provider side is on the registration series only. A lease or a
+binding names the registration by `fennec.reference`, and a view joins
+on that. The broker's series are the complete picture: the broker knows
+every lease, including those of consumers that report no telemetry of
+their own. The client's series add what only the consumer knows, which
+is the state its locator is in.
+
+`fennec.origin` on a lease is the token the holder's session reached
+the broker from, the same one its spans carry. That is what joins a
+lease to the calls in a trace. `fennec.consumer` is what the client
+calls itself, which it chooses freely.
+
+A value is the number of relationships with those attributes, which is
+almost always 1. Two locators with different filters may be bound to
+the same registration, and then the binding series says 2.
+
+Two things make series come and go:
+
+- A client without a configured `consumer.id` gets a new random one on
+  every start, so its leases and bindings become new series each time.
+  A deployment that wants a stable graph sets `consumer.id`.
+- A reference id is not stable across a broker restart.
+
+The series grow with the deployment. `relationships=false` turns them
+off and keeps the counts.
 
 ## Installing it
 
@@ -203,7 +247,8 @@ and this bundle's own configuration, if the defaults do not fit:
 ```json
 "org.eclipse.fennec.services.telemetry": {
     "scope": "org.eclipse.fennec.services",
-    "useRegisteredPropagators": false
+    "useRegisteredPropagators": false,
+    "relationships": true
 }
 ```
 
@@ -226,6 +271,10 @@ wiring out without the stack.
 
 ## What is not built yet
 
+- **Runtime gauges in TypeScript (#167).** `@ddsr/telemetry-otel`
+  exports spans only, and the TypeScript client has no runtime snapshot
+  a gauge could observe. Until it does, a TypeScript consumer shows up
+  in the broker's lease series and not in a binding series of its own.
 - **`setPropagators` upstream.** Proposed to the OSGi Technology
   project: `buildPropagators` on the shared base class and a
   `propagators` attribute on both sender configurations, defaulting to

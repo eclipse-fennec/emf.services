@@ -29,6 +29,14 @@ public class SessionDTO extends DTO {
 	/** How the consumer names itself. */
 	public String consumerId;
 
+	/**
+	 * Where it reached the broker from, as the origin token
+	 * {@code label/runtimeId} — the same token a span carries as
+	 * {@code fennec.origin}, which is what lets a lease be matched to a
+	 * call (#166). The consumer id is chosen by the client; this is not.
+	 */
+	public String origin;
+
 	/** When it last renewed, in epoch milliseconds. */
 	public long lastRenewal;
 

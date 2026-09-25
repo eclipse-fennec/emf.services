@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BrokerHttp } from '../src/internal/broker-http';
 import { DdsrClientImpl } from '../src/internal/ddsr-client-impl';
 import type { DdsrEventSource, EventSubscription } from '../src/events/event-source';
@@ -170,6 +170,111 @@ describe('DdsrClientImpl session lifecycle', () => {
     });
     await until(() => requests.filter(r => r.method === 'PUT').length >= 2);
     await client.close();
+  });
+
+  describe('schedule (#170)', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('the first PUT goes out after 5 s, not after a whole interval, as in Java', async () => {
+      vi.useFakeTimers();
+      const { fetchFn, requests } = fakeFetch([
+        { method: 'PUT', urlIncludes: '/consumers/', body: OK_DIAGNOSTIC_XMI },
+      ]);
+      const client = DdsrClientImpl.create({
+        brokerUrl: BROKER,
+        fetchFn,
+        consumerId: 'early',
+        providerHeartbeatSeconds: 0,
+        eventSource: eventSource().source,
+      });
+      const puts = () => requests.filter(r => r.method === 'PUT').length;
+
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(puts()).toBe(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(puts()).toBe(1);
+      await vi.advanceTimersByTimeAsync(600_000);
+      expect(puts()).toBe(2);
+      await client.close();
+    });
+
+    it('an interval shorter than 5 s starts after that interval', async () => {
+      vi.useFakeTimers();
+      const { fetchFn, requests } = fakeFetch([
+        { method: 'PUT', urlIncludes: '/consumers/', body: OK_DIAGNOSTIC_XMI },
+      ]);
+      const client = DdsrClientImpl.create({
+        brokerUrl: BROKER,
+        fetchFn,
+        consumerId: 'quick',
+        sessionIntervalSeconds: 2,
+        providerHeartbeatSeconds: 0,
+        eventSource: eventSource().source,
+      });
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(requests.filter(r => r.method === 'PUT')).toHaveLength(1);
+      await client.close();
+    });
+
+    it('the provider heartbeat starts after 5 s as well', async () => {
+      vi.useFakeTimers();
+      const { fetchFn } = fakeFetch([]);
+      const client = DdsrClientImpl.create({
+        brokerUrl: BROKER,
+        fetchFn,
+        sessionIntervalSeconds: 0,
+        eventSource: eventSource().source,
+      });
+      const heartbeat = vi.spyOn(client, 'heartbeatRegistrations').mockResolvedValue(0);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(heartbeat).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(heartbeat).toHaveBeenCalledTimes(2);
+      await client.close();
+    });
+
+    it('close() stops a schedule that has not fired yet', async () => {
+      vi.useFakeTimers();
+      const { fetchFn, requests } = fakeFetch([
+        { method: 'DELETE', urlIncludes: '/consumers/', body: OK_DIAGNOSTIC_XMI },
+      ]);
+      const client = DdsrClientImpl.create({
+        brokerUrl: BROKER,
+        fetchFn,
+        consumerId: 'short-lived',
+        providerHeartbeatSeconds: 0,
+        eventSource: eventSource().source,
+      });
+      await client.close();
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(requests.filter(r => r.method === 'PUT')).toHaveLength(0);
+    });
+  });
+
+  it('a refused renewal is reported, not only a network failure (#170)', async () => {
+    const { fetchFn } = fakeFetch([
+      { method: 'PUT', urlIncludes: '/consumers/', status: 502, body: 'bad gateway', contentType: 'text/plain' },
+    ]);
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const client = DdsrClientImpl.create({
+      brokerUrl: BROKER,
+      fetchFn,
+      consumerId: 'refused',
+      sessionIntervalSeconds: 0,
+      providerHeartbeatSeconds: 0,
+      eventSource: eventSource().source,
+    });
+
+    await client.renewSession();
+
+    expect(errors).toHaveBeenCalledWith(expect.stringMatching(/session renewal refused \(502\).*bad gateway/));
+    errors.mockRestore();
   });
 
   it('close(): withdraw, then session DELETE, then stream close (FR-P3 order)', async () => {

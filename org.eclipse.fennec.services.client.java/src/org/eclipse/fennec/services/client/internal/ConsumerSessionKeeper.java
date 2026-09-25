@@ -20,6 +20,8 @@ import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
+import org.eclipse.fennec.services.Diagnostic;
+import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerSessions;
@@ -89,10 +91,23 @@ final class ConsumerSessionKeeper {
 				capability.getSupportedFlavors().addAll(supportedFlavors);
 			}
 			session.setCapabilities(capability);
-			sessions.putSession(session, acquisitions.get());
+			Diagnostic answer = sessions.putSession(session, acquisitions.get());
+			if (refused(answer)) {
+				// A refusal does not throw: the broker, or a proxy in front
+				// of it, answered, and the answer was no. Said as loudly as
+				// a failure to reach it, because until the next renewal the
+				// broker holds none of this consumer's leases (#170).
+				LOG.warning("[DDSR-Client] session renewal refused (" + answer.getCode()
+						+ "), retrying next interval: " + answer.getMessage());
+			}
 		} catch (RuntimeException renewalFailure) {
 			LOG.warning("[DDSR-Client] session renewal failed, retrying next interval: " + renewalFailure);
 		}
+	}
+
+	private static boolean refused(Diagnostic answer) {
+		return answer != null && (answer.getSeverity() == DiagnosticSeverity.ERROR
+				|| answer.getSeverity() == DiagnosticSeverity.CANCEL);
 	}
 
 	/**

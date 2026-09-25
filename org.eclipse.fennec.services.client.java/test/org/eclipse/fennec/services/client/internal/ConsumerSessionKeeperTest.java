@@ -22,6 +22,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.Diagnostic;
@@ -52,6 +56,7 @@ class ConsumerSessionKeeperTest {
 		final List<Collection<String>> acquisitions = new ArrayList<>();
 		final List<String> deleted = new ArrayList<>();
 		RuntimeException failPut;
+		Diagnostic answerPut = DdsrDiagnostics.ok("recorded");
 		RuntimeException failDelete;
 
 		@Override
@@ -61,7 +66,7 @@ class ConsumerSessionKeeperTest {
 			}
 			put.add(session);
 			acquisitions.add(acquiredReferenceIds == null ? null : List.copyOf(acquiredReferenceIds));
-			return DdsrDiagnostics.ok("recorded");
+			return answerPut;
 		}
 
 		@Override
@@ -175,6 +180,55 @@ class ConsumerSessionKeeperTest {
 		assertThatCode(() -> keeper(List.of(FlavorKind.REST), List::of).renew())
 				.as("a missed renewal is silence like any other; the TTL already covers it")
 				.doesNotThrowAnyException();
+	}
+
+	@Test
+	@DisplayName("a renewal the broker refuses is logged, not only one that could not reach it (#170)")
+	void aRefusedRenewalIsLogged() {
+		// What SessionsHttpProxy hands back for a 502 from a proxy: no
+		// exception, a diagnostic that says no.
+		broker.answerPut = DdsrDiagnostics.error(502, "bad gateway");
+		List<LogRecord> records = logsOf(() -> keeper(List.of(FlavorKind.REST), List::of).renew());
+
+		assertThat(records).singleElement().satisfies(record -> {
+			assertThat(record.getLevel()).isEqualTo(Level.WARNING);
+			assertThat(record.getMessage()).contains("refused (502)").contains("bad gateway");
+		});
+	}
+
+	@Test
+	@DisplayName("an accepted renewal says nothing")
+	void anAcceptedRenewalIsQuiet() {
+		List<LogRecord> records = logsOf(() -> keeper(List.of(FlavorKind.REST), List::of).renew());
+
+		assertThat(records).isEmpty();
+	}
+
+	/** What the keeper logs while it runs. */
+	private static List<LogRecord> logsOf(Runnable run) {
+		List<LogRecord> records = new ArrayList<>();
+		Handler capture = new Handler() {
+			@Override
+			public void publish(LogRecord record) {
+				records.add(record);
+			}
+
+			@Override
+			public void flush() {
+			}
+
+			@Override
+			public void close() {
+			}
+		};
+		Logger logger = Logger.getLogger(ConsumerSessionKeeper.class.getName());
+		logger.addHandler(capture);
+		try {
+			run.run();
+		} finally {
+			logger.removeHandler(capture);
+		}
+		return records;
 	}
 
 	@Test

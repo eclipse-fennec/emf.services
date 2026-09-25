@@ -64,6 +64,8 @@ export class RestEventSource implements DdsrEventSource {
     this.log = options.log ?? ((m) => console.error(`[ddsr-events] ${m}`));
   }
 
+  readonly transport = 'rest';
+
   open(handler: EventSourceHandler): EventSubscription {
     let running = true;
     let controller = new AbortController();
@@ -72,6 +74,7 @@ export class RestEventSource implements DdsrEventSource {
     const loop = async (): Promise<void> => {
       while (running) {
         controller = new AbortController();
+        let established = false;
         try {
           const response = await this.fetchFn(this.url, {
             headers: { Accept: 'text/event-stream' },
@@ -81,12 +84,14 @@ export class RestEventSource implements DdsrEventSource {
             throw new Error(`event stream request failed: ${response.status}`);
           }
           // Snapshot before events — same ordering as the Java client.
+          established = true;
           await handler.onStreamEstablished();
           await this.pump(response.body, handler);
           if (running) this.log('event stream closed by server, reconnecting');
         } catch (error) {
           if (running) this.log(`event stream error: ${String(error)}`);
         }
+        if (established) handler.onStreamLost?.();
         if (running) {
           await new Promise<void>((resolve) => {
             wakeSleep = resolve;

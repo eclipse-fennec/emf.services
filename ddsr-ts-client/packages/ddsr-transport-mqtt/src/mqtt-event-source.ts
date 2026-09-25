@@ -25,6 +25,7 @@ export interface MqttClientLike {
   on(event: 'connect', listener: () => void): unknown;
   on(event: 'message', listener: (topic: string, payload: Uint8Array) => void): unknown;
   on(event: 'error', listener: (error: Error) => void): unknown;
+  on(event: 'close', listener: () => void): unknown;
   subscribeAsync(topicFilter: string, options?: { qos?: 0 | 1 | 2 }): Promise<unknown>;
   endAsync(force?: boolean): Promise<void>;
 }
@@ -90,6 +91,8 @@ export class MqttEventSource implements DdsrEventSource {
     return `${prefix}/#`;
   }
 
+  readonly transport = 'mqtt';
+
   open(handler: EventSourceHandler): EventSubscription {
     let closed = false;
     let client: MqttClientLike | undefined;
@@ -103,6 +106,10 @@ export class MqttEventSource implements DdsrEventSource {
       client.on('error', (error) => {
         if (!closed) this.log(`mqtt error: ${String(error)}`);
       });
+      // Every disconnect, including the one close() causes: the client
+      // library reconnects on its own and says so with 'connect', which
+      // is when the stream counts as established again.
+      client.on('close', () => handler.onStreamLost?.());
       client.on('connect', () => {
         if (closed) return;
         pipeline = pipeline.then(async () => {

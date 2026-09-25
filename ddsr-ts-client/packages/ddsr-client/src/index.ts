@@ -16,6 +16,7 @@ export type { DdsrClient } from './api/ddsr-client';
 export type { DdsrProvider } from './api/ddsr-provider';
 export type { DdsrConsumer } from './api/ddsr-consumer';
 export type { DdsrCatalog } from './api/ddsr-catalog';
+export type { ClientRuntime, ClientRuntimeDTO, BindingDTO, PublishedDTO } from './api/client-runtime';
 export type { ServiceLocator, TrackedServiceLocator, LocatorState } from './api/service-locator';
 export type { Registration } from './api/registration';
 export type { DdsrServiceListener } from './api/service-listener';

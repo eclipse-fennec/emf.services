@@ -129,6 +129,31 @@ describe('MqttEventSource', () => {
     await subscription.close();
   });
 
+  it('reports a dropped connection as lost, and the reconnect as established again (#167)', async () => {
+    const client = new FakeMqttClient();
+    const order: string[] = [];
+    const source = sourceWith(client);
+    const subscription = source.open({
+      onStreamEstablished: () => {
+        order.push('established');
+      },
+      onStreamLost: () => {
+        order.push('lost');
+      },
+      onEvent: () => undefined,
+    });
+    await settle();
+    client.emit('connect');
+    await settle();
+    client.emit('close');
+    client.emit('connect');
+    await settle();
+
+    expect(source.transport).toBe('mqtt');
+    expect(order).toEqual(['established', 'lost', 'established']);
+    await subscription.close();
+  });
+
   it('decodes the same self-contained payload as SSE, from any topic incl. _unknown', async () => {
     const client = new FakeMqttClient();
     const events: ServiceEvent[] = [];

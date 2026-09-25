@@ -29,6 +29,14 @@ export interface EventSourceHandler {
    * This is where the snapshot refresh happens (FR-Sync-Reconnect).
    */
   onStreamEstablished(): void | Promise<void>;
+
+  /**
+   * Called when an established stream is gone — dropped by the server,
+   * broken by the network, or closed. Optional: it only tells a watcher
+   * that nothing is being heard until the next onStreamEstablished
+   * (#167). Recovery is the transport's business, not the handler's.
+   */
+  onStreamLost?(): void;
 }
 
 /** Handle for an open event subscription. */
@@ -37,6 +45,9 @@ export interface EventSubscription {
 }
 
 export interface DdsrEventSource {
+  /** Which transport this is, as a runtime snapshot names it: `rest` or `mqtt`. */
+  readonly transport?: string;
+
   /**
    * Open the stream. May return undefined when the transport is not
    * available; the SDK will retry on the next listener registration.

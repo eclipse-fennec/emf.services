@@ -53,6 +53,7 @@ import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
+import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -1283,9 +1284,25 @@ class DdsrBrokerImplTest {
 				.as("mutating the returned registry must not touch broker state")
 				.hasSize(1);
 		assertThat(copy).isNotSameAs(broker.liveRegistry());
-		assertThat(copy.eResource().getURI().toString())
-				.as("the copy is parked in the opaque in-memory resource, not the snapshot file")
-				.isEqualTo("services:registry");
+		assertThat(copy.eResource())
+				.as("in no resource — neither the snapshot file, whose file: hrefs leaked into answers (W1), "
+						+ "nor a holder the answer does not carry (#174)")
+				.isNull();
+	}
+
+	@Test
+	void getRegistryCarriesItsProvidersAsSiblingsOfOneDocument() {
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
+		publishFresh("payments-java", "impl", "Payment");
+
+		RemoteServiceRegistry copy = broker.getRegistry();
+
+		assertThat(copy.getProviders().get(0).eResource())
+				.as("a provider nobody contains and no resource holds travels with the answer (#88)")
+				.isNull();
+		assertThat(ResultDocument.roots(copy))
+				.as("so /registry and listCatalog are one document: the registry, then its providers (#174)")
+				.containsExactly(copy, copy.getProviders().get(0));
 	}
 
 	@Test

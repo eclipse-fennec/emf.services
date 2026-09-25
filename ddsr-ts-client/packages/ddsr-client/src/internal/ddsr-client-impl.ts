@@ -19,6 +19,7 @@ import { DdsrProviderImpl } from './provider-impl';
 import { DdsrConsumerImpl } from './consumer-impl';
 import { DdsrCatalogImpl } from './catalog-impl';
 import { ClientRuntimeImpl } from './client-runtime-impl';
+import { newRuntimeId } from './client-origin';
 import { ServiceListenerRegistry } from './service-listener-registry';
 import { RestEventSource } from '../events/rest-event-source';
 import type { DdsrEventSource } from '../events/event-source';
@@ -39,12 +40,18 @@ export interface DdsrClientOptions {
    * Without it the broker records this client as "unnamed".
    */
   originLabel?: string;
-  /** consumerId sent with lookups and used for the broker session. */
+  /**
+   * consumerId sent with lookups and used for the broker session. When
+   * empty, the client calls itself `consumer-<uuid>`, as the Java client
+   * does: without an id there is no session, and a consumer without a
+   * session holds leases the broker cannot see (#167). A generated id
+   * is new on every start; a deployment that wants a stable one sets it.
+   */
   consumerId?: string;
   /**
    * Renewal interval of the idempotent session PUT (acquire+release+
-   * heartbeat in one, ACQUISITION.md §4); requires consumerId. Should
-   * be half the broker's expiry. Default 600; 0 disables sessions.
+   * heartbeat in one, ACQUISITION.md §4). Should be half the broker's
+   * expiry. Default 600; 0 disables sessions.
    */
   sessionIntervalSeconds?: number;
   /**
@@ -125,6 +132,7 @@ export class DdsrClientImpl implements DdsrClient {
       : optionsOrUrl;
 
     const plugins = options.flavorPlugins ?? [];
+    const consumerId = options.consumerId?.trim() ? options.consumerId : `consumer-${newRuntimeId()}`;
     const broker = new BrokerHttp({
       brokerUrl: options.brokerUrl,
       requestor: options.requestor,
@@ -150,16 +158,16 @@ export class DdsrClientImpl implements DdsrClient {
     );
     const supportedFlavors = plugins.map(p => p.flavorKind);
     const consumer = new DdsrConsumerImpl(
-      broker, plugins, supportedFlavors, listeners, options.consumerId, options.greedyRebind ?? false);
+      broker, plugins, supportedFlavors, listeners, consumerId, options.greedyRebind ?? false);
     consumerRef = consumer;
 
     const provider = new DdsrProviderImpl(broker);
     const catalog = new DdsrCatalogImpl(broker);
     const client = new DdsrClientImpl(options.brokerUrl, provider, consumer, catalog);
     client.broker = broker;
-    client.consumerId = options.consumerId;
+    client.consumerId = consumerId;
     const interval = options.sessionIntervalSeconds ?? 600;
-    if (options.consumerId && interval > 0) {
+    if (interval > 0) {
       // First PUT shortly after construction, then the flat interval —
       // the current set of known reference ids IS the acquisition list.
       client.sessionTimer = setInterval(() => {

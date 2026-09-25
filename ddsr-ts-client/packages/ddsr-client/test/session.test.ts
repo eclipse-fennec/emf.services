@@ -132,6 +132,31 @@ describe('DdsrClientImpl session lifecycle', () => {
     expect(put?.body).toContain('id="ref-9"');
   });
 
+  it('a client without a consumerId names itself consumer-<uuid>, as the Java client does (#167)', async () => {
+    const { fetchFn, requests } = fakeFetch([
+      { method: 'PUT', urlIncludes: '/consumers/', body: OK_DIAGNOSTIC_XMI },
+    ]);
+    const unnamed = (consumerId?: string) => DdsrClientImpl.create({
+      brokerUrl: BROKER,
+      fetchFn,
+      consumerId,
+      sessionIntervalSeconds: 0,
+      eventSource: eventSource().source,
+    });
+    const first = unnamed();
+    const blank = unnamed('  ');
+
+    const id = first.runtime.snapshot().consumerId;
+    expect(id).toMatch(/^consumer-[0-9a-f-]{36}$/);
+    expect(blank.runtime.snapshot().consumerId).toMatch(/^consumer-/);
+    expect(blank.runtime.snapshot().consumerId).not.toBe(id);
+
+    // And it has a session under that name, which is the point: its
+    // leases are the broker's to see.
+    await first.renewSession();
+    expect(requests.find(r => r.method === 'PUT')?.url).toBe(`${BROKER}/consumers/${id}`);
+  });
+
   it('the interval timer renews on its own', async () => {
     const { fetchFn, requests } = fakeFetch([
       { method: 'PUT', urlIncludes: '/consumers/', body: OK_DIAGNOSTIC_XMI },

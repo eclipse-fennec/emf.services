@@ -17,10 +17,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ddsr/client": "workspace:*",
     "@ddsr/telemetry": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.222.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
     "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-metrics": "^2.11.0",
     "@opentelemetry/sdk-node": "^0.222.0",
     "@opentelemetry/semantic-conventions": "^1.43.0"
   },

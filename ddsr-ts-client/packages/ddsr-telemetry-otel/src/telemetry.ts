@@ -12,17 +12,22 @@ import {
   SpanKind,
   SpanStatusCode,
   context as activeContext,
+  metrics,
   propagation,
   trace,
   type Context,
   type Span,
   type Tracer,
 } from '@opentelemetry/api';
+import { AggregationTemporalityPreference, OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
+import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { NO_TRACER, type CallSpan, type CallTracer, type TraceCarrier } from '@ddsr/telemetry';
+import type { ClientRuntime } from '@ddsr/client';
+import { watchRuntime, type RuntimeWatch } from './runtime-gauges.js';
 
 /**
  * OpenTelemetry behind the seam (#146) — the TypeScript twin of the
@@ -40,8 +45,15 @@ export interface TelemetryOptions {
   serviceVersion?: string;
   /** The collector's OTLP/HTTP base, default `http://localhost:4318`. */
   endpoint?: string;
-  /** The instrumentation scope of every span. */
+  /** The instrumentation scope of every span and instrument. */
   scope?: string;
+  /**
+   * One series per binding beside the counts (#166, #167). On by
+   * default, as in Java.
+   */
+  relationships?: boolean;
+  /** How often metrics are exported, in milliseconds; default 15000. */
+  metricIntervalMillis?: number;
 }
 
 export interface Telemetry {
@@ -59,6 +71,13 @@ export interface Telemetry {
    */
   during<T>(operation: string, run: () => Promise<T>): Promise<T>;
 
+  /**
+   * Reports what a client runtime holds as gauges, under the names the
+   * Java runtime uses (#167). Pass `client.runtime`; close the handle
+   * when the client goes.
+   */
+  watch(runtime: ClientRuntime): RuntimeWatch;
+
   /** Flushes what is pending and stops the exporter. */
   shutdown(): Promise<void>;
 }
@@ -67,6 +86,7 @@ export interface Telemetry {
 export const NO_TELEMETRY: Telemetry = {
   tracer: NO_TRACER,
   during: (_operation, run) => run(),
+  watch: () => ({ close: () => {} }),
   shutdown: async () => {},
 };
 
@@ -85,10 +105,15 @@ export function startTelemetry(options: TelemetryOptions): Telemetry {
       'service.namespace': options.serviceNamespace ?? 'fennec.services',
     }),
     traceExporter: new OTLPTraceExporter({ url: `${endpoint}/v1/traces` }),
+    metricReader: new PeriodicExportingMetricReader({
+      exporter: metricExporter(endpoint),
+      exportIntervalMillis: options.metricIntervalMillis ?? 15_000,
+    }),
   });
   sdk.start();
 
-  const tracer = trace.getTracer(options.scope ?? 'org.eclipse.fennec.services');
+  const scope = options.scope ?? 'org.eclipse.fennec.services';
+  const tracer = trace.getTracer(scope);
   return {
     tracer: new OtelCallTracer(tracer),
     during: (operation, run) => {
@@ -106,8 +131,26 @@ export function startTelemetry(options: TelemetryOptions): Telemetry {
             throw error;
           });
     },
+    watch: runtime => watchRuntime(metrics.getMeter(scope), runtime, { relationships: options.relationships }),
     shutdown: () => sdk.shutdown(),
   };
+}
+
+/**
+ * The metrics exporter, with delta temporality (#167).
+ *
+ * The runtime gauges rely on a series that is no longer observed being
+ * no longer reported — a binding that ended must not linger at its last
+ * value. The Java SDK behaves that way under either temporality; the
+ * JavaScript SDK does only under delta. A gauge carries no temporality
+ * on the wire, so this changes what the SDK keeps between collections
+ * and nothing a backend sees, and gauges are the only instruments here.
+ */
+export function metricExporter(endpoint: string): OTLPMetricExporter {
+  return new OTLPMetricExporter({
+    url: `${endpoint}/v1/metrics`,
+    temporalityPreference: AggregationTemporalityPreference.DELTA,
+  });
 }
 
 class OtelCallTracer implements CallTracer {

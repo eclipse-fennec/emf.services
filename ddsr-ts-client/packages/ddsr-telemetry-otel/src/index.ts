@@ -9,3 +9,4 @@
  */
 
 export * from './telemetry.js';
+export * from './runtime-gauges.js';

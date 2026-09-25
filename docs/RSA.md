@@ -182,6 +182,15 @@ waiting. The same holds for endpoints discovery reported early. That
 was not true until recently, and it made the example export nothing at
 all.
 
+`ExportEverythingAsked` exports on a thread of its own, never on the
+thread that registered the service or the admin. That thread may be
+the one an export waits for: the REST admin comes up on the Jakarta
+REST whiteboard's update thread, and serving a contract waits until
+that whiteboard has deployed it. Exporting there waited for itself
+(#164). An export that fails does not count as taken: its registration
+is closed, and the service is asked about again when it changes or
+another admin arrives.
+
 ## Where imported proxies live
 
 A proxy for an imported service is registered by an empty host bundle

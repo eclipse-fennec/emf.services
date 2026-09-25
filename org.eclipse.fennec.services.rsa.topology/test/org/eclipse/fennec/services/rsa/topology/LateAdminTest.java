@@ -117,10 +117,12 @@ class LateAdminTest {
 		ServiceReference<Object> asked = Fakes.serviceReference();
 
 		Collection<ExportRegistration> atFirst = topology.addingService(asked);
+		topology.settle();
 		assertThat(atFirst).as("nobody could export it yet").isEmpty();
 
 		WillingAdmin admin = new WillingAdmin();
 		topology.addAdmin(admin, Map.of("remote.configs.supported", "fennec.rest"));
+		topology.settle();
 
 		assertThat(admin.exportedServices).as("the admin is asked about what was already waiting")
 				.containsExactly(asked);
@@ -137,6 +139,7 @@ class LateAdminTest {
 		ServiceReference<Object> asked = Fakes.serviceReference();
 		topology.addingService(asked);
 		topology.addAdmin(new WillingAdmin(), Map.of("remote.configs.supported", "fennec.rest"));
+		topology.settle();
 
 		assertThat(first.exportedServices).as("the first admin saw it when it registered, and not again")
 				.containsExactly(asked);

@@ -56,7 +56,8 @@ const SEPARATOR = '/';
 /** One id per process, for as long as it lives. */
 const PROCESS_RUNTIME_ID = newRuntimeId();
 
-function newRuntimeId(): string {
+/** A fresh id, unique within a deployment; also what an unnamed consumer is called. */
+export function newRuntimeId(): string {
   const cryptoObject = globalThis.crypto;
   if (cryptoObject?.randomUUID) {
     return cryptoObject.randomUUID();

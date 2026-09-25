@@ -189,6 +189,7 @@ class ConcurrentImportTest {
 		topology.addAdmin(admin, Map.of("remote.configs.supported", "fennec.rest"));
 		topology.addingService(asked);
 		topology.addingService(asked);
+		topology.settle();
 
 		assertThat(admin.exportCalls.get())
 				.as("twice means two endpoints and two announcements for one service")

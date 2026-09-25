@@ -15,11 +15,15 @@ package org.eclipse.fennec.services.rsa.topology;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -53,6 +57,17 @@ import org.osgi.util.tracker.ServiceTrackerCustomizer;
  * <p>A deployment that wants another one writes another component:
  * export only what a filter matches, export nothing, export into a
  * particular scope. That is why this is separate and why it is small.
+ *
+ * <p>Every export happens on this component's own thread, never on the
+ * thread that told it something changed (#164). That thread belongs to
+ * whoever registered the service or the admin, and an export may have to
+ * wait for exactly that someone: the REST distribution waits until the
+ * Jakarta REST whiteboard has deployed what it registered, and the
+ * whiteboard deploys on the thread that also registers its runtime —
+ * which is the thread an admin arrives on, through the chain of
+ * components that runtime satisfies. Exporting there waited for itself
+ * until it timed out. One thread, too, and not a pool: the claims below
+ * stay simple when only one thread ever reads and writes them.
  */
 @Designate(ocd = TopologyPolicy.class)
 @Component(immediate = true, configurationPid = TopologyPolicy.PID,
@@ -76,7 +91,7 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 		Object supported = properties.get("remote.configs.supported");
 		spokenByAdmin.put(admin, supported == null ? admin.getClass().getSimpleName()
 				: String.valueOf(supported));
-		exportThrough(admin);
+		exporter.execute(() -> exportThrough(admin));
 	}
 
 	void removeAdmin(RemoteServiceAdmin admin) {
@@ -97,22 +112,32 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	 *
 	 * <p>A service with an empty collection is one no admin has taken
 	 * yet, and it stays here on purpose: it is what {@link #addAdmin}
-	 * comes back to.
+	 * comes back to. Only exports that worked are in a collection — a
+	 * failed one is not something an admin took.
 	 */
 	private final Map<ServiceReference<Object>, Collection<ExportRegistration>> exported = new ConcurrentHashMap<>();
 
 	/**
 	 * Which admin has already been asked about which service.
 	 *
-	 * <p>Two threads reach the export path routinely: a service
+	 * <p>Two events reach the export path routinely: a service
 	 * registering, and an admin arriving and being offered everything
-	 * that was waiting. Asking twice means exporting twice.
+	 * that was waiting. Each sees what the other left, so asking without
+	 * the claim means exporting twice. Read and written on
+	 * {@link #exporter} only, which is why it needs no locking.
 	 */
-	private final Set<Asked> alreadyAsked = ConcurrentHashMap.newKeySet();
+	private final Set<Asked> alreadyAsked = new HashSet<>();
 
 	/** One admin's question about one service. */
 	private record Asked(RemoteServiceAdmin admin, ServiceReference<Object> reference) {
 	}
+
+	/** The one thread every export, update and claim runs on. */
+	private final ExecutorService exporter = Executors.newSingleThreadExecutor(task -> {
+		Thread thread = new Thread(task, "fennec-rsa-topology-export");
+		thread.setDaemon(true);
+		return thread;
+	});
 
 	private ServiceTracker<Object, Collection<ExportRegistration>> tracker;
 
@@ -150,6 +175,9 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	@Deactivate
 	void deactivate() {
 		stop();
+		// Not waited for: an export still running finishes on its own,
+		// finds its service no longer tracked and closes what it got.
+		exporter.shutdown();
 	}
 
 	/** Stop exporting on our own and take back what we exported. */
@@ -160,20 +188,46 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 		}
 		exported.values().forEach(ExportEverythingAsked::close);
 		exported.clear();
-		alreadyAsked.clear();
+		exporter.execute(alreadyAsked::clear);
+	}
+
+	/**
+	 * Waits until everything handed to the export thread so far is done.
+	 * For tests, which otherwise could not tell "not exported" from "not
+	 * exported yet".
+	 */
+	void settle() {
+		CompletableFuture.runAsync(() -> {
+		}, exporter).join();
 	}
 
 	@Override
 	public Collection<ExportRegistration> addingService(ServiceReference<Object> reference) {
 		Collection<ExportRegistration> registrations = new CopyOnWriteArrayList<>();
 		exported.put(reference, registrations);
+		exporter.execute(() -> exportEverywhere(reference, registrations));
+		return registrations;
+	}
+
+	private void exportEverywhere(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
+		boolean failed = false;
 		for (RemoteServiceAdmin admin : admins) {
 			// Every admin is asked: each serves one configuration type,
 			// and a service that names none should be exported by all of
 			// them - which is what a promiscuous topology manager means.
-			exportThrough(admin, reference, registrations);
+			failed |= !exportThrough(admin, reference, registrations);
 		}
-		if (registrations.isEmpty()) {
+		if (!stillTracked(reference, registrations)) {
+			return;
+		}
+		if (!registrations.isEmpty()) {
+			LOG.info("[DDSR] exported " + reference);
+		} else if (failed) {
+			// The admin already said why. What is left to say is that
+			// this is not the end: the service is asked about again when
+			// it changes, and another admin arriving is asked as well.
+			LOG.info("[DDSR] nothing exports " + reference + " — the export failed, and it waits for a change");
+		} else {
 			// No admin speaks the configuration type this service asked
 			// for. It stays tracked all the same, because an admin is a
 			// component like any other and may simply not be up yet; when
@@ -186,10 +240,7 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 			// until someone wonders why nothing happened).
 			LOG.info("[DDSR] nothing exports " + reference + " yet — it asks for "
 					+ asksFor(reference) + ", and " + spoken() + " is here");
-		} else {
-			LOG.info("[DDSR] exported " + reference);
 		}
-		return registrations;
 	}
 
 	/** Which configuration types a service asks to be exported over. */
@@ -207,6 +258,15 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	}
 
 	/**
+	 * Whether a service is still the one this component tracks under
+	 * that collection. It is not when it went away, or when the policy
+	 * was applied anew, while its export was waiting for this thread.
+	 */
+	private boolean stillTracked(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
+		return exported.get(reference) == registrations;
+	}
+
+	/**
 	 * Offers everything that asked to be exported to an admin that just
 	 * arrived.
 	 *
@@ -218,6 +278,9 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 	 * showed it because the TCK exports by hand.
 	 */
 	private void exportThrough(RemoteServiceAdmin admin) {
+		if (!admins.contains(admin)) {
+			return;
+		}
 		exported.forEach((reference, registrations) -> {
 			boolean wasWaiting = registrations.isEmpty();
 			exportThrough(admin, reference, registrations);
@@ -231,26 +294,72 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 		});
 	}
 
-	private void exportThrough(RemoteServiceAdmin admin, ServiceReference<Object> reference,
+	/**
+	 * Asks one admin to export one service, once.
+	 *
+	 * @return false if the export failed; true if it worked, and also if
+	 *         the admin declined or had been asked already
+	 */
+	private boolean exportThrough(RemoteServiceAdmin admin, ServiceReference<Object> reference,
 			Collection<ExportRegistration> registrations) {
+		if (!stillTracked(reference, registrations)) {
+			return true;
+		}
 		// One admin exports one service once. Without the claim, a service
 		// registering while an admin arrives was exported twice through the
 		// same admin — two endpoints and two announcements for one service
 		// (#124).
-		if (!alreadyAsked.add(new Asked(admin, reference))) {
-			return;
+		Asked asked = new Asked(admin, reference);
+		if (!alreadyAsked.add(asked)) {
+			return true;
 		}
+		Collection<ExportRegistration> answer;
 		try {
-			registrations.addAll(admin.exportService(reference, null));
+			answer = admin.exportService(reference, null);
 		} catch (RuntimeException failure) {
 			// One service that cannot be exported must not stop the
 			// others, and the reason has to be visible.
 			LOG.log(Level.WARNING, "[DDSR] exporting " + reference + " failed", failure);
+			return false;
 		}
+		boolean failed = false;
+		for (ExportRegistration registration : answer) {
+			if (registration.getException() == null) {
+				registrations.add(registration);
+			} else {
+				// The admin reported it already; closing it is what
+				// releases whatever it holds. It is not kept, because
+				// what an admin failed to do is not something it took.
+				registration.close();
+				failed = true;
+			}
+		}
+		// A failure keeps its claim, the way a declined configuration type
+		// does. Giving it back would have the next event in the queue ask
+		// again at once — a service registering while an admin arrives
+		// then failed twice. What asks again is a change to the service,
+		// which drops the claims of a service nothing exports, and that
+		// is now reached: a failure is no longer in the collection, so it
+		// no longer looks exported (#164).
+		if (!stillTracked(reference, registrations)) {
+			// The service left, or the policy was applied anew, while the
+			// admin was exporting it. Nothing will close this later.
+			close(registrations);
+			registrations.clear();
+			alreadyAsked.remove(asked);
+		}
+		return !failed;
 	}
 
 	@Override
 	public void modifiedService(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
+		exporter.execute(() -> modified(reference, registrations));
+	}
+
+	private void modified(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
+		if (!stillTracked(reference, registrations)) {
+			return;
+		}
 		if (registrations.isEmpty()) {
 			// Nothing is exported yet, and the change may be exactly what
 			// makes it exportable: a service that named a configuration
@@ -288,9 +397,12 @@ public class ExportEverythingAsked implements ServiceTrackerCustomizer<Object, C
 
 	@Override
 	public void removedService(ServiceReference<Object> reference, Collection<ExportRegistration> registrations) {
-		exported.remove(reference);
-		alreadyAsked.removeIf(asked -> asked.reference().equals(reference));
+		// Withdrawn here and now, not on the export thread: the service is
+		// going away, and its endpoint must not outlive it. An export of
+		// it still waiting there finds it untracked and closes its own.
+		exported.remove(reference, registrations);
 		close(registrations);
+		exporter.execute(() -> alreadyAsked.removeIf(asked -> asked.reference().equals(reference)));
 		LOG.info("[DDSR] withdrew " + reference);
 	}
 

@@ -108,6 +108,16 @@ The Java client reconnects on a fixed delay, 3 seconds by default
 `reconnect.seconds`). There is no backoff and no `Last-Event-ID`,
 because there is nothing to resume.
 
+Every answer is reconnected to except one. **204 No Content stops the
+stream**, which is how a server tells an event stream client to stop
+(WHATWG EventSource). The client then neither reports the stream as
+established nor reconnects on its own. It opens a new stream only when
+one is asked for again, for example by a new listener. Both SDKs behave
+this way (#171). Jersey's own `SseEventSource` lacked it until
+eclipse-ee4j/jersey#6119, and neither SDK uses that class. Our broker
+never answers 204 on this endpoint, so in practice the 204 comes from a
+proxy or a foreign server.
+
 ## MQTT
 
 Publisher `…broker.mqtt`, subscriber `…client.mqtt`. Both are dormant

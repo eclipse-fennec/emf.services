@@ -47,6 +47,9 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.Response.Status.Family;
 
 /**
  * The REST flavor's {@link EventSource}: subscribes to the broker's
@@ -146,6 +149,11 @@ public final class RestEventSource implements EventSource {
 		if (consumerId != null && !consumerId.isBlank()) {
 			target = target.queryParam("consumerId", consumerId);
 		}
+		return open(target, handler);
+	}
+
+	/** Reads one target. Package-private so a test can hand it one without a transport. */
+	AutoCloseable open(WebTarget target, Handler handler) {
 		StreamReader reader = new StreamReader(target, handler);
 		streams.add(reader);
 		reader.start();
@@ -217,7 +225,24 @@ public final class RestEventSource implements EventSource {
 		@Override
 		public void run() {
 			while (running.get()) {
-				try (InputStream in = target.request(MediaType.SERVER_SENT_EVENTS).get(InputStream.class)) {
+				try (Response response = target.request(MediaType.SERVER_SENT_EVENTS).get()) {
+					if (response.getStatus() == Status.NO_CONTENT.getStatusCode()) {
+						// The server's way of saying "stop" (WHATWG
+						// EventSource), and the only one a server has:
+						// every other answer is reconnected to, which is
+						// what FR-Sync-Reconnect wants of a broker that is
+						// briefly away. Jersey's SseEventSource had the same
+						// gap until eclipse-ee4j/jersey#6119 (#171).
+						LOG.info("[DDSR-Client] the broker answered " + target.getUri()
+								+ " with 204 — not reconnecting until the stream is asked for again");
+						stop();
+						handler.onStreamEnded();
+						return;
+					}
+					if (Family.familyOf(response.getStatus()) != Family.SUCCESSFUL) {
+						throw new IllegalStateException("event stream request failed: HTTP " + response.getStatus());
+					}
+					InputStream in = response.readEntity(InputStream.class);
 					this.open = in;
 					LOG.info("[DDSR-Client] subscribed to " + target.getUri());
 					handler.onStreamEstablished();
@@ -270,6 +295,12 @@ public final class RestEventSource implements EventSource {
 		 * the broker's SSE heartbeat guarantees the reader wakes up and
 		 * lets it through within one interval.
 		 */
+		/** Stops reading on this thread's own account, with nothing open to close. */
+		private void stop() {
+			streams.remove(this);
+			running.set(false);
+		}
+
 		@Override
 		public void close() {
 			streams.remove(this);

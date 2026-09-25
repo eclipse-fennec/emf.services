@@ -80,6 +80,18 @@ export class RestEventSource implements DdsrEventSource {
             headers: { Accept: 'text/event-stream' },
             signal: controller.signal,
           });
+          if (response.status === 204) {
+            // The server's way of saying "stop" (WHATWG EventSource), and
+            // the only one it has: every other answer is reconnected to,
+            // which is what FR-Sync-Reconnect wants of a broker that is
+            // briefly away. Jersey's SseEventSource had the same gap
+            // until eclipse-ee4j/jersey#6119 (#171).
+            this.log(`the broker answered ${this.url} with 204 — not reconnecting until the stream`
+              + ' is asked for again');
+            running = false;
+            handler.onStreamEnded?.();
+            return;
+          }
           if (!response.ok || !response.body) {
             throw new Error(`event stream request failed: ${response.status}`);
           }

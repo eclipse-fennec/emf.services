@@ -29,6 +29,7 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -194,6 +195,25 @@ class ServiceListenerRegistryTest {
 	}
 
 	// --- stream lifecycle ---------------------------------------------
+
+	@Test
+	@DisplayName("a stream the server ended is not open, and the next listener opens a new one (#171)")
+	void anEndedStreamIsOpenedAgainOnDemand() {
+		ServiceListenerRegistry r = registry();
+		r.add("Payment", null, event -> {
+		});
+		assertThat(source.opened).isEqualTo(1);
+
+		source.handler.onStreamEnded();
+
+		assertThat(r.isStreamOpen()).as("a 204 left nothing to read").isFalse();
+		assertThat(source.opened).as("and nothing reconnects on its own").isEqualTo(1);
+
+		r.add("Payment", null, event -> {
+		});
+		assertThat(source.opened).as("asking again is what opens it again").isEqualTo(2);
+		assertThat(r.isStreamOpen()).isTrue();
+	}
 
 	@Test
 	void theStreamOpensWithTheFirstListenerAndClosesWithTheLast() {

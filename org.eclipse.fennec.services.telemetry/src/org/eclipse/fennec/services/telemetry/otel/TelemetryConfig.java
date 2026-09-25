@@ -58,4 +58,19 @@ public @interface TelemetryConfig {
 			description = "Use the registered ContextPropagators service instead of the built-in W3C propagators. "
 					+ "The OSGi OpenTelemetry integration currently publishes a no-op, so this is off by default.")
 	boolean useRegisteredPropagators() default false;
+
+	/**
+	 * Whether to report one series per relationship — a binding on the
+	 * client, a registration and a lease on the broker — beside the
+	 * counts (#166).
+	 *
+	 * <p>On by default: what a node holds is small, and it is what a view
+	 * of who uses what is drawn from. It grows with the deployment,
+	 * though, and a backend that is billed per series may want the
+	 * counts alone.
+	 */
+	@AttributeDefinition(name = "Report relationships",
+			description = "Report one series per binding, registration and lease beside the counts. "
+					+ "Turn off to keep only the counts.")
+	boolean relationships() default true;
 }

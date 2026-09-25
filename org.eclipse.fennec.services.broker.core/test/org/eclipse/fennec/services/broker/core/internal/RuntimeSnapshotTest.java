@@ -29,8 +29,11 @@ import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.common.CallOrigin;
+import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.runtime.BrokerRuntimeDTO;
 import org.eclipse.fennec.services.runtime.RegistrationDTO;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -115,6 +118,27 @@ class RuntimeSnapshotTest {
 		assertThat(snapshot.sessions.get(0).consumerId).isEqualTo("consumer-7");
 		assertThat(snapshot.sessions.get(0).acquisitions).containsExactly(referenceId);
 		assertThat(snapshot.sessions.get(0).lastRenewal).isPositive();
+	}
+
+	@Test
+	@DisplayName("a session says where it reached the broker from, so a lease can be matched to a span (#166)")
+	void sessionCarriesItsOrigin() {
+		ClientOrigin origin = ClientOrigin.of("ops-console", "11112222-3333-4444-5555-666677778888");
+		CallOrigin.set(origin);
+		ConsumerSession session = ServicesFactory.eINSTANCE.createConsumerSession();
+		session.setConsumerId("consumer-8");
+		broker.putSession(session, List.of());
+		CallOrigin.clear();
+
+		BrokerRuntimeDTO snapshot = broker.runtimeSnapshot();
+
+		assertThat(snapshot.sessions).singleElement()
+				.satisfies(dto -> assertThat(dto.origin).isEqualTo(origin.token()));
+	}
+
+	@AfterEach
+	void forgetOrigin() {
+		CallOrigin.clear();
 	}
 
 	@Test

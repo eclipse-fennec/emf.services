@@ -33,6 +33,16 @@ final class Configs {
 	}
 
 	static TelemetryConfig of(String scope, boolean logs, boolean useRegisteredPropagators) {
+		return of(scope, logs, useRegisteredPropagators, true);
+	}
+
+	/** The defaults with the relationship series switched as given. */
+	static TelemetryConfig relationships(boolean relationships) {
+		return of("org.eclipse.fennec.services", true, false, relationships);
+	}
+
+	static TelemetryConfig of(String scope, boolean logs, boolean useRegisteredPropagators,
+			boolean relationships) {
 		return new TelemetryConfig() {
 
 			@Override
@@ -53,6 +63,11 @@ final class Configs {
 			@Override
 			public boolean useRegisteredPropagators() {
 				return useRegisteredPropagators;
+			}
+
+			@Override
+			public boolean relationships() {
+				return relationships;
 			}
 		};
 	}

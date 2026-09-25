@@ -209,6 +209,7 @@ final class Runtime {
 			ConsumerSession session = snapshot.session();
 			SessionDTO dto = new SessionDTO();
 			dto.consumerId = session.getConsumerId();
+			dto.origin = session.getOrigin();
 			dto.lastRenewal = session.getLastRenewal() == null ? 0 : session.getLastRenewal().getTime();
 			dto.acquisitions = new ArrayList<>(snapshot.acquiredReferenceIds());
 			dto.connected = sessions.isConnected(session.getConsumerId());

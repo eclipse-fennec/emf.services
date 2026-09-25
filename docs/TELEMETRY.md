@@ -131,6 +131,26 @@ them: a `Demo/tick` from the TypeScript consumer has the Java broker's
 lookup and the Java provider's answer under it, and every span carries
 the same `fennec.origin`.
 
+A TypeScript client reports what it holds as well (#167).
+`client.runtime.snapshot()` is the twin of the Java `ClientRuntime`,
+and `telemetry.watch(client.runtime)` turns it into the client gauges
+under the same names and attributes as Java's, including the binding
+series:
+
+```ts
+const watch = telemetry.watch(client.runtime);
+// …
+watch.close();
+```
+
+`startTelemetry` exports metrics to the same OTLP endpoint as traces,
+every 15 s unless `metricIntervalMillis` says otherwise, and takes
+`relationships: false` like the Java configuration. The exporter uses
+delta temporality. Under cumulative temporality the JavaScript SDK keeps
+reporting a series nobody observes any more, at its last value, so an
+ended binding would linger. The Java SDK drops it either way. A gauge
+carries no temporality on the wire, so a backend sees no difference.
+
 ## Logs
 
 This project logs with JUL by convention, and the OSGi integration
@@ -271,10 +291,6 @@ wiring out without the stack.
 
 ## What is not built yet
 
-- **Runtime gauges in TypeScript (#167).** `@ddsr/telemetry-otel`
-  exports spans only, and the TypeScript client has no runtime snapshot
-  a gauge could observe. Until it does, a TypeScript consumer shows up
-  in the broker's lease series and not in a binding series of its own.
 - **`setPropagators` upstream.** Proposed to the OSGi Technology
   project: `buildPropagators` on the shared base class and a
   `propagators` attribute on both sender configurations, defaulting to

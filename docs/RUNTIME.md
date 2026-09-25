@@ -18,6 +18,12 @@ them exist.
 
 Both live in `org.eclipse.fennec.services.runtime`, in the api bundle.
 
+The TypeScript client has the client half as `client.runtime.snapshot()`
+(#167), with the same fields under the same names. It is a property of
+the client, not a registered service, because there is no registry to
+register it in. Its change count is derived the same way, from a
+fingerprint compared at each snapshot.
+
 ## Getting the answer
 
 ```java

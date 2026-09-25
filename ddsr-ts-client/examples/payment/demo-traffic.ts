@@ -59,6 +59,10 @@ const client = DdsrClientImpl.create({
   tracer: telemetry.tracer,
 });
 
+// What this client holds, as gauges beside the spans (#167): its
+// bindings show up under the same names as a Java consumer's.
+const watch = telemetry.watch(client.runtime);
+
 let running = true;
 
 /**
@@ -109,6 +113,7 @@ async function loop(): Promise<void> {
 
 async function stop(): Promise<void> {
   running = false;
+  watch.close();
   await client.close().catch(() => undefined);
   // Flush what is pending: a demo that is stopped mid-second should
   // still show its last calls.

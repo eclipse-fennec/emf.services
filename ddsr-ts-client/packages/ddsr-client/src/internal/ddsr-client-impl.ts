@@ -14,7 +14,7 @@
 import type { DdsrClient } from '../api/ddsr-client';
 import type { DdsrCatalog } from '../api/ddsr-catalog';
 import type { FlavorPlugin } from '../api/flavor-plugin';
-import { BrokerHttp } from './broker-http';
+import { BrokerHttp, isError } from './broker-http';
 import { DdsrProviderImpl } from './provider-impl';
 import { DdsrConsumerImpl } from './consumer-impl';
 import { DdsrCatalogImpl } from './catalog-impl';
@@ -168,28 +168,22 @@ export class DdsrClientImpl implements DdsrClient {
     client.consumerId = consumerId;
     const interval = options.sessionIntervalSeconds ?? 600;
     if (interval > 0) {
-      // First PUT shortly after construction, then the flat interval —
-      // the current set of known reference ids IS the acquisition list.
-      client.sessionTimer = setInterval(() => {
-        void client.renewSession();
-      }, interval * 1000);
-      // Node: the timer must not keep the process alive on its own.
-      (client.sessionTimer as { unref?: () => void }).unref?.();
+      // The current set of known reference ids IS the acquisition list,
+      // so the first PUT carries whatever the lookups right after
+      // construction found.
+      client.sessionTimer = repeat(interval, () => void client.renewSession());
     }
     const heartbeat = options.providerHeartbeatSeconds ?? 30;
     if (heartbeat > 0) {
-      client.heartbeatTimer = setInterval(() => {
-        void client.heartbeatRegistrations(heartbeat);
-      }, heartbeat * 1000);
-      (client.heartbeatTimer as { unref?: () => void }).unref?.();
+      client.heartbeatTimer = repeat(heartbeat, () => void client.heartbeatRegistrations(heartbeat));
     }
     return client;
   }
 
   private broker: BrokerHttp | undefined;
   private consumerId: string | undefined;
-  private sessionTimer: ReturnType<typeof setInterval> | undefined;
-  private heartbeatTimer: ReturnType<typeof setInterval> | undefined;
+  private sessionTimer: Repeating | undefined;
+  private heartbeatTimer: Repeating | undefined;
 
   /** Provider liveness (#52): one heartbeat per live registration; see DdsrProviderImpl.heartbeatAll. */
   async heartbeatRegistrations(intervalSeconds: number): Promise<number> {
@@ -201,14 +195,27 @@ export class DdsrClientImpl implements DdsrClient {
     }
   }
 
-  /** Exposed for tests and for an eager first lease after lookups. */
+  /**
+   * Puts the session with every reference id this client knows. The
+   * client does this on its own, first after at most 5 s and then every
+   * `sessionIntervalSeconds`; calling it is only needed by a caller that
+   * wants a lease reported sooner than that.
+   */
   async renewSession(): Promise<void> {
     if (!this.broker || !this.consumerId) return;
     try {
-      await this.broker.putConsumerSession(
+      const diagnostic = await this.broker.putConsumerSession(
         this.consumerId,
         [...this.consumer.listeners.knownReferenceIds()]
       );
+      if (isError(diagnostic)) {
+        // A refusal does not throw: the broker, or a proxy in front of
+        // it, answered, and the answer was no. Said as loudly as a
+        // network failure, because until the next renewal the broker
+        // holds none of this client's leases (#170).
+        console.error(`[ddsr] session renewal refused (${diagnostic.code}), retrying next interval: `
+          + `${diagnostic.message ?? ''}`);
+      }
     } catch (error) {
       // Best-effort: a missed renewal is ordinary silence for the TTL.
       console.error(`[ddsr] session renewal failed, retrying next interval: ${String(error)}`);
@@ -222,14 +229,10 @@ export class DdsrClientImpl implements DdsrClient {
    * service must keep its endpoint serving until close() resolves.
    */
   async close(): Promise<void> {
-    if (this.sessionTimer) {
-      clearInterval(this.sessionTimer);
-      this.sessionTimer = undefined;
-    }
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = undefined;
-    }
+    this.sessionTimer?.stop();
+    this.sessionTimer = undefined;
+    this.heartbeatTimer?.stop();
+    this.heartbeatTimer = undefined;
     try {
       await this.provider.withdrawAll();
       // Shutdown-notify BEFORE the streams close (FR-P3 order): the
@@ -244,4 +247,37 @@ export class DdsrClientImpl implements DdsrClient {
       await this.consumer.listeners.close();
     }
   }
+}
+
+/** A task on a fixed interval, as far as close() is concerned. */
+interface Repeating {
+  stop(): void;
+}
+
+/**
+ * Runs a task shortly after construction and then every interval — the
+ * schedule the Java client uses, `scheduleAtFixedRate(task,
+ * min(interval, 5), interval)`. A bare setInterval first fires after a
+ * whole interval, which for a session is 600 s in which the broker knows
+ * nothing of this client (#170).
+ */
+function repeat(intervalSeconds: number, task: () => void): Repeating {
+  let every: ReturnType<typeof setInterval> | undefined;
+  const first = setTimeout(() => {
+    task();
+    every = setInterval(task, intervalSeconds * 1000);
+    unref(every);
+  }, Math.min(intervalSeconds, 5) * 1000);
+  unref(first);
+  return {
+    stop() {
+      clearTimeout(first);
+      if (every) clearInterval(every);
+    },
+  };
+}
+
+/** Node: a timer must not keep the process alive on its own. */
+function unref(timer: ReturnType<typeof setTimeout>): void {
+  (timer as { unref?: () => void }).unref?.();
 }

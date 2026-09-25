@@ -438,7 +438,11 @@ failure restores them); both SDKs (Java: `SessionsHttpProxy` plus a
 renewal scheduler in the client component, `session.interval.seconds`
 default 600, DELETE on shutdown before the stream close; TS:
 `putConsumerSession`/`deleteConsumerSession`/`getConsumerSession` plus a
-timer in `DdsrClientImpl`, the same `close()` ordering). From §11.2 the
+timer in `DdsrClientImpl`, the same `close()` ordering). Both start the
+renewal after at most 5 s and then keep the interval, so a new consumer's
+leases reach the broker within seconds rather than after the first
+interval, and both log a renewal the broker refuses the same way as one
+that did not reach it (#170). From §11.2 the
 **lookup contract addressing** is implemented: `GET
 /references?...&fingerprint=sd1:…` filters exactly against the
 broker-computed catalog fingerprints (Java through the

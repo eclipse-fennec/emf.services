@@ -48,7 +48,7 @@ jobs:
   # other central workflow here; v1.4.0 will be the first tag that carries it.
   container-broker:
     needs: release
-    uses: eclipse-fennec/.github/.github/workflows/reusable-container.yml@ff0237b059b28c6c2c62dfa68b521971ce00327f # main, post-v1.3.0
+    uses: eclipse-fennec/.github/.github/workflows/reusable-container.yml@f5c8662731fa18667b737ea94e6960c79a81f939 # main, post-v1.3.0
     with:
       image-name: emf.services
       docker-label: latest

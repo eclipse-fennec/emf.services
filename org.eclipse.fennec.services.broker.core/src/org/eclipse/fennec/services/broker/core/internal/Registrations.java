@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -165,6 +166,18 @@ final class Registrations implements Retirement, Republication {
 			// rewire, the broker would hold dangling refs to the now-
 			// orphaned stub-SI tree and XMI serialise would fail.
 			rewireOperationRefs(implementation);
+
+			// The gate: with the contracts resolved to their live catalog
+			// entries the document is complete, and the model's
+			// invariants can be asked — among them whether every flavor
+			// can satisfy what its contract's security requirement
+			// demands. Before any state is touched, so a refusal leaves
+			// nothing behind.
+			Optional<String> violations = Invariants.violations(implementation);
+			if (violations.isPresent()) {
+				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_INVALID,
+						"implementation violates the model's invariants: " + violations.get());
+			}
 
 			// Update policy (UPDATE_POLICY.md §2): `replaces` arrives as a
 			// stub from the wire. Rewire it to the live predecessor — a
@@ -322,6 +335,13 @@ final class Registrations implements Retirement, Republication {
 						+ " registration: publish it (with replaces for a policy-driven handover)");
 			}
 			rewireOperationRefs(implementation);
+			// Same gate as publish: what replaces the live document has to
+			// satisfy the invariants the live one does.
+			Optional<String> violations = Invariants.violations(implementation);
+			if (violations.isPresent()) {
+				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_INVALID,
+						"modification violates the model's invariants: " + violations.get());
+			}
 
 			ServiceImplementation before = EcoreUtil.copy(liveImpl);
 			ServiceReference reference = registration.getReference();

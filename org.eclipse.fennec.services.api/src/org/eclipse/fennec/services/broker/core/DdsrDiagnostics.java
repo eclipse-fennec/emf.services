@@ -56,6 +56,8 @@ public final class DdsrDiagnostics {
 	 * or by its {@code sd1} fingerprint.
 	 */
 	public static final int CODE_CATALOG_ENTRY_AMBIGUOUS     = 203;
+	/** The contract violates an invariant of the model (an OCL constraint of services.ecore). */
+	public static final int CODE_CATALOG_ENTRY_INVALID       = 204;
 	public static final int CODE_IMPL_INTERFACE_NOT_IN_CATALOG = 210;
 	public static final int CODE_IMPL_OWNERSHIP_VIOLATION    = 211;
 	public static final int CODE_IMPL_NOT_PUBLISHED          = 212;
@@ -79,6 +81,8 @@ public final class DdsrDiagnostics {
 	 * ({@code 2 × interval}), so it has to be a real duration.
 	 */
 	public static final int CODE_HEARTBEAT_INVALID           = 215;
+	/** The implementation document violates an invariant of the model, e.g. a flavor that cannot satisfy its contract's security requirement. */
+	public static final int CODE_IMPL_INVALID                = 216;
 	public static final int CODE_SESSION_INVALID             = 230;
 	public static final int CODE_INTERFACE_DEPRECATED        = 300;
 	public static final int CODE_PERSISTENCE_FAILED          = 500;

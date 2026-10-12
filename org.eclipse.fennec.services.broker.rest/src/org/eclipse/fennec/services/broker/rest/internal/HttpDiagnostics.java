@@ -54,6 +54,8 @@ final class HttpDiagnostics {
 		case DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION:
 			return 403;
 		case DdsrDiagnostics.CODE_IMPL_INTERFACE_NOT_IN_CATALOG:
+		case DdsrDiagnostics.CODE_IMPL_INVALID:
+		case DdsrDiagnostics.CODE_CATALOG_ENTRY_INVALID:
 			return 422;
 		case DdsrDiagnostics.CODE_PERSISTENCE_FAILED:
 		case DdsrDiagnostics.CODE_NETWORK_PARTITION:

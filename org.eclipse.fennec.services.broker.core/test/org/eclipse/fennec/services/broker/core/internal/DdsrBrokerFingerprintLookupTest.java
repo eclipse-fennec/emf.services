@@ -89,6 +89,7 @@ class DdsrBrokerFingerprintLookupTest {
 		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
 		impl.setName(implName);
 		impl.setVersion("1.0.0");
+		impl.setImplementationId("org.example.impl." + implName);
 		for (ServiceInterface si : interfaces) {
 			impl.getServiceInterfaces().add(si);
 		}

@@ -71,6 +71,7 @@ class DdsrBrokerConcurrencyTest {
 		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
 		impl.setName(implName);
 		impl.setVersion("1.0.0");
+		impl.setImplementationId("org.example.impl." + implName);
 		impl.getServiceInterfaces().add(serviceInterface("Payment"));
 		RestFlavor flavor = ServicesFactory.eINSTANCE.createRestFlavor();
 		flavor.setName(implName);

@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.broker.core.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -81,6 +82,15 @@ final class CatalogStore {
 					return DdsrDiagnostics.ok("catalog entry already present (identical content), fingerprint="
 							+ sd1);
 				}
+			}
+			// The gate: a contract enters the catalog only when it
+			// satisfies the model's invariants (semver, deprecation
+			// shape, a security requirement that does not contradict
+			// itself, ...). Nothing is touched before this.
+			Optional<String> violations = Invariants.violations(serviceInterface);
+			if (violations.isPresent()) {
+				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_INVALID,
+						"catalog entry violates the model's invariants: " + violations.get());
 			}
 			// Who put it there (#125). Set after the fingerprint
 			// comparison above, though sd1 excludes it either way — the
@@ -482,7 +492,13 @@ final class CatalogStore {
 	 * copy at all and is to be left alone.
 	 */
 	static EObject counterpart(EObject target, ServiceInterface published, ServiceInterface inCatalog) {
-		if (target == null || target.eIsProxy() || !EcoreUtil.isAncestor(published, target)) {
+		if (target == null) {
+			return null;
+		}
+		if (target.eIsProxy()) {
+			return behindProxy((InternalEObject) target, inCatalog);
+		}
+		if (!EcoreUtil.isAncestor(published, target)) {
 			return null;
 		}
 		if (target == published) {
@@ -495,5 +511,50 @@ final class CatalogStore {
 					+ " — a reference of the published implementation is dropped");
 		}
 		return counterpart;
+	}
+
+	/**
+	 * The object a wire href meant, when the href names the broker's own
+	 * catalog entry.
+	 *
+	 * <p>A Java publisher keeps its contract in a resource whose URI is
+	 * the broker's canonical {@code /catalog/{name}}, so every reference
+	 * from a flavor into the contract — the operation, a parameter of a
+	 * binding, an exception — arrives as
+	 * {@code http://broker/ddsr/rest/catalog/Payment#//@operations.0/@parameters.1}.
+	 * The codec refuses to follow any href (an XMI body must not make the
+	 * broker fetch things), so what the broker holds is a proxy. The
+	 * operation one was followed positionally in
+	 * {@code Registrations.resolveLiveOperation}; the others were left as
+	 * proxies, which nothing noticed until the invariants were asked on
+	 * publish: a binding whose parameter is a proxy is a binding into
+	 * nothing. The fragment is the containment path inside the contract,
+	 * and the contract is the catalog entry — so the path is simply
+	 * followed there.
+	 *
+	 * @return the object at that path in the catalog entry, or
+	 *         {@code null} when the href names something else — then the
+	 *         reference is left alone, as before
+	 */
+	static EObject behindProxy(InternalEObject proxy, ServiceInterface inCatalog) {
+		URI uri = proxy.eProxyURI();
+		if (uri == null || uri.fragment() == null || inCatalog.getName() == null
+				|| !inCatalog.getName().equals(URI.decode(uri.lastSegment()))) {
+			return null;
+		}
+		String fragment = uri.fragment();
+		if ("/".equals(fragment)) {
+			return inCatalog;
+		}
+		if (!fragment.startsWith("//")) {
+			return null;
+		}
+		String path = fragment.substring(2);
+		EObject found = EcoreUtil.getEObject(inCatalog, path);
+		if (found == null) {
+			LOG.warning("[DDSR] catalog entry " + inCatalog.getName() + " has nothing at " + path
+					+ " — a reference of the published implementation stays unresolved");
+		}
+		return found;
 	}
 }

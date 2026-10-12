@@ -18,6 +18,10 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EcoreFactory;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.util.Diagnostician;
@@ -25,10 +29,15 @@ import org.eclipse.fennec.m2x.ocl.engine.internal.OclEngineImpl;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclSettingDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclValidationDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.CatalogStatus;
+import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.ConsumerSession;
+import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.SecurityRequirement;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -36,6 +45,7 @@ import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
+import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.util.ServicesValidator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -117,6 +127,7 @@ class DdsrBrokerOclTest {
 		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
 		impl.setName(providerName + "-impl");
 		impl.setVersion("1.0.0");
+		impl.setImplementationId("org.example.impl." + providerName + "-impl");
 		impl.getServiceInterfaces().add(serviceInterface("Payment", "charge"));
 		RestFlavor flavor = ServicesFactory.eINSTANCE.createRestFlavor();
 		flavor.setName(providerName + "-impl");
@@ -124,7 +135,7 @@ class DdsrBrokerOclTest {
 		impl.getFlavors().add(flavor);
 		provider.getImplementations().add(impl);
 		assertThat(broker.publishImplementation(provider, impl).getSeverity().getValue())
-				.isLessThan(org.eclipse.fennec.services.DiagnosticSeverity.ERROR_VALUE);
+				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
 		return broker.getServiceReferences("Payment", null, null).get(0);
 	}
 
@@ -204,6 +215,7 @@ class DdsrBrokerOclTest {
 		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
 		impl.setName("empty");
 		impl.setVersion("1.0.0");
+		impl.setImplementationId("org.example.impl." + "empty");
 
 		Diagnostic diagnostic = Diagnostician.INSTANCE.validate(impl);
 
@@ -265,5 +277,171 @@ class DdsrBrokerOclTest {
 		assertThat(Diagnostician.INSTANCE.validate(legacy).getSeverity())
 				.as("a contract that never heard of bounds stays valid")
 				.isEqualTo(Diagnostic.OK);
+	}
+
+	// ------------------------------------------------------------------
+	// Security invariants: the WHAT on the contract, the HOW on the flavor
+	// ------------------------------------------------------------------
+
+	private static SecurityRequirement requirement(boolean authenticated, String... scopes) {
+		SecurityRequirement r = ServicesFactory.eINSTANCE.createSecurityRequirement();
+		r.setAuthenticated(authenticated);
+		r.getScopes().addAll(List.of(scopes));
+		return r;
+	}
+
+	private static BearerTokenScheme bearer() {
+		BearerTokenScheme scheme = ServicesFactory.eINSTANCE.createBearerTokenScheme();
+		scheme.setName("keycloak");
+		scheme.setKind(SecuritySchemeKind.BEARER_TOKEN);
+		scheme.setIssuer("https://idp.example/realms/dim");
+		return scheme;
+	}
+
+	private static ConnectionScheme connection() {
+		ConnectionScheme scheme = ServicesFactory.eINSTANCE.createConnectionScheme();
+		scheme.setName("mosquitto-acl");
+		scheme.setKind(SecuritySchemeKind.CONNECTION);
+		return scheme;
+	}
+
+	/** An implementation of the given contract with one REST flavor and no scheme. */
+	private static ServiceImplementation implementationOf(ServiceInterface contract) {
+		ServiceProvider provider = ServicesFactory.eINSTANCE.createServiceProvider();
+		provider.setName("prov");
+		provider.setVersion("1.0.0");
+		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
+		impl.setName("prov-impl");
+		impl.setVersion("1.0.0");
+		impl.setImplementationId("org.example.impl." + "prov-impl");
+		impl.getServiceInterfaces().add(contract);
+		RestFlavor flavor = ServicesFactory.eINSTANCE.createRestFlavor();
+		flavor.setName("prov-impl");
+		flavor.setBasePath("/secure");
+		impl.getFlavors().add(flavor);
+		provider.getImplementations().add(impl);
+		return impl;
+	}
+
+	@Test
+	void scopesWithoutAuthenticationAreAContradiction() {
+		SecurityRequirement r = requirement(false, "payment:write");
+
+		assertThat(Diagnostician.INSTANCE.validate(r).toString()).contains("scopesImplyAuthenticated");
+
+		r.setAuthenticated(true);
+		assertThat(Diagnostician.INSTANCE.validate(r).getSeverity())
+				.as("scopes presuppose a principal to carry them")
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	@Test
+	void anAuthenticatedContractNeedsASchemeOnEveryFlavor() {
+		ServiceInterface contract = serviceInterface("Secure", "charge");
+		contract.setSecurity(requirement(true));
+		ServiceImplementation impl = implementationOf(contract);
+
+		assertThat(Diagnostician.INSTANCE.validate(impl).toString())
+				.as("a flavor that offers no way to prove a principal cannot serve this contract")
+				.contains("authenticatedContractsHaveAScheme");
+
+		impl.getFlavors().get(0).getSecuritySchemes().add(bearer());
+		assertThat(Diagnostician.INSTANCE.validate(impl).getSeverity())
+				.as("the bearer scheme is one way to prove it")
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	@Test
+	void anOperationMayWaiveTheInterfaceRequirement() {
+		// The interface demands authentication, its only operation waives
+		// it: the effective requirement is the operation's, so a flavor
+		// without a scheme is fine.
+		ServiceInterface contract = serviceInterface("Secure", "ping");
+		contract.setSecurity(requirement(true));
+		contract.getOperations().get(0).setSecurity(requirement(false));
+
+		assertThat(Diagnostician.INSTANCE.validate(implementationOf(contract)).getSeverity())
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	@Test
+	void scopesCannotBeCheckedOnAConnectionScheme() {
+		ServiceInterface contract = serviceInterface("Secure", "charge");
+		contract.getOperations().get(0).setSecurity(requirement(true, "payment:write"));
+		ServiceImplementation impl = implementationOf(contract);
+		impl.getFlavors().get(0).getSecuritySchemes().add(connection());
+
+		assertThat(Diagnostician.INSTANCE.validate(impl).toString())
+				.as("identity once per connection says nothing about a scope per call")
+				.contains("scopesNeedAPerCallScheme");
+
+		impl.getFlavors().get(0).getSecuritySchemes().add(bearer());
+		assertThat(Diagnostician.INSTANCE.validate(impl).getSeverity())
+				.as("one per-call scheme beside the connection one suffices")
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	// ------------------------------------------------------------------
+	// The gate: the broker refuses what the invariants refuse
+	// ------------------------------------------------------------------
+
+	@Test
+	void theBrokerRefusesAnImplementationThatCannotServeItsContract() {
+		ServiceInterface contract = serviceInterface("Secure", "charge");
+		contract.setSecurity(requirement(true));
+		assertThat(broker.addCatalogEntry(contract, "test").getSeverity().getValue())
+				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
+
+		// The publisher sends a stub of the contract, as over the wire;
+		// the broker resolves it to the live entry, which carries the
+		// requirement — and only then asks the invariants.
+		ServiceImplementation impl = implementationOf(serviceInterface("Secure", "charge"));
+		var refusal = broker.publishImplementation(
+				(ServiceProvider) impl.eContainer(), impl);
+
+		assertThat(refusal.getSeverity()).isEqualTo(DiagnosticSeverity.ERROR);
+		assertThat(refusal.getCode()).isEqualTo(DdsrDiagnostics.CODE_IMPL_INVALID);
+		assertThat(refusal.getMessage()).contains("authenticatedContractsHaveAScheme");
+		assertThat(broker.getServiceReferences("Secure", null, null))
+				.as("a refused publish leaves nothing behind")
+				.isEmpty();
+
+		impl.getFlavors().get(0).getSecuritySchemes().add(bearer());
+		assertThat(broker.publishImplementation((ServiceProvider) impl.eContainer(), impl).getSeverity().getValue())
+				.as("with a scheme the same document is taken")
+				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
+		assertThat(broker.getServiceReferences("Secure", null, null)).hasSize(1);
+	}
+
+	@Test
+	void aParameterTypedByAModelTheBrokerDoesNotHaveIsNoDefect() {
+		// PersonStore's parameters are typed by the examples model. The
+		// broker carries documents and does not interpret payloads (#100),
+		// so on the broker that eType is a proxy — by design, and no
+		// reason to refuse the contract.
+		ServiceInterface contract = serviceInterface("PersonStore", "store");
+		EClass person = EcoreFactory.eINSTANCE.createEClass();
+		((InternalEObject) person).eSetProxyURI(URI.createURI("http://geckoprojects.org/ddsr/example#//Person"));
+		Parameter parameter = ServicesFactory.eINSTANCE.createParameter();
+		parameter.setName("person");
+		parameter.setEType(person);
+		contract.getOperations().get(0).getParameters().add(parameter);
+
+		assertThat(broker.addCatalogEntry(contract, "test").getSeverity().getValue())
+				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
+		assertThat(broker.getRegistry().getCatalog()).extracting(ServiceInterface::getName).contains("PersonStore");
+	}
+
+	@Test
+	void theBrokerRefusesAContractThatContradictsItself() {
+		ServiceInterface contract = serviceInterface("Broken", "charge");
+		contract.setSecurity(requirement(false, "payment:write"));
+
+		var refusal = broker.addCatalogEntry(contract, "test");
+
+		assertThat(refusal.getCode()).isEqualTo(DdsrDiagnostics.CODE_CATALOG_ENTRY_INVALID);
+		assertThat(refusal.getMessage()).contains("scopesImplyAuthenticated");
+		assertThat(broker.getRegistry().getCatalog()).extracting(ServiceInterface::getName)
+				.doesNotContain("Broken");
 	}
 }

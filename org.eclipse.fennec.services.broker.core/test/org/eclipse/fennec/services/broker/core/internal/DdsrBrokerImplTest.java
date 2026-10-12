@@ -20,6 +20,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ConsumerSession;
@@ -114,6 +116,7 @@ class DdsrBrokerImplTest {
 		ServiceImplementation impl = ServicesFactory.eINSTANCE.createServiceImplementation();
 		impl.setName(implName);
 		impl.setVersion("1.0.0");
+		impl.setImplementationId("org.example.impl." + implName);
 		impl.getServiceInterfaces().add(si);
 
 		RestFlavor flavor = ServicesFactory.eINSTANCE.createRestFlavor();
@@ -291,6 +294,39 @@ class DdsrBrokerImplTest {
 				.as("the binding must survive the round trip as a reference into the catalog entry")
 				.contains("binding=\"PATH\"")
 				.contains("parameter=");
+	}
+
+	@Test
+	void aBindingThatArrivesAsAnHrefIntoTheCatalogIsRewiredToTheLiveParameter() {
+		// What the Java publisher actually sends: its contract lives in a
+		// resource at the broker's /catalog/{name} URL, so the binding's
+		// parameter travels as an href the codec refuses to follow. The
+		// broker holds a proxy — and a binding to a proxy is a binding
+		// into nothing, which the invariants refuse on publish.
+		ServiceInterface live = serviceInterface("Payment", "charge");
+		live.getOperations().get(0).getParameters().add(parameter("amount"));
+		broker.addCatalogEntry(live, "test");
+
+		// The stub is the same contract (same sd1), as the wire carries it.
+		ServiceInterface stub = serviceInterface("Payment", "charge");
+		stub.getOperations().get(0).getParameters().add(parameter("amount"));
+		ServiceProvider p = provider("payments-java", "impl", stub);
+		RestOperationFlavor of = (RestOperationFlavor) ((RestFlavor) soleImpl(p).getFlavors().get(0))
+				.getOperationFlavors().get(0);
+		of.setPath("/charge/{amount}");
+		Parameter proxy = ServicesFactory.eINSTANCE.createParameter();
+		((InternalEObject) proxy).eSetProxyURI(
+				URI.createURI("http://localhost:8887/ddsr/rest/catalog/Payment#//@operations.0/@parameters.0"));
+		RestParameterBinding binding = ServicesFactory.eINSTANCE.createRestParameterBinding();
+		binding.setParameter(proxy);
+		binding.setBinding(ParameterBinding.PATH);
+		of.getParameterBindings().add(binding);
+
+		assertThat(broker.publishImplementation(p, soleImpl(p)).getSeverity())
+				.isNotEqualTo(DiagnosticSeverity.ERROR);
+		assertThat(binding.getParameter())
+				.as("the href's path is followed inside the live catalog entry")
+				.isSameAs(live.getOperations().get(0).getParameters().get(0));
 	}
 
 	@Test

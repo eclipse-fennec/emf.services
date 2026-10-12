@@ -1,0 +1,7 @@
+IM|fixture:secure-payments:1.0.0|name=secure-payments-rest|version=
+  c|sd1:a841cebca6257b85cc33f95148a320448c369169633bbf986366b25bea816bd2
+  F|RestFlavor|rest|kind=REST|host=http://localhost:9090|basePath=/secure-payments|contentTypes=0:
+    sch|ConnectionScheme|gateway|kind=CONNECTION
+    sch|BearerTokenScheme|keycloak|kind=BEARER_TOKEN|issuer=https://idp.example/realms/dim|audiences=2:broker,payments|jwksUri=|scopeClaim=roles
+    o|RestOperationFlavor|charge|operation=charge|consumes=0:|produces=0:|method=POST|path=/charge|returnCodes=0:
+    o|RestOperationFlavor|getBalance|operation=getBalance|consumes=0:|produces=0:|method=GET|path=/balance|returnCodes=0:

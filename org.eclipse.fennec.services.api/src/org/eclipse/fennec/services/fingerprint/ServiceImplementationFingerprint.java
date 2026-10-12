@@ -16,7 +16,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.MqttFlavor;
+import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.MqttOperationFlavor;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.ParameterBinding;
@@ -24,6 +26,8 @@ import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.RestParameterBinding;
+import org.eclipse.fennec.services.SecurityScheme;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -113,6 +117,7 @@ public final class ServiceImplementationFingerprint {
 
 		for (ServiceFlavor flavor : implementation.getFlavors()) {
 			lines.add("  " + flavorLine(flavor));
+			lines.addAll(schemeLines(flavor));
 			for (ServiceOperationFlavor operationFlavor : flavor.getOperationFlavors()) {
 				lines.add("    " + operationFlavorLine(operationFlavor));
 				lines.addAll(bindingLines(operationFlavor));
@@ -144,6 +149,40 @@ public final class ServiceImplementationFingerprint {
 					.append("|defaultRetained=").append(mqtt.isDefaultRetained());
 		}
 		return line.toString();
+	}
+
+	/**
+	 * The security schemes a flavor offers — the HOW of security, part
+	 * of the endpoint. Two implementations that differ only in how a
+	 * caller proves itself are not the same endpoint: a consumer holding
+	 * the older document calls it wrongly. Render only where the flavor
+	 * declares any (the extension rule of the scheme); schemes are
+	 * alternatives, a set, so they sort by name, and so do audiences and
+	 * trusted issuers.
+	 */
+	private static List<String> schemeLines(ServiceFlavor flavor) {
+		List<SecurityScheme> schemes = new ArrayList<>(flavor.getSecuritySchemes());
+		schemes.sort(Comparator.comparing(SecurityScheme::getName,
+				Comparator.nullsFirst(Comparator.naturalOrder())));
+		List<String> lines = new ArrayList<>();
+		for (SecurityScheme scheme : schemes) {
+			StringBuilder line = new StringBuilder("    sch|")
+					.append(scheme.eClass().getName())
+					.append('|').append(esc(scheme.getName()))
+					.append("|kind=").append(scheme.getKind() != null
+							? scheme.getKind().getLiteral()
+							: SecuritySchemeKind.BEARER_TOKEN.getLiteral());
+			if (scheme instanceof BearerTokenScheme bearer) {
+				line.append("|issuer=").append(esc(bearer.getIssuer()))
+						.append("|audiences=").append(ServiceDescriptionFingerprint.sortedList(bearer.getAudiences()))
+						.append("|jwksUri=").append(esc(bearer.getJwksUri()))
+						.append("|scopeClaim=").append(esc(bearer.getScopeClaim()));
+			} else if (scheme instanceof MutualTlsScheme mtls) {
+				line.append("|trustedIssuers=").append(ServiceDescriptionFingerprint.sortedList(mtls.getTrustedIssuers()));
+			}
+			lines.add(line.toString());
+		}
+		return lines;
 	}
 
 	private static String operationFlavorLine(ServiceOperationFlavor operationFlavor) {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:services="http://eclipse.org/fennec/services/1.0" name="SecurePayment" version="1.0.0" description="The payment contract with a security requirement: every call authenticated, charging needs two scopes.">
+  <security authenticated="true"/>
+  <operations name="charge" description="Charge an amount.">
+    <security authenticated="true">
+      <scopes>payment:write</scopes>
+      <scopes>payment:read</scopes>
+    </security>
+    <parameters name="amount" type="double"/>
+    <returnValue name="result" type="double"/>
+  </operations>
+  <operations name="getBalance" description="Get current account balance.">
+    <parameters name="accountId" type="string"/>
+    <returnValue name="result" type="double"/>
+  </operations>
+</services:ServiceInterface>

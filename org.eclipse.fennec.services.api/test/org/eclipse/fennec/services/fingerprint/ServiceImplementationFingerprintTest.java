@@ -16,13 +16,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Capability;
+import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttQos;
 import org.eclipse.fennec.services.Parameter;
@@ -31,6 +34,7 @@ import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.RestParameterBinding;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceImplementation;
@@ -67,14 +71,58 @@ class ServiceImplementationFingerprintTest {
 	}
 
 	private static ServiceImplementation loadFixtureImplementation() throws Exception {
+		return loadFixtureImplementation("payment-impl.xmi");
+	}
+
+	private static ServiceImplementation loadFixtureImplementation(String file) throws Exception {
 		ResourceSet rs = new ResourceSetImpl();
 		rs.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put(Resource.Factory.Registry.DEFAULT_EXTENSION, new XMIResourceFactoryImpl());
 		rs.getPackageRegistry().put(ServicesPackage.eNS_URI, ServicesPackage.eINSTANCE);
 		Resource resource = rs.getResource(
-				URI.createFileURI(fixtureDir().resolve("payment-impl.xmi").toString()), true);
+				URI.createFileURI(fixtureDir().resolve(file).toString()), true);
 		ServiceProvider provider = (ServiceProvider) resource.getContents().get(0);
 		return provider.getImplementations().get(0);
+	}
+
+	// ------------------------------------------------------------------
+	// Security schemes are endpoint — golden, and the extension rule
+	// ------------------------------------------------------------------
+
+	@Test
+	void goldenSecuredCanonicalFormAndFingerprint() throws Exception {
+		ServiceImplementation secured = loadFixtureImplementation("secure-payment-impl.xmi");
+
+		assertThat(ServiceImplementationFingerprint.canonicalForm(secured))
+				.as("the sch lines render where the flavor declares schemes, sorted by name")
+				.isEqualTo(fixture("secure-payment-impl.canonical.txt"));
+		assertThat(ServiceImplementationFingerprint.fingerprint(secured))
+				.isEqualTo(fixture("secure-payment-impl.im1"));
+	}
+
+	@Test
+	void aSchemeIsEndpointAndSchemesAreASet() throws Exception {
+		ServiceImplementation open = loadFixtureImplementation();
+		String before = ServiceImplementationFingerprint.fingerprint(open);
+		RestFlavor flavor = (RestFlavor) open.getFlavors().get(0);
+		BearerTokenScheme keycloak = ServicesFactory.eINSTANCE.createBearerTokenScheme();
+		keycloak.setName("keycloak");
+		keycloak.setIssuer("https://idp.example/realms/dim");
+		ConnectionScheme gateway = ServicesFactory.eINSTANCE.createConnectionScheme();
+		gateway.setName("gateway");
+		gateway.setKind(SecuritySchemeKind.CONNECTION);
+		flavor.getSecuritySchemes().addAll(List.of(keycloak, gateway));
+		String declaredOneWay = ServiceImplementationFingerprint.fingerprint(open);
+
+		assertThat(declaredOneWay)
+				.as("how a caller proves itself is part of the endpoint")
+				.isNotEqualTo(before);
+
+		flavor.getSecuritySchemes().clear();
+		flavor.getSecuritySchemes().addAll(List.of(gateway, keycloak));
+		assertThat(ServiceImplementationFingerprint.fingerprint(open))
+				.as("schemes are alternatives, their order says nothing")
+				.isEqualTo(declaredOneWay);
 	}
 
 	@Test

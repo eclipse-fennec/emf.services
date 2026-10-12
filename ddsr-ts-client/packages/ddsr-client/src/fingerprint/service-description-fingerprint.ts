@@ -56,6 +56,8 @@ export function canonicalForm(serviceInterface: ServiceInterface | undefined): s
 
   const status = serviceInterface.status || 'ACTIVE';
   lines.push(`I|${esc(serviceInterface.name)}|version=${esc(serviceInterface.version)}|status=${status}`);
+  const interfaceSecurity = (serviceInterface as unknown as Record<string, unknown>).security;
+  if (interfaceSecurity) lines.push(`  ${securityLine(interfaceSecurity as Record<string, unknown>)}`);
 
   const exceptions = sortByName(toArray<ServiceException>(serviceInterface.exceptions));
   for (const ex of exceptions) {
@@ -71,6 +73,8 @@ export function canonicalForm(serviceInterface: ServiceInterface | undefined): s
       `  O|${esc(op.name)}|returnType=${esc(returnValue?.type)}` +
       returnExtensions(returnValue)
     );
+    const operationSecurity = (op as unknown as Record<string, unknown>).security;
+    if (operationSecurity) lines.push(`    ${securityLine(operationSecurity as Record<string, unknown>)}`);
     for (const p of toArray<Parameter>(op.parameters)) {
       lines.push(
         `    p|${esc(p.name)}|type=${esc(p.type)}|index=${intText(p.index)}` +
@@ -91,6 +95,21 @@ export function canonicalForm(serviceInterface: ServiceInterface | undefined): s
  * `|eType=…|lower=…|upper=…` for a parameter — each field only where it
  * deviates from its default. Mirrors the Java side field for field.
  */
+/**
+ * The security requirement — the WHAT of security, part of the contract.
+ * Renders only where one is declared (the extension rule of the scheme);
+ * scopes are a set, so they sort. Java parity: securityLine.
+ */
+function securityLine(requirement: Record<string, unknown>): string {
+  return `sec|authenticated=${boolText(requirement.authenticated)}|scopes=${sortedList(requirement.scopes)}`;
+}
+
+/** A list rendered as a set: sorted, `<count>:<e1,e2,…>`. Java parity: sortedList. */
+export function sortedList(values: unknown): string {
+  const elements = toArray<unknown>(values).map(e => String(e)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return `${elements.length}:${elements.map(escListElement).join(',')}`;
+}
+
 function parameterExtensions(p: Parameter): string {
   let out = '';
   const uri = eTypeUri(p.eType);

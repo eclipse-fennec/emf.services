@@ -26,6 +26,7 @@ not built, the page says so and names the issue.
 | write a Java provider or consumer by hand | [Client framework](CLIENT_FRAMEWORK_GUIDE.md) |
 | watch what a broker or a client holds | [Runtime services](RUNTIME.md) |
 | trace a call across consumer, broker and provider | [Telemetry](TELEMETRY.md) |
+| know who may publish, look up, and call | [Security](SECURITY.md) |
 | see all of it in Grafana | [the demo](../demo/observability/README.md) |
 
 
@@ -185,5 +186,7 @@ to end. When a document and the harness disagree, the harness is right.
 - [Runtime services](RUNTIME.md) — what a node holds, and how to be
   told when that changes
 - [Telemetry](TELEMETRY.md) — one trace across the three parties
+- [Security](SECURITY.md) — requirement, scheme and principal in the
+  model; the validation gate; the enforcement design
 - [ARCHITECTURE.md](ARCHITECTURE.md) — the internal view, with the
   decision record

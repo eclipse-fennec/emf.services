@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
@@ -30,6 +31,7 @@ import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -70,13 +72,68 @@ class ServiceDescriptionFingerprintTest {
 	}
 
 	private static ServiceInterface loadFixtureInterface() throws Exception {
+		return loadFixtureInterface("payment.xmi");
+	}
+
+	private static ServiceInterface loadFixtureInterface(String file) throws Exception {
 		ResourceSet rs = new ResourceSetImpl();
 		rs.getResourceFactoryRegistry().getExtensionToFactoryMap()
 				.put(Resource.Factory.Registry.DEFAULT_EXTENSION, new XMIResourceFactoryImpl());
 		rs.getPackageRegistry().put(ServicesPackage.eNS_URI, ServicesPackage.eINSTANCE);
 		Resource resource = rs.getResource(
-				URI.createFileURI(fixtureDir().resolve("payment.xmi").toString()), true);
+				URI.createFileURI(fixtureDir().resolve(file).toString()), true);
 		return (ServiceInterface) resource.getContents().get(0);
+	}
+
+	// ------------------------------------------------------------------
+	// The security requirement is contract — golden, and the extension rule
+	// ------------------------------------------------------------------
+
+	@Test
+	void goldenSecuredCanonicalFormAndFingerprint() throws Exception {
+		ServiceInterface secured = loadFixtureInterface("secure-payment.xmi");
+
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(secured))
+				.as("the sec lines render where a requirement is declared, scopes sorted")
+				.isEqualTo(fixture("secure-payment.canonical.txt"));
+		assertThat(ServiceDescriptionFingerprint.fingerprint(secured))
+				.isEqualTo(fixture("secure-payment.sd1"));
+	}
+
+	@Test
+	void aSecurityRequirementIsContract() {
+		ServiceInterface open = minimal("Payment");
+		open.getOperations().add(operation("charge", "double"));
+		ServiceInterface secured = minimal("Payment");
+		secured.getOperations().add(operation("charge", "double"));
+		SecurityRequirement requirement = ServicesFactory.eINSTANCE.createSecurityRequirement();
+		requirement.setAuthenticated(true);
+		secured.setSecurity(requirement);
+
+		assertThat(ServiceDescriptionFingerprint.fingerprint(secured))
+				.as("who may call is part of what the contract promises")
+				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(open));
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(open))
+				.as("a contract that states nothing renders no sec line — the extension rule")
+				.doesNotContain("sec|");
+	}
+
+	@Test
+	void scopesAreASet() {
+		ServiceInterface a = minimal("Payment");
+		SecurityRequirement ra = ServicesFactory.eINSTANCE.createSecurityRequirement();
+		ra.setAuthenticated(true);
+		ra.getScopes().addAll(List.of("payment:write", "payment:read"));
+		a.setSecurity(ra);
+		ServiceInterface b = minimal("Payment");
+		SecurityRequirement rb = ServicesFactory.eINSTANCE.createSecurityRequirement();
+		rb.setAuthenticated(true);
+		rb.getScopes().addAll(List.of("payment:read", "payment:write"));
+		b.setSecurity(rb);
+
+		assertThat(ServiceDescriptionFingerprint.fingerprint(a))
+				.as("all scopes are required, so their order says nothing")
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(b));
 	}
 
 	@Test

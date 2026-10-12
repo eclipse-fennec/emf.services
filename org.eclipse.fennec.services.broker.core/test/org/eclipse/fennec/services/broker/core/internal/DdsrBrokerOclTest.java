@@ -392,10 +392,13 @@ class DdsrBrokerOclTest {
 		assertThat(broker.addCatalogEntry(contract, "test").getSeverity().getValue())
 				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
 
-		// The publisher sends a stub of the contract, as over the wire;
-		// the broker resolves it to the live entry, which carries the
-		// requirement — and only then asks the invariants.
-		ServiceImplementation impl = implementationOf(serviceInterface("Secure", "charge"));
+		// The publisher sends the contract along, as over the wire — the
+		// same contract, requirement included, since the requirement is
+		// part of sd1. The broker resolves it to the live entry and only
+		// then asks the invariants.
+		ServiceInterface sent = serviceInterface("Secure", "charge");
+		sent.setSecurity(requirement(true));
+		ServiceImplementation impl = implementationOf(sent);
 		var refusal = broker.publishImplementation(
 				(ServiceProvider) impl.eContainer(), impl);
 

@@ -179,10 +179,26 @@ restart drains everything by accident.
 `PUT /consumers/{id}` with somebody else's id **replaces their
 session** — which could be used to disturb the drain semantics (delete
 another consumer's leases → a premature retire) or to inflate it.
-Accepted for the prototype and recorded here; once S2 (authentication)
-is solved, the session is bound to the authenticated identity and
-`{id}` is checked against it. To be noted in SECURITY.md as an addition
-to S2 once the implementation is due.
+Accepted for the prototype and recorded here.
+
+The design that closes it is in [Security](SECURITY.md): the session
+carries a transient `principal` the broker writes from a verified
+credential, `consumerId` is bound to its subject, and a PUT whose id is
+not the caller's own is refused — the object-level rule no contract can
+state, enforced in `Sessions` next to the rules here. The model side
+(the `Principal` class, the `principal` and `domain` features on
+session and registration) is in place; the verifier that fills them is
+not yet.
+
+What is in place today is the **validation gate**: every document the
+broker takes in — a contract on `addCatalogEntry`, an implementation on
+publish and modify — is checked against the model's armed invariants
+(§9) before any state is touched, and refused with
+`CODE_CATALOG_ENTRY_INVALID` or `CODE_IMPL_INVALID` (422 over REST)
+when one is violated. See [Security](SECURITY.md) §7 for the two things
+the gate knows about the broker: a runtime without the OCL engine warns
+once and checks nothing, and a proxy into a payload model is not a
+defect.
 
 ## 8. The registration as a materialised fact — the missing model references
 

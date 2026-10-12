@@ -47,9 +47,11 @@ divergence between the languages is a bug in one of them, never a
 
 ```
 I|<name>|version=<version>|status=<literal>
+  sec|authenticated=<bool>|scopes=<list>   only where the interface declares a requirement
   X|<name>|type=|version=            exceptions, sorted by name
     pr|<tag>|<name>|value=<value>      exception properties, sorted
   O|<name>|returnType=<type>[|returnEType=][|returnLower=|returnUpper=][|returnOptional=true]
+    sec|authenticated=<bool>|scopes=<list>   only where the operation declares one
     p|<name>|type=|index=|optional=|defaultValue=[|eType=][|lower=|upper=]
     x|<exceptionName>                  op exceptions, sorted by name
 ```
@@ -102,6 +104,19 @@ This is the one documented way to extend a frozen scheme: the grammar
 grew, no computable value changed. An extension that cannot meet that
 bar is an `sd2`.
 
+### The security requirement — contract, by the same rule
+
+Who may call an operation is part of what the contract promises (see
+[Security](SECURITY.md) §2): two contracts that differ only in their
+`SecurityRequirement` are not the same contract, and a consumer holding
+the open one would call the secured one wrongly. The `sec` line renders
+the interface-level requirement after the `I` line and an operation's
+own after its `O` line — **only where one is declared**, so every
+contract written before the feature existed hashes as it always did.
+Scopes are a set (all of them are required), so they sort; the
+`authenticated` boolean renders explicitly. The cross-language golden is
+`secure-payment.{xmi,canonical.txt,sd1}`.
+
 ## im1 — implementation fingerprint
 
 im1 **composes** over the sd1 values of the referenced interfaces (the
@@ -111,6 +126,7 @@ Merkle principle) instead of re-traversing them:
 IM|<implementationId>|name=<name>|version=<version>
   c|<sd1-value>                        contracts, DECLARED order
   F|<eClass>|<name>|kind=<literal>…    flavors, DECLARED order
+    sch|<eClass>|<name>|kind=<literal>…  security schemes, sorted by name, only where declared
     o|<eClass>|<name>|operation=|consumes=<list>|produces=<list>…
       pb|<parameter>|binding=<literal>|wireName=   parameter bindings, sorted by parameter
       xb|<exception>|status=<int>                  exception bindings, sorted by exception
@@ -121,6 +137,16 @@ The two binding lines render **only where the flavor declares any**, so an
 implementation that binds nothing hashes exactly as it did before they
 existed — the same extension rule as in sd1: the grammar may grow, no
 computable value may change.
+
+A scheme line is the HOW of security on this endpoint (see
+[Security](SECURITY.md) §2): an implementation that starts to demand a
+token is a different endpoint. Schemes are alternatives, a set, so they
+sort by name; `BearerTokenScheme` adds
+`|issuer=|audiences=<sorted list>|jwksUri=|scopeClaim=`,
+`MutualTlsScheme` adds `|trustedIssuers=<sorted list>`, and
+`ConnectionScheme` adds nothing; an unknown subclass renders only its
+eClass name. The `kind` renders its model default (`BEARER_TOKEN`)
+explicitly. The golden is `secure-payment-impl.{xmi,canonical.txt,im1}`.
 
 Flavor-specific fields: `RestFlavor` adds
 `|host=|basePath=|contentTypes=<list>`, `MqttFlavor` adds

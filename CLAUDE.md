@@ -29,6 +29,7 @@ Inhalt lebt in `docs/`, nicht hier. Bei Widerspruch gilt: **ARCHITECTURE → CLI
 - [docs/CODE_GENERATION.md](docs/CODE_GENERATION.md) — Ecore nach src-gen, Arbeitsteilung am Modell
 - [docs/RUNTIME.md](docs/RUNTIME.md) — die beiden Runtime-Services: was ein Knoten hält, und wie man von Änderungen erfährt
 - [docs/TELEMETRY.md](docs/TELEMETRY.md) — OpenTelemetry: die CallTracer-Naht, wo der Trace-Kontext reist, was Spans und Gauges zeigen
+- [docs/SECURITY.md](docs/SECURITY.md) — Sicherheit als Modellbelang: Requirement/Scheme/Principal, die drei Invarianten, das Validierungstor am Broker, der Durchsetzungs-Entwurf (Bearer zuerst, mTLS danach) und was noch nicht gebaut ist
 - [docs/RSA.md](docs/RSA.md) — OSGi Remote Service Admin auf dieser Registry
 - [docs/EXAMPLE_PAYMENT.md](docs/EXAMPLE_PAYMENT.md) — das Payment-Beispiel
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Broker-Container-Image, Konfigurationsflaeche, Publish-Pipeline

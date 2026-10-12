@@ -1,0 +1,7 @@
+I|SecurePayment|version=1.0.0|status=ACTIVE
+  sec|authenticated=true|scopes=0:
+  O|charge|returnType=double
+    sec|authenticated=true|scopes=2:payment:read,payment:write
+    p|amount|type=double|index=0|optional=false|defaultValue=
+  O|getBalance|returnType=double
+    p|accountId|type=string|index=0|optional=false|defaultValue=

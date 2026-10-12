@@ -29,12 +29,28 @@ const fixtures = join(
   '..', '..', '..', '..', 'itest', 'fixtures', 'fingerprint'
 );
 
-function goldenInterface(): ServiceInterface {
-  const xmi = readFileSync(join(fixtures, 'payment.xmi'), 'utf8');
+function goldenInterface(file = 'payment.xmi'): ServiceInterface {
+  const xmi = readFileSync(join(fixtures, file), 'utf8');
   const si = firstOfClass<ServiceInterface>(asRoots(deserializeFromXmi(xmi)), 'ServiceInterface');
   if (!si) throw new Error('fixture without ServiceInterface');
   return si;
 }
+
+describe('ServiceDescriptionFingerprint (sd1) — the security requirement is contract', () => {
+  it('produces the exact golden canonical form of the secured contract', () => {
+    const expected = readFileSync(join(fixtures, 'secure-payment.canonical.txt'), 'utf8').replace(/\n$/, '');
+    expect(canonicalForm(goldenInterface('secure-payment.xmi'))).toBe(expected);
+  });
+
+  it('produces the exact golden hash of the secured contract', () => {
+    const expected = readFileSync(join(fixtures, 'secure-payment.sd1'), 'utf8').trim();
+    expect(fingerprint(goldenInterface('secure-payment.xmi'))).toBe(expected);
+  });
+
+  it('a contract that states no requirement renders no sec line (extension rule)', () => {
+    expect(canonicalForm(goldenInterface())).not.toContain('sec|');
+  });
+});
 
 describe('ServiceDescriptionFingerprint (sd1) — cross-language golden', () => {
   it('produces the exact golden canonical form', () => {

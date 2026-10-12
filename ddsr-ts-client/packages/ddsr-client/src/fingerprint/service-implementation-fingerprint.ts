@@ -14,7 +14,7 @@
 import { createHash } from 'node:crypto';
 import type { Property, ServiceImplementation } from '@ddsr/model';
 import { eClassName, toArray } from '../internal/emf-util';
-import { fingerprint as sd1, propertyLine, esc, escListElement, sortByName } from './service-description-fingerprint';
+import { fingerprint as sd1, propertyLine, esc, escListElement, sortByName, sortedList } from './service-description-fingerprint';
 
 /**
  * Content-based fingerprint of a ServiceImplementation — scheme tag
@@ -65,6 +65,7 @@ export function implementationCanonicalForm(
 
   for (const flavor of toArray<Record<string, unknown>>(impl.flavors)) {
     lines.push(`  ${flavorLine(flavor)}`);
+    lines.push(...schemeLines(flavor));
     for (const opFlavor of toArray<Record<string, unknown>>(flavor.operationFlavors)) {
       lines.push(`    ${operationFlavorLine(opFlavor)}`);
       lines.push(...bindingLines(opFlavor));
@@ -111,6 +112,30 @@ function flavorLine(flavor: Record<string, unknown>): string {
  * places every argument where the binding says, so two implementations
  * differing only in bindings are not the same endpoint.
  */
+/**
+ * The security schemes a flavor offers — the HOW of security, part of
+ * the endpoint. Render only where the flavor declares any; schemes are
+ * alternatives (a set) and sort by name, as do audiences and trusted
+ * issuers. Java parity: schemeLines.
+ */
+function schemeLines(flavor: Record<string, unknown>): string[] {
+  const schemes = sortByName(toArray<Record<string, unknown> & { name?: string }>(flavor.securitySchemes));
+  return schemes.map(scheme => {
+    const cls = eClassName(scheme);
+    let line = `    sch|${cls}|${esc(str(scheme.name))}|kind=${enumText(scheme.kind, 'BEARER_TOKEN')}`;
+    if (cls === 'BearerTokenScheme') {
+      line +=
+        `|issuer=${esc(str(scheme.issuer))}` +
+        `|audiences=${sortedList(scheme.audiences)}` +
+        `|jwksUri=${esc(str(scheme.jwksUri))}` +
+        `|scopeClaim=${esc(str(scheme.scopeClaim))}`;
+    } else if (cls === 'MutualTlsScheme') {
+      line += `|trustedIssuers=${sortedList(scheme.trustedIssuers)}`;
+    }
+    return line;
+  });
+}
+
 function bindingLines(opFlavor: Record<string, unknown>): string[] {
   if (eClassName(opFlavor) !== 'RestOperationFlavor') return [];
   const lines: string[] = [];

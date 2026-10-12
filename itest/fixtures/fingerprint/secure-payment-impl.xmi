@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="secure-payments-fixture">
+    <implementations name="secure-payments-rest" implementationId="fixture:secure-payments:1.0.0" serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="rest" host="http://localhost:9090" basePath="/secure-payments">
+        <securitySchemes xsi:type="services:BearerTokenScheme" name="keycloak" issuer="https://idp.example/realms/dim" scopeClaim="roles">
+          <audiences>payments</audiences>
+          <audiences>broker</audiences>
+        </securitySchemes>
+        <securitySchemes xsi:type="services:ConnectionScheme" name="gateway" kind="CONNECTION"/>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="charge" method="POST" path="/charge" operation="/1/@operations.0"/>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getBalance" path="/balance" operation="/1/@operations.1"/>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceInterface name="SecurePayment" version="1.0.0" description="The payment contract with a security requirement: every call authenticated, charging needs two scopes.">
+    <security authenticated="true"/>
+    <operations name="charge" description="Charge an amount.">
+      <security authenticated="true">
+        <scopes>payment:write</scopes>
+        <scopes>payment:read</scopes>
+      </security>
+      <parameters name="amount" type="double"/>
+      <returnValue name="result" type="double"/>
+    </operations>
+    <operations name="getBalance" description="Get current account balance.">
+      <parameters name="accountId" type="string"/>
+      <returnValue name="result" type="double"/>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

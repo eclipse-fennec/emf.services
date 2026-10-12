@@ -32,6 +32,7 @@ import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.LongProperty;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.Property;
+import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -158,6 +159,9 @@ public final class ServiceDescriptionFingerprint {
 		lines.add("I|" + esc(serviceInterface.getName())
 				+ "|version=" + esc(serviceInterface.getVersion())
 				+ "|status=" + (status != null ? status.getLiteral() : CatalogStatus.ACTIVE.getLiteral()));
+		if (serviceInterface.getSecurity() != null) {
+			lines.add("  " + securityLine(serviceInterface.getSecurity()));
+		}
 
 		List<ServiceException> exceptions = new ArrayList<>(serviceInterface.getExceptions());
 		exceptions.sort(Comparator.comparing(ServiceException::getName,
@@ -176,6 +180,9 @@ public final class ServiceDescriptionFingerprint {
 			lines.add("  O|" + esc(op.getName())
 					+ "|returnType=" + esc(returnValue != null ? returnValue.getType() : null)
 					+ returnExtensions(returnValue));
+			if (op.getSecurity() != null) {
+				lines.add("    " + securityLine(op.getSecurity()));
+			}
 			for (Parameter p : op.getParameters()) {
 				lines.add("    p|" + esc(p.getName())
 						+ "|type=" + esc(p.getType())
@@ -200,6 +207,32 @@ public final class ServiceDescriptionFingerprint {
 	 * {@code |eType=…|lower=…|upper=…} for a parameter — each field only
 	 * where it says something the pre-#41 model could not.
 	 */
+	/**
+	 * The security requirement — the WHAT of security, part of the
+	 * contract. Renders only where one is declared, so a contract that
+	 * states nothing hashes exactly as it did before the feature existed
+	 * (the extension rule of the scheme). Scopes are a set (all of them
+	 * are required), so they sort.
+	 */
+	static String securityLine(SecurityRequirement requirement) {
+		return "sec|authenticated=" + requirement.isAuthenticated()
+				+ "|scopes=" + sortedList(requirement.getScopes());
+	}
+
+	/** A list rendered as a set: sorted, {@code <count>:<e1,e2,…>}. */
+	static String sortedList(List<String> values) {
+		List<String> sorted = new ArrayList<>(values);
+		sorted.sort(Comparator.nullsFirst(Comparator.naturalOrder()));
+		StringBuilder joined = new StringBuilder();
+		for (String element : sorted) {
+			if (joined.length() > 0) {
+				joined.append(',');
+			}
+			joined.append(escListElement(element));
+		}
+		return sorted.size() + ":" + joined;
+	}
+
 	static String parameterExtensions(Parameter parameter) {
 		String uri = eTypeUri(parameter.getEType());
 		return (uri != null ? "|eType=" + esc(uri) : "") + boundFields(parameter, "lower", "upper");

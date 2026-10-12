@@ -34,8 +34,8 @@ const fixtures = join(
   '..', '..', '..', '..', 'itest', 'fixtures', 'fingerprint'
 );
 
-function goldenImplementation(): ServiceImplementation {
-  const xmi = readFileSync(join(fixtures, 'payment-impl.xmi'), 'utf8');
+function goldenImplementation(file = 'payment-impl.xmi'): ServiceImplementation {
+  const xmi = readFileSync(join(fixtures, file), 'utf8');
   const provider = firstOfClass<ServiceProvider>(
     asRoots(deserializeFromXmi(xmi)), 'ServiceProvider');
   if (!provider) throw new Error('fixture without ServiceProvider');
@@ -43,6 +43,22 @@ function goldenImplementation(): ServiceImplementation {
   if (!impl) throw new Error('fixture provider without implementation');
   return impl;
 }
+
+describe('ServiceImplementationFingerprint (im1) — security schemes are endpoint', () => {
+  it('produces the exact golden canonical form of the secured implementation', () => {
+    const expected = readFileSync(join(fixtures, 'secure-payment-impl.canonical.txt'), 'utf8').replace(/\n$/, '');
+    expect(implementationCanonicalForm(goldenImplementation('secure-payment-impl.xmi'))).toBe(expected);
+  });
+
+  it('produces the exact golden hash of the secured implementation', () => {
+    const expected = readFileSync(join(fixtures, 'secure-payment-impl.im1'), 'utf8').trim();
+    expect(implementationFingerprint(goldenImplementation('secure-payment-impl.xmi'))).toBe(expected);
+  });
+
+  it('an implementation without schemes renders no sch line (extension rule)', () => {
+    expect(implementationCanonicalForm(goldenImplementation())).not.toContain('sch|');
+  });
+});
 
 describe('ServiceImplementationFingerprint (im1) — cross-language golden', () => {
   it('produces the exact golden canonical form', () => {

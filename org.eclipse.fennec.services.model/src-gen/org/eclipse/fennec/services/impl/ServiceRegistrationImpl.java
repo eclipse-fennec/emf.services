@@ -22,6 +22,7 @@ import org.eclipse.emf.ecore.util.EObjectWithInverseResolvingEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.ConsumerSession;
+import org.eclipse.fennec.services.Principal;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
@@ -43,6 +44,8 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getImplementation <em>Implementation</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getUsingSessions <em>Using Sessions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getPublishedBy <em>Published By</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getPrincipal <em>Principal</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getDomain <em>Domain</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceRegistrationImpl#getConsumerCount <em>Consumer Count</em>}</li>
  * </ul>
  *
@@ -128,6 +131,36 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 	 * @ordered
 	 */
 	protected String publishedBy = PUBLISHED_BY_EDEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getPrincipal() <em>Principal</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getPrincipal()
+	 * @generated
+	 * @ordered
+	 */
+	protected Principal principal;
+
+	/**
+	 * The default value of the '{@link #getDomain() <em>Domain</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDomain()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final String DOMAIN_EDEFAULT = null;
+
+	/**
+	 * The cached value of the '{@link #getDomain() <em>Domain</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDomain()
+	 * @generated
+	 * @ordered
+	 */
+	protected String domain = DOMAIN_EDEFAULT;
 
 	/**
 	 * The cached setting delegate for the '{@link #getConsumerCount() <em>Consumer Count</em>}' attribute.
@@ -365,6 +398,74 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 	 * @generated
 	 */
 	@Override
+	public Principal getPrincipal() {
+		return principal;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public NotificationChain basicSetPrincipal(Principal newPrincipal, NotificationChain msgs) {
+		Principal oldPrincipal = principal;
+		principal = newPrincipal;
+		if (eNotificationRequired()) {
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL, oldPrincipal, newPrincipal);
+			if (msgs == null) msgs = notification; else msgs.add(notification);
+		}
+		return msgs;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setPrincipal(Principal newPrincipal) {
+		if (newPrincipal != principal) {
+			NotificationChain msgs = null;
+			if (principal != null)
+				msgs = ((InternalEObject)principal).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL, null, msgs);
+			if (newPrincipal != null)
+				msgs = ((InternalEObject)newPrincipal).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL, null, msgs);
+			msgs = basicSetPrincipal(newPrincipal, msgs);
+			if (msgs != null) msgs.dispatch();
+		}
+		else if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL, newPrincipal, newPrincipal));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public String getDomain() {
+		return domain;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setDomain(String newDomain) {
+		String oldDomain = domain;
+		domain = newDomain;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_REGISTRATION__DOMAIN, oldDomain, domain));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public int getConsumerCount() {
 		return (Integer)CONSUMER_COUNT__ESETTING_DELEGATE.dynamicGet(this, null, 0, true, false);
 	}
@@ -424,6 +525,8 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				return basicSetReference(null, msgs);
 			case ServicesPackage.SERVICE_REGISTRATION__USING_SESSIONS:
 				return ((InternalEList<?>)getUsingSessions()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL:
+				return basicSetPrincipal(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -451,6 +554,10 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				return getUsingSessions();
 			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
 				return getPublishedBy();
+			case ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL:
+				return getPrincipal();
+			case ServicesPackage.SERVICE_REGISTRATION__DOMAIN:
+				return getDomain();
 			case ServicesPackage.SERVICE_REGISTRATION__CONSUMER_COUNT:
 				return getConsumerCount();
 		}
@@ -485,6 +592,12 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
 				setPublishedBy((String)newValue);
 				return;
+			case ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL:
+				setPrincipal((Principal)newValue);
+				return;
+			case ServicesPackage.SERVICE_REGISTRATION__DOMAIN:
+				setDomain((String)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -515,6 +628,12 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
 				setPublishedBy(PUBLISHED_BY_EDEFAULT);
 				return;
+			case ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL:
+				setPrincipal((Principal)null);
+				return;
+			case ServicesPackage.SERVICE_REGISTRATION__DOMAIN:
+				setDomain(DOMAIN_EDEFAULT);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -539,6 +658,10 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 				return usingSessions != null && !usingSessions.isEmpty();
 			case ServicesPackage.SERVICE_REGISTRATION__PUBLISHED_BY:
 				return PUBLISHED_BY_EDEFAULT == null ? publishedBy != null : !PUBLISHED_BY_EDEFAULT.equals(publishedBy);
+			case ServicesPackage.SERVICE_REGISTRATION__PRINCIPAL:
+				return principal != null;
+			case ServicesPackage.SERVICE_REGISTRATION__DOMAIN:
+				return DOMAIN_EDEFAULT == null ? domain != null : !DOMAIN_EDEFAULT.equals(domain);
 			case ServicesPackage.SERVICE_REGISTRATION__CONSUMER_COUNT:
 				return CONSUMER_COUNT__ESETTING_DELEGATE.dynamicIsSet(this, null, 0);
 		}
@@ -578,6 +701,8 @@ public class ServiceRegistrationImpl extends MinimalEObjectImpl.Container implem
 		result.append(unregistered);
 		result.append(", publishedBy: ");
 		result.append(publishedBy);
+		result.append(", domain: ");
+		result.append(domain);
 		result.append(')');
 		return result.toString();
 	}

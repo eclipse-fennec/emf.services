@@ -313,6 +313,51 @@ public interface ServicesFactory extends EFactory {
 	MqttOperationFlavor createMqttOperationFlavor();
 
 	/**
+	 * Returns a new object of class '<em>Security Requirement</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Security Requirement</em>'.
+	 * @generated
+	 */
+	SecurityRequirement createSecurityRequirement();
+
+	/**
+	 * Returns a new object of class '<em>Bearer Token Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Bearer Token Scheme</em>'.
+	 * @generated
+	 */
+	BearerTokenScheme createBearerTokenScheme();
+
+	/**
+	 * Returns a new object of class '<em>Mutual Tls Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Mutual Tls Scheme</em>'.
+	 * @generated
+	 */
+	MutualTlsScheme createMutualTlsScheme();
+
+	/**
+	 * Returns a new object of class '<em>Connection Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Connection Scheme</em>'.
+	 * @generated
+	 */
+	ConnectionScheme createConnectionScheme();
+
+	/**
+	 * Returns a new object of class '<em>Principal</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Principal</em>'.
+	 * @generated
+	 */
+	Principal createPrincipal();
+
+	/**
 	 * Returns a new object of class '<em>Service Reference</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

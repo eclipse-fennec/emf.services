@@ -63,6 +63,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_OPERATION__EXCEPTIONS: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__PRECONDITIONS: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__POSTCONDITIONS: null as unknown as EAttribute | EReference,
+    SERVICE_OPERATION__SECURITY: null as unknown as EAttribute | EReference,
     PARAMETER: null as unknown as EClass,
     PARAMETER__INDEX: null as unknown as EAttribute | EReference,
     PARAMETER__TYPE: null as unknown as EAttribute | EReference,
@@ -112,6 +113,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_INTERFACE__DEPRECATED_BY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__REPLACED_BY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__UPDATE_POLICY: null as unknown as EAttribute | EReference,
+    SERVICE_INTERFACE__SECURITY: null as unknown as EAttribute | EReference,
     LIFECYCLE_HOOK: null as unknown as EClass,
     LIFECYCLE_HOOK__KIND: null as unknown as EAttribute | EReference,
     LIFECYCLE_HOOK__PARAMETER: null as unknown as EAttribute | EReference,
@@ -161,6 +163,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_FLAVOR__KIND: null as unknown as EAttribute | EReference,
     SERVICE_FLAVOR__OPERATION_FLAVORS: null as unknown as EAttribute | EReference,
     SERVICE_FLAVOR__CAPABILITIES: null as unknown as EAttribute | EReference,
+    SERVICE_FLAVOR__SECURITY_SCHEMES: null as unknown as EAttribute | EReference,
     REST_FLAVOR: null as unknown as EClass,
     REST_FLAVOR__HOST: null as unknown as EAttribute | EReference,
     REST_FLAVOR__BASE_PATH: null as unknown as EAttribute | EReference,
@@ -195,6 +198,23 @@ export class DDSRPackage extends BasicEPackage {
     MQTT_OPERATION_FLAVOR__RETAINED: null as unknown as EAttribute | EReference,
     MQTT_OPERATION_FLAVOR__CORRELATION: null as unknown as EAttribute | EReference,
     MQTT_OPERATION_FLAVOR__RETURN_PATH: null as unknown as EAttribute | EReference,
+    SECURITY_REQUIREMENT: null as unknown as EClass,
+    SECURITY_REQUIREMENT__AUTHENTICATED: null as unknown as EAttribute | EReference,
+    SECURITY_REQUIREMENT__SCOPES: null as unknown as EAttribute | EReference,
+    SECURITY_SCHEME: null as unknown as EClass,
+    SECURITY_SCHEME__KIND: null as unknown as EAttribute | EReference,
+    BEARER_TOKEN_SCHEME: null as unknown as EClass,
+    BEARER_TOKEN_SCHEME__ISSUER: null as unknown as EAttribute | EReference,
+    BEARER_TOKEN_SCHEME__AUDIENCES: null as unknown as EAttribute | EReference,
+    BEARER_TOKEN_SCHEME__JWKS_URI: null as unknown as EAttribute | EReference,
+    BEARER_TOKEN_SCHEME__SCOPE_CLAIM: null as unknown as EAttribute | EReference,
+    MUTUAL_TLS_SCHEME: null as unknown as EClass,
+    MUTUAL_TLS_SCHEME__TRUSTED_ISSUERS: null as unknown as EAttribute | EReference,
+    CONNECTION_SCHEME: null as unknown as EClass,
+    PRINCIPAL: null as unknown as EClass,
+    PRINCIPAL__SUBJECT: null as unknown as EAttribute | EReference,
+    PRINCIPAL__ISSUER: null as unknown as EAttribute | EReference,
+    PRINCIPAL__SCOPES: null as unknown as EAttribute | EReference,
     SERVICE_REFERENCE: null as unknown as EClass,
     SERVICE_REFERENCE__ID: null as unknown as EAttribute | EReference,
     SERVICE_REFERENCE__PROPERTIES: null as unknown as EAttribute | EReference,
@@ -207,10 +227,14 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_REGISTRATION__IMPLEMENTATION: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__USING_SESSIONS: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__PUBLISHED_BY: null as unknown as EAttribute | EReference,
+    SERVICE_REGISTRATION__PRINCIPAL: null as unknown as EAttribute | EReference,
+    SERVICE_REGISTRATION__DOMAIN: null as unknown as EAttribute | EReference,
     SERVICE_REGISTRATION__CONSUMER_COUNT: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION: null as unknown as EClass,
     CONSUMER_SESSION__CONSUMER_ID: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__ORIGIN: null as unknown as EAttribute | EReference,
+    CONSUMER_SESSION__PRINCIPAL: null as unknown as EAttribute | EReference,
+    CONSUMER_SESSION__DOMAIN: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__LAST_RENEWAL: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__CAPABILITIES: null as unknown as EAttribute | EReference,
     CONSUMER_SESSION__ACQUISITIONS: null as unknown as EAttribute | EReference,
@@ -583,6 +607,15 @@ export class DDSRPackage extends BasicEPackage {
     serviceOperation_postconditions.setUpperBound(-1);
     serviceOperationClass.getEStructuralFeatures().push(serviceOperation_postconditions);
     DDSRPackage.Literals.SERVICE_OPERATION__POSTCONDITIONS = serviceOperation_postconditions;
+
+    // Create security feature
+    const serviceOperation_security = new BasicEReference();
+    serviceOperation_security.setContainment(true);
+    serviceOperation_security.setName('security');
+    serviceOperation_security.setLowerBound(0);
+    serviceOperation_security.setUpperBound(1);
+    serviceOperationClass.getEStructuralFeatures().push(serviceOperation_security);
+    DDSRPackage.Literals.SERVICE_OPERATION__SECURITY = serviceOperation_security;
 
     // Create Parameter class
     const parameterClass = new BasicEClass();
@@ -993,6 +1026,15 @@ export class DDSRPackage extends BasicEPackage {
     serviceInterface_updatePolicy.setUpperBound(1);
     serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_updatePolicy);
     DDSRPackage.Literals.SERVICE_INTERFACE__UPDATE_POLICY = serviceInterface_updatePolicy;
+
+    // Create security feature
+    const serviceInterface_security = new BasicEReference();
+    serviceInterface_security.setContainment(true);
+    serviceInterface_security.setName('security');
+    serviceInterface_security.setLowerBound(0);
+    serviceInterface_security.setUpperBound(1);
+    serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_security);
+    DDSRPackage.Literals.SERVICE_INTERFACE__SECURITY = serviceInterface_security;
 
     // Create LifecycleHook class
     const lifecycleHookClass = new BasicEClass();
@@ -1410,6 +1452,15 @@ export class DDSRPackage extends BasicEPackage {
     serviceFlavorClass.getEStructuralFeatures().push(serviceFlavor_capabilities);
     DDSRPackage.Literals.SERVICE_FLAVOR__CAPABILITIES = serviceFlavor_capabilities;
 
+    // Create securitySchemes feature
+    const serviceFlavor_securitySchemes = new BasicEReference();
+    serviceFlavor_securitySchemes.setContainment(true);
+    serviceFlavor_securitySchemes.setName('securitySchemes');
+    serviceFlavor_securitySchemes.setLowerBound(0);
+    serviceFlavor_securitySchemes.setUpperBound(-1);
+    serviceFlavorClass.getEStructuralFeatures().push(serviceFlavor_securitySchemes);
+    DDSRPackage.Literals.SERVICE_FLAVOR__SECURITY_SCHEMES = serviceFlavor_securitySchemes;
+
     // Create RestFlavor class
     const restFlavorClass = new BasicEClass();
     restFlavorClass.setName('RestFlavor');
@@ -1554,7 +1605,7 @@ export class DDSRPackage extends BasicEPackage {
     // Create returnCodes feature
     const restOperationFlavor_returnCodes = new BasicEAttribute();
     restOperationFlavor_returnCodes.setName('returnCodes');
-    restOperationFlavor_returnCodes.setLowerBound(1);
+    restOperationFlavor_returnCodes.setLowerBound(0);
     restOperationFlavor_returnCodes.setUpperBound(-1);
     restOperationFlavorClass.getEStructuralFeatures().push(restOperationFlavor_returnCodes);
     DDSRPackage.Literals.REST_OPERATION_FLAVOR__RETURN_CODES = restOperationFlavor_returnCodes;
@@ -1694,6 +1745,148 @@ export class DDSRPackage extends BasicEPackage {
     mqttOperationFlavorClass.getEStructuralFeatures().push(mqttOperationFlavor_returnPath);
     DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETURN_PATH = mqttOperationFlavor_returnPath;
 
+    // Create SecurityRequirement class
+    const securityRequirementClass = new BasicEClass();
+    securityRequirementClass.setName('SecurityRequirement');
+    securityRequirementClass.setAbstract(false);
+    securityRequirementClass.setInterface(false);
+    this.getEClassifiers().push(securityRequirementClass);
+    securityRequirementClass.setEPackage(this);
+    DDSRPackage.Literals.SECURITY_REQUIREMENT = securityRequirementClass;
+
+    // Create authenticated feature
+    const securityRequirement_authenticated = new BasicEAttribute();
+    securityRequirement_authenticated.setName('authenticated');
+    securityRequirement_authenticated.setLowerBound(0);
+    securityRequirement_authenticated.setUpperBound(1);
+    securityRequirementClass.getEStructuralFeatures().push(securityRequirement_authenticated);
+    DDSRPackage.Literals.SECURITY_REQUIREMENT__AUTHENTICATED = securityRequirement_authenticated;
+
+    // Create scopes feature
+    const securityRequirement_scopes = new BasicEAttribute();
+    securityRequirement_scopes.setName('scopes');
+    securityRequirement_scopes.setLowerBound(0);
+    securityRequirement_scopes.setUpperBound(-1);
+    securityRequirementClass.getEStructuralFeatures().push(securityRequirement_scopes);
+    DDSRPackage.Literals.SECURITY_REQUIREMENT__SCOPES = securityRequirement_scopes;
+
+    // Create SecurityScheme class
+    const securitySchemeClass = new BasicEClass();
+    securitySchemeClass.setName('SecurityScheme');
+    securitySchemeClass.setAbstract(true);
+    securitySchemeClass.setInterface(false);
+    this.getEClassifiers().push(securitySchemeClass);
+    securitySchemeClass.setEPackage(this);
+    DDSRPackage.Literals.SECURITY_SCHEME = securitySchemeClass;
+
+    // Create kind feature
+    const securityScheme_kind = new BasicEAttribute();
+    securityScheme_kind.setName('kind');
+    securityScheme_kind.setLowerBound(1);
+    securityScheme_kind.setUpperBound(1);
+    securitySchemeClass.getEStructuralFeatures().push(securityScheme_kind);
+    DDSRPackage.Literals.SECURITY_SCHEME__KIND = securityScheme_kind;
+
+    // Create BearerTokenScheme class
+    const bearerTokenSchemeClass = new BasicEClass();
+    bearerTokenSchemeClass.setName('BearerTokenScheme');
+    bearerTokenSchemeClass.setAbstract(false);
+    bearerTokenSchemeClass.setInterface(false);
+    this.getEClassifiers().push(bearerTokenSchemeClass);
+    bearerTokenSchemeClass.setEPackage(this);
+    DDSRPackage.Literals.BEARER_TOKEN_SCHEME = bearerTokenSchemeClass;
+
+    // Create issuer feature
+    const bearerTokenScheme_issuer = new BasicEAttribute();
+    bearerTokenScheme_issuer.setName('issuer');
+    bearerTokenScheme_issuer.setLowerBound(1);
+    bearerTokenScheme_issuer.setUpperBound(1);
+    bearerTokenSchemeClass.getEStructuralFeatures().push(bearerTokenScheme_issuer);
+    DDSRPackage.Literals.BEARER_TOKEN_SCHEME__ISSUER = bearerTokenScheme_issuer;
+
+    // Create audiences feature
+    const bearerTokenScheme_audiences = new BasicEAttribute();
+    bearerTokenScheme_audiences.setName('audiences');
+    bearerTokenScheme_audiences.setLowerBound(0);
+    bearerTokenScheme_audiences.setUpperBound(-1);
+    bearerTokenSchemeClass.getEStructuralFeatures().push(bearerTokenScheme_audiences);
+    DDSRPackage.Literals.BEARER_TOKEN_SCHEME__AUDIENCES = bearerTokenScheme_audiences;
+
+    // Create jwksUri feature
+    const bearerTokenScheme_jwksUri = new BasicEAttribute();
+    bearerTokenScheme_jwksUri.setName('jwksUri');
+    bearerTokenScheme_jwksUri.setLowerBound(0);
+    bearerTokenScheme_jwksUri.setUpperBound(1);
+    bearerTokenSchemeClass.getEStructuralFeatures().push(bearerTokenScheme_jwksUri);
+    DDSRPackage.Literals.BEARER_TOKEN_SCHEME__JWKS_URI = bearerTokenScheme_jwksUri;
+
+    // Create scopeClaim feature
+    const bearerTokenScheme_scopeClaim = new BasicEAttribute();
+    bearerTokenScheme_scopeClaim.setName('scopeClaim');
+    bearerTokenScheme_scopeClaim.setLowerBound(0);
+    bearerTokenScheme_scopeClaim.setUpperBound(1);
+    bearerTokenSchemeClass.getEStructuralFeatures().push(bearerTokenScheme_scopeClaim);
+    DDSRPackage.Literals.BEARER_TOKEN_SCHEME__SCOPE_CLAIM = bearerTokenScheme_scopeClaim;
+
+    // Create MutualTlsScheme class
+    const mutualTlsSchemeClass = new BasicEClass();
+    mutualTlsSchemeClass.setName('MutualTlsScheme');
+    mutualTlsSchemeClass.setAbstract(false);
+    mutualTlsSchemeClass.setInterface(false);
+    this.getEClassifiers().push(mutualTlsSchemeClass);
+    mutualTlsSchemeClass.setEPackage(this);
+    DDSRPackage.Literals.MUTUAL_TLS_SCHEME = mutualTlsSchemeClass;
+
+    // Create trustedIssuers feature
+    const mutualTlsScheme_trustedIssuers = new BasicEAttribute();
+    mutualTlsScheme_trustedIssuers.setName('trustedIssuers');
+    mutualTlsScheme_trustedIssuers.setLowerBound(0);
+    mutualTlsScheme_trustedIssuers.setUpperBound(-1);
+    mutualTlsSchemeClass.getEStructuralFeatures().push(mutualTlsScheme_trustedIssuers);
+    DDSRPackage.Literals.MUTUAL_TLS_SCHEME__TRUSTED_ISSUERS = mutualTlsScheme_trustedIssuers;
+
+    // Create ConnectionScheme class
+    const connectionSchemeClass = new BasicEClass();
+    connectionSchemeClass.setName('ConnectionScheme');
+    connectionSchemeClass.setAbstract(false);
+    connectionSchemeClass.setInterface(false);
+    this.getEClassifiers().push(connectionSchemeClass);
+    connectionSchemeClass.setEPackage(this);
+    DDSRPackage.Literals.CONNECTION_SCHEME = connectionSchemeClass;
+
+    // Create Principal class
+    const principalClass = new BasicEClass();
+    principalClass.setName('Principal');
+    principalClass.setAbstract(false);
+    principalClass.setInterface(false);
+    this.getEClassifiers().push(principalClass);
+    principalClass.setEPackage(this);
+    DDSRPackage.Literals.PRINCIPAL = principalClass;
+
+    // Create subject feature
+    const principal_subject = new BasicEAttribute();
+    principal_subject.setName('subject');
+    principal_subject.setLowerBound(1);
+    principal_subject.setUpperBound(1);
+    principalClass.getEStructuralFeatures().push(principal_subject);
+    DDSRPackage.Literals.PRINCIPAL__SUBJECT = principal_subject;
+
+    // Create issuer feature
+    const principal_issuer = new BasicEAttribute();
+    principal_issuer.setName('issuer');
+    principal_issuer.setLowerBound(0);
+    principal_issuer.setUpperBound(1);
+    principalClass.getEStructuralFeatures().push(principal_issuer);
+    DDSRPackage.Literals.PRINCIPAL__ISSUER = principal_issuer;
+
+    // Create scopes feature
+    const principal_scopes = new BasicEAttribute();
+    principal_scopes.setName('scopes');
+    principal_scopes.setLowerBound(0);
+    principal_scopes.setUpperBound(-1);
+    principalClass.getEStructuralFeatures().push(principal_scopes);
+    DDSRPackage.Literals.PRINCIPAL__SCOPES = principal_scopes;
+
     // Create ServiceReference class
     const serviceReferenceClass = new BasicEClass();
     serviceReferenceClass.setName('ServiceReference');
@@ -1799,6 +1992,23 @@ export class DDSRPackage extends BasicEPackage {
     serviceRegistrationClass.getEStructuralFeatures().push(serviceRegistration_publishedBy);
     DDSRPackage.Literals.SERVICE_REGISTRATION__PUBLISHED_BY = serviceRegistration_publishedBy;
 
+    // Create principal feature
+    const serviceRegistration_principal = new BasicEReference();
+    serviceRegistration_principal.setContainment(true);
+    serviceRegistration_principal.setName('principal');
+    serviceRegistration_principal.setLowerBound(0);
+    serviceRegistration_principal.setUpperBound(1);
+    serviceRegistrationClass.getEStructuralFeatures().push(serviceRegistration_principal);
+    DDSRPackage.Literals.SERVICE_REGISTRATION__PRINCIPAL = serviceRegistration_principal;
+
+    // Create domain feature
+    const serviceRegistration_domain = new BasicEAttribute();
+    serviceRegistration_domain.setName('domain');
+    serviceRegistration_domain.setLowerBound(0);
+    serviceRegistration_domain.setUpperBound(1);
+    serviceRegistrationClass.getEStructuralFeatures().push(serviceRegistration_domain);
+    DDSRPackage.Literals.SERVICE_REGISTRATION__DOMAIN = serviceRegistration_domain;
+
     // Create consumerCount feature
     const serviceRegistration_consumerCount = new BasicEAttribute();
     serviceRegistration_consumerCount.setName('consumerCount');
@@ -1831,6 +2041,23 @@ export class DDSRPackage extends BasicEPackage {
     consumerSession_origin.setUpperBound(1);
     consumerSessionClass.getEStructuralFeatures().push(consumerSession_origin);
     DDSRPackage.Literals.CONSUMER_SESSION__ORIGIN = consumerSession_origin;
+
+    // Create principal feature
+    const consumerSession_principal = new BasicEReference();
+    consumerSession_principal.setContainment(true);
+    consumerSession_principal.setName('principal');
+    consumerSession_principal.setLowerBound(0);
+    consumerSession_principal.setUpperBound(1);
+    consumerSessionClass.getEStructuralFeatures().push(consumerSession_principal);
+    DDSRPackage.Literals.CONSUMER_SESSION__PRINCIPAL = consumerSession_principal;
+
+    // Create domain feature
+    const consumerSession_domain = new BasicEAttribute();
+    consumerSession_domain.setName('domain');
+    consumerSession_domain.setLowerBound(0);
+    consumerSession_domain.setUpperBound(1);
+    consumerSessionClass.getEStructuralFeatures().push(consumerSession_domain);
+    DDSRPackage.Literals.CONSUMER_SESSION__DOMAIN = consumerSession_domain;
 
     // Create lastRenewal feature
     const consumerSession_lastRenewal = new BasicEAttribute();
@@ -2687,6 +2914,10 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.REST_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
     (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
+    (DDSRPackage.Literals.SECURITY_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
+    (DDSRPackage.Literals.BEARER_TOKEN_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
+    (DDSRPackage.Literals.MUTUAL_TLS_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
+    (DDSRPackage.Literals.CONNECTION_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.SERVICE_REGISTRY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.LOCAL_SERVICE_REGISTRY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_REGISTRY);
@@ -2718,6 +2949,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_OPERATION__EXCEPTIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
     (DDSRPackage.Literals.SERVICE_OPERATION__PRECONDITIONS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
     (DDSRPackage.Literals.SERVICE_OPERATION__POSTCONDITIONS as BasicEReference).setEType(DDSRPackage.Literals.INVARIANT);
+    (DDSRPackage.Literals.SERVICE_OPERATION__SECURITY as BasicEReference).setEType(DDSRPackage.Literals.SECURITY_REQUIREMENT);
     (DDSRPackage.Literals.PARAMETER__INDEX as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.PARAMETER__TYPE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.PARAMETER__E_TYPE as BasicEReference).setEType(getEcorePackage().getEClassifier('EClassifier')!);
@@ -2752,6 +2984,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_INTERFACE__ADDED_BY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_INTERFACE__DEPRECATED_BY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_INTERFACE__REPLACED_BY as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
+    (DDSRPackage.Literals.SERVICE_INTERFACE__SECURITY as BasicEReference).setEType(DDSRPackage.Literals.SECURITY_REQUIREMENT);
     (DDSRPackage.Literals.LIFECYCLE_HOOK__PARAMETER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.COMPONENT_REFERENCE__INTERFACE_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.COMPONENT_REFERENCE__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
@@ -2782,6 +3015,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
     (DDSRPackage.Literals.SERVICE_FLAVOR__OPERATION_FLAVORS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
     (DDSRPackage.Literals.SERVICE_FLAVOR__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
+    (DDSRPackage.Literals.SERVICE_FLAVOR__SECURITY_SCHEMES as BasicEReference).setEType(DDSRPackage.Literals.SECURITY_SCHEME);
     (DDSRPackage.Literals.REST_FLAVOR__HOST as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.REST_FLAVOR__BASE_PATH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.REST_FLAVOR__CONTENT_TYPES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
@@ -2805,6 +3039,16 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETAINED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__CORRELATION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETURN_PATH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SECURITY_REQUIREMENT__AUTHENTICATED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
+    (DDSRPackage.Literals.SECURITY_REQUIREMENT__SCOPES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.BEARER_TOKEN_SCHEME__ISSUER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.BEARER_TOKEN_SCHEME__AUDIENCES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.BEARER_TOKEN_SCHEME__JWKS_URI as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.BEARER_TOKEN_SCHEME__SCOPE_CLAIM as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MUTUAL_TLS_SCHEME__TRUSTED_ISSUERS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.PRINCIPAL__SUBJECT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.PRINCIPAL__ISSUER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.PRINCIPAL__SCOPES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_REFERENCE__ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROPERTIES as BasicEReference).setEType(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_REFERENCE__PROVIDER as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_PROVIDER);
@@ -2815,9 +3059,13 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_REGISTRATION__IMPLEMENTATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__USING_SESSIONS as BasicEReference).setEType(DDSRPackage.Literals.CONSUMER_SESSION);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__PUBLISHED_BY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.SERVICE_REGISTRATION__PRINCIPAL as BasicEReference).setEType(DDSRPackage.Literals.PRINCIPAL);
+    (DDSRPackage.Literals.SERVICE_REGISTRATION__DOMAIN as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_REGISTRATION__CONSUMER_COUNT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__CONSUMER_ID as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__ORIGIN as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.CONSUMER_SESSION__PRINCIPAL as BasicEReference).setEType(DDSRPackage.Literals.PRINCIPAL);
+    (DDSRPackage.Literals.CONSUMER_SESSION__DOMAIN as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__LAST_RENEWAL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EDate')!);
     (DDSRPackage.Literals.CONSUMER_SESSION__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CONSUMER_CAPABILITY);
     (DDSRPackage.Literals.CONSUMER_SESSION__ACQUISITIONS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_REGISTRATION);

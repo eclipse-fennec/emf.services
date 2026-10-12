@@ -72,6 +72,16 @@ import type { RestExceptionBinding } from './RestExceptionBinding.js';
 import { RestExceptionBindingImpl } from './RestExceptionBindingImpl.js';
 import type { MqttOperationFlavor } from './MqttOperationFlavor.js';
 import { MqttOperationFlavorImpl } from './MqttOperationFlavorImpl.js';
+import type { SecurityRequirement } from './SecurityRequirement.js';
+import { SecurityRequirementImpl } from './SecurityRequirementImpl.js';
+import type { BearerTokenScheme } from './BearerTokenScheme.js';
+import { BearerTokenSchemeImpl } from './BearerTokenSchemeImpl.js';
+import type { MutualTlsScheme } from './MutualTlsScheme.js';
+import { MutualTlsSchemeImpl } from './MutualTlsSchemeImpl.js';
+import type { ConnectionScheme } from './ConnectionScheme.js';
+import { ConnectionSchemeImpl } from './ConnectionSchemeImpl.js';
+import type { Principal } from './Principal.js';
+import { PrincipalImpl } from './PrincipalImpl.js';
 import type { ServiceReference } from './ServiceReference.js';
 import { ServiceReferenceImpl } from './ServiceReferenceImpl.js';
 import type { ServiceRegistration } from './ServiceRegistration.js';
@@ -360,6 +370,41 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new SecurityRequirement instance
+   */
+  createSecurityRequirement(): SecurityRequirement {
+    return new SecurityRequirementImpl();
+  }
+
+  /**
+   * Create a new BearerTokenScheme instance
+   */
+  createBearerTokenScheme(): BearerTokenScheme {
+    return new BearerTokenSchemeImpl();
+  }
+
+  /**
+   * Create a new MutualTlsScheme instance
+   */
+  createMutualTlsScheme(): MutualTlsScheme {
+    return new MutualTlsSchemeImpl();
+  }
+
+  /**
+   * Create a new ConnectionScheme instance
+   */
+  createConnectionScheme(): ConnectionScheme {
+    return new ConnectionSchemeImpl();
+  }
+
+  /**
+   * Create a new Principal instance
+   */
+  createPrincipal(): Principal {
+    return new PrincipalImpl();
+  }
+
+  /**
    * Create a new ServiceReference instance
    */
   createServiceReference(): ServiceReference {
@@ -575,6 +620,16 @@ export class DDSRFactory extends BasicEFactory {
         return this.createRestExceptionBinding();
       case 'MqttOperationFlavor':
         return this.createMqttOperationFlavor();
+      case 'SecurityRequirement':
+        return this.createSecurityRequirement();
+      case 'BearerTokenScheme':
+        return this.createBearerTokenScheme();
+      case 'MutualTlsScheme':
+        return this.createMutualTlsScheme();
+      case 'ConnectionScheme':
+        return this.createConnectionScheme();
+      case 'Principal':
+        return this.createPrincipal();
       case 'ServiceReference':
         return this.createServiceReference();
       case 'ServiceRegistration':

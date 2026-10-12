@@ -10,6 +10,7 @@ import type { NamedElement } from './NamedElement.js';
 import type { FlavorKind } from './FlavorKind.js';
 import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
 import type { Capability } from './Capability.js';
+import type { SecurityScheme } from './SecurityScheme.js';
 
 /**
  * ServiceFlavor
@@ -19,5 +20,6 @@ export interface ServiceFlavor extends NamedElement {
   kind: FlavorKind;
   operationFlavors: EList<ServiceOperationFlavor>;
   capabilities: EList<Capability>;
+  securitySchemes: EList<SecurityScheme>;
 
 }

@@ -18,9 +18,9 @@ import { DDSRPackage } from './DDSRPackage.js';
  */
 export class RestFlavorImpl extends ServiceFlavorImpl implements RestFlavor {
   // Feature ID Constants (eLiterals)
-  static readonly HOST: number = 4;
-  static readonly BASE_PATH: number = 5;
-  static readonly CONTENT_TYPES: number = 6;
+  static readonly HOST: number = 5;
+  static readonly BASE_PATH: number = 6;
+  static readonly CONTENT_TYPES: number = 7;
 
   // Private fields
   private _host?: string;

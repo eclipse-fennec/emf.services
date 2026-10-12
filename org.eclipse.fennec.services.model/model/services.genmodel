@@ -123,6 +123,11 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ConnectionState/DEGRADED"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ConnectionState/OFFLINE"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//SecuritySchemeKind">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//SecuritySchemeKind/BEARER_TOKEN"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//SecuritySchemeKind/MUTUAL_TLS"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//SecuritySchemeKind/CONNECTION"/>
+    </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//ApiType">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiType/PROVIDER"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiType/CONSUMER"/>
@@ -169,6 +174,7 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/exceptions"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/preconditions"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/postconditions"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/security"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//Parameter">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/index"/>
@@ -227,6 +233,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/deprecatedBy"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/replacedBy"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/updatePolicy"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/security"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//LifecycleHook">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//LifecycleHook/kind"/>
@@ -283,6 +290,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceFlavor/kind"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceFlavor/operationFlavors"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceFlavor/capabilities"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceFlavor/securitySchemes"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//RestFlavor">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestFlavor/host"/>
@@ -325,6 +333,28 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/correlation"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/returnPath"/>
     </genClasses>
+    <genClasses ecoreClass="services.ecore#//SecurityRequirement">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//SecurityRequirement/authenticated"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//SecurityRequirement/scopes"/>
+    </genClasses>
+    <genClasses image="false" ecoreClass="services.ecore#//SecurityScheme">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//SecurityScheme/kind"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//BearerTokenScheme">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//BearerTokenScheme/issuer"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//BearerTokenScheme/audiences"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//BearerTokenScheme/jwksUri"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//BearerTokenScheme/scopeClaim"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//MutualTlsScheme">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MutualTlsScheme/trustedIssuers"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//ConnectionScheme"/>
+    <genClasses ecoreClass="services.ecore#//Principal">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Principal/subject"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Principal/issuer"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Principal/scopes"/>
+    </genClasses>
     <genClasses ecoreClass="services.ecore#//ServiceReference">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceReference/id"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceReference/properties"/>
@@ -342,6 +372,8 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/implementation"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/usingSessions"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceRegistration/publishedBy"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceRegistration/principal"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceRegistration/domain"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceRegistration/consumerCount"/>
       <genOperations ecoreOperation="services.ecore#//ServiceRegistration/unregister"/>
       <genOperations ecoreOperation="services.ecore#//ServiceRegistration/setProperties">
@@ -351,6 +383,8 @@
     <genClasses ecoreClass="services.ecore#//ConsumerSession">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerSession/consumerId"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerSession/origin"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ConsumerSession/principal"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerSession/domain"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ConsumerSession/lastRenewal"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ConsumerSession/capabilities"/>
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ConsumerSession/acquisitions"/>

@@ -29,6 +29,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getDeprecatedBy <em>Deprecated By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getReplacedBy <em>Replaced By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getUpdatePolicy <em>Update Policy</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getSecurity <em>Security</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface()
@@ -264,5 +265,30 @@ public interface ServiceInterface extends NamedElement, VersionedElement {
 	 * @generated
 	 */
 	void setUpdatePolicy(UpdatePolicy value);
+
+	/**
+	 * Returns the value of the '<em><b>Security</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Default requirement for every operation of this contract; an operation may override it via ServiceOperation.security. Part of the contract, not of a deployment: it states WHAT a caller must be, transport-neutral. HOW that is proven is the flavor's business (ServiceFlavor.securitySchemes). Absent here and on every operation = the contract states no requirement; whether such a contract may then be called anonymously is a decision of the serving node's configuration, never an implicit 'open'. The broker's own contracts carry these too (#88): the broker's access matrix — publish, consume, curate — is expressed and enforced with the same mechanism as on every peer.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Security</em>' containment reference.
+	 * @see #setSecurity(SecurityRequirement)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface_Security()
+	 * @model containment="true"
+	 * @generated
+	 */
+	SecurityRequirement getSecurity();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceInterface#getSecurity <em>Security</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Security</em>' containment reference.
+	 * @see #getSecurity()
+	 * @generated
+	 */
+	void setSecurity(SecurityRequirement value);
 
 } // ServiceInterface

@@ -220,6 +220,30 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createMqttOperationFlavorAdapter();
 			}
 			@Override
+			public Adapter caseSecurityRequirement(SecurityRequirement object) {
+				return createSecurityRequirementAdapter();
+			}
+			@Override
+			public Adapter caseSecurityScheme(SecurityScheme object) {
+				return createSecuritySchemeAdapter();
+			}
+			@Override
+			public Adapter caseBearerTokenScheme(BearerTokenScheme object) {
+				return createBearerTokenSchemeAdapter();
+			}
+			@Override
+			public Adapter caseMutualTlsScheme(MutualTlsScheme object) {
+				return createMutualTlsSchemeAdapter();
+			}
+			@Override
+			public Adapter caseConnectionScheme(ConnectionScheme object) {
+				return createConnectionSchemeAdapter();
+			}
+			@Override
+			public Adapter casePrincipal(Principal object) {
+				return createPrincipalAdapter();
+			}
+			@Override
 			public Adapter caseServiceReference(ServiceReference object) {
 				return createServiceReferenceAdapter();
 			}
@@ -876,6 +900,90 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createMqttOperationFlavorAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.SecurityRequirement <em>Security Requirement</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.SecurityRequirement
+	 * @generated
+	 */
+	public Adapter createSecurityRequirementAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.SecurityScheme <em>Security Scheme</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.SecurityScheme
+	 * @generated
+	 */
+	public Adapter createSecuritySchemeAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.BearerTokenScheme <em>Bearer Token Scheme</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.BearerTokenScheme
+	 * @generated
+	 */
+	public Adapter createBearerTokenSchemeAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.MutualTlsScheme <em>Mutual Tls Scheme</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.MutualTlsScheme
+	 * @generated
+	 */
+	public Adapter createMutualTlsSchemeAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.ConnectionScheme <em>Connection Scheme</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.ConnectionScheme
+	 * @generated
+	 */
+	public Adapter createConnectionSchemeAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.Principal <em>Principal</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.Principal
+	 * @generated
+	 */
+	public Adapter createPrincipalAdapter() {
 		return null;
 	}
 

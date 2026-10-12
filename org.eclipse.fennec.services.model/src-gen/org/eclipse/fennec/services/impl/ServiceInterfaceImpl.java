@@ -20,6 +20,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.Invariant;
+import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -47,6 +48,7 @@ import org.eclipse.fennec.services.VersionedElement;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getDeprecatedBy <em>Deprecated By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getReplacedBy <em>Replaced By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getUpdatePolicy <em>Update Policy</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getSecurity <em>Security</em>}</li>
  * </ul>
  *
  * @generated
@@ -251,6 +253,16 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @ordered
 	 */
 	protected UpdatePolicy updatePolicy = UPDATE_POLICY_EDEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getSecurity() <em>Security</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getSecurity()
+	 * @generated
+	 * @ordered
+	 */
+	protected SecurityRequirement security;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -540,6 +552,51 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @generated
 	 */
 	@Override
+	public SecurityRequirement getSecurity() {
+		return security;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public NotificationChain basicSetSecurity(SecurityRequirement newSecurity, NotificationChain msgs) {
+		SecurityRequirement oldSecurity = security;
+		security = newSecurity;
+		if (eNotificationRequired()) {
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_INTERFACE__SECURITY, oldSecurity, newSecurity);
+			if (msgs == null) msgs = notification; else msgs.add(notification);
+		}
+		return msgs;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setSecurity(SecurityRequirement newSecurity) {
+		if (newSecurity != security) {
+			NotificationChain msgs = null;
+			if (security != null)
+				msgs = ((InternalEObject)security).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.SERVICE_INTERFACE__SECURITY, null, msgs);
+			if (newSecurity != null)
+				msgs = ((InternalEObject)newSecurity).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.SERVICE_INTERFACE__SECURITY, null, msgs);
+			msgs = basicSetSecurity(newSecurity, msgs);
+			if (msgs != null) msgs.dispatch();
+		}
+		else if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.SERVICE_INTERFACE__SECURITY, newSecurity, newSecurity));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_INTERFACE__OPERATIONS:
@@ -548,6 +605,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return ((InternalEList<?>)getExceptions()).basicRemove(otherEnd, msgs);
 			case ServicesPackage.SERVICE_INTERFACE__INVARIANTS:
 				return ((InternalEList<?>)getInvariants()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
+				return basicSetSecurity(null, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -585,6 +644,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return basicGetReplacedBy();
 			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
 				return getUpdatePolicy();
+			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
+				return getSecurity();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -637,6 +698,9 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
 				setUpdatePolicy((UpdatePolicy)newValue);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
+				setSecurity((SecurityRequirement)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -685,6 +749,9 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
 				setUpdatePolicy(UPDATE_POLICY_EDEFAULT);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
+				setSecurity((SecurityRequirement)null);
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -721,6 +788,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return replacedBy != null;
 			case ServicesPackage.SERVICE_INTERFACE__UPDATE_POLICY:
 				return updatePolicy != UPDATE_POLICY_EDEFAULT;
+			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
+				return security != null;
 		}
 		return super.eIsSet(featureID);
 	}

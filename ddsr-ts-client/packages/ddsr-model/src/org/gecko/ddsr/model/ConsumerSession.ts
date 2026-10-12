@@ -6,6 +6,7 @@
  */
 
 import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
+import type { Principal } from './Principal.js';
 import type { ConsumerCapability } from './ConsumerCapability.js';
 import type { ServiceRegistration } from './ServiceRegistration.js';
 
@@ -16,6 +17,8 @@ import type { ServiceRegistration } from './ServiceRegistration.js';
 export interface ConsumerSession extends EObject {
   consumerId: string;
   origin?: string;
+  principal?: Principal;
+  domain?: string;
   lastRenewal?: Date;
   capabilities?: ConsumerCapability;
   acquisitions: EList<ServiceRegistration>;

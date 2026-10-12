@@ -13,6 +13,7 @@ import type { ServiceException } from './ServiceException.js';
 import type { Invariant } from './Invariant.js';
 import type { CatalogStatus } from './CatalogStatus.js';
 import type { UpdatePolicy } from './UpdatePolicy.js';
+import type { SecurityRequirement } from './SecurityRequirement.js';
 
 /**
  * ServiceInterface
@@ -29,5 +30,6 @@ export interface ServiceInterface extends NamedElement, VersionedElement {
   deprecatedBy?: string;
   replacedBy?: ServiceInterface;
   updatePolicy: UpdatePolicy;
+  security?: SecurityRequirement;
 
 }

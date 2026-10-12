@@ -27,6 +27,8 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getImplementation <em>Implementation</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getUsingSessions <em>Using Sessions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getPublishedBy <em>Published By</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getPrincipal <em>Principal</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getDomain <em>Domain</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceRegistration#getConsumerCount <em>Consumer Count</em>}</li>
  * </ul>
  *
@@ -181,6 +183,56 @@ public interface ServiceRegistration extends EObject {
 	 * @generated
 	 */
 	void setPublishedBy(String value);
+
+	/**
+	 * Returns the value of the '<em><b>Principal</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Who published this registration, as verified by the broker (S2). The provider's symbolicName and the origin token are claims; this is what they are checked against. withdraw, modify and heartbeat are accepted only from the same principal — the object-level rule no contract can state. Null only on a broker that runs without authentication, which is a deployment's explicit choice, never a default. TRANSIENT like acquisitions: never on the wire in either direction — a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Principal</em>' containment reference.
+	 * @see #setPrincipal(Principal)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceRegistration_Principal()
+	 * @model containment="true" transient="true"
+	 * @generated
+	 */
+	Principal getPrincipal();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceRegistration#getPrincipal <em>Principal</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Principal</em>' containment reference.
+	 * @see #getPrincipal()
+	 * @generated
+	 */
+	void setPrincipal(Principal value);
+
+	/**
+	 * Returns the value of the '<em><b>Domain</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The tenant or topology this registration belongs to. Registrations and sessions are domain-bound, contracts are not: the same ServiceInterface may be served in several domains. A lookup only ever sees the registrations of the caller's domain, and an event only reaches the sessions of its domain. Taken by the broker from the verified credential (an audience or a claim), never from the document. Null = the broker's single default domain. TRANSIENT like acquisitions: never on the wire in either direction — a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Domain</em>' attribute.
+	 * @see #setDomain(String)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceRegistration_Domain()
+	 * @model transient="true"
+	 * @generated
+	 */
+	String getDomain();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceRegistration#getDomain <em>Domain</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Domain</em>' attribute.
+	 * @see #getDomain()
+	 * @generated
+	 */
+	void setDomain(String value);
 
 	/**
 	 * Returns the value of the '<em><b>Consumer Count</b></em>' attribute.

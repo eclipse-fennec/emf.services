@@ -10,6 +10,7 @@ import type { NamedElement } from './NamedElement.js';
 import type { Parameter } from './Parameter.js';
 import type { ServiceException } from './ServiceException.js';
 import type { Invariant } from './Invariant.js';
+import type { SecurityRequirement } from './SecurityRequirement.js';
 
 /**
  * ServiceOperation
@@ -22,5 +23,6 @@ export interface ServiceOperation extends NamedElement {
   exceptions: EList<ServiceException>;
   preconditions: EList<Invariant>;
   postconditions: EList<Invariant>;
+  security?: SecurityRequirement;
 
 }

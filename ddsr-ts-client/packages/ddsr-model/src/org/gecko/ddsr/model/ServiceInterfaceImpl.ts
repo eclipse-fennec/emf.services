@@ -13,6 +13,7 @@ import type { VersionedElement } from './VersionedElement.js';
 import type { ServiceOperation } from './ServiceOperation.js';
 import type { ServiceException } from './ServiceException.js';
 import type { Invariant } from './Invariant.js';
+import type { SecurityRequirement } from './SecurityRequirement.js';
 import { CatalogStatus } from './CatalogStatus.js';
 import { UpdatePolicy } from './UpdatePolicy.js';
 import type { ServiceInterface } from './ServiceInterface.js';
@@ -34,6 +35,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   static readonly DEPRECATED_BY: number = 9;
   static readonly REPLACED_BY: number = 10;
   static readonly UPDATE_POLICY: number = 11;
+  static readonly SECURITY: number = 12;
   static readonly NAME: number = 0;
   static readonly VERSION: number = 1;
 
@@ -48,6 +50,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   private _deprecatedBy?: string;
   private _replacedBy?: ServiceInterface;
   private _updatePolicy: UpdatePolicy = UpdatePolicy.UNSPECIFIED;
+  private _security?: SecurityRequirement;
   private _name: string = "";
   private _version?: string;
 
@@ -248,6 +251,30 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
     }
   }
 
+  get security(): SecurityRequirement {
+    return this._security!;
+  }
+
+  set security(value: SecurityRequirement) {
+    const oldValue = this._security;
+    this._security = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceInterfaceImpl.SECURITY),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceInterfaceImpl.SECURITY,
+        merge: () => false
+      });
+    }
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -292,6 +319,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this.replacedBy;
       case ServiceInterfaceImpl.UPDATE_POLICY:
         return this.updatePolicy;
+      case ServiceInterfaceImpl.SECURITY:
+        return this.security;
       case ServiceInterfaceImpl.NAME:
         return this.name;
       case ServiceInterfaceImpl.VERSION:
@@ -350,6 +379,10 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         this.updatePolicy = newValue as UpdatePolicy;
         super.eSet(feature, newValue);
         break;
+      case ServiceInterfaceImpl.SECURITY:
+        this.security = newValue as SecurityRequirement;
+        super.eSet(feature, newValue);
+        break;
       case ServiceInterfaceImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -389,6 +422,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this._replacedBy !== undefined;
       case ServiceInterfaceImpl.UPDATE_POLICY:
         return this._updatePolicy !== UpdatePolicy.UNSPECIFIED;
+      case ServiceInterfaceImpl.SECURITY:
+        return this._security !== undefined;
       case ServiceInterfaceImpl.NAME:
         return this._name !== "";
       case ServiceInterfaceImpl.VERSION:
@@ -433,6 +468,9 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return;
       case ServiceInterfaceImpl.UPDATE_POLICY:
         this._updatePolicy = UpdatePolicy.UNSPECIFIED;
+        return;
+      case ServiceInterfaceImpl.SECURITY:
+        this._security = undefined;
         return;
       case ServiceInterfaceImpl.NAME:
         this._name = "";

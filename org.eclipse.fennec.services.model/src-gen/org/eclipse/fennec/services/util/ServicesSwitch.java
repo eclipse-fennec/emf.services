@@ -345,6 +345,49 @@ public class ServicesSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ServicesPackage.SECURITY_REQUIREMENT: {
+				SecurityRequirement securityRequirement = (SecurityRequirement)theEObject;
+				T result = caseSecurityRequirement(securityRequirement);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ServicesPackage.SECURITY_SCHEME: {
+				SecurityScheme securityScheme = (SecurityScheme)theEObject;
+				T result = caseSecurityScheme(securityScheme);
+				if (result == null) result = caseNamedElement(securityScheme);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ServicesPackage.BEARER_TOKEN_SCHEME: {
+				BearerTokenScheme bearerTokenScheme = (BearerTokenScheme)theEObject;
+				T result = caseBearerTokenScheme(bearerTokenScheme);
+				if (result == null) result = caseSecurityScheme(bearerTokenScheme);
+				if (result == null) result = caseNamedElement(bearerTokenScheme);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ServicesPackage.MUTUAL_TLS_SCHEME: {
+				MutualTlsScheme mutualTlsScheme = (MutualTlsScheme)theEObject;
+				T result = caseMutualTlsScheme(mutualTlsScheme);
+				if (result == null) result = caseSecurityScheme(mutualTlsScheme);
+				if (result == null) result = caseNamedElement(mutualTlsScheme);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ServicesPackage.CONNECTION_SCHEME: {
+				ConnectionScheme connectionScheme = (ConnectionScheme)theEObject;
+				T result = caseConnectionScheme(connectionScheme);
+				if (result == null) result = caseSecurityScheme(connectionScheme);
+				if (result == null) result = caseNamedElement(connectionScheme);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case ServicesPackage.PRINCIPAL: {
+				Principal principal = (Principal)theEObject;
+				T result = casePrincipal(principal);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ServicesPackage.SERVICE_REFERENCE: {
 				ServiceReference serviceReference = (ServiceReference)theEObject;
 				T result = caseServiceReference(serviceReference);
@@ -1091,6 +1134,96 @@ public class ServicesSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseMqttOperationFlavor(MqttOperationFlavor object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Security Requirement</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Security Requirement</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseSecurityRequirement(SecurityRequirement object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Security Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Security Scheme</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseSecurityScheme(SecurityScheme object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Bearer Token Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Bearer Token Scheme</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseBearerTokenScheme(BearerTokenScheme object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Mutual Tls Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Mutual Tls Scheme</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseMutualTlsScheme(MutualTlsScheme object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Connection Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Connection Scheme</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseConnectionScheme(ConnectionScheme object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Principal</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Principal</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T casePrincipal(Principal object) {
 		return null;
 	}
 

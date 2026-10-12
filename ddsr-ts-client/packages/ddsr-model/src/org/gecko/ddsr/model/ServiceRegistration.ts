@@ -10,6 +10,7 @@ import type { ServiceReference } from './ServiceReference.js';
 import type { ServiceProvider } from './ServiceProvider.js';
 import type { ServiceImplementation } from './ServiceImplementation.js';
 import type { ConsumerSession } from './ConsumerSession.js';
+import type { Principal } from './Principal.js';
 import type { Property } from './Property.js';
 
 /**
@@ -23,6 +24,8 @@ export interface ServiceRegistration extends EObject {
   implementation: ServiceImplementation;
   usingSessions: EList<ConsumerSession>;
   publishedBy?: string;
+  principal?: Principal;
+  domain?: string;
   consumerCount?: number;
 
   unregister(): void;

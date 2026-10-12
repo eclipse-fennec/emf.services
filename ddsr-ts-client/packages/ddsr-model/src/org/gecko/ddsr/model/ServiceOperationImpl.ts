@@ -12,6 +12,7 @@ import type { NamedElement } from './NamedElement.js';
 import type { Parameter } from './Parameter.js';
 import type { ServiceException } from './ServiceException.js';
 import type { Invariant } from './Invariant.js';
+import type { SecurityRequirement } from './SecurityRequirement.js';
 import type { ServiceOperation } from './ServiceOperation.js';
 import { DDSRPackage } from './DDSRPackage.js';
 
@@ -27,6 +28,7 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
   static readonly EXCEPTIONS: number = 4;
   static readonly PRECONDITIONS: number = 5;
   static readonly POSTCONDITIONS: number = 6;
+  static readonly SECURITY: number = 7;
   static readonly NAME: number = 0;
 
   // Private fields
@@ -36,6 +38,7 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
   private _exceptions!: EList<ServiceException>;
   private _preconditions!: EList<Invariant>;
   private _postconditions!: EList<Invariant>;
+  private _security?: SecurityRequirement;
   private _name: string = "";
 
   /**
@@ -122,6 +125,30 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
     return this._postconditions;
   }
 
+  get security(): SecurityRequirement {
+    return this._security!;
+  }
+
+  set security(value: SecurityRequirement) {
+    const oldValue = this._security;
+    this._security = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceOperationImpl.SECURITY),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceOperationImpl.SECURITY,
+        merge: () => false
+      });
+    }
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -150,6 +177,8 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         return this.preconditions;
       case ServiceOperationImpl.POSTCONDITIONS:
         return this.postconditions;
+      case ServiceOperationImpl.SECURITY:
+        return this.security;
       case ServiceOperationImpl.NAME:
         return this.name;
       default:
@@ -191,6 +220,10 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         this.postconditions.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
+      case ServiceOperationImpl.SECURITY:
+        this.security = newValue as SecurityRequirement;
+        super.eSet(feature, newValue);
+        break;
       case ServiceOperationImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -218,6 +251,8 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         return this._preconditions !== undefined && !this._preconditions.isEmpty();
       case ServiceOperationImpl.POSTCONDITIONS:
         return this._postconditions !== undefined && !this._postconditions.isEmpty();
+      case ServiceOperationImpl.SECURITY:
+        return this._security !== undefined;
       case ServiceOperationImpl.NAME:
         return this._name !== "";
       default:
@@ -248,6 +283,9 @@ export class ServiceOperationImpl extends BasicEObject implements ServiceOperati
         return;
       case ServiceOperationImpl.POSTCONDITIONS:
         if (this._postconditions) this._postconditions.clear();
+        return;
+      case ServiceOperationImpl.SECURITY:
+        this._security = undefined;
         return;
       case ServiceOperationImpl.NAME:
         this._name = "";

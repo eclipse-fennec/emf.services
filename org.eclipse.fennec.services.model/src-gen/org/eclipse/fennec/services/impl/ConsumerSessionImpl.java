@@ -21,6 +21,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
+import org.eclipse.fennec.services.Principal;
 import org.eclipse.fennec.services.ServiceRegistration;
 import org.eclipse.fennec.services.ServicesPackage;
 
@@ -34,6 +35,8 @@ import org.eclipse.fennec.services.ServicesPackage;
  * <ul>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getConsumerId <em>Consumer Id</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getOrigin <em>Origin</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getPrincipal <em>Principal</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getDomain <em>Domain</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getLastRenewal <em>Last Renewal</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getCapabilities <em>Capabilities</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ConsumerSessionImpl#getAcquisitions <em>Acquisitions</em>}</li>
@@ -81,6 +84,36 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 	 * @ordered
 	 */
 	protected String origin = ORIGIN_EDEFAULT;
+
+	/**
+	 * The cached value of the '{@link #getPrincipal() <em>Principal</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getPrincipal()
+	 * @generated
+	 * @ordered
+	 */
+	protected Principal principal;
+
+	/**
+	 * The default value of the '{@link #getDomain() <em>Domain</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDomain()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final String DOMAIN_EDEFAULT = null;
+
+	/**
+	 * The cached value of the '{@link #getDomain() <em>Domain</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDomain()
+	 * @generated
+	 * @ordered
+	 */
+	protected String domain = DOMAIN_EDEFAULT;
 
 	/**
 	 * The default value of the '{@link #getLastRenewal() <em>Last Renewal</em>}' attribute.
@@ -193,6 +226,74 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 	 * @generated
 	 */
 	@Override
+	public Principal getPrincipal() {
+		return principal;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public NotificationChain basicSetPrincipal(Principal newPrincipal, NotificationChain msgs) {
+		Principal oldPrincipal = principal;
+		principal = newPrincipal;
+		if (eNotificationRequired()) {
+			ENotificationImpl notification = new ENotificationImpl(this, Notification.SET, ServicesPackage.CONSUMER_SESSION__PRINCIPAL, oldPrincipal, newPrincipal);
+			if (msgs == null) msgs = notification; else msgs.add(notification);
+		}
+		return msgs;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setPrincipal(Principal newPrincipal) {
+		if (newPrincipal != principal) {
+			NotificationChain msgs = null;
+			if (principal != null)
+				msgs = ((InternalEObject)principal).eInverseRemove(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.CONSUMER_SESSION__PRINCIPAL, null, msgs);
+			if (newPrincipal != null)
+				msgs = ((InternalEObject)newPrincipal).eInverseAdd(this, EOPPOSITE_FEATURE_BASE - ServicesPackage.CONSUMER_SESSION__PRINCIPAL, null, msgs);
+			msgs = basicSetPrincipal(newPrincipal, msgs);
+			if (msgs != null) msgs.dispatch();
+		}
+		else if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.CONSUMER_SESSION__PRINCIPAL, newPrincipal, newPrincipal));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public String getDomain() {
+		return domain;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setDomain(String newDomain) {
+		String oldDomain = domain;
+		domain = newDomain;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.CONSUMER_SESSION__DOMAIN, oldDomain, domain));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public Date getLastRenewal() {
 		return lastRenewal;
 	}
@@ -291,6 +392,8 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
+			case ServicesPackage.CONSUMER_SESSION__PRINCIPAL:
+				return basicSetPrincipal(null, msgs);
 			case ServicesPackage.CONSUMER_SESSION__CAPABILITIES:
 				return basicSetCapabilities(null, msgs);
 			case ServicesPackage.CONSUMER_SESSION__ACQUISITIONS:
@@ -311,6 +414,10 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 				return getConsumerId();
 			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
 				return getOrigin();
+			case ServicesPackage.CONSUMER_SESSION__PRINCIPAL:
+				return getPrincipal();
+			case ServicesPackage.CONSUMER_SESSION__DOMAIN:
+				return getDomain();
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				return getLastRenewal();
 			case ServicesPackage.CONSUMER_SESSION__CAPABILITIES:
@@ -335,6 +442,12 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 				return;
 			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
 				setOrigin((String)newValue);
+				return;
+			case ServicesPackage.CONSUMER_SESSION__PRINCIPAL:
+				setPrincipal((Principal)newValue);
+				return;
+			case ServicesPackage.CONSUMER_SESSION__DOMAIN:
+				setDomain((String)newValue);
 				return;
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				setLastRenewal((Date)newValue);
@@ -364,6 +477,12 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
 				setOrigin(ORIGIN_EDEFAULT);
 				return;
+			case ServicesPackage.CONSUMER_SESSION__PRINCIPAL:
+				setPrincipal((Principal)null);
+				return;
+			case ServicesPackage.CONSUMER_SESSION__DOMAIN:
+				setDomain(DOMAIN_EDEFAULT);
+				return;
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				setLastRenewal(LAST_RENEWAL_EDEFAULT);
 				return;
@@ -389,6 +508,10 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 				return CONSUMER_ID_EDEFAULT == null ? consumerId != null : !CONSUMER_ID_EDEFAULT.equals(consumerId);
 			case ServicesPackage.CONSUMER_SESSION__ORIGIN:
 				return ORIGIN_EDEFAULT == null ? origin != null : !ORIGIN_EDEFAULT.equals(origin);
+			case ServicesPackage.CONSUMER_SESSION__PRINCIPAL:
+				return principal != null;
+			case ServicesPackage.CONSUMER_SESSION__DOMAIN:
+				return DOMAIN_EDEFAULT == null ? domain != null : !DOMAIN_EDEFAULT.equals(domain);
 			case ServicesPackage.CONSUMER_SESSION__LAST_RENEWAL:
 				return LAST_RENEWAL_EDEFAULT == null ? lastRenewal != null : !LAST_RENEWAL_EDEFAULT.equals(lastRenewal);
 			case ServicesPackage.CONSUMER_SESSION__CAPABILITIES:
@@ -413,6 +536,8 @@ public class ConsumerSessionImpl extends MinimalEObjectImpl.Container implements
 		result.append(consumerId);
 		result.append(", origin: ");
 		result.append(origin);
+		result.append(", domain: ");
+		result.append(domain);
 		result.append(", lastRenewal: ");
 		result.append(lastRenewal);
 		result.append(')');

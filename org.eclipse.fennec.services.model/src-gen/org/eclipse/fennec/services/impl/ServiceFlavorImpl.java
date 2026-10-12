@@ -20,6 +20,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.SecurityScheme;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.ServicesPackage;
@@ -36,6 +37,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getKind <em>Kind</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getOperationFlavors <em>Operation Flavors</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getCapabilities <em>Capabilities</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl#getSecuritySchemes <em>Security Schemes</em>}</li>
  * </ul>
  *
  * @generated
@@ -100,6 +102,16 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 	 * @ordered
 	 */
 	protected EList<Capability> capabilities;
+
+	/**
+	 * The cached value of the '{@link #getSecuritySchemes() <em>Security Schemes</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getSecuritySchemes()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<SecurityScheme> securitySchemes;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -198,12 +210,27 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 	 * @generated
 	 */
 	@Override
+	public EList<SecurityScheme> getSecuritySchemes() {
+		if (securitySchemes == null) {
+			securitySchemes = new EObjectContainmentEList<SecurityScheme>(SecurityScheme.class, this, ServicesPackage.SERVICE_FLAVOR__SECURITY_SCHEMES);
+		}
+		return securitySchemes;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_FLAVOR__OPERATION_FLAVORS:
 				return ((InternalEList<?>)getOperationFlavors()).basicRemove(otherEnd, msgs);
 			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
 				return ((InternalEList<?>)getCapabilities()).basicRemove(otherEnd, msgs);
+			case ServicesPackage.SERVICE_FLAVOR__SECURITY_SCHEMES:
+				return ((InternalEList<?>)getSecuritySchemes()).basicRemove(otherEnd, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -224,6 +251,8 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 				return getOperationFlavors();
 			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
 				return getCapabilities();
+			case ServicesPackage.SERVICE_FLAVOR__SECURITY_SCHEMES:
+				return getSecuritySchemes();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -251,6 +280,10 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 				getCapabilities().clear();
 				getCapabilities().addAll((Collection<? extends Capability>)newValue);
 				return;
+			case ServicesPackage.SERVICE_FLAVOR__SECURITY_SCHEMES:
+				getSecuritySchemes().clear();
+				getSecuritySchemes().addAll((Collection<? extends SecurityScheme>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -275,6 +308,9 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
 				getCapabilities().clear();
 				return;
+			case ServicesPackage.SERVICE_FLAVOR__SECURITY_SCHEMES:
+				getSecuritySchemes().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -295,6 +331,8 @@ public abstract class ServiceFlavorImpl extends MinimalEObjectImpl.Container imp
 				return operationFlavors != null && !operationFlavors.isEmpty();
 			case ServicesPackage.SERVICE_FLAVOR__CAPABILITIES:
 				return capabilities != null && !capabilities.isEmpty();
+			case ServicesPackage.SERVICE_FLAVOR__SECURITY_SCHEMES:
+				return securitySchemes != null && !securitySchemes.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}

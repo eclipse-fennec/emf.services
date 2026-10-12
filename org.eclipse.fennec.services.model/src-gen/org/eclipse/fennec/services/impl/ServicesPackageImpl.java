@@ -14,6 +14,7 @@ import org.eclipse.emf.ecore.impl.EPackageImpl;
 
 import org.eclipse.fennec.services.ApiType;
 import org.eclipse.fennec.services.Argument;
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.CatalogStatus;
@@ -24,6 +25,7 @@ import org.eclipse.fennec.services.ComponentDescription;
 import org.eclipse.fennec.services.ComponentReference;
 import org.eclipse.fennec.services.ComponentState;
 import org.eclipse.fennec.services.ConfigurationPolicy;
+import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.ConnectionState;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
@@ -51,12 +53,14 @@ import org.eclipse.fennec.services.LongProperty;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttOperationFlavor;
 import org.eclipse.fennec.services.MqttQos;
+import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.NamedElement;
 import org.eclipse.fennec.services.NumericRangeConstraint;
 import org.eclipse.fennec.services.PackageMapping;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.ParameterConstraint;
+import org.eclipse.fennec.services.Principal;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.PublishHook;
 import org.eclipse.fennec.services.PythonBinding;
@@ -74,6 +78,9 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.RestParameterBinding;
 import org.eclipse.fennec.services.SatisfiedReference;
+import org.eclipse.fennec.services.SecurityRequirement;
+import org.eclipse.fennec.services.SecurityScheme;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceException;
@@ -376,6 +383,48 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass mqttOperationFlavorEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass securityRequirementEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass securitySchemeEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass bearerTokenSchemeEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass mutualTlsSchemeEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass connectionSchemeEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass principalEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -712,6 +761,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EEnum connectionStateEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum securitySchemeKindEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1088,6 +1144,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EReference getServiceOperation_Postconditions() {
 		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceOperation_Security() {
+		return (EReference)serviceOperationEClass.getEStructuralFeatures().get(6);
 	}
 
 	/**
@@ -1586,6 +1652,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EReference getServiceInterface_Security() {
+		return (EReference)serviceInterfaceEClass.getEStructuralFeatures().get(10);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getLifecycleHook() {
 		return lifecycleHookEClass;
 	}
@@ -2076,6 +2152,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EReference getServiceFlavor_SecuritySchemes() {
+		return (EReference)serviceFlavorEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getRestFlavor() {
 		return restFlavorEClass;
 	}
@@ -2416,6 +2502,176 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EClass getSecurityRequirement() {
+		return securityRequirementEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getSecurityRequirement_Authenticated() {
+		return (EAttribute)securityRequirementEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getSecurityRequirement_Scopes() {
+		return (EAttribute)securityRequirementEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getSecurityScheme() {
+		return securitySchemeEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getSecurityScheme_Kind() {
+		return (EAttribute)securitySchemeEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getBearerTokenScheme() {
+		return bearerTokenSchemeEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getBearerTokenScheme_Issuer() {
+		return (EAttribute)bearerTokenSchemeEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getBearerTokenScheme_Audiences() {
+		return (EAttribute)bearerTokenSchemeEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getBearerTokenScheme_JwksUri() {
+		return (EAttribute)bearerTokenSchemeEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getBearerTokenScheme_ScopeClaim() {
+		return (EAttribute)bearerTokenSchemeEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getMutualTlsScheme() {
+		return mutualTlsSchemeEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getMutualTlsScheme_TrustedIssuers() {
+		return (EAttribute)mutualTlsSchemeEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getConnectionScheme() {
+		return connectionSchemeEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getPrincipal() {
+		return principalEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getPrincipal_Subject() {
+		return (EAttribute)principalEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getPrincipal_Issuer() {
+		return (EAttribute)principalEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getPrincipal_Scopes() {
+		return (EAttribute)principalEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getServiceReference() {
 		return serviceReferenceEClass;
 	}
@@ -2556,8 +2812,28 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EReference getServiceRegistration_Principal() {
+		return (EReference)serviceRegistrationEClass.getEStructuralFeatures().get(6);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getServiceRegistration_Domain() {
+		return (EAttribute)serviceRegistrationEClass.getEStructuralFeatures().get(7);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EAttribute getServiceRegistration_ConsumerCount() {
-		return (EAttribute)serviceRegistrationEClass.getEStructuralFeatures().get(6);
+		return (EAttribute)serviceRegistrationEClass.getEStructuralFeatures().get(8);
 	}
 
 	/**
@@ -2616,8 +2892,28 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EReference getConsumerSession_Principal() {
+		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getConsumerSession_Domain() {
+		return (EAttribute)consumerSessionEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EAttribute getConsumerSession_LastRenewal() {
-		return (EAttribute)consumerSessionEClass.getEStructuralFeatures().get(2);
+		return (EAttribute)consumerSessionEClass.getEStructuralFeatures().get(4);
 	}
 
 	/**
@@ -2627,7 +2923,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EReference getConsumerSession_Capabilities() {
-		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(3);
+		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(5);
 	}
 
 	/**
@@ -2637,7 +2933,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 */
 	@Override
 	public EReference getConsumerSession_Acquisitions() {
-		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(4);
+		return (EReference)consumerSessionEClass.getEStructuralFeatures().get(6);
 	}
 
 	/**
@@ -3966,6 +4262,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EEnum getSecuritySchemeKind() {
+		return securitySchemeKindEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getApiType() {
 		return apiTypeEEnum;
 	}
@@ -4041,6 +4347,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__EXCEPTIONS);
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__PRECONDITIONS);
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__POSTCONDITIONS);
+		createEReference(serviceOperationEClass, SERVICE_OPERATION__SECURITY);
 
 		parameterEClass = createEClass(PARAMETER);
 		createEAttribute(parameterEClass, PARAMETER__INDEX);
@@ -4101,6 +4408,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__DEPRECATED_BY);
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__REPLACED_BY);
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__UPDATE_POLICY);
+		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__SECURITY);
 
 		lifecycleHookEClass = createEClass(LIFECYCLE_HOOK);
 		createEAttribute(lifecycleHookEClass, LIFECYCLE_HOOK__KIND);
@@ -4157,6 +4465,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(serviceFlavorEClass, SERVICE_FLAVOR__KIND);
 		createEReference(serviceFlavorEClass, SERVICE_FLAVOR__OPERATION_FLAVORS);
 		createEReference(serviceFlavorEClass, SERVICE_FLAVOR__CAPABILITIES);
+		createEReference(serviceFlavorEClass, SERVICE_FLAVOR__SECURITY_SCHEMES);
 
 		restFlavorEClass = createEClass(REST_FLAVOR);
 		createEAttribute(restFlavorEClass, REST_FLAVOR__HOST);
@@ -4199,6 +4508,29 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__CORRELATION);
 		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__RETURN_PATH);
 
+		securityRequirementEClass = createEClass(SECURITY_REQUIREMENT);
+		createEAttribute(securityRequirementEClass, SECURITY_REQUIREMENT__AUTHENTICATED);
+		createEAttribute(securityRequirementEClass, SECURITY_REQUIREMENT__SCOPES);
+
+		securitySchemeEClass = createEClass(SECURITY_SCHEME);
+		createEAttribute(securitySchemeEClass, SECURITY_SCHEME__KIND);
+
+		bearerTokenSchemeEClass = createEClass(BEARER_TOKEN_SCHEME);
+		createEAttribute(bearerTokenSchemeEClass, BEARER_TOKEN_SCHEME__ISSUER);
+		createEAttribute(bearerTokenSchemeEClass, BEARER_TOKEN_SCHEME__AUDIENCES);
+		createEAttribute(bearerTokenSchemeEClass, BEARER_TOKEN_SCHEME__JWKS_URI);
+		createEAttribute(bearerTokenSchemeEClass, BEARER_TOKEN_SCHEME__SCOPE_CLAIM);
+
+		mutualTlsSchemeEClass = createEClass(MUTUAL_TLS_SCHEME);
+		createEAttribute(mutualTlsSchemeEClass, MUTUAL_TLS_SCHEME__TRUSTED_ISSUERS);
+
+		connectionSchemeEClass = createEClass(CONNECTION_SCHEME);
+
+		principalEClass = createEClass(PRINCIPAL);
+		createEAttribute(principalEClass, PRINCIPAL__SUBJECT);
+		createEAttribute(principalEClass, PRINCIPAL__ISSUER);
+		createEAttribute(principalEClass, PRINCIPAL__SCOPES);
+
 		serviceReferenceEClass = createEClass(SERVICE_REFERENCE);
 		createEAttribute(serviceReferenceEClass, SERVICE_REFERENCE__ID);
 		createEReference(serviceReferenceEClass, SERVICE_REFERENCE__PROPERTIES);
@@ -4214,6 +4546,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__IMPLEMENTATION);
 		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__USING_SESSIONS);
 		createEAttribute(serviceRegistrationEClass, SERVICE_REGISTRATION__PUBLISHED_BY);
+		createEReference(serviceRegistrationEClass, SERVICE_REGISTRATION__PRINCIPAL);
+		createEAttribute(serviceRegistrationEClass, SERVICE_REGISTRATION__DOMAIN);
 		createEAttribute(serviceRegistrationEClass, SERVICE_REGISTRATION__CONSUMER_COUNT);
 		createEOperation(serviceRegistrationEClass, SERVICE_REGISTRATION___UNREGISTER);
 		createEOperation(serviceRegistrationEClass, SERVICE_REGISTRATION___SET_PROPERTIES__ELIST);
@@ -4221,6 +4555,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		consumerSessionEClass = createEClass(CONSUMER_SESSION);
 		createEAttribute(consumerSessionEClass, CONSUMER_SESSION__CONSUMER_ID);
 		createEAttribute(consumerSessionEClass, CONSUMER_SESSION__ORIGIN);
+		createEReference(consumerSessionEClass, CONSUMER_SESSION__PRINCIPAL);
+		createEAttribute(consumerSessionEClass, CONSUMER_SESSION__DOMAIN);
 		createEAttribute(consumerSessionEClass, CONSUMER_SESSION__LAST_RENEWAL);
 		createEReference(consumerSessionEClass, CONSUMER_SESSION__CAPABILITIES);
 		createEReference(consumerSessionEClass, CONSUMER_SESSION__ACQUISITIONS);
@@ -4382,6 +4718,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		catalogStatusEEnum = createEEnum(CATALOG_STATUS);
 		updatePolicyEEnum = createEEnum(UPDATE_POLICY);
 		connectionStateEEnum = createEEnum(CONNECTION_STATE);
+		securitySchemeKindEEnum = createEEnum(SECURITY_SCHEME_KIND);
 		apiTypeEEnum = createEEnum(API_TYPE);
 	}
 
@@ -4451,6 +4788,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		serviceOperationFlavorEClass.getESuperTypes().add(this.getNamedElement());
 		restOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
 		mqttOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
+		securitySchemeEClass.getESuperTypes().add(this.getNamedElement());
+		bearerTokenSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
+		mutualTlsSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
+		connectionSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
 		componentConfigurationEClass.getESuperTypes().add(this.getNamedElement());
 		serviceRegistryEClass.getESuperTypes().add(this.getNamedElement());
 		localServiceRegistryEClass.getESuperTypes().add(this.getServiceRegistry());
@@ -4503,6 +4844,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getServiceOperation_Exceptions(), this.getServiceException(), null, "exceptions", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceOperation_Preconditions(), this.getInvariant(), null, "preconditions", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceOperation_Postconditions(), this.getInvariant(), null, "postconditions", null, 0, -1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceOperation_Security(), this.getSecurityRequirement(), null, "security", null, 0, 1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(parameterEClass, Parameter.class, "Parameter", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getParameter_Index(), ecorePackage.getEInt(), "index", null, 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -4563,6 +4905,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getServiceInterface_DeprecatedBy(), ecorePackage.getEString(), "deprecatedBy", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceInterface_ReplacedBy(), this.getServiceInterface(), null, "replacedBy", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceInterface_UpdatePolicy(), this.getUpdatePolicy(), "updatePolicy", null, 1, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceInterface_Security(), this.getSecurityRequirement(), null, "security", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(lifecycleHookEClass, LifecycleHook.class, "LifecycleHook", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getLifecycleHook_Kind(), this.getLifecycleHookKind(), "kind", null, 1, 1, LifecycleHook.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -4619,6 +4962,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getServiceFlavor_Kind(), this.getFlavorKind(), "kind", null, 1, 1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceFlavor_OperationFlavors(), this.getServiceOperationFlavor(), null, "operationFlavors", null, 0, -1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceFlavor_Capabilities(), this.getCapability(), null, "capabilities", null, 0, -1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceFlavor_SecuritySchemes(), this.getSecurityScheme(), null, "securitySchemes", null, 0, -1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(restFlavorEClass, RestFlavor.class, "RestFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getRestFlavor_Host(), ecorePackage.getEString(), "host", null, 0, 1, RestFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -4640,7 +4984,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(restOperationFlavorEClass, RestOperationFlavor.class, "RestOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getRestOperationFlavor_Method(), this.getHttpMethod(), "method", null, 1, 1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestOperationFlavor_Path(), ecorePackage.getEString(), "path", null, 0, 1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getRestOperationFlavor_ReturnCodes(), ecorePackage.getEInt(), "returnCodes", null, 1, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getRestOperationFlavor_ReturnCodes(), ecorePackage.getEInt(), "returnCodes", null, 0, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getRestOperationFlavor_ParameterBindings(), this.getRestParameterBinding(), null, "parameterBindings", null, 0, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getRestOperationFlavor_ExceptionBindings(), this.getRestExceptionBinding(), null, "exceptionBindings", null, 0, -1, RestOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
@@ -4661,6 +5005,29 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getMqttOperationFlavor_Correlation(), ecorePackage.getEBoolean(), "correlation", "true", 1, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getMqttOperationFlavor_ReturnPath(), ecorePackage.getEString(), "returnPath", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(securityRequirementEClass, SecurityRequirement.class, "SecurityRequirement", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getSecurityRequirement_Authenticated(), ecorePackage.getEBoolean(), "authenticated", null, 0, 1, SecurityRequirement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getSecurityRequirement_Scopes(), ecorePackage.getEString(), "scopes", null, 0, -1, SecurityRequirement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(securitySchemeEClass, SecurityScheme.class, "SecurityScheme", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getSecurityScheme_Kind(), this.getSecuritySchemeKind(), "kind", null, 1, 1, SecurityScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(bearerTokenSchemeEClass, BearerTokenScheme.class, "BearerTokenScheme", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getBearerTokenScheme_Issuer(), ecorePackage.getEString(), "issuer", null, 1, 1, BearerTokenScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getBearerTokenScheme_Audiences(), ecorePackage.getEString(), "audiences", null, 0, -1, BearerTokenScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getBearerTokenScheme_JwksUri(), ecorePackage.getEString(), "jwksUri", null, 0, 1, BearerTokenScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getBearerTokenScheme_ScopeClaim(), ecorePackage.getEString(), "scopeClaim", null, 0, 1, BearerTokenScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(mutualTlsSchemeEClass, MutualTlsScheme.class, "MutualTlsScheme", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getMutualTlsScheme_TrustedIssuers(), ecorePackage.getEString(), "trustedIssuers", null, 0, -1, MutualTlsScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(connectionSchemeEClass, ConnectionScheme.class, "ConnectionScheme", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(principalEClass, Principal.class, "Principal", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getPrincipal_Subject(), ecorePackage.getEString(), "subject", null, 1, 1, Principal.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getPrincipal_Issuer(), ecorePackage.getEString(), "issuer", null, 0, 1, Principal.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getPrincipal_Scopes(), ecorePackage.getEString(), "scopes", null, 0, -1, Principal.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		initEClass(serviceReferenceEClass, ServiceReference.class, "ServiceReference", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceReference_Id(), ecorePackage.getEString(), "id", null, 1, 1, ServiceReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceReference_Properties(), this.getProperty(), null, "properties", null, 0, -1, ServiceReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -4679,6 +5046,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getServiceRegistration_Implementation(), this.getServiceImplementation(), null, "implementation", null, 1, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceRegistration_UsingSessions(), this.getConsumerSession(), this.getConsumerSession_Acquisitions(), "usingSessions", null, 0, -1, ServiceRegistration.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceRegistration_PublishedBy(), ecorePackage.getEString(), "publishedBy", null, 0, 1, ServiceRegistration.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceRegistration_Principal(), this.getPrincipal(), null, "principal", null, 0, 1, ServiceRegistration.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceRegistration_Domain(), ecorePackage.getEString(), "domain", null, 0, 1, ServiceRegistration.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceRegistration_ConsumerCount(), ecorePackage.getEInt(), "consumerCount", null, 0, 1, ServiceRegistration.class, IS_TRANSIENT, IS_VOLATILE, !IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, IS_DERIVED, IS_ORDERED);
 
 		initEOperation(getServiceRegistration__Unregister(), null, "unregister", 0, 1, IS_UNIQUE, IS_ORDERED);
@@ -4689,6 +5058,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(consumerSessionEClass, ConsumerSession.class, "ConsumerSession", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getConsumerSession_ConsumerId(), ecorePackage.getEString(), "consumerId", null, 1, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getConsumerSession_Origin(), ecorePackage.getEString(), "origin", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getConsumerSession_Principal(), this.getPrincipal(), null, "principal", null, 0, 1, ConsumerSession.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getConsumerSession_Domain(), ecorePackage.getEString(), "domain", null, 0, 1, ConsumerSession.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getConsumerSession_LastRenewal(), ecorePackage.getEDate(), "lastRenewal", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getConsumerSession_Capabilities(), this.getConsumerCapability(), null, "capabilities", null, 0, 1, ConsumerSession.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getConsumerSession_Acquisitions(), this.getServiceRegistration(), this.getServiceRegistration_UsingSessions(), "acquisitions", null, 0, -1, ConsumerSession.class, IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5001,6 +5372,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(connectionStateEEnum, ConnectionState.DEGRADED);
 		addEEnumLiteral(connectionStateEEnum, ConnectionState.OFFLINE);
 
+		initEEnum(securitySchemeKindEEnum, SecuritySchemeKind.class, "SecuritySchemeKind");
+		addEEnumLiteral(securitySchemeKindEEnum, SecuritySchemeKind.BEARER_TOKEN);
+		addEEnumLiteral(securitySchemeKindEEnum, SecuritySchemeKind.MUTUAL_TLS);
+		addEEnumLiteral(securitySchemeKindEEnum, SecuritySchemeKind.CONNECTION);
+
 		initEEnum(apiTypeEEnum, ApiType.class, "ApiType");
 		addEEnumLiteral(apiTypeEEnum, ApiType.PROVIDER);
 		addEEnumLiteral(apiTypeEEnum, ApiType.CONSUMER);
@@ -5181,6 +5557,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "State of a LocalServiceRegistry\'s link to its Remote Registry. CONNECTED = snapshot received and event stream alive; DEGRADED = link lost, reconnect in progress, cached state still served to read-only consumers; OFFLINE = never connected, or reconnect has permanently failed. While DEGRADED or OFFLINE, write operations (publish / withdraw / catalog mutations) MUST be rejected with a Diagnostic; reads continue against the last known snapshot."
 		   });
 		addAnnotation
+		  (securitySchemeKindEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "Discriminator of SecurityScheme, as FlavorKind is for ServiceFlavor. Projected as the \'kind\' attribute of the implied \'services.security\' capability, so a consumer can require a way of proving itself at lookup time."
+		   });
+		addAnnotation
 		  (namedElementEClass,
 		   source,
 		   new String[] {
@@ -5311,6 +5693,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Conditions that MUST hold after the operation returns successfully. Evaluation context: as preconditions, plus \'result\' = the return value (null if the operation has no return). Violations are framework bugs / implementation-contract breaches and are surfaced as ERROR diagnostics."
+		   });
+		addAnnotation
+		  (getServiceOperation_Security(),
+		   source,
+		   new String[] {
+			   "documentation", "What a caller must present before THIS operation runs. Overrides ServiceInterface.security for the one operation; null = the interface-level requirement applies. Read by whoever serves the operation \u2014 the generic REST/MQTT dispatcher takes it from the document, a hand-written resource is expected to honour it \u2014 and by the caller\'s SDK, which knows from it that a credential has to travel."
 		   });
 		addAnnotation
 		  (parameterEClass,
@@ -5607,6 +5995,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Default update policy for every ServiceImplementation of this interface; an implementation may override it via ServiceImplementation.updatePolicy. UNSPECIFIED = broker default (DEPRECATE_AND_DRAIN). Lifecycle metadata like status/deprecationReason/replacedBy: not part of the sd1 fingerprint and to be neutralized by contract addressing, so changing the policy does not move the catalog address."
 		   });
 		addAnnotation
+		  (getServiceInterface_Security(),
+		   source,
+		   new String[] {
+			   "documentation", "Default requirement for every operation of this contract; an operation may override it via ServiceOperation.security. Part of the contract, not of a deployment: it states WHAT a caller must be, transport-neutral. HOW that is proven is the flavor\'s business (ServiceFlavor.securitySchemes). Absent here and on every operation = the contract states no requirement; whether such a contract may then be called anonymously is a decision of the serving node\'s configuration, never an implicit \'open\'. The broker\'s own contracts carry these too (#88): the broker\'s access matrix \u2014 publish, consume, curate \u2014 is expressed and enforced with the same mechanism as on every peer."
+		   });
+		addAnnotation
 		  (lifecycleHookEClass,
 		   source,
 		   new String[] {
@@ -5901,6 +6295,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Transport-level capabilities of this flavor (MQTT protocol version, QoS ceiling, TLS, supported media types, \u2026). Added to the implementation\'s effective capability set when matching Requirements. The \'services.transport\' capability with kind = this flavor\'s kind is implied and need not be listed."
 		   });
 		addAnnotation
+		  (getServiceFlavor_SecuritySchemes(),
+		   source,
+		   new String[] {
+			   "documentation", "How a caller proves a principal on this transport \u2014 the HOW that satisfies the contract\'s SecurityRequirement. Several schemes are alternatives (OR): a caller satisfies any one of them. Empty = the flavor says nothing about proof; combined with a requirement that demands authentication, the serving node cannot serve the flavor and must refuse to, rather than run open (fail closed). Implied in the effective capability set as namespace \'services.security\' with kind = each scheme\'s kind; not to be listed in capabilities by hand."
+		   });
+		addAnnotation
 		  (restFlavorEClass,
 		   source,
 		   new String[] {
@@ -6006,7 +6406,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getRestOperationFlavor_ReturnCodes(),
 		   source,
 		   new String[] {
-			   "documentation", "HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation\'s ServiceExceptions."
+			   "documentation", "HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation\'s ServiceExceptions. Empty = [200]: that is how the dispatcher, the resource template and the fingerprint read it, and how every publisher that never names a code is to be read."
 		   });
 		addAnnotation
 		  (getRestOperationFlavor_ParameterBindings(),
@@ -6103,6 +6503,108 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Optional alternative convention for asynchronous responses: a topic pattern with placeholders the producer fills in when publishing the response."
+		   });
+		addAnnotation
+		  (securityRequirementEClass,
+		   source,
+		   new String[] {
+			   "documentation", "The WHAT of security: what a caller must present before an operation runs. Transport-neutral and part of the contract (ServiceInterface.security, ServiceOperation.security), unlike a SecurityScheme, which is the HOW and lives on the flavor. Scopes are the contract\'s vocabulary, as in OpenAPI: a name the caller\'s credential must carry. Mapping a scope to roles, groups or clients is the identity provider\'s business and never touches the document. What this class cannot say, by design: object-level rules such as \'only the registration you published\' or \'only your own session\' \u2014 those stay with the serving code, the way row-level rules stay with a database."
+		   });
+		addAnnotation
+		  (getSecurityRequirement_Authenticated(),
+		   source,
+		   new String[] {
+			   "documentation", "True = the caller must be an authenticated principal; an anonymous call is refused before the operation runs. False with scopes present is a contradiction and invalid."
+		   });
+		addAnnotation
+		  (getSecurityRequirement_Scopes(),
+		   source,
+		   new String[] {
+			   "documentation", "Scope names the caller\'s credential must carry, ALL of them (AND). Alternatives are expressed as separate operations or separate contracts, not here. Empty with authenticated = true means \'any authenticated principal\'. Spelled the way the identity provider will see them, e.g. \'payment:write\', so the document is what a scope-to-role mapping is generated from."
+		   });
+		addAnnotation
+		  (securitySchemeEClass,
+		   source,
+		   new String[] {
+			   "documentation", "The HOW of security: one way a caller proves a principal on one transport. Abstract base extended like ServiceFlavor \u2014 concrete subclasses here, further ones by third parties. Contained by the flavor (ServiceFlavor.securitySchemes), because proof is a property of the wire: the same contract may be served with a bearer token over REST and with the connection\'s identity over MQTT. The name identifies the scheme within the flavor, like an OpenAPI securitySchemes key. Which credentials a CALLER uses to satisfy a scheme is configuration of the calling node and never part of any document."
+		   });
+		addAnnotation
+		  (getSecurityScheme_Kind(),
+		   source,
+		   new String[] {
+			   "documentation", "Discriminator, redundant with the concrete subclass; this is what the implied \'services.security\' capability carries and what a consumer filters on."
+		   });
+		addAnnotation
+		  (bearerTokenSchemeEClass,
+		   source,
+		   new String[] {
+			   "documentation", "An OAuth 2.0 / OpenID Connect bearer token (RFC 6750), the backend-to-backend case being a client-credentials token of the calling node. Over REST it travels in the Authorization header; over MQTT 5 as a user property of the request message, the connection\'s own authentication being the messaging broker\'s business (ConnectionScheme). The serving node verifies signature, issuer, audience and lifetime itself on every call, whether or not something in front of it already did (defense in depth). The principal is the token\'s subject."
+		   });
+		addAnnotation
+		  (getBearerTokenScheme_Issuer(),
+		   source,
+		   new String[] {
+			   "documentation", "The expected \'iss\' claim \u2014 the identity provider (realm) the serving node trusts. Required: a scheme without an issuer cannot be verified and is invalid."
+		   });
+		addAnnotation
+		  (getBearerTokenScheme_Audiences(),
+		   source,
+		   new String[] {
+			   "documentation", "Accepted \'aud\' values; the token must carry at least one of them. This is what stops a token minted for the broker from being replayed against a provider, or one tenant\'s token against another\'s node. Empty = the serving node\'s configured audience applies."
+		   });
+		addAnnotation
+		  (getBearerTokenScheme_JwksUri(),
+		   source,
+		   new String[] {
+			   "documentation", "Where the verifier fetches the signing keys. Null = discovered from the issuer\'s well-known configuration."
+		   });
+		addAnnotation
+		  (getBearerTokenScheme_ScopeClaim(),
+		   source,
+		   new String[] {
+			   "documentation", "The claim that carries the scopes of SecurityRequirement.scopes, as the identity provider spells it: \'scope\' (space-separated, the OAuth default) or e.g. \'roles\'. Null = \'scope\'."
+		   });
+		addAnnotation
+		  (mutualTlsSchemeEClass,
+		   source,
+		   new String[] {
+			   "documentation", "The caller proves itself with a client certificate on the TLS connection; the principal is the certificate\'s subject. Scopes of a SecurityRequirement are then taken from the serving node\'s mapping of certificate subjects, not from the wire."
+		   });
+		addAnnotation
+		  (getMutualTlsScheme_TrustedIssuers(),
+		   source,
+		   new String[] {
+			   "documentation", "Distinguished names of the certificate authorities whose client certificates are accepted. Empty = the serving node\'s trust store decides."
+		   });
+		addAnnotation
+		  (connectionSchemeEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Identity is established once per connection and enforced OUTSIDE the service: a messaging broker\'s authentication and ACL on the request and response topic trees (the consumer segment of a response topic is bound to the connection\'s identity, which is why request and response live in separate trees, #98), or a gateway that terminates authentication in front of a REST node. The serving node verifies nothing per call and this scheme says so explicitly, so that a document without any scheme is never mistaken for this one. Scopes cannot be checked per call under this scheme; a requirement that names scopes is therefore not satisfiable by it alone."
+		   });
+		addAnnotation
+		  (principalEClass,
+		   source,
+		   new String[] {
+			   "documentation", "The WHO: an authenticated identity as the broker or a serving node established it from a verified credential \u2014 never taken from a request body, a path segment or a self-declared header. Contrast with the origin token (ClientOrigin, #125): that is an audit label a client chooses, and it stays one. A principal is runtime state like the registration or session it hangs on; it is in no catalog document and in no snapshot."
+		   });
+		addAnnotation
+		  (getPrincipal_Subject(),
+		   source,
+		   new String[] {
+			   "documentation", "Who: the credential\'s subject \u2014 the OIDC \'sub\' of a bearer token, the subject of a client certificate. For a node this is its client identity, and it is what consumerId, the consumer segment of an MQTT response topic and a provider\'s claim of authorship are checked against."
+		   });
+		addAnnotation
+		  (getPrincipal_Issuer(),
+		   source,
+		   new String[] {
+			   "documentation", "Who vouched for it: the token\'s \'iss\' or the certificate issuer. Together with subject it is the identity; the same subject from another issuer is somebody else."
+		   });
+		addAnnotation
+		  (getPrincipal_Scopes(),
+		   source,
+		   new String[] {
+			   "documentation", "The scopes the credential carried, as verified. Kept so that an authorization decision after the call \u2014 a drain, an event delivery \u2014 can be made without the credential still being at hand."
 		   });
 		addAnnotation
 		  (serviceReferenceEClass,
@@ -6213,6 +6715,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Which system published this registration, as the client origin token \'label/runtimeId\' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Runtime state, like the registration itself: registrations are in no snapshot and in no wire document, so this field alone could be written but never read back. It is therefore PROJECTED onto the reference as the property ddsr.origin, which is where a lookup, an event and an auditor can see it \u2014 one source, one projection. After a broker restart the providers re-publish and the field is written again. A withdraw has no counterpart here: the registration is gone with it, and only the broker log keeps that."
 		   });
 		addAnnotation
+		  (getServiceRegistration_Principal(),
+		   source,
+		   new String[] {
+			   "documentation", "Who published this registration, as verified by the broker (S2). The provider\'s symbolicName and the origin token are claims; this is what they are checked against. withdraw, modify and heartbeat are accepted only from the same principal \u2014 the object-level rule no contract can state. Null only on a broker that runs without authentication, which is a deployment\'s explicit choice, never a default. TRANSIENT like acquisitions: never on the wire in either direction \u2014 a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."
+		   });
+		addAnnotation
+		  (getServiceRegistration_Domain(),
+		   source,
+		   new String[] {
+			   "documentation", "The tenant or topology this registration belongs to. Registrations and sessions are domain-bound, contracts are not: the same ServiceInterface may be served in several domains. A lookup only ever sees the registrations of the caller\'s domain, and an event only reaches the sessions of its domain. Taken by the broker from the verified credential (an audience or a claim), never from the document. Null = the broker\'s single default domain. TRANSIENT like acquisitions: never on the wire in either direction \u2014 a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."
+		   });
+		addAnnotation
 		  (getServiceRegistration_ConsumerCount(),
 		   source,
 		   new String[] {
@@ -6228,13 +6742,25 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getConsumerSession_ConsumerId(),
 		   source,
 		   new String[] {
-			   "documentation", "Identity of the consumer. Unauthenticated for now (S2) \u2014 once broker AuthN exists, the session binds to the authenticated identity and this id is checked against it."
+			   "documentation", "The identity the consumer calls itself by, and one name for three things: this session, the consumer segment of its MQTT response topics, and \u2014 on an authenticated broker \u2014 the subject of its principal. The broker refuses a PUT whose id is not the caller\'s own (ACQUISITION.md par.7), which closes the session-takeover hole of an unauthenticated id."
 		   });
 		addAnnotation
 		  (getConsumerSession_Origin(),
 		   source,
 		   new String[] {
 			   "documentation", "Where the consumer behind this session came from, as the client origin token \'label/runtimeId\' (issue #125). The consumerId says WHO claims to be calling and is chosen by the client; this says which deployment and which run of it the call actually reached the broker from. Session-scoped by construction: the runtime id half is the framework UUID, so it is new after every restart and identifies no person and no durable machine."
+		   });
+		addAnnotation
+		  (getConsumerSession_Principal(),
+		   source,
+		   new String[] {
+			   "documentation", "The verified identity behind this session (S2). The session is bound to it: only the same principal renews or deletes it, and what is served to it \u2014 lookups, events \u2014 is filtered by its domain. Null only on a broker that runs without authentication. TRANSIENT like acquisitions: never on the wire in either direction \u2014 a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."
+		   });
+		addAnnotation
+		  (getConsumerSession_Domain(),
+		   source,
+		   new String[] {
+			   "documentation", "The tenant or topology this consumer acts in, taken from its verified credential; see ServiceRegistration.domain. Null = the broker\'s single default domain. TRANSIENT like acquisitions: never on the wire in either direction \u2014 a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."
 		   });
 		addAnnotation
 		  (getConsumerSession_LastRenewal(),
@@ -7127,13 +7653,19 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (serviceImplementationEClass,
 		   source,
 		   new String[] {
-			   "constraints", "atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative"
+			   "constraints", "atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative authenticatedContractsHaveAScheme scopesNeedAPerCallScheme"
 		   });
 		addAnnotation
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
 			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException"
+		   });
+		addAnnotation
+		  (securityRequirementEClass,
+		   source,
+		   new String[] {
+			   "constraints", "scopesImplyAuthenticated"
 		   });
 		addAnnotation
 		  (serviceRegistrationEClass,
@@ -7224,6 +7756,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "atLeastOneInterface", "serviceInterfaces->notEmpty()",
 			   "operationFlavorsCoverInterfaces", "flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))",
 			   "replacesIsNotSelf", "replaces = null or replaces <> self",
+			   "authenticatedContractsHaveAScheme", "flavors->forAll(f | f.securitySchemes->notEmpty() or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and not op.security.authenticated) or (op.security = null and (si.security = null or not si.security.authenticated)))))",
+			   "scopesNeedAPerCallScheme", "flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() <> \'CONNECTION\') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))",
 			   "cutoverGraceNonNegative", "cutoverGraceMillis >= 0"
 		   });
 		addAnnotation
@@ -7235,6 +7769,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "pathBindingsNeedPath", "parameterBindings->forAll(b | b.binding.toString() <> \'PATH\' or path <> null)",
 			   "exceptionBindingsReferenceOperationExceptions", "exceptionBindings->forAll(b | operation.exceptions->includes(b.exception))",
 			   "oneBindingPerException", "exceptionBindings->isUnique(b | b.exception)"
+		   });
+		addAnnotation
+		  (securityRequirementEClass,
+		   source,
+		   new String[] {
+			   "scopesImplyAuthenticated", "scopes->isEmpty() or authenticated"
 		   });
 		addAnnotation
 		  (serviceRegistrationEClass,

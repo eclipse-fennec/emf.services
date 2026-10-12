@@ -161,6 +161,18 @@ public class ServicesValidator extends EObjectValidator {
 				return validateRestExceptionBinding((RestExceptionBinding)value, diagnostics, context);
 			case ServicesPackage.MQTT_OPERATION_FLAVOR:
 				return validateMqttOperationFlavor((MqttOperationFlavor)value, diagnostics, context);
+			case ServicesPackage.SECURITY_REQUIREMENT:
+				return validateSecurityRequirement((SecurityRequirement)value, diagnostics, context);
+			case ServicesPackage.SECURITY_SCHEME:
+				return validateSecurityScheme((SecurityScheme)value, diagnostics, context);
+			case ServicesPackage.BEARER_TOKEN_SCHEME:
+				return validateBearerTokenScheme((BearerTokenScheme)value, diagnostics, context);
+			case ServicesPackage.MUTUAL_TLS_SCHEME:
+				return validateMutualTlsScheme((MutualTlsScheme)value, diagnostics, context);
+			case ServicesPackage.CONNECTION_SCHEME:
+				return validateConnectionScheme((ConnectionScheme)value, diagnostics, context);
+			case ServicesPackage.PRINCIPAL:
+				return validatePrincipal((Principal)value, diagnostics, context);
 			case ServicesPackage.SERVICE_REFERENCE:
 				return validateServiceReference((ServiceReference)value, diagnostics, context);
 			case ServicesPackage.SERVICE_REGISTRATION:
@@ -257,6 +269,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateUpdatePolicy((UpdatePolicy)value, diagnostics, context);
 			case ServicesPackage.CONNECTION_STATE:
 				return validateConnectionState((ConnectionState)value, diagnostics, context);
+			case ServicesPackage.SECURITY_SCHEME_KIND:
+				return validateSecuritySchemeKind((SecuritySchemeKind)value, diagnostics, context);
 			case ServicesPackage.API_TYPE:
 				return validateApiType((ApiType)value, diagnostics, context);
 			default:
@@ -950,6 +964,8 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateServiceImplementation_operationFlavorsCoverInterfaces(serviceImplementation, diagnostics, context);
 		if (result || diagnostics != null) result &= validateServiceImplementation_replacesIsNotSelf(serviceImplementation, diagnostics, context);
 		if (result || diagnostics != null) result &= validateServiceImplementation_cutoverGraceNonNegative(serviceImplementation, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceImplementation_authenticatedContractsHaveAScheme(serviceImplementation, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceImplementation_scopesNeedAPerCallScheme(serviceImplementation, diagnostics, context);
 		return result;
 	}
 
@@ -1064,6 +1080,64 @@ public class ServicesValidator extends EObjectValidator {
 				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
 				 "cutoverGraceNonNegative",
 				 SERVICE_IMPLEMENTATION__CUTOVER_GRACE_NON_NEGATIVE__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the authenticatedContractsHaveAScheme constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_IMPLEMENTATION__AUTHENTICATED_CONTRACTS_HAVE_ASCHEME__EEXPRESSION = "flavors->forAll(f | f.securitySchemes->notEmpty() or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and not op.security.authenticated) or (op.security = null and (si.security = null or not si.security.authenticated)))))";
+
+	/**
+	 * Validates the authenticatedContractsHaveAScheme constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceImplementation_authenticatedContractsHaveAScheme(ServiceImplementation serviceImplementation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_IMPLEMENTATION,
+				 serviceImplementation,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "authenticatedContractsHaveAScheme",
+				 SERVICE_IMPLEMENTATION__AUTHENTICATED_CONTRACTS_HAVE_ASCHEME__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the scopesNeedAPerCallScheme constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_IMPLEMENTATION__SCOPES_NEED_APER_CALL_SCHEME__EEXPRESSION = "flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() <> 'CONNECTION') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))";
+
+	/**
+	 * Validates the scopesNeedAPerCallScheme constraint of '<em>Service Implementation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceImplementation_scopesNeedAPerCallScheme(ServiceImplementation serviceImplementation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_IMPLEMENTATION,
+				 serviceImplementation,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "scopesNeedAPerCallScheme",
+				 SERVICE_IMPLEMENTATION__SCOPES_NEED_APER_CALL_SCHEME__EEXPRESSION,
 				 org.eclipse.emf.common.util.Diagnostic.ERROR,
 				 DIAGNOSTIC_SOURCE,
 				 0);
@@ -1298,6 +1372,99 @@ public class ServicesValidator extends EObjectValidator {
 	 */
 	public boolean validateMqttOperationFlavor(MqttOperationFlavor mqttOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(mqttOperationFlavor, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateSecurityRequirement(SecurityRequirement securityRequirement, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		if (!validate_NoCircularContainment(securityRequirement, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(securityRequirement, diagnostics, context);
+		if (result || diagnostics != null) result &= validateSecurityRequirement_scopesImplyAuthenticated(securityRequirement, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * The cached validation expression for the scopesImplyAuthenticated constraint of '<em>Security Requirement</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SECURITY_REQUIREMENT__SCOPES_IMPLY_AUTHENTICATED__EEXPRESSION = "scopes->isEmpty() or authenticated";
+
+	/**
+	 * Validates the scopesImplyAuthenticated constraint of '<em>Security Requirement</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateSecurityRequirement_scopesImplyAuthenticated(SecurityRequirement securityRequirement, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SECURITY_REQUIREMENT,
+				 securityRequirement,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "scopesImplyAuthenticated",
+				 SECURITY_REQUIREMENT__SCOPES_IMPLY_AUTHENTICATED__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateSecurityScheme(SecurityScheme securityScheme, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(securityScheme, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateBearerTokenScheme(BearerTokenScheme bearerTokenScheme, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(bearerTokenScheme, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateMutualTlsScheme(MutualTlsScheme mutualTlsScheme, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(mutualTlsScheme, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateConnectionScheme(ConnectionScheme connectionScheme, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(connectionScheme, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validatePrincipal(Principal principal, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(principal, diagnostics, context);
 	}
 
 	/**
@@ -2047,6 +2214,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateConnectionState(ConnectionState connectionState, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateSecuritySchemeKind(SecuritySchemeKind securitySchemeKind, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

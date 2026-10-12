@@ -22,6 +22,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceFlavor#getKind <em>Kind</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceFlavor#getOperationFlavors <em>Operation Flavors</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceFlavor#getCapabilities <em>Capabilities</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceFlavor#getSecuritySchemes <em>Security Schemes</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceFlavor()
@@ -87,5 +88,20 @@ public interface ServiceFlavor extends NamedElement {
 	 * @generated
 	 */
 	EList<Capability> getCapabilities();
+
+	/**
+	 * Returns the value of the '<em><b>Security Schemes</b></em>' containment reference list.
+	 * The list contents are of type {@link org.eclipse.fennec.services.SecurityScheme}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * How a caller proves a principal on this transport — the HOW that satisfies the contract's SecurityRequirement. Several schemes are alternatives (OR): a caller satisfies any one of them. Empty = the flavor says nothing about proof; combined with a requirement that demands authentication, the serving node cannot serve the flavor and must refuse to, rather than run open (fail closed). Implied in the effective capability set as namespace 'services.security' with kind = each scheme's kind; not to be listed in capabilities by hand.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Security Schemes</em>' containment reference list.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceFlavor_SecuritySchemes()
+	 * @model containment="true"
+	 * @generated
+	 */
+	EList<SecurityScheme> getSecuritySchemes();
 
 } // ServiceFlavor

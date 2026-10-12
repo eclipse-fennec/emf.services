@@ -25,6 +25,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getExceptions <em>Exceptions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getPreconditions <em>Preconditions</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getPostconditions <em>Postconditions</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceOperation#getSecurity <em>Security</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceOperation()
@@ -142,5 +143,30 @@ public interface ServiceOperation extends NamedElement {
 	 * @generated
 	 */
 	EList<Invariant> getPostconditions();
+
+	/**
+	 * Returns the value of the '<em><b>Security</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * What a caller must present before THIS operation runs. Overrides ServiceInterface.security for the one operation; null = the interface-level requirement applies. Read by whoever serves the operation — the generic REST/MQTT dispatcher takes it from the document, a hand-written resource is expected to honour it — and by the caller's SDK, which knows from it that a credential has to travel.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Security</em>' containment reference.
+	 * @see #setSecurity(SecurityRequirement)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceOperation_Security()
+	 * @model containment="true"
+	 * @generated
+	 */
+	SecurityRequirement getSecurity();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.ServiceOperation#getSecurity <em>Security</em>}' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Security</em>' containment reference.
+	 * @see #getSecurity()
+	 * @generated
+	 */
+	void setSecurity(SecurityRequirement value);
 
 } // ServiceOperation

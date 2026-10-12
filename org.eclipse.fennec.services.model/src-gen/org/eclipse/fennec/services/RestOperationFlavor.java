@@ -92,11 +92,11 @@ public interface RestOperationFlavor extends ServiceOperationFlavor {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation's ServiceExceptions.
+	 * HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation's ServiceExceptions. Empty = [200]: that is how the dispatcher, the resource template and the fingerprint read it, and how every publisher that never names a code is to be read.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Return Codes</em>' attribute list.
 	 * @see org.eclipse.fennec.services.ServicesPackage#getRestOperationFlavor_ReturnCodes()
-	 * @model required="true"
+	 * @model
 	 * @generated
 	 */
 	EList<Integer> getReturnCodes();

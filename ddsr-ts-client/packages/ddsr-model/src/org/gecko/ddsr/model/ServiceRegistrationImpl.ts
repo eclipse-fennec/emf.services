@@ -12,6 +12,7 @@ import type { ServiceReference } from './ServiceReference.js';
 import type { ServiceProvider } from './ServiceProvider.js';
 import type { ServiceImplementation } from './ServiceImplementation.js';
 import type { ConsumerSession } from './ConsumerSession.js';
+import type { Principal } from './Principal.js';
 import type { Property } from './Property.js';
 import type { ServiceRegistration } from './ServiceRegistration.js';
 import { DDSRPackage } from './DDSRPackage.js';
@@ -28,7 +29,9 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
   static readonly IMPLEMENTATION: number = 3;
   static readonly USING_SESSIONS: number = 4;
   static readonly PUBLISHED_BY: number = 5;
-  static readonly CONSUMER_COUNT: number = 6;
+  static readonly PRINCIPAL: number = 6;
+  static readonly DOMAIN: number = 7;
+  static readonly CONSUMER_COUNT: number = 8;
 
   // Private fields
   private _reference?: ServiceReference;
@@ -37,6 +40,8 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
   private _implementation?: ServiceImplementation;
   private _usingSessions!: EList<ConsumerSession>;
   private _publishedBy?: string;
+  private _principal?: Principal;
+  private _domain?: string;
   private _consumerCount?: number;
 
   /**
@@ -174,6 +179,54 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
     }
   }
 
+  get principal(): Principal {
+    return this._principal!;
+  }
+
+  set principal(value: Principal) {
+    const oldValue = this._principal;
+    this._principal = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistrationImpl.PRINCIPAL),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceRegistrationImpl.PRINCIPAL,
+        merge: () => false
+      });
+    }
+  }
+
+  get domain(): string {
+    return this._domain!;
+  }
+
+  set domain(value: string) {
+    const oldValue = this._domain;
+    this._domain = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ServiceRegistrationImpl.DOMAIN),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ServiceRegistrationImpl.DOMAIN,
+        merge: () => false
+      });
+    }
+  }
+
   get consumerCount(): number {
     return this._consumerCount!;
   }
@@ -218,6 +271,10 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return this.usingSessions;
       case ServiceRegistrationImpl.PUBLISHED_BY:
         return this.publishedBy;
+      case ServiceRegistrationImpl.PRINCIPAL:
+        return this.principal;
+      case ServiceRegistrationImpl.DOMAIN:
+        return this.domain;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         return this.consumerCount;
       default:
@@ -256,6 +313,14 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         this.publishedBy = newValue as string;
         super.eSet(feature, newValue);
         break;
+      case ServiceRegistrationImpl.PRINCIPAL:
+        this.principal = newValue as Principal;
+        super.eSet(feature, newValue);
+        break;
+      case ServiceRegistrationImpl.DOMAIN:
+        this.domain = newValue as string;
+        super.eSet(feature, newValue);
+        break;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         this.consumerCount = newValue as number;
         super.eSet(feature, newValue);
@@ -283,6 +348,10 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return this._usingSessions !== undefined && !this._usingSessions.isEmpty();
       case ServiceRegistrationImpl.PUBLISHED_BY:
         return this._publishedBy !== undefined;
+      case ServiceRegistrationImpl.PRINCIPAL:
+        return this._principal !== undefined;
+      case ServiceRegistrationImpl.DOMAIN:
+        return this._domain !== undefined;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         return this._consumerCount !== undefined;
       default:
@@ -313,6 +382,12 @@ export class ServiceRegistrationImpl extends BasicEObject implements ServiceRegi
         return;
       case ServiceRegistrationImpl.PUBLISHED_BY:
         this._publishedBy = undefined;
+        return;
+      case ServiceRegistrationImpl.PRINCIPAL:
+        this._principal = undefined;
+        return;
+      case ServiceRegistrationImpl.DOMAIN:
+        this._domain = undefined;
         return;
       case ServiceRegistrationImpl.CONSUMER_COUNT:
         this._consumerCount = undefined;

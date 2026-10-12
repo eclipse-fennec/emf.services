@@ -32,8 +32,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceImplementation()
- * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative'"
- *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 atLeastOneInterface='serviceInterfaces-&gt;notEmpty()' operationFlavorsCoverInterfaces='flavors-&gt;forAll(f | f.operationFlavors-&gt;forAll(of | serviceInterfaces-&gt;exists(si | si.operations-&gt;includes(of.operation))))' replacesIsNotSelf='replaces = null or replaces &lt;&gt; self' cutoverGraceNonNegative='cutoverGraceMillis &gt;= 0'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative authenticatedContractsHaveAScheme scopesNeedAPerCallScheme'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 atLeastOneInterface='serviceInterfaces-&gt;notEmpty()' operationFlavorsCoverInterfaces='flavors-&gt;forAll(f | f.operationFlavors-&gt;forAll(of | serviceInterfaces-&gt;exists(si | si.operations-&gt;includes(of.operation))))' replacesIsNotSelf='replaces = null or replaces &lt;&gt; self' authenticatedContractsHaveAScheme='flavors-&gt;forAll(f | f.securitySchemes-&gt;notEmpty() or serviceInterfaces-&gt;forAll(si | si.operations-&gt;forAll(op | (op.security &lt;&gt; null and not op.security.authenticated) or (op.security = null and (si.security = null or not si.security.authenticated)))))' scopesNeedAPerCallScheme='flavors-&gt;forAll(f | f.securitySchemes-&gt;exists(s | s.kind.toString() &lt;&gt; \'CONNECTION\') or serviceInterfaces-&gt;forAll(si | si.operations-&gt;forAll(op | (op.security &lt;&gt; null and op.security.scopes-&gt;isEmpty()) or (op.security = null and (si.security = null or si.security.scopes-&gt;isEmpty())))))' cutoverGraceNonNegative='cutoverGraceMillis &gt;= 0'"
  * @generated
  */
 @ProviderType

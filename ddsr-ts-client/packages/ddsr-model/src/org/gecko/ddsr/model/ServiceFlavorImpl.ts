@@ -11,6 +11,7 @@ import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core'
 import type { NamedElement } from './NamedElement.js';
 import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
 import type { Capability } from './Capability.js';
+import type { SecurityScheme } from './SecurityScheme.js';
 import { FlavorKind } from './FlavorKind.js';
 import type { ServiceFlavor } from './ServiceFlavor.js';
 import { DDSRPackage } from './DDSRPackage.js';
@@ -24,12 +25,14 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
   static readonly KIND: number = 1;
   static readonly OPERATION_FLAVORS: number = 2;
   static readonly CAPABILITIES: number = 3;
+  static readonly SECURITY_SCHEMES: number = 4;
   static readonly NAME: number = 0;
 
   // Private fields
   private _kind: FlavorKind = FlavorKind.REST;
   private _operationFlavors!: EList<ServiceOperationFlavor>;
   private _capabilities!: EList<Capability>;
+  private _securitySchemes!: EList<SecurityScheme>;
   private _name: string = "";
 
   /**
@@ -78,6 +81,13 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
     return this._capabilities;
   }
 
+  get securitySchemes(): EList<SecurityScheme> {
+    if (!this._securitySchemes) {
+      this._securitySchemes = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('securitySchemes') as EReference);
+    }
+    return this._securitySchemes;
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -100,6 +110,8 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
         return this.operationFlavors;
       case ServiceFlavorImpl.CAPABILITIES:
         return this.capabilities;
+      case ServiceFlavorImpl.SECURITY_SCHEMES:
+        return this.securitySchemes;
       case ServiceFlavorImpl.NAME:
         return this.name;
       default:
@@ -127,6 +139,11 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
         this.capabilities.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
+      case ServiceFlavorImpl.SECURITY_SCHEMES:
+        this.securitySchemes.clear();
+        this.securitySchemes.addAll(newValue as any[]);
+        super.eSet(feature, newValue);
+        break;
       case ServiceFlavorImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -148,6 +165,8 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
         return this._operationFlavors !== undefined && !this._operationFlavors.isEmpty();
       case ServiceFlavorImpl.CAPABILITIES:
         return this._capabilities !== undefined && !this._capabilities.isEmpty();
+      case ServiceFlavorImpl.SECURITY_SCHEMES:
+        return this._securitySchemes !== undefined && !this._securitySchemes.isEmpty();
       case ServiceFlavorImpl.NAME:
         return this._name !== "";
       default:
@@ -169,6 +188,9 @@ export abstract class ServiceFlavorImpl extends BasicEObject implements ServiceF
         return;
       case ServiceFlavorImpl.CAPABILITIES:
         if (this._capabilities) this._capabilities.clear();
+        return;
+      case ServiceFlavorImpl.SECURITY_SCHEMES:
+        if (this._securitySchemes) this._securitySchemes.clear();
         return;
       case ServiceFlavorImpl.NAME:
         this._name = "";

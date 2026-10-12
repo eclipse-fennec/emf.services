@@ -89,6 +89,11 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.REST_PARAMETER_BINDING: return createRestParameterBinding();
 			case ServicesPackage.REST_EXCEPTION_BINDING: return createRestExceptionBinding();
 			case ServicesPackage.MQTT_OPERATION_FLAVOR: return createMqttOperationFlavor();
+			case ServicesPackage.SECURITY_REQUIREMENT: return createSecurityRequirement();
+			case ServicesPackage.BEARER_TOKEN_SCHEME: return createBearerTokenScheme();
+			case ServicesPackage.MUTUAL_TLS_SCHEME: return createMutualTlsScheme();
+			case ServicesPackage.CONNECTION_SCHEME: return createConnectionScheme();
+			case ServicesPackage.PRINCIPAL: return createPrincipal();
 			case ServicesPackage.SERVICE_REFERENCE: return createServiceReference();
 			case ServicesPackage.SERVICE_REGISTRATION: return createServiceRegistration();
 			case ServicesPackage.CONSUMER_SESSION: return createConsumerSession();
@@ -165,6 +170,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createUpdatePolicyFromString(eDataType, initialValue);
 			case ServicesPackage.CONNECTION_STATE:
 				return createConnectionStateFromString(eDataType, initialValue);
+			case ServicesPackage.SECURITY_SCHEME_KIND:
+				return createSecuritySchemeKindFromString(eDataType, initialValue);
 			case ServicesPackage.API_TYPE:
 				return createApiTypeFromString(eDataType, initialValue);
 			default:
@@ -222,6 +229,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertUpdatePolicyToString(eDataType, instanceValue);
 			case ServicesPackage.CONNECTION_STATE:
 				return convertConnectionStateToString(eDataType, instanceValue);
+			case ServicesPackage.SECURITY_SCHEME_KIND:
+				return convertSecuritySchemeKindToString(eDataType, instanceValue);
 			case ServicesPackage.API_TYPE:
 				return convertApiTypeToString(eDataType, instanceValue);
 			default:
@@ -579,6 +588,61 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public MqttOperationFlavor createMqttOperationFlavor() {
 		MqttOperationFlavorImpl mqttOperationFlavor = new MqttOperationFlavorImpl();
 		return mqttOperationFlavor;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public SecurityRequirement createSecurityRequirement() {
+		SecurityRequirementImpl securityRequirement = new SecurityRequirementImpl();
+		return securityRequirement;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public BearerTokenScheme createBearerTokenScheme() {
+		BearerTokenSchemeImpl bearerTokenScheme = new BearerTokenSchemeImpl();
+		return bearerTokenScheme;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public MutualTlsScheme createMutualTlsScheme() {
+		MutualTlsSchemeImpl mutualTlsScheme = new MutualTlsSchemeImpl();
+		return mutualTlsScheme;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ConnectionScheme createConnectionScheme() {
+		ConnectionSchemeImpl connectionScheme = new ConnectionSchemeImpl();
+		return connectionScheme;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public Principal createPrincipal() {
+		PrincipalImpl principal = new PrincipalImpl();
+		return principal;
 	}
 
 	/**
@@ -1229,6 +1293,26 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	public String convertConnectionStateToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public SecuritySchemeKind createSecuritySchemeKindFromString(EDataType eDataType, String initialValue) {
+		SecuritySchemeKind result = SecuritySchemeKind.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertSecuritySchemeKindToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

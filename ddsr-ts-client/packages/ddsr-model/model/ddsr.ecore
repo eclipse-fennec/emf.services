@@ -194,6 +194,14 @@
     <eLiterals name="DEGRADED" value="1"/>
     <eLiterals name="OFFLINE" value="2"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="SecuritySchemeKind">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Discriminator of SecurityScheme, as FlavorKind is for ServiceFlavor. Projected as the 'kind' attribute of the implied 'services.security' capability, so a consumer can require a way of proving itself at lookup time."/>
+    </eAnnotations>
+    <eLiterals name="BEARER_TOKEN"/>
+    <eLiterals name="MUTUAL_TLS" value="1"/>
+    <eLiterals name="CONNECTION" value="2"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="NamedElement" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Mixin interface for anything carrying an identifying name. Names identify within their containment scope, not globally — multiple objects with the same name in the same XMI document are legal (e.g. a ServiceOperation 'listCatalog' on the interface and a RestOperationFlavor 'listCatalog' on a binding). Cross-references resolve via positional URI fragments, not by name."/>
@@ -322,6 +330,12 @@
         eType="#//Invariant" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Conditions that MUST hold after the operation returns successfully. Evaluation context: as preconditions, plus 'result' = the return value (null if the operation has no return). Violations are framework bugs / implementation-contract breaches and are surfaced as ERROR diagnostics."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="security"
+        eType="#//SecurityRequirement" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="What a caller must present before THIS operation runs. Overrides ServiceInterface.security for the one operation; null = the interface-level requirement applies. Read by whoever serves the operation — the generic REST/MQTT dispatcher takes it from the document, a hand-written resource is expected to honour it — and by the caller's SDK, which knows from it that a credential has to travel."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -623,6 +637,12 @@
         <details key="documentation" value="Default update policy for every ServiceImplementation of this interface; an implementation may override it via ServiceImplementation.updatePolicy. UNSPECIFIED = broker default (DEPRECATE_AND_DRAIN). Lifecycle metadata like status/deprecationReason/replacedBy: not part of the sd1 fingerprint and to be neutralized by contract addressing, so changing the policy does not move the catalog address."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="security"
+        eType="#//SecurityRequirement" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Default requirement for every operation of this contract; an operation may override it via ServiceOperation.security. Part of the contract, not of a deployment: it states WHAT a caller must be, transport-neutral. HOW that is proven is the flavor's business (ServiceFlavor.securitySchemes). Absent here and on every operation = the contract states no requirement; whether such a contract may then be called anonymously is a decision of the serving node's configuration, never an implicit 'open'. The broker's own contracts carry these too (#88): the broker's access matrix — publish, consume, curate — is expressed and enforced with the same mechanism as on every peer."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="LifecycleHook" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -816,7 +836,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ServiceImplementation" eSuperTypes="#//NamedElement #//VersionedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative"/>
+      <details key="constraints" value="atLeastOneInterface operationFlavorsCoverInterfaces replacesIsNotSelf cutoverGraceNonNegative authenticatedContractsHaveAScheme scopesNeedAPerCallScheme"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A concrete realization of one or more ServiceInterfaces by a single provider, optionally reachable over one or more transport flavors. Distinct from ComponentDescription because not all implementations are DS-driven (plain Java services, hand-wired TS modules, ad-hoc Python objects). When DS-driven, componentDescription points back to the description."/>
@@ -825,6 +845,8 @@
       <details key="atLeastOneInterface" value="serviceInterfaces->notEmpty()"/>
       <details key="operationFlavorsCoverInterfaces" value="flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))"/>
       <details key="replacesIsNotSelf" value="replaces = null or replaces &lt;> self"/>
+      <details key="authenticatedContractsHaveAScheme" value="flavors->forAll(f | f.securitySchemes->notEmpty() or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security &lt;> null and not op.security.authenticated) or (op.security = null and (si.security = null or not si.security.authenticated)))))"/>
+      <details key="scopesNeedAPerCallScheme" value="flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() &lt;> 'CONNECTION') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security &lt;> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))"/>
       <details key="cutoverGraceNonNegative" value="cutoverGraceMillis >= 0"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
@@ -903,6 +925,12 @@
         eType="#//Capability" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Transport-level capabilities of this flavor (MQTT protocol version, QoS ceiling, TLS, supported media types, …). Added to the implementation's effective capability set when matching Requirements. The 'services.transport' capability with kind = this flavor's kind is implied and need not be listed."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="securitySchemes" upperBound="-1"
+        eType="#//SecurityScheme" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="How a caller proves a principal on this transport — the HOW that satisfies the contract's SecurityRequirement. Several schemes are alternatives (OR): a caller satisfies any one of them. Empty = the flavor says nothing about proof; combined with a requirement that demands authentication, the serving node cannot serve the flavor and must refuse to, rather than run open (fail closed). Implied in the effective capability set as namespace 'services.security' with kind = each scheme's kind; not to be listed in capabilities by hand."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -1011,10 +1039,10 @@
         <details key="documentation" value="Path appended to RestFlavor.basePath. Null = operation lives directly at basePath. Path templates ('/payments/{id}') are allowed; the framework substitutes path parameters by name from the operation's Parameters."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="returnCodes" lowerBound="1"
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="returnCodes"
         upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation's ServiceExceptions."/>
+        <details key="documentation" value="HTTP status codes that count as a successful response (typically [200] or [200, 204]). Any other status is mapped to one of the operation's ServiceExceptions. Empty = [200]: that is how the dispatcher, the resource template and the fingerprint read it, and how every publisher that never names a code is to be read."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="parameterBindings" upperBound="-1"
@@ -1104,6 +1132,97 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="returnPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Optional alternative convention for asynchronous responses: a topic pattern with placeholders the producer fills in when publishing the response."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SecurityRequirement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="scopesImplyAuthenticated"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The WHAT of security: what a caller must present before an operation runs. Transport-neutral and part of the contract (ServiceInterface.security, ServiceOperation.security), unlike a SecurityScheme, which is the HOW and lives on the flavor. Scopes are the contract's vocabulary, as in OpenAPI: a name the caller's credential must carry. Mapping a scope to roles, groups or clients is the identity provider's business and never touches the document. What this class cannot say, by design: object-level rules such as 'only the registration you published' or 'only your own session' — those stay with the serving code, the way row-level rules stay with a database."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="scopesImplyAuthenticated" value="scopes->isEmpty() or authenticated"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="authenticated" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="True = the caller must be an authenticated principal; an anonymous call is refused before the operation runs. False with scopes present is a contradiction and invalid."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scopes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Scope names the caller's credential must carry, ALL of them (AND). Alternatives are expressed as separate operations or separate contracts, not here. Empty with authenticated = true means 'any authenticated principal'. Spelled the way the identity provider will see them, e.g. 'payment:write', so the document is what a scope-to-role mapping is generated from."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SecurityScheme" abstract="true" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The HOW of security: one way a caller proves a principal on one transport. Abstract base extended like ServiceFlavor — concrete subclasses here, further ones by third parties. Contained by the flavor (ServiceFlavor.securitySchemes), because proof is a property of the wire: the same contract may be served with a bearer token over REST and with the connection's identity over MQTT. The name identifies the scheme within the flavor, like an OpenAPI securitySchemes key. Which credentials a CALLER uses to satisfy a scheme is configuration of the calling node and never part of any document."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//SecuritySchemeKind">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Discriminator, redundant with the concrete subclass; this is what the implied 'services.security' capability carries and what a consumer filters on."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="BearerTokenScheme" eSuperTypes="#//SecurityScheme">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An OAuth 2.0 / OpenID Connect bearer token (RFC 6750), the backend-to-backend case being a client-credentials token of the calling node. Over REST it travels in the Authorization header; over MQTT 5 as a user property of the request message, the connection's own authentication being the messaging broker's business (ConnectionScheme). The serving node verifies signature, issuer, audience and lifetime itself on every call, whether or not something in front of it already did (defense in depth). The principal is the token's subject."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="issuer" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The expected 'iss' claim — the identity provider (realm) the serving node trusts. Required: a scheme without an issuer cannot be verified and is invalid."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="audiences" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Accepted 'aud' values; the token must carry at least one of them. This is what stops a token minted for the broker from being replayed against a provider, or one tenant's token against another's node. Empty = the serving node's configured audience applies."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="jwksUri" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where the verifier fetches the signing keys. Null = discovered from the issuer's well-known configuration."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scopeClaim" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The claim that carries the scopes of SecurityRequirement.scopes, as the identity provider spells it: 'scope' (space-separated, the OAuth default) or e.g. 'roles'. Null = 'scope'."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MutualTlsScheme" eSuperTypes="#//SecurityScheme">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The caller proves itself with a client certificate on the TLS connection; the principal is the certificate's subject. Scopes of a SecurityRequirement are then taken from the serving node's mapping of certificate subjects, not from the wire."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="trustedIssuers" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Distinguished names of the certificate authorities whose client certificates are accepted. Empty = the serving node's trust store decides."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ConnectionScheme" eSuperTypes="#//SecurityScheme">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Identity is established once per connection and enforced OUTSIDE the service: a messaging broker's authentication and ACL on the request and response topic trees (the consumer segment of a response topic is bound to the connection's identity, which is why request and response live in separate trees, #98), or a gateway that terminates authentication in front of a REST node. The serving node verifies nothing per call and this scheme says so explicitly, so that a document without any scheme is never mistaken for this one. Scopes cannot be checked per call under this scheme; a requirement that names scopes is therefore not satisfiable by it alone."/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Principal">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The WHO: an authenticated identity as the broker or a serving node established it from a verified credential — never taken from a request body, a path segment or a self-declared header. Contrast with the origin token (ClientOrigin, #125): that is an audit label a client chooses, and it stays one. A principal is runtime state like the registration or session it hangs on; it is in no catalog document and in no snapshot."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="subject" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Who: the credential's subject — the OIDC 'sub' of a bearer token, the subject of a client certificate. For a node this is its client identity, and it is what consumerId, the consumer segment of an MQTT response topic and a provider's claim of authorship are checked against."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="issuer" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Who vouched for it: the token's 'iss' or the certificate issuer. Together with subject it is the identity; the same subject from another issuer is somebody else."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scopes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The scopes the credential carried, as verified. Kept so that an authorization decision after the call — a drain, an event delivery — can be made without the credential still being at hand."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
@@ -1211,6 +1330,17 @@
         <details key="documentation" value="Which system published this registration, as the client origin token 'label/runtimeId' (issue #125). Written by the broker from the X-DDSR-Origin header of the publish call and carried by a modify in place, so the field always names the system responsible for what is registered now. Runtime state, like the registration itself: registrations are in no snapshot and in no wire document, so this field alone could be written but never read back. It is therefore PROJECTED onto the reference as the property ddsr.origin, which is where a lookup, an event and an auditor can see it — one source, one projection. After a broker restart the providers re-publish and the field is written again. A withdraw has no counterpart here: the registration is gone with it, and only the broker log keeps that."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="principal"
+        eType="#//Principal" containment="true" transient="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Who published this registration, as verified by the broker (S2). The provider's symbolicName and the origin token are claims; this is what they are checked against. withdraw, modify and heartbeat are accepted only from the same principal — the object-level rule no contract can state. Null only on a broker that runs without authentication, which is a deployment's explicit choice, never a default. TRANSIENT like acquisitions: never on the wire in either direction — a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="domain" transient="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The tenant or topology this registration belongs to. Registrations and sessions are domain-bound, contracts are not: the same ServiceInterface may be served in several domains. A lookup only ever sees the registrations of the caller's domain, and an event only reaches the sessions of its domain. Taken by the broker from the verified credential (an audience or a claim), never from the document. Null = the broker's single default domain. TRANSIENT like acquisitions: never on the wire in either direction — a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."/>
+      </eAnnotations>
+    </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerCount" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
         changeable="false" volatile="true" transient="true" derived="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1228,12 +1358,23 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumerId" lowerBound="1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Identity of the consumer. Unauthenticated for now (S2) — once broker AuthN exists, the session binds to the authenticated identity and this id is checked against it."/>
+        <details key="documentation" value="The identity the consumer calls itself by, and one name for three things: this session, the consumer segment of its MQTT response topics, and — on an authenticated broker — the subject of its principal. The broker refuses a PUT whose id is not the caller's own (ACQUISITION.md par.7), which closes the session-takeover hole of an unauthenticated id."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="origin" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Where the consumer behind this session came from, as the client origin token 'label/runtimeId' (issue #125). The consumerId says WHO claims to be calling and is chosen by the client; this says which deployment and which run of it the call actually reached the broker from. Session-scoped by construction: the runtime id half is the framework UUID, so it is new after every restart and identifies no person and no durable machine."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="principal"
+        eType="#//Principal" containment="true" transient="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The verified identity behind this session (S2). The session is bound to it: only the same principal renews or deletes it, and what is served to it — lookups, events — is filtered by its domain. Null only on a broker that runs without authentication. TRANSIENT like acquisitions: never on the wire in either direction — a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="domain" transient="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The tenant or topology this consumer acts in, taken from its verified credential; see ServiceRegistration.domain. Null = the broker's single default domain. TRANSIENT like acquisitions: never on the wire in either direction — a client cannot assert it in a document it sends, and a document returned to a client does not carry it. An auditor sees it, like publishedBy, only through a projection the broker chooses."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="lastRenewal" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate">

@@ -8,6 +8,7 @@
 import { BasicEObject } from '@emfts/core';
 import { createEObjectEList } from '@emfts/core';
 import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
+import type { Principal } from './Principal.js';
 import type { ConsumerCapability } from './ConsumerCapability.js';
 import type { ServiceRegistration } from './ServiceRegistration.js';
 import type { ConsumerSession } from './ConsumerSession.js';
@@ -21,13 +22,17 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
   // Feature ID Constants (eLiterals)
   static readonly CONSUMER_ID: number = 0;
   static readonly ORIGIN: number = 1;
-  static readonly LAST_RENEWAL: number = 2;
-  static readonly CAPABILITIES: number = 3;
-  static readonly ACQUISITIONS: number = 4;
+  static readonly PRINCIPAL: number = 2;
+  static readonly DOMAIN: number = 3;
+  static readonly LAST_RENEWAL: number = 4;
+  static readonly CAPABILITIES: number = 5;
+  static readonly ACQUISITIONS: number = 6;
 
   // Private fields
   private _consumerId: string = "";
   private _origin?: string;
+  private _principal?: Principal;
+  private _domain?: string;
   private _lastRenewal?: Date;
   private _capabilities?: ConsumerCapability;
   private _acquisitions!: EList<ServiceRegistration>;
@@ -83,6 +88,54 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         isTouch: () => false,
         isReset: () => false,
         getFeatureID: () => ConsumerSessionImpl.ORIGIN,
+        merge: () => false
+      });
+    }
+  }
+
+  get principal(): Principal {
+    return this._principal!;
+  }
+
+  set principal(value: Principal) {
+    const oldValue = this._principal;
+    this._principal = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ConsumerSessionImpl.PRINCIPAL),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ConsumerSessionImpl.PRINCIPAL,
+        merge: () => false
+      });
+    }
+  }
+
+  get domain(): string {
+    return this._domain!;
+  }
+
+  set domain(value: string) {
+    const oldValue = this._domain;
+    this._domain = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ConsumerSessionImpl.DOMAIN),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ConsumerSessionImpl.DOMAIN,
         merge: () => false
       });
     }
@@ -155,6 +208,10 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         return this.consumerId;
       case ConsumerSessionImpl.ORIGIN:
         return this.origin;
+      case ConsumerSessionImpl.PRINCIPAL:
+        return this.principal;
+      case ConsumerSessionImpl.DOMAIN:
+        return this.domain;
       case ConsumerSessionImpl.LAST_RENEWAL:
         return this.lastRenewal;
       case ConsumerSessionImpl.CAPABILITIES:
@@ -178,6 +235,14 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         break;
       case ConsumerSessionImpl.ORIGIN:
         this.origin = newValue as string;
+        super.eSet(feature, newValue);
+        break;
+      case ConsumerSessionImpl.PRINCIPAL:
+        this.principal = newValue as Principal;
+        super.eSet(feature, newValue);
+        break;
+      case ConsumerSessionImpl.DOMAIN:
+        this.domain = newValue as string;
         super.eSet(feature, newValue);
         break;
       case ConsumerSessionImpl.LAST_RENEWAL:
@@ -208,6 +273,10 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         return this._consumerId !== "";
       case ConsumerSessionImpl.ORIGIN:
         return this._origin !== undefined;
+      case ConsumerSessionImpl.PRINCIPAL:
+        return this._principal !== undefined;
+      case ConsumerSessionImpl.DOMAIN:
+        return this._domain !== undefined;
       case ConsumerSessionImpl.LAST_RENEWAL:
         return this._lastRenewal !== undefined;
       case ConsumerSessionImpl.CAPABILITIES:
@@ -230,6 +299,12 @@ export class ConsumerSessionImpl extends BasicEObject implements ConsumerSession
         return;
       case ConsumerSessionImpl.ORIGIN:
         this._origin = undefined;
+        return;
+      case ConsumerSessionImpl.PRINCIPAL:
+        this._principal = undefined;
+        return;
+      case ConsumerSessionImpl.DOMAIN:
+        this._domain = undefined;
         return;
       case ConsumerSessionImpl.LAST_RENEWAL:
         this._lastRenewal = undefined;

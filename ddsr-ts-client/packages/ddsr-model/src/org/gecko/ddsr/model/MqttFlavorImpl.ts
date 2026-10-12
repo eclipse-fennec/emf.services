@@ -19,11 +19,11 @@ import { DDSRPackage } from './DDSRPackage.js';
  */
 export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
   // Feature ID Constants (eLiterals)
-  static readonly BROKERS: number = 4;
-  static readonly REQUEST_TOPIC: number = 5;
-  static readonly RESPONSE_TOPIC: number = 6;
-  static readonly DEFAULT_QOS: number = 7;
-  static readonly DEFAULT_RETAINED: number = 8;
+  static readonly BROKERS: number = 5;
+  static readonly REQUEST_TOPIC: number = 6;
+  static readonly RESPONSE_TOPIC: number = 7;
+  static readonly DEFAULT_QOS: number = 8;
+  static readonly DEFAULT_RETAINED: number = 9;
 
   // Private fields
   private _brokers!: EList<string>;

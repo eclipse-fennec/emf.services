@@ -272,6 +272,53 @@ positionally. `CatalogStore.counterpart` now follows such an href along
 its containment path into the live entry — parameters and exceptions
 included.
 
+## 7a. The verifier (slice 1 of enforcement)
+
+`org.eclipse.fennec.services.security.jwt` — see its
+[README](../org.eclipse.fennec.services.security.jwt/README.md) — is
+the first piece of enforcement, and the only one so far:
+
+- `JwtVerifier.verify(token)` → `VerifiedPrincipal` (subject, issuer,
+  scopes) or `TokenRejectedException`; `NimbusJwtVerifier` implements it,
+  configured like a `BearerTokenScheme` (PID
+  `org.eclipse.fennec.services.security.jwt`: `issuer`, `jwks.uri`,
+  `audiences`, `scope.claim`, `clock.skew.seconds`) and only by
+  configuration.
+- `BearerAuthFilter` guards every Jakarta REST application that carries
+  `fennec.secured=true`; a resource that wants to be unregistered
+  without it selects `(osgi.jakartars.name=fennec-bearer)`.
+- `CallPrincipal` (api bundle, next to `CallOrigin`) carries the
+  verified model `Principal` on the calling thread, for the broker core.
+
+Nothing selects the filter yet: the broker's application does not say
+`fennec.secured`, and no launch configures a verifier. That is slice 2.
+
+### Slice 2, as planned
+
+1. The broker's JAX-RS application (`…broker.rest`, see how
+   `OriginFilter` is selected) gets `fennec.secured=true` when the
+   broker's `auth.mode` is `bearer`; `RegistryResource`,
+   `ConsumersResource` and `EventsResource` select the bearer filter so
+   they are unregistered without a verifier. The generic distribution's
+   named applications stay out of it for now (they bring their own
+   providers, #125) — they are slice 3's concern together with the
+   contract requirements.
+2. `BrokerSettings` / `DdsrBrokerComponent` gain `auth.mode = none |
+   bearer`, default `bearer`; `broker.bndrun`, `broker-otel.bndrun`,
+   the harness launches and the TCK set `none` explicitly — one line
+   each.
+3. `Registrations.publishImplementation` writes
+   `registration.setPrincipal(copy of CallPrincipal.current())` and
+   `domain`; `withdraw`, `modify`, `heartbeat` refuse when a principal
+   is set and differs (`CODE_IMPL_OWNERSHIP_VIOLATION`, 403 already).
+   `Sessions.putSession` / `deleteSession` do the same with
+   `consumerId` versus the principal's subject. In-process callers
+   carry no principal and are left alone, as today.
+4. Tests: `DdsrBrokerImplTest` / `DdsrBrokerSessionsTest` with
+   `CallPrincipal.set(...)` around the calls (and `clear()` in
+   `@AfterEach`); `broker.rest` gets a test that the resources are
+   absent without the filter.
+
 ## 8. Decisions taken, decisions open
 
 Taken, and written into the model's documentation annotations:
@@ -292,7 +339,7 @@ Open, in the order they will come up:
 | --- | --- |
 | default of a launch: `bearer` or `none` | `bearer`, with `none` explicit in the dev launches and the harness — one line per bndrun |
 | an SSE stream outlives its token | the stream ends with `exp`; the client reconnects anyway |
-| the verifier | lift the Nimbus verifier with its tests out of the timetracking prototype into a fennec bundle both repos use, instead of copying it |
+| the verifier's home | lifted into `…services.security.jwt` here; moves to emf.util once a second user exists (its README names the two cuts) |
 | user identity through an RSA proxy | claim for audit first, token exchange when a target needs it |
 
 ## 9. Status
@@ -303,8 +350,9 @@ Open, in the order they will come up:
 | validation gate on the broker, codes, HTTP mapping | implemented |
 | href rewiring of parameter and exception bindings | implemented |
 | requirement in sd1, schemes in im1, cross-language goldens | implemented |
-| bearer verifier as a whiteboard extension on the broker and the generic distributions | not yet |
-| role filter on the broker's contracts; ownership rule on registration and session | not yet |
+| bearer verifier and filter (`…services.security.jwt`), `CallPrincipal` | implemented — selected by nothing yet |
+| the broker's application secured, `auth.mode`, ownership rule on registration and session | not yet — slice 2, see §7a |
+| role filter on the broker's contracts | not yet — slice 3 |
 | token supplier in the Java and TypeScript SDKs | not yet |
 | domain enforcement from issuer/audience | not yet |
 | RSA: annotation-derived requirement, intents reflected on import, node credentials on the proxy | not yet |

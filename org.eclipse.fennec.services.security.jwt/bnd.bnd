@@ -1,0 +1,35 @@
+Bundle-Name: Fennec Services Bearer Token Verification
+Bundle-Description: \
+	Turns a bearer token into a verified principal: signature against \
+	the issuer's JWKS, issuer, audience, lifetime, and the scopes the \
+	token carries. One verifier service, configured the way a \
+	BearerTokenScheme of the model is written, and one Jakarta REST \
+	whiteboard extension that puts the principal on the request and \
+	on the calling thread (CallPrincipal), so that code which knows \
+	nothing of JAX-RS — the broker core — can still ask who is calling. \
+	\
+	Lives here until it moves to emf.util (see README.md): nothing in \
+	it is specific to the service registry.
+
+-library: enableEMF
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.service.jakartars;version=latest,\
+	jakarta.ws.rs-api;version=latest,\
+	jakarta.annotation-api;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	com.nimbusds.nimbus-jose-jwt;version=latest
+
+# jersey-common only for a RuntimeDelegate, so that Response.status()
+# works in plain JUnit — the same reason broker.rest lists it.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.glassfish.jersey.core.jersey-common;version=latest,\
+	jakarta.inject.jakarta.inject-api;version=latest,\
+	jakarta.annotation-api;version=latest,\
+	org.glassfish.hk2.osgi-resource-locator;version=latest
+

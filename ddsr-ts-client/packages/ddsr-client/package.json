@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@ddsr/model": "workspace:*",
-    "@emfts/core": "0.3.0-next.1",
+    "@emfts/core": "0.3.0-next.4",
     "@ddsr/telemetry": "workspace:*"
   },
   "devDependencies": {

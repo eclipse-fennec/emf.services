@@ -11,10 +11,10 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { DdsrProvider } from './ddsr-provider';
-import type { DdsrConsumer } from './ddsr-consumer';
-import type { DdsrCatalog } from './ddsr-catalog';
-import type { ClientRuntime } from './client-runtime';
+import type { DdsrProvider } from './ddsr-provider.js';
+import type { DdsrConsumer } from './ddsr-consumer.js';
+import type { DdsrCatalog } from './ddsr-catalog.js';
+import type { ClientRuntime } from './client-runtime.js';
 
 /**
  * Main entry point for the DDSR client framework.

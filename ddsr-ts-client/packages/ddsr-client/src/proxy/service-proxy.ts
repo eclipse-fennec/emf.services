@@ -11,8 +11,8 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { ServiceLocator } from '../api/service-locator';
-import { toArray } from '../internal/emf-util';
+import type { ServiceLocator } from '../api/service-locator.js';
+import { toArray } from '../internal/emf-util.js';
 
 /**
  * A calling surface for a located service: `service.charge(100, 'EUR')`

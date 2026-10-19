@@ -13,7 +13,7 @@
 
 import { createHash } from 'node:crypto';
 import type { Parameter, Property, ServiceException, ServiceInterface, ServiceOperation } from '@ddsr/model';
-import { eClassName, toArray } from '../internal/emf-util';
+import { eClassName, toArray } from '../internal/emf-util.js';
 
 /**
  * Content-based fingerprint of a ServiceInterface — scheme tag "sd1".

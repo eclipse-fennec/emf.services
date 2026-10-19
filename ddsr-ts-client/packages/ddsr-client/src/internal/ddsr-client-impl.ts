@@ -11,18 +11,18 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { DdsrClient } from '../api/ddsr-client';
-import type { DdsrCatalog } from '../api/ddsr-catalog';
-import type { FlavorPlugin } from '../api/flavor-plugin';
-import { BrokerHttp, isError } from './broker-http';
-import { DdsrProviderImpl } from './provider-impl';
-import { DdsrConsumerImpl } from './consumer-impl';
-import { DdsrCatalogImpl } from './catalog-impl';
-import { ClientRuntimeImpl } from './client-runtime-impl';
-import { newRuntimeId } from './client-origin';
-import { ServiceListenerRegistry } from './service-listener-registry';
-import { RestEventSource } from '../events/rest-event-source';
-import type { DdsrEventSource } from '../events/event-source';
+import type { DdsrClient } from '../api/ddsr-client.js';
+import type { DdsrCatalog } from '../api/ddsr-catalog.js';
+import type { FlavorPlugin } from '../api/flavor-plugin.js';
+import { BrokerHttp, isError } from './broker-http.js';
+import { DdsrProviderImpl } from './provider-impl.js';
+import { DdsrConsumerImpl } from './consumer-impl.js';
+import { DdsrCatalogImpl } from './catalog-impl.js';
+import { ClientRuntimeImpl } from './client-runtime-impl.js';
+import { newRuntimeId } from './client-origin.js';
+import { ServiceListenerRegistry } from './service-listener-registry.js';
+import { RestEventSource } from '../events/rest-event-source.js';
+import type { DdsrEventSource } from '../events/event-source.js';
 import type { CallTracer } from '@ddsr/telemetry';
 
 export interface DdsrClientOptions {

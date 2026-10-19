@@ -20,7 +20,7 @@ import type {
   RestOperationFlavor,
 } from '@ddsr/model';
 import { FlavorKind } from '@ddsr/model';
-import type { FlavorPlugin } from '../api/flavor-plugin';
+import type { FlavorPlugin } from '../api/flavor-plugin.js';
 
 /**
  * Resolves an operation by name against a ServiceInterface and dispatches

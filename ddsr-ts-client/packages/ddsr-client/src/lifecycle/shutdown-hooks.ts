@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { DdsrClient } from '../api/ddsr-client';
+import type { DdsrClient } from '../api/ddsr-client.js';
 
 export interface ShutdownHookOptions {
   /** Called after the client closed (e.g. stop the HTTP server). */

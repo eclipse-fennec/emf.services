@@ -20,18 +20,18 @@ import type {
   LocalServiceRegistry,
   ServiceEvent,
 } from '@ddsr/model';
-import type { DdsrConsumer } from '../api/ddsr-consumer';
-import type { ServiceLocator } from '../api/service-locator';
-import type { FlavorPlugin } from '../api/flavor-plugin';
-import type { DdsrServiceListener } from '../api/service-listener';
-import { ServiceLocatorImpl } from '../proxy/service-locator-impl';
-import type { LocatorTracking, ResolvedRegistration } from '../proxy/service-locator-impl';
-import { serviceProxy } from '../proxy/service-proxy';
-import { ServiceListenerRegistry } from './service-listener-registry';
-import type { BrokerHttp } from './broker-http';
-import { eClassName, toArray } from './emf-util';
-import { implementationFingerprint } from '../fingerprint/service-implementation-fingerprint';
-import { propertyOf } from '../properties';
+import type { DdsrConsumer } from '../api/ddsr-consumer.js';
+import type { ServiceLocator } from '../api/service-locator.js';
+import type { FlavorPlugin } from '../api/flavor-plugin.js';
+import type { DdsrServiceListener } from '../api/service-listener.js';
+import { ServiceLocatorImpl } from '../proxy/service-locator-impl.js';
+import type { LocatorTracking, ResolvedRegistration } from '../proxy/service-locator-impl.js';
+import { serviceProxy } from '../proxy/service-proxy.js';
+import { ServiceListenerRegistry } from './service-listener-registry.js';
+import type { BrokerHttp } from './broker-http.js';
+import { eClassName, toArray } from './emf-util.js';
+import { implementationFingerprint } from '../fingerprint/service-implementation-fingerprint.js';
+import { propertyOf } from '../properties.js';
 
 /**
  * DdsrConsumer implementation. Lookups go directly against the broker

@@ -23,7 +23,7 @@ import type {
   StringProperty,
 } from '@ddsr/model';
 import { DDSRFactory } from '@ddsr/model';
-import { eClassName, toArray } from './internal/emf-util';
+import { eClassName, toArray } from './internal/emf-util.js';
 
 const factory = DDSRFactory.eINSTANCE;
 

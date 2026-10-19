@@ -11,8 +11,8 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { ServiceLocator } from './service-locator';
-import type { DdsrServiceListener } from './service-listener';
+import type { ServiceLocator } from './service-locator.js';
+import type { DdsrServiceListener } from './service-listener.js';
 
 /**
  * Consumer-side API. Find services and subscribe to lifecycle events.

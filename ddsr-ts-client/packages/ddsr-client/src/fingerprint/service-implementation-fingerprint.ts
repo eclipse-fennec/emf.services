@@ -13,8 +13,8 @@
 
 import { createHash } from 'node:crypto';
 import type { Property, ServiceImplementation } from '@ddsr/model';
-import { eClassName, toArray } from '../internal/emf-util';
-import { fingerprint as sd1, propertyLine, esc, escListElement, sortByName, sortedList } from './service-description-fingerprint';
+import { eClassName, toArray } from '../internal/emf-util.js';
+import { fingerprint as sd1, propertyLine, esc, escListElement, sortByName, sortedList } from './service-description-fingerprint.js';
 
 /**
  * Content-based fingerprint of a ServiceImplementation — scheme tag

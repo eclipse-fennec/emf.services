@@ -19,13 +19,13 @@ import type {
   RestFlavor,
 } from '@ddsr/model';
 import { FlavorKind } from '@ddsr/model';
-import type { ServiceLocator } from '../api/service-locator';
-import type { FlavorPlugin } from '../api/flavor-plugin';
-import type { LocatorState, TrackedServiceLocator } from '../api/service-locator';
-import { DdsrClientError, DdsrTransportError } from '../api/errors';
+import type { ServiceLocator } from '../api/service-locator.js';
+import type { FlavorPlugin } from '../api/flavor-plugin.js';
+import type { LocatorState, TrackedServiceLocator } from '../api/service-locator.js';
+import { DdsrClientError, DdsrTransportError } from '../api/errors.js';
 import type { ServiceEvent, ServiceProvider } from '@ddsr/model';
-import { toArray } from '../internal/emf-util';
-import { invokeOperation } from './invocation-handler';
+import { toArray } from '../internal/emf-util.js';
+import { invokeOperation } from './invocation-handler.js';
 
 /**
  * Concrete ServiceLocator. Holds all the metadata needed for invocation

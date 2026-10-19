@@ -12,7 +12,7 @@
  ********************************************************************/
 
 import type { ServiceProvider, ServiceImplementation } from '@ddsr/model';
-import type { Registration } from './registration';
+import type { Registration } from './registration.js';
 
 /**
  * Provider-side API. Publish and withdraw service implementations

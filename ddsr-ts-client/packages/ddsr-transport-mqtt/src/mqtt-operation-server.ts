@@ -21,7 +21,7 @@ import {
   encodeResponse,
   qosFor,
   requestTopicFor,
-} from './mqtt-rpc';
+} from './mqtt-rpc.js';
 
 /** One handler per operation name; receives the named args, returns the result. */
 export type OperationHandlers = Record<string, (args: Record<string, unknown>) => unknown | Promise<unknown>>;

@@ -15,7 +15,7 @@ import type {
   ObservableServiceRegistry, ServiceRegistration, ServiceRegistry, ServiceRegistryListener,
 } from '@eclipse-daanse/tsm';
 import type { DdsrClient, FlavorPlugin } from '@ddsr/client';
-import { DdsrClientService, FlavorPluginService } from './contracts';
+import { DdsrClientService, FlavorPluginService } from './contracts.js';
 
 /**
  * Publish a client, so consumer modules inject it instead of building

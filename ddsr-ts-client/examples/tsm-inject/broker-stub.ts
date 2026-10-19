@@ -63,7 +63,8 @@ function lookupResult(): string {
   const catalog = readFileSync(
     join(here, '..', '..', 'packages', 'ddsr-stubs', 'catalog', 'services-catalog.xmi'), 'utf8');
 
-  const payment = catalog.match(/ {2}<catalog name="Payment"[\s\S]*?\n {2}<\/catalog>/)?.[0];
+  // Indentation-agnostic: the broker nests the catalog deeper than it used to
+  const payment = catalog.match(/^( *)<catalog name="Payment"[\s\S]*?\n\1<\/catalog>/m)?.[0];
   if (!payment) throw new Error('no Payment entry in the catalog document');
   const contract = payment
     .replace('<catalog ', '<services:ServiceInterface ')

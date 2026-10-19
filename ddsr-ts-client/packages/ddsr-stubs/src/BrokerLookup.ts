@@ -3,24 +3,36 @@
  * DO NOT EDIT - regenerate instead.
  */
 
-import type { LocalServiceRegistry } from '@ddsr/model';
+import type { Diagnostic, LocalServiceRegistry } from '@ddsr/model';
 import { serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer } from '@ddsr/client';
 
 /**
- * DDSR broker consumer-side lookup of ServiceReferences with optional
- * filter and flavor matching.
+ * What a consumer asks the broker: who implements this contract, and —
+ * once bound — that the provider is still alive.
  */
 export interface BrokerLookup {
   /**
-   * Return matching ServiceReferences, filtered by interface name,
-   * optional LDAP filter, and consumer-supported flavors.
-   * @param interfaceName Name of the ServiceInterface to look up. Required.
-   * @param filter Optional LDAP filter over service properties.
-   * @param flavors Comma-separated list of FlavorKind values supported by the consumer (REST, MQTT, ...).
-   * @param consumerId Optional consumer identity for audit / policy attribution.
+   * Every live registration of a contract that a consumer can use. The
+   * answer is one document: the references, the implementations behind
+   * them, and the contracts they name, copied out of the broker's state
+   * so nothing in it can be reached from the answer.
+   * @param interfaceName Name of the contract. Travels as 'interface' — the word is a keyword in more than one of the languages that read this.
+   * @param filter LDAP filter over the registration's properties.
+   * @param flavors Comma-separated transports the consumer can use; a registration that offers none of them is not a hit.
+   * @param consumerId Symbolic identity of the consumer, so the broker can pair this lookup with its session.
+   * @param fingerprint sd1 of the contract the consumer was built against; only registrations of exactly that contract are hits.
    */
-  getServiceReferences(interfaceName: string, filter?: string, flavors?: string, consumerId?: string): Promise<LocalServiceRegistry>;
+  getServiceReferences(interfaceName: string, filter?: string, flavors?: string, consumerId?: string, fingerprint?: string): Promise<LocalServiceRegistry>;
+
+  /**
+   * A provider says it is still there. Missing two intervals is what
+   * makes the broker declare it lost, so consumers hear about a provider
+   * that died without withdrawing.
+   * @param referenceId The registration this heartbeat is for.
+   * @param intervalSeconds How often the provider intends to report in. The broker sweeps on twice this.
+   */
+  heartbeat(referenceId: string, intervalSeconds?: number): Promise<Diagnostic>;
 }
 
 /** The ServiceInterface.name this contract is registered under. */
@@ -35,7 +47,7 @@ export const BrokerLookupVersion = '1.0.0';
  * hashes to exactly this - compatibility by identity, so a provider
  * that changed its operations is not called with these signatures.
  */
-export const BrokerLookupFingerprint = 'sd1:264397a2b9f33da5455ef4d3939c81c72e8fdf7c03c730023ec51aecfcb99015';
+export const BrokerLookupFingerprint = 'sd1:755ad93771b6e85f062fb93042ec27525cf63444e7f8def425be8203f96f102e';
 
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker

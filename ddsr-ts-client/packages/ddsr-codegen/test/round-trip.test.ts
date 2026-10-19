@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import { DDSRFactory } from '@ddsr/model';
 import type { ServiceInterface } from '@ddsr/model';
-import { fingerprint, serializeToXmi } from '@ddsr/client';
+import { fingerprint, props, serializeToXmi } from '@ddsr/client';
 import { emitProvider, emitConsumer } from '../src/emit';
 import { interfacesOf } from '../src/catalog';
 import type * as PaymentStub from '@ddsr/stubs';
@@ -88,6 +88,45 @@ describe('generated provider code reproduces the contract', () => {
     expect(fingerprint(rebuilt)).toBe(expected);
   });
 
+  // The broker's own contracts carry what Payment does not: return slots
+  // and parameters typed by eType, as proxies into the services model,
+  // and multi-valued slots (#41).
+  it.each(['BrokerCatalog', 'BrokerImplementations', 'BrokerLookup'])(
+    'reproduces %s, eTypes and bounds included', async name => {
+      const original = fromCatalog(name);
+      const module = await load<Record<string, () => ServiceInterface>>(
+        emitProvider(original).content, `${name}Provider.ts`);
+      expect(fingerprint(module[`build${name}Interface`]())).toBe(fingerprint(original));
+    });
+
+  // What no published contract carries yet, but sd1 does: a security
+  // requirement on both levels, a deprecated status, and an exception
+  // with a property of every type. Added to Payment from the catalog.
+  it('reproduces security, status and every property type', async () => {
+    const original = paymentInterface();
+    original.status = 'DEPRECATED';
+    const interfaceSecurity = factory.createSecurityRequirement();
+    interfaceSecurity.authenticated = true;
+    interfaceSecurity.scopes.push('payments:read', 'payments:write');
+    original.security = interfaceSecurity;
+    const operation = original.operations.at(0)!;
+    const operationSecurity = factory.createSecurityRequirement();
+    operationSecurity.scopes.push('payments:charge');
+    operation.security = operationSecurity;
+    const exception = factory.createServiceException();
+    exception.name = 'Declined';
+    exception.type = 'org.example.Declined';
+    exception.properties.push(
+      props.string('reason', 'a "quoted" reason'), props.int('code', 402), props.long('since', 1700000000000),
+      props.short('retries', 3), props.double('limit', 0.1), props.float('ratio', 0.3),
+      props.bool('final', true), props.stringList('tags', ['a b', '']));
+    original.exceptions.push(exception);
+    operation.exceptions.push(exception);
+
+    const module = await load<GeneratedProviderModule>(emitProvider(original).content, 'SecuredProvider.ts');
+    expect(fingerprint(module.buildPaymentInterface())).toBe(fingerprint(original));
+  });
+
   it('survives a trip through the wire form the broker would send', async () => {
     const original = paymentInterface();
     const fromWire = interfacesOf(serializeToXmi(original as never))[0];
@@ -128,7 +167,7 @@ describe('generated consumer code', () => {
     // puts ServiceInterface into the imports, while the provider file
     // always needs it for the return type of build<Name>Interface().
     const source = emitProvider(fromCatalog('BrokerCatalog')).content;
-    const importLine = source.split('\n').find(line => line.startsWith('import type'))!;
+    const importLine = source.split('\n').find(line => line.startsWith('import type') && line.endsWith("from '@ddsr/model';"))!;
 
     expect(importLine.match(/\bServiceInterface\b/g)).toHaveLength(1);
     expect(importLine).toContain('Diagnostic');

@@ -11,9 +11,12 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import { fingerprint, toArray } from '@ddsr/client';
-import type { Parameter, ServiceInterface, ServiceOperation } from '@ddsr/model';
+import { eClassName, fingerprint, propertyValue, toArray } from '@ddsr/client';
+import type {
+  Parameter, Property, SecurityRequirement, ServiceException, ServiceInterface, ServiceOperation,
+} from '@ddsr/model';
 import { identifier, mapType } from './type-mapping.js';
+import type { MappedType } from './type-mapping.js';
 
 export interface GeneratedFile {
   path: string;
@@ -45,11 +48,11 @@ export function emitConsumer(serviceInterface: ServiceInterface): GeneratedFile 
 
   const methods = operations.map(operation => {
     const method = identifier(operation.name, 'operation');
-    const returned = mapType(operation.returnType);
+    const returned = slotType(operation.returnValue);
     if (returned.modelImport) imports.add(returned.modelImport);
 
     const parameters = sortedParameters(operation).map(parameter => {
-      const mapped = mapType(parameter.type);
+      const mapped = slotType(parameter);
       if (mapped.modelImport) imports.add(mapped.modelImport);
       const optional = parameter.optional === true ? '?' : '';
       return `${identifier(parameter.name, 'arg')}${optional}: ${mapped.text}`;
@@ -193,10 +196,10 @@ export function emitProvider(serviceInterface: ServiceInterface): GeneratedFile 
 
   const methods = operations.map(operation => {
     const method = identifier(operation.name, 'operation');
-    const returned = mapType(operation.returnType);
+    const returned = slotType(operation.returnValue);
     if (returned.modelImport) imports.add(returned.modelImport);
     const parameters = sortedParameters(operation).map(parameter => {
-      const mapped = mapType(parameter.type);
+      const mapped = slotType(parameter);
       if (mapped.modelImport) imports.add(mapped.modelImport);
       return `${identifier(parameter.name, 'arg')}${parameter.optional === true ? '?' : ''}: ${mapped.text}`;
     });
@@ -204,8 +207,16 @@ export function emitProvider(serviceInterface: ServiceInterface): GeneratedFile 
     return `${doc(operation.description, '  ', parameterDocs(operation))}  ${method}(${parameters.join(', ')}): ${result};`;
   });
 
+  const needsProxy = operations.some(operation =>
+    [operation.returnValue, ...sortedParameters(operation)].some(slot => eTypeUri(slot?.eType) !== undefined));
+  const exceptions = toArray<ServiceException>(serviceInterface.exceptions);
+  const needsProps = exceptions.some(exception => toArray(exception.properties).length > 0);
+
   const body: Array<string | null> = [
     HEADER,
+    needsProxy ? `import { BasicEClass, URI } from '@emfts/core';` : null,
+    needsProxy ? `import type { EClassifier } from '@emfts/core';` : null,
+    needsProps ? `import { props } from '@ddsr/client';` : null,
     `import { DDSRFactory } from '@ddsr/model';`,
     `import type { ${[...new Set([...imports, 'ServiceInterface'])].sort().join(', ')} } from '@ddsr/model';`,
     ``,
@@ -228,38 +239,173 @@ export function emitProvider(serviceInterface: ServiceInterface): GeneratedFile 
     ...assign('serviceInterface', 'name', serviceInterface.name),
     ...assign('serviceInterface', 'version', serviceInterface.version),
     ...assign('serviceInterface', 'description', serviceInterface.description),
-    ...operations.flatMap((operation, index) => buildOperation(operation, index)),
+    ...(serviceInterface.status === 'DEPRECATED' ? [`  serviceInterface.status = 'DEPRECATED';`] : []),
+    ...buildSecurity('serviceInterface', serviceInterface.security),
+    ...exceptions.flatMap((exception, index) => buildException(exception, index)),
+    ...operations.flatMap((operation, index) => buildOperation(operation, index, exceptions)),
     `  return serviceInterface;`,
     `}`,
     ``,
+    ...(needsProxy ? [
+      `/**`,
+      ` * An eType as the broker holds it: a proxy naming the classifier by`,
+      ` * URI. The fingerprint reads that URI and nothing else, so the`,
+      ` * provider's metamodel need not be loaded to publish the contract.`,
+      ` */`,
+      `function eTypeProxy(uri: string): EClassifier {`,
+      `  const proxy = new BasicEClass();`,
+      `  proxy.eSetProxyURI(URI.createURI(uri));`,
+      `  return proxy;`,
+      `}`,
+      ``,
+    ] : []),
   ];
   return { path: `src/${name}Provider.ts`, content: render(body) };
 }
 
-function buildOperation(operation: ServiceOperation, index: number): string[] {
+function buildOperation(operation: ServiceOperation, index: number, exceptions: ServiceException[]): string[] {
   const local = `operation${index}`;
   const lines = [
     ``,
     `  const ${local} = factory.createServiceOperation();`,
     ...assign(local, 'name', operation.name),
-    ...assign(local, 'returnType', operation.returnType),
     ...assign(local, 'description', operation.description),
+    ...buildSecurity(local, operation.security),
   ];
+  // Non-containment: an operation names exceptions its interface owns
+  for (const raised of toArray<ServiceException>(operation.exceptions)) {
+    const owner = exceptions.findIndex(exception => exception.name === raised.name);
+    if (owner < 0) {
+      throw new Error(`${operation.name} raises ${raised.name}, which its interface does not declare`);
+    }
+    lines.push(`  ${local}.exceptions.push(exception${owner});`);
+  }
+  if (operation.returnValue) {
+    lines.push(
+      ...buildSlot(`${local}Result`, operation.returnValue, 0),
+      `  ${local}.returnValue = ${local}Result;`,
+    );
+  }
   for (const [at, parameter] of sortedParameters(operation).entries()) {
     const parameterLocal = `${local}Parameter${at}`;
     lines.push(
-      `  const ${parameterLocal} = factory.createParameter();`,
-      ...assign(parameterLocal, 'name', parameter.name),
-      ...assign(parameterLocal, 'type', parameter.type),
-      ...assign(parameterLocal, 'description', parameter.description),
-      ...(at > 0 ? [`  ${parameterLocal}.index = ${at};`] : []),
-      ...(parameter.optional === true ? [`  ${parameterLocal}.optional = true;`] : []),
-      ...assign(parameterLocal, 'defaultValue', parameter.defaultValue),
+      ...buildSlot(parameterLocal, parameter, at),
       `  ${local}.parameters.push(${parameterLocal});`,
     );
   }
   lines.push(`  serviceInterface.operations.push(${local});`);
   return lines;
+}
+
+/** A ServiceException the interface owns, properties included. */
+function buildException(exception: ServiceException, index: number): string[] {
+  const local = `exception${index}`;
+  return [
+    ``,
+    `  const ${local} = factory.createServiceException();`,
+    ...assign(local, 'name', exception.name),
+    ...assign(local, 'type', exception.type),
+    ...assign(local, 'version', exception.version),
+    ...assign(local, 'description', exception.description),
+    ...toArray<Property>(exception.properties).map(property => `  ${local}.properties.push(${propertyExpression(property)});`),
+    `  serviceInterface.exceptions.push(${local});`,
+  ];
+}
+
+/** A property as the props builder that makes the same one. */
+function propertyExpression(property: Property): string {
+  const name = quote(property.name ?? '');
+  const value = propertyValue(property);
+  switch (eClassName(property)) {
+    case 'StringProperty': return `props.string(${name}, ${quote(String(value ?? ''))})`;
+    case 'IntProperty': return `props.int(${name}, ${Number(value)})`;
+    case 'LongProperty': return `props.long(${name}, ${Number(value)})`;
+    case 'ShortProperty': return `props.short(${name}, ${Number(value)})`;
+    case 'DoubleProperty': return `props.double(${name}, ${Number(value)})`;
+    case 'FloatProperty': return `props.float(${name}, ${Number(value)})`;
+    case 'BoolProperty': return `props.bool(${name}, ${value === true})`;
+    case 'StringListProperty': return `props.stringList(${name}, [${(value as string[]).map(quote).join(', ')}])`;
+    default:
+      throw new Error(`cannot reproduce a ${eClassName(property)} property (${property.name})`);
+  }
+}
+
+/** A security requirement, on the interface or on one operation - both are sd1. */
+function buildSecurity(target: string, requirement: SecurityRequirement | undefined): string[] {
+  if (!requirement) return [];
+  const local = `${target}Security`;
+  return [
+    `  const ${local} = factory.createSecurityRequirement();`,
+    ...(requirement.authenticated === true ? [`  ${local}.authenticated = true;`] : []),
+    ...toArray<string>(requirement.scopes).map(scope => `  ${local}.scopes.push(${quote(scope)});`),
+    `  ${target}.security = ${local};`,
+  ];
+}
+
+/**
+ * One Parameter, as a parameter or as the return slot (#41). Bounds are
+ * written only where they differ from the model default of 1, the eType
+ * as the proxy the catalog carried.
+ */
+function buildSlot(local: string, slot: Parameter, at: number): string[] {
+  const lower = boundOf(slot.lowerBound);
+  const upper = boundOf(slot.upperBound);
+  const uri = eTypeUri(slot.eType);
+  return [
+    `  const ${local} = factory.createParameter();`,
+    ...assign(local, 'name', slot.name),
+    ...assign(local, 'type', slot.type),
+    ...assign(local, 'description', slot.description),
+    ...(at > 0 ? [`  ${local}.index = ${at};`] : []),
+    ...(slot.optional === true ? [`  ${local}.optional = true;`] : []),
+    ...assign(local, 'defaultValue', slot.defaultValue),
+    ...(lower !== 1 ? [`  ${local}.lowerBound = ${lower};`] : []),
+    ...(upper !== 1 ? [`  ${local}.upperBound = ${upper};`] : []),
+    ...(uri !== undefined ? [`  ${local}.eType = eTypeProxy(${quote(uri)});`] : []),
+  ];
+}
+
+/**
+ * The TypeScript type of a slot - a parameter, or the return value. A
+ * free `type` string wins; otherwise the eType names it, read from the
+ * proxy URI as the fingerprint does, since the provider's metamodel is
+ * normally not on hand. A multi-valued slot is an array of that, and no
+ * slot at all is a void return.
+ */
+function slotType(slot: Parameter | undefined): MappedType {
+  if (!slot) return { text: 'void' };
+  const mapped = slot.type ? mapType(slot.type) : mapType(eTypeName(slot.eType));
+  const upper = boundOf(slot.upperBound);
+  const many = upper === -1 || upper > 1;
+  return many && !mapped.text.endsWith('[]') ? { ...mapped, text: `${mapped.text}[]` } : mapped;
+}
+
+/** A bound as a number; absent means the model default of 1. */
+function boundOf(value: unknown): number {
+  if (value === undefined || value === null || value === '') return 1;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 1;
+}
+
+/** `<nsURI>#//<Name>` for an eType, proxy or resolved - as sd1 renders it. */
+function eTypeUri(eType: unknown): string | undefined {
+  if (!eType) return undefined;
+  const proxyURI = (eType as { eProxyURI?: () => { toString(): string } | null }).eProxyURI?.();
+  if (proxyURI) return proxyURI.toString();
+  const classifier = eType as {
+    getEPackage?: () => { getNsURI?: () => string | undefined } | null;
+    getName?: () => string | undefined;
+  };
+  const nsURI = classifier.getEPackage?.()?.getNsURI?.();
+  const name = classifier.getName?.();
+  if (!name) return undefined;
+  return nsURI ? `${nsURI}#//${name}` : name;
+}
+
+/** The classifier name an eType carries, the last segment of its URI. */
+function eTypeName(eType: unknown): string | undefined {
+  const uri = eTypeUri(eType);
+  return uri === undefined ? undefined : uri.slice(uri.lastIndexOf('/') + 1);
 }
 
 /**

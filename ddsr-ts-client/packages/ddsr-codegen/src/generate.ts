@@ -152,6 +152,8 @@ function packageJson(name: string, version: string, tsm: boolean): GeneratedFile
       dependencies: {
         '@ddsr/client': 'workspace:*',
         '@ddsr/model': 'workspace:*',
+        // A provider whose contract carries an eType builds it as a proxy
+        '@emfts/core': '0.3.0-next.4',
         ...(tsm ? { '@ddsr/tsm': 'workspace:*', '@eclipse-daanse/tsm': '0.1.0-next.1' } : {}),
       },
       devDependencies: { typescript: '~5.8.0' },

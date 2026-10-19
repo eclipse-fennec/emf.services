@@ -24,6 +24,7 @@
   "dependencies": {
     "@ddsr/client": "workspace:*",
     "@ddsr/model": "workspace:*",
+    "@emfts/core": "0.3.0-next.4",
     "@ddsr/tsm": "workspace:*",
     "@eclipse-daanse/tsm": "0.1.0-next.1"
   },

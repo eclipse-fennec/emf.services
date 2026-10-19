@@ -44,8 +44,11 @@ export function buildPaymentInterface(): ServiceInterface {
 
   const operation0 = factory.createServiceOperation();
   operation0.name = 'charge';
-  operation0.returnType = 'double';
   operation0.description = 'Charge an amount. Returns the remaining balance.';
+  const operation0Result = factory.createParameter();
+  operation0Result.name = 'result';
+  operation0Result.type = 'double';
+  operation0.returnValue = operation0Result;
   const operation0Parameter0 = factory.createParameter();
   operation0Parameter0.name = 'amount';
   operation0Parameter0.type = 'double';
@@ -63,8 +66,11 @@ export function buildPaymentInterface(): ServiceInterface {
 
   const operation1 = factory.createServiceOperation();
   operation1.name = 'getBalance';
-  operation1.returnType = 'double';
   operation1.description = 'Get current account balance.';
+  const operation1Result = factory.createParameter();
+  operation1Result.name = 'result';
+  operation1Result.type = 'double';
+  operation1.returnValue = operation1Result;
   const operation1Parameter0 = factory.createParameter();
   operation1Parameter0.name = 'accountId';
   operation1Parameter0.type = 'string';

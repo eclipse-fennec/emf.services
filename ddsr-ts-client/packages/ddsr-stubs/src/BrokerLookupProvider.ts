@@ -3,30 +3,45 @@
  * DO NOT EDIT - regenerate instead.
  */
 
+import { BasicEClass, URI } from '@emfts/core';
+import type { EClassifier } from '@emfts/core';
+import { props } from '@ddsr/client';
 import { DDSRFactory } from '@ddsr/model';
-import type { LocalServiceRegistry, ServiceInterface } from '@ddsr/model';
+import type { Diagnostic, LocalServiceRegistry, ServiceInterface } from '@ddsr/model';
 
 /**
- * DDSR broker consumer-side lookup of ServiceReferences with optional
- * filter and flavor matching.
+ * What a consumer asks the broker: who implements this contract, and —
+ * once bound — that the provider is still alive.
  * The implementation side of BrokerLookup. Every operation
  * the catalog declares has to be here; a return value may be a
  * promise or not.
  */
 export interface BrokerLookupImplementation {
   /**
-   * Return matching ServiceReferences, filtered by interface name,
-   * optional LDAP filter, and consumer-supported flavors.
-   * @param interfaceName Name of the ServiceInterface to look up. Required.
-   * @param filter Optional LDAP filter over service properties.
-   * @param flavors Comma-separated list of FlavorKind values supported by the consumer (REST, MQTT, ...).
-   * @param consumerId Optional consumer identity for audit / policy attribution.
+   * Every live registration of a contract that a consumer can use. The
+   * answer is one document: the references, the implementations behind
+   * them, and the contracts they name, copied out of the broker's state
+   * so nothing in it can be reached from the answer.
+   * @param interfaceName Name of the contract. Travels as 'interface' — the word is a keyword in more than one of the languages that read this.
+   * @param filter LDAP filter over the registration's properties.
+   * @param flavors Comma-separated transports the consumer can use; a registration that offers none of them is not a hit.
+   * @param consumerId Symbolic identity of the consumer, so the broker can pair this lookup with its session.
+   * @param fingerprint sd1 of the contract the consumer was built against; only registrations of exactly that contract are hits.
    */
-  getServiceReferences(interfaceName: string, filter?: string, flavors?: string, consumerId?: string): LocalServiceRegistry | Promise<LocalServiceRegistry>;
+  getServiceReferences(interfaceName: string, filter?: string, flavors?: string, consumerId?: string, fingerprint?: string): LocalServiceRegistry | Promise<LocalServiceRegistry>;
+
+  /**
+   * A provider says it is still there. Missing two intervals is what
+   * makes the broker declare it lost, so consumers hear about a provider
+   * that died without withdrawing.
+   * @param referenceId The registration this heartbeat is for.
+   * @param intervalSeconds How often the provider intends to report in. The broker sweeps on twice this.
+   */
+  heartbeat(referenceId: string, intervalSeconds?: number): Diagnostic | Promise<Diagnostic>;
 }
 
 /** The operation names, for wiring a transport that dispatches by name. */
-export const BrokerLookupOperationNames = ['getServiceReferences'] as const;
+export const BrokerLookupOperationNames = ['getServiceReferences', 'heartbeat'] as const;
 
 /**
  * The contract as a model object, exactly as the catalog has it.
@@ -38,39 +53,100 @@ export function buildBrokerLookupInterface(): ServiceInterface {
   const serviceInterface = factory.createServiceInterface();
   serviceInterface.name = 'BrokerLookup';
   serviceInterface.version = '1.0.0';
-  serviceInterface.description = 'DDSR broker consumer-side lookup of ServiceReferences with optional filter and flavor matching.';
+  serviceInterface.description = 'What a consumer asks the broker: who implements this contract, and — once bound — that the provider is still alive.';
+
+  const exception0 = factory.createServiceException();
+  exception0.name = 'HeartbeatInvalid';
+  exception0.type = 'HeartbeatInvalid';
+  exception0.description = 'The interval is not one the broker accepts.';
+  exception0.properties.push(props.int('code', 215));
+  serviceInterface.exceptions.push(exception0);
+
+  const exception1 = factory.createServiceException();
+  exception1.name = 'ImplementationNotPublished';
+  exception1.type = 'ImplementationNotPublished';
+  exception1.description = 'No live registration under that reference id.';
+  exception1.properties.push(props.int('code', 212));
+  serviceInterface.exceptions.push(exception1);
 
   const operation0 = factory.createServiceOperation();
   operation0.name = 'getServiceReferences';
-  operation0.returnType = 'LocalServiceRegistry';
-  operation0.description = 'Return matching ServiceReferences, filtered by interface name, optional LDAP filter, and consumer-supported flavors.';
+  operation0.description = 'Every live registration of a contract that a consumer can use. The answer is one document: the references, the implementations behind them, and the contracts they name, copied out of the broker\'s state so nothing in it can be reached from the answer.';
+  const operation0Result = factory.createParameter();
+  operation0Result.name = 'result';
+  operation0Result.description = 'References, implementations and contracts in one envelope.';
+  operation0Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//LocalServiceRegistry');
+  operation0.returnValue = operation0Result;
   const operation0Parameter0 = factory.createParameter();
   operation0Parameter0.name = 'interfaceName';
   operation0Parameter0.type = 'string';
-  operation0Parameter0.description = 'Name of the ServiceInterface to look up. Required.';
+  operation0Parameter0.description = 'Name of the contract. Travels as \'interface\' — the word is a keyword in more than one of the languages that read this.';
   operation0.parameters.push(operation0Parameter0);
   const operation0Parameter1 = factory.createParameter();
   operation0Parameter1.name = 'filter';
   operation0Parameter1.type = 'string';
-  operation0Parameter1.description = 'Optional LDAP filter over service properties.';
+  operation0Parameter1.description = 'LDAP filter over the registration\'s properties.';
   operation0Parameter1.index = 1;
   operation0Parameter1.optional = true;
   operation0.parameters.push(operation0Parameter1);
   const operation0Parameter2 = factory.createParameter();
   operation0Parameter2.name = 'flavors';
   operation0Parameter2.type = 'string';
-  operation0Parameter2.description = 'Comma-separated list of FlavorKind values supported by the consumer (REST, MQTT, ...).';
+  operation0Parameter2.description = 'Comma-separated transports the consumer can use; a registration that offers none of them is not a hit.';
   operation0Parameter2.index = 2;
   operation0Parameter2.optional = true;
   operation0.parameters.push(operation0Parameter2);
   const operation0Parameter3 = factory.createParameter();
   operation0Parameter3.name = 'consumerId';
   operation0Parameter3.type = 'string';
-  operation0Parameter3.description = 'Optional consumer identity for audit / policy attribution.';
+  operation0Parameter3.description = 'Symbolic identity of the consumer, so the broker can pair this lookup with its session.';
   operation0Parameter3.index = 3;
   operation0Parameter3.optional = true;
   operation0.parameters.push(operation0Parameter3);
+  const operation0Parameter4 = factory.createParameter();
+  operation0Parameter4.name = 'fingerprint';
+  operation0Parameter4.type = 'string';
+  operation0Parameter4.description = 'sd1 of the contract the consumer was built against; only registrations of exactly that contract are hits.';
+  operation0Parameter4.index = 4;
+  operation0Parameter4.optional = true;
+  operation0.parameters.push(operation0Parameter4);
   serviceInterface.operations.push(operation0);
+
+  const operation1 = factory.createServiceOperation();
+  operation1.name = 'heartbeat';
+  operation1.description = 'A provider says it is still there. Missing two intervals is what makes the broker declare it lost, so consumers hear about a provider that died without withdrawing.';
+  operation1.exceptions.push(exception0);
+  operation1.exceptions.push(exception1);
+  const operation1Result = factory.createParameter();
+  operation1Result.name = 'result';
+  operation1Result.description = 'What the broker made of it.';
+  operation1Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//Diagnostic');
+  operation1.returnValue = operation1Result;
+  const operation1Parameter0 = factory.createParameter();
+  operation1Parameter0.name = 'referenceId';
+  operation1Parameter0.type = 'string';
+  operation1Parameter0.description = 'The registration this heartbeat is for.';
+  operation1.parameters.push(operation1Parameter0);
+  const operation1Parameter1 = factory.createParameter();
+  operation1Parameter1.name = 'intervalSeconds';
+  operation1Parameter1.type = 'long';
+  operation1Parameter1.description = 'How often the provider intends to report in. The broker sweeps on twice this.';
+  operation1Parameter1.index = 1;
+  operation1Parameter1.optional = true;
+  operation1Parameter1.defaultValue = '30';
+  operation1.parameters.push(operation1Parameter1);
+  serviceInterface.operations.push(operation1);
   return serviceInterface;
+}
+
+/**
+ * An eType as the broker holds it: a proxy naming the classifier by
+ * URI. The fingerprint reads that URI and nothing else, so the
+ * provider's metamodel need not be loaded to publish the contract.
+ */
+function eTypeProxy(uri: string): EClassifier {
+  const proxy = new BasicEClass();
+  proxy.eSetProxyURI(URI.createURI(uri));
+  return proxy;
 }
 

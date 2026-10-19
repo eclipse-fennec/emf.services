@@ -2,7 +2,7 @@
 <genconfig:GenConfig xmi:version="2.0"
     xmlns:xmi="http://www.omg.org/XMI"
     xmlns:genconfig="http://www.emfts.org/genconfig/1.0"
-    ecorePackage="http://geckoprojects.org/ddsr/1.0#/">
+    ecorePackage="http://eclipse.org/fennec/services/1.0#/">
 
   <!-- Generation Settings -->
   <generation mode="emf" outputDir="./src"/>

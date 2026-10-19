@@ -3,29 +3,40 @@
  * DO NOT EDIT - regenerate instead.
  */
 
-import type { Diagnostic, ServiceImplementation, ServiceProvider } from '@ddsr/model';
+import type { Diagnostic, ServiceProvider } from '@ddsr/model';
 import { serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer } from '@ddsr/client';
 
 /**
- * DDSR broker implementation registry: publish and withdraw
- * ServiceImplementations.
+ * What a provider does with the broker: announce an implementation,
+ * change it in place, take it back. Every one of them carries the
+ * provider document itself — the broker reads the single
+ * implementation inside it.
  */
 export interface BrokerImplementations {
   /**
-   * Register a ServiceImplementation. Validates ownership and catalog
-   * membership; returns WARNING if any referenced interface is
-   * deprecated.
-   * @param provider The provider that owns the implementation (must contain it).
-   * @param implementation The implementation to publish; MUST be contained in provider.implementations.
+   * Announce one implementation of a contract that is in the catalog.
+   * Announcing the identical implementation again is the same
+   * registration, not a second one.
+   * @param provider The provider document, carrying exactly one implementation. Contracts it references may travel as sibling roots.
    */
-  publishImplementation(provider: ServiceProvider, implementation: ServiceImplementation): Promise<Diagnostic>;
+  publishImplementation(provider: ServiceProvider): Promise<Diagnostic>;
 
   /**
-   * Withdraw a previously published implementation. Provider ownership
-   * is verified.
+   * Change a live implementation in place — same identity, drifted
+   * endpoint. Consumers see MODIFIED under the reference id they already
+   * hold, instead of losing and rebinding it.
+   * @param provider The provider document, carrying the changed implementation under its existing identity.
    */
-  withdrawImplementation(provider: ServiceProvider, implementation: ServiceImplementation): Promise<Diagnostic>;
+  modifyImplementation(provider: ServiceProvider): Promise<Diagnostic>;
+
+  /**
+   * Take an implementation back. Answers only once consumers have been
+   * told, so a provider can stop serving afterwards and no one calls a
+   * dead endpoint.
+   * @param provider The provider document naming the implementation to withdraw.
+   */
+  withdrawImplementation(provider: ServiceProvider): Promise<Diagnostic>;
 }
 
 /** The ServiceInterface.name this contract is registered under. */
@@ -40,7 +51,7 @@ export const BrokerImplementationsVersion = '1.0.0';
  * hashes to exactly this - compatibility by identity, so a provider
  * that changed its operations is not called with these signatures.
  */
-export const BrokerImplementationsFingerprint = 'sd1:a75519437df9e344d82562894fa3c5acf3f8e1c930923bd2915e1ae52514b585';
+export const BrokerImplementationsFingerprint = 'sd1:c02eb185635db0298df4cfe44c625e51019f1cc9648ac08a23eebac6034183c1';
 
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker

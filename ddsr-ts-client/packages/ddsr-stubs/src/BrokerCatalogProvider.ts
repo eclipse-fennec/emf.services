@@ -3,47 +3,65 @@
  * DO NOT EDIT - regenerate instead.
  */
 
+import { BasicEClass, URI } from '@emfts/core';
+import type { EClassifier } from '@emfts/core';
+import { props } from '@ddsr/client';
 import { DDSRFactory } from '@ddsr/model';
 import type { Diagnostic, RemoteServiceRegistry, ServiceInterface } from '@ddsr/model';
 
 /**
- * DDSR broker catalog management: list, add, deprecate, remove
- * ServiceInterface entries.
+ * Governance of the contracts a broker knows: list them, read one, add
+ * one, deprecate or remove one. What this states is what the broker
+ * serves — the flavor beside it says where every value travels.
  * The implementation side of BrokerCatalog. Every operation
  * the catalog declares has to be here; a return value may be a
  * promise or not.
  */
 export interface BrokerCatalogImplementation {
   /**
-   * Return the current registry snapshot including the catalog.
+   * The registry as it stands, catalog included.
    */
   listCatalog(): RemoteServiceRegistry | Promise<RemoteServiceRegistry>;
 
   /**
-   * Add a new ServiceInterface to the catalog. Rejects duplicates by
-   * name.
-   * @param serviceInterface The interface to add, fully populated.
+   * One contract by name. Several contracts may share a name — they are
+   * told apart by content fingerprint — so a bare name is only answered
+   * while it is unambiguous.
+   * @param name Name of the contract.
+   * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
+   */
+  getCatalogEntry(name: string, fingerprint?: string): ServiceInterface | Promise<ServiceInterface>;
+
+  /**
+   * Add a contract. Adding the identical contract again is accepted; a
+   * different one under a name already taken is not.
+   * @param serviceInterface The contract to add, fully populated.
    * @param requestor Symbolic identity that initiated the change (governance audit).
    */
   addCatalogEntry(serviceInterface: ServiceInterface, requestor?: string): Diagnostic | Promise<Diagnostic>;
 
   /**
-   * Soft-deprecate an existing entry. Existing implementations keep
-   * working; new publishes emit a WARNING.
-   * @param name Name of the ServiceInterface to deprecate.
-   * @param deprecationReason Free-form reason surfaced in the WARNING diagnostic.
+   * Soft-deprecate a contract. Existing implementations keep working;
+   * new publishes against it are answered with a WARNING.
+   * @param name Name of the contract to deprecate.
+   * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
+   * @param governance Carries deprecationReason and replacedBy; everything else about it is ignored.
+   * @param requestor Symbolic identity that initiated the change (governance audit).
    */
-  deprecateCatalogEntry(name: string, deprecationReason?: string, requestor?: string): Diagnostic | Promise<Diagnostic>;
+  deprecateCatalogEntry(name: string, fingerprint?: string, governance?: ServiceInterface, requestor?: string): Diagnostic | Promise<Diagnostic>;
 
   /**
-   * Strict-Reject removal: rejects while any implementation references
-   * the interface.
+   * Remove a contract. Refused while any live implementation still
+   * references it.
+   * @param name Name of the contract to remove.
+   * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
+   * @param requestor Symbolic identity that initiated the change (governance audit).
    */
-  removeCatalogEntry(name: string, requestor?: string): Diagnostic | Promise<Diagnostic>;
+  removeCatalogEntry(name: string, fingerprint?: string, requestor?: string): Diagnostic | Promise<Diagnostic>;
 }
 
 /** The operation names, for wiring a transport that dispatches by name. */
-export const BrokerCatalogOperationNames = ['listCatalog', 'addCatalogEntry', 'deprecateCatalogEntry', 'removeCatalogEntry'] as const;
+export const BrokerCatalogOperationNames = ['listCatalog', 'getCatalogEntry', 'addCatalogEntry', 'deprecateCatalogEntry', 'removeCatalogEntry'] as const;
 
 /**
  * The contract as a model object, exactly as the catalog has it.
@@ -55,74 +73,176 @@ export function buildBrokerCatalogInterface(): ServiceInterface {
   const serviceInterface = factory.createServiceInterface();
   serviceInterface.name = 'BrokerCatalog';
   serviceInterface.version = '1.0.0';
-  serviceInterface.description = 'DDSR broker catalog management: list, add, deprecate, remove ServiceInterface entries.';
+  serviceInterface.description = 'Governance of the contracts a broker knows: list them, read one, add one, deprecate or remove one. What this states is what the broker serves — the flavor beside it says where every value travels.';
+
+  const exception0 = factory.createServiceException();
+  exception0.name = 'CatalogEntryNotFound';
+  exception0.type = 'CatalogEntryNotFound';
+  exception0.description = 'No contract of that name — or none with that fingerprint.';
+  exception0.properties.push(props.int('code', 201));
+  serviceInterface.exceptions.push(exception0);
+
+  const exception1 = factory.createServiceException();
+  exception1.name = 'CatalogEntryAlreadyExists';
+  exception1.type = 'CatalogEntryAlreadyExists';
+  exception1.description = 'A different contract already holds that name.';
+  exception1.properties.push(props.int('code', 202));
+  serviceInterface.exceptions.push(exception1);
+
+  const exception2 = factory.createServiceException();
+  exception2.name = 'CatalogHasLiveImplementations';
+  exception2.type = 'CatalogHasLiveImplementations';
+  exception2.description = 'Live implementations still reference this contract.';
+  exception2.properties.push(props.int('code', 200));
+  serviceInterface.exceptions.push(exception2);
+
+  const exception3 = factory.createServiceException();
+  exception3.name = 'CatalogEntryAmbiguous';
+  exception3.type = 'CatalogEntryAmbiguous';
+  exception3.description = 'The name covers several coexisting contracts — address one by its fingerprint.';
+  exception3.properties.push(props.int('code', 203));
+  serviceInterface.exceptions.push(exception3);
 
   const operation0 = factory.createServiceOperation();
   operation0.name = 'listCatalog';
-  operation0.returnType = 'RemoteServiceRegistry';
-  operation0.description = 'Return the current registry snapshot including the catalog.';
+  operation0.description = 'The registry as it stands, catalog included.';
+  const operation0Result = factory.createParameter();
+  operation0Result.name = 'result';
+  operation0Result.description = 'The whole registry document.';
+  operation0Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//RemoteServiceRegistry');
+  operation0.returnValue = operation0Result;
   serviceInterface.operations.push(operation0);
 
   const operation1 = factory.createServiceOperation();
-  operation1.name = 'addCatalogEntry';
-  operation1.returnType = 'Diagnostic';
-  operation1.description = 'Add a new ServiceInterface to the catalog. Rejects duplicates by name.';
+  operation1.name = 'getCatalogEntry';
+  operation1.description = 'One contract by name. Several contracts may share a name — they are told apart by content fingerprint — so a bare name is only answered while it is unambiguous.';
+  operation1.exceptions.push(exception0);
+  operation1.exceptions.push(exception3);
+  const operation1Result = factory.createParameter();
+  operation1Result.name = 'result';
+  operation1Result.description = 'The contract as the catalog holds it.';
+  operation1Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//ServiceInterface');
+  operation1.returnValue = operation1Result;
   const operation1Parameter0 = factory.createParameter();
-  operation1Parameter0.name = 'serviceInterface';
-  operation1Parameter0.type = 'ServiceInterface';
-  operation1Parameter0.description = 'The interface to add, fully populated.';
+  operation1Parameter0.name = 'name';
+  operation1Parameter0.type = 'string';
+  operation1Parameter0.description = 'Name of the contract.';
   operation1.parameters.push(operation1Parameter0);
   const operation1Parameter1 = factory.createParameter();
-  operation1Parameter1.name = 'requestor';
+  operation1Parameter1.name = 'fingerprint';
   operation1Parameter1.type = 'string';
-  operation1Parameter1.description = 'Symbolic identity that initiated the change (governance audit).';
+  operation1Parameter1.description = 'sd1 fingerprint, when the name alone does not name one contract.';
   operation1Parameter1.index = 1;
   operation1Parameter1.optional = true;
-  operation1Parameter1.defaultValue = 'anonymous';
   operation1.parameters.push(operation1Parameter1);
   serviceInterface.operations.push(operation1);
 
   const operation2 = factory.createServiceOperation();
-  operation2.name = 'deprecateCatalogEntry';
-  operation2.returnType = 'Diagnostic';
-  operation2.description = 'Soft-deprecate an existing entry. Existing implementations keep working; new publishes emit a WARNING.';
+  operation2.name = 'addCatalogEntry';
+  operation2.description = 'Add a contract. Adding the identical contract again is accepted; a different one under a name already taken is not.';
+  operation2.exceptions.push(exception1);
+  const operation2Result = factory.createParameter();
+  operation2Result.name = 'result';
+  operation2Result.description = 'What the broker made of it.';
+  operation2Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//Diagnostic');
+  operation2.returnValue = operation2Result;
   const operation2Parameter0 = factory.createParameter();
-  operation2Parameter0.name = 'name';
-  operation2Parameter0.type = 'string';
-  operation2Parameter0.description = 'Name of the ServiceInterface to deprecate.';
+  operation2Parameter0.name = 'serviceInterface';
+  operation2Parameter0.description = 'The contract to add, fully populated.';
+  operation2Parameter0.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//ServiceInterface');
   operation2.parameters.push(operation2Parameter0);
   const operation2Parameter1 = factory.createParameter();
-  operation2Parameter1.name = 'deprecationReason';
+  operation2Parameter1.name = 'requestor';
   operation2Parameter1.type = 'string';
-  operation2Parameter1.description = 'Free-form reason surfaced in the WARNING diagnostic.';
+  operation2Parameter1.description = 'Symbolic identity that initiated the change (governance audit).';
   operation2Parameter1.index = 1;
   operation2Parameter1.optional = true;
+  operation2Parameter1.defaultValue = 'anonymous';
   operation2.parameters.push(operation2Parameter1);
-  const operation2Parameter2 = factory.createParameter();
-  operation2Parameter2.name = 'requestor';
-  operation2Parameter2.type = 'string';
-  operation2Parameter2.index = 2;
-  operation2Parameter2.optional = true;
-  operation2Parameter2.defaultValue = 'anonymous';
-  operation2.parameters.push(operation2Parameter2);
   serviceInterface.operations.push(operation2);
 
   const operation3 = factory.createServiceOperation();
-  operation3.name = 'removeCatalogEntry';
-  operation3.returnType = 'Diagnostic';
-  operation3.description = 'Strict-Reject removal: rejects while any implementation references the interface.';
+  operation3.name = 'deprecateCatalogEntry';
+  operation3.description = 'Soft-deprecate a contract. Existing implementations keep working; new publishes against it are answered with a WARNING.';
+  operation3.exceptions.push(exception0);
+  operation3.exceptions.push(exception3);
+  const operation3Result = factory.createParameter();
+  operation3Result.name = 'result';
+  operation3Result.description = 'What the broker made of it.';
+  operation3Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//Diagnostic');
+  operation3.returnValue = operation3Result;
   const operation3Parameter0 = factory.createParameter();
   operation3Parameter0.name = 'name';
   operation3Parameter0.type = 'string';
+  operation3Parameter0.description = 'Name of the contract to deprecate.';
   operation3.parameters.push(operation3Parameter0);
   const operation3Parameter1 = factory.createParameter();
-  operation3Parameter1.name = 'requestor';
+  operation3Parameter1.name = 'fingerprint';
   operation3Parameter1.type = 'string';
+  operation3Parameter1.description = 'sd1 fingerprint, when the name alone does not name one contract.';
   operation3Parameter1.index = 1;
   operation3Parameter1.optional = true;
-  operation3Parameter1.defaultValue = 'anonymous';
   operation3.parameters.push(operation3Parameter1);
+  const operation3Parameter2 = factory.createParameter();
+  operation3Parameter2.name = 'governance';
+  operation3Parameter2.description = 'Carries deprecationReason and replacedBy; everything else about it is ignored.';
+  operation3Parameter2.index = 2;
+  operation3Parameter2.optional = true;
+  operation3Parameter2.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//ServiceInterface');
+  operation3.parameters.push(operation3Parameter2);
+  const operation3Parameter3 = factory.createParameter();
+  operation3Parameter3.name = 'requestor';
+  operation3Parameter3.type = 'string';
+  operation3Parameter3.description = 'Symbolic identity that initiated the change (governance audit).';
+  operation3Parameter3.index = 3;
+  operation3Parameter3.optional = true;
+  operation3Parameter3.defaultValue = 'anonymous';
+  operation3.parameters.push(operation3Parameter3);
   serviceInterface.operations.push(operation3);
+
+  const operation4 = factory.createServiceOperation();
+  operation4.name = 'removeCatalogEntry';
+  operation4.description = 'Remove a contract. Refused while any live implementation still references it.';
+  operation4.exceptions.push(exception0);
+  operation4.exceptions.push(exception2);
+  operation4.exceptions.push(exception3);
+  const operation4Result = factory.createParameter();
+  operation4Result.name = 'result';
+  operation4Result.description = 'What the broker made of it.';
+  operation4Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//Diagnostic');
+  operation4.returnValue = operation4Result;
+  const operation4Parameter0 = factory.createParameter();
+  operation4Parameter0.name = 'name';
+  operation4Parameter0.type = 'string';
+  operation4Parameter0.description = 'Name of the contract to remove.';
+  operation4.parameters.push(operation4Parameter0);
+  const operation4Parameter1 = factory.createParameter();
+  operation4Parameter1.name = 'fingerprint';
+  operation4Parameter1.type = 'string';
+  operation4Parameter1.description = 'sd1 fingerprint, when the name alone does not name one contract.';
+  operation4Parameter1.index = 1;
+  operation4Parameter1.optional = true;
+  operation4.parameters.push(operation4Parameter1);
+  const operation4Parameter2 = factory.createParameter();
+  operation4Parameter2.name = 'requestor';
+  operation4Parameter2.type = 'string';
+  operation4Parameter2.description = 'Symbolic identity that initiated the change (governance audit).';
+  operation4Parameter2.index = 2;
+  operation4Parameter2.optional = true;
+  operation4Parameter2.defaultValue = 'anonymous';
+  operation4.parameters.push(operation4Parameter2);
+  serviceInterface.operations.push(operation4);
   return serviceInterface;
+}
+
+/**
+ * An eType as the broker holds it: a proxy naming the classifier by
+ * URI. The fingerprint reads that URI and nothing else, so the
+ * provider's metamodel need not be loaded to publish the contract.
+ */
+function eTypeProxy(uri: string): EClassifier {
+  const proxy = new BasicEClass();
+  proxy.eSetProxyURI(URI.createURI(uri));
+  return proxy;
 }
 

@@ -3,35 +3,49 @@
  * DO NOT EDIT - regenerate instead.
  */
 
+import { BasicEClass, URI } from '@emfts/core';
+import type { EClassifier } from '@emfts/core';
+import { props } from '@ddsr/client';
 import { DDSRFactory } from '@ddsr/model';
-import type { Diagnostic, ServiceImplementation, ServiceInterface, ServiceProvider } from '@ddsr/model';
+import type { Diagnostic, ServiceInterface, ServiceProvider } from '@ddsr/model';
 
 /**
- * DDSR broker implementation registry: publish and withdraw
- * ServiceImplementations.
+ * What a provider does with the broker: announce an implementation,
+ * change it in place, take it back. Every one of them carries the
+ * provider document itself — the broker reads the single
+ * implementation inside it.
  * The implementation side of BrokerImplementations. Every operation
  * the catalog declares has to be here; a return value may be a
  * promise or not.
  */
 export interface BrokerImplementationsImplementation {
   /**
-   * Register a ServiceImplementation. Validates ownership and catalog
-   * membership; returns WARNING if any referenced interface is
-   * deprecated.
-   * @param provider The provider that owns the implementation (must contain it).
-   * @param implementation The implementation to publish; MUST be contained in provider.implementations.
+   * Announce one implementation of a contract that is in the catalog.
+   * Announcing the identical implementation again is the same
+   * registration, not a second one.
+   * @param provider The provider document, carrying exactly one implementation. Contracts it references may travel as sibling roots.
    */
-  publishImplementation(provider: ServiceProvider, implementation: ServiceImplementation): Diagnostic | Promise<Diagnostic>;
+  publishImplementation(provider: ServiceProvider): Diagnostic | Promise<Diagnostic>;
 
   /**
-   * Withdraw a previously published implementation. Provider ownership
-   * is verified.
+   * Change a live implementation in place — same identity, drifted
+   * endpoint. Consumers see MODIFIED under the reference id they already
+   * hold, instead of losing and rebinding it.
+   * @param provider The provider document, carrying the changed implementation under its existing identity.
    */
-  withdrawImplementation(provider: ServiceProvider, implementation: ServiceImplementation): Diagnostic | Promise<Diagnostic>;
+  modifyImplementation(provider: ServiceProvider): Diagnostic | Promise<Diagnostic>;
+
+  /**
+   * Take an implementation back. Answers only once consumers have been
+   * told, so a provider can stop serving afterwards and no one calls a
+   * dead endpoint.
+   * @param provider The provider document naming the implementation to withdraw.
+   */
+  withdrawImplementation(provider: ServiceProvider): Diagnostic | Promise<Diagnostic>;
 }
 
 /** The operation names, for wiring a transport that dispatches by name. */
-export const BrokerImplementationsOperationNames = ['publishImplementation', 'withdrawImplementation'] as const;
+export const BrokerImplementationsOperationNames = ['publishImplementation', 'modifyImplementation', 'withdrawImplementation'] as const;
 
 /**
  * The contract as a model object, exactly as the catalog has it.
@@ -43,39 +57,109 @@ export function buildBrokerImplementationsInterface(): ServiceInterface {
   const serviceInterface = factory.createServiceInterface();
   serviceInterface.name = 'BrokerImplementations';
   serviceInterface.version = '1.0.0';
-  serviceInterface.description = 'DDSR broker implementation registry: publish and withdraw ServiceImplementations.';
+  serviceInterface.description = 'What a provider does with the broker: announce an implementation, change it in place, take it back. Every one of them carries the provider document itself — the broker reads the single implementation inside it.';
+
+  const exception0 = factory.createServiceException();
+  exception0.name = 'InterfaceNotInCatalog';
+  exception0.type = 'InterfaceNotInCatalog';
+  exception0.description = 'The implementation names a contract the catalog does not hold.';
+  exception0.properties.push(props.int('code', 210));
+  serviceInterface.exceptions.push(exception0);
+
+  const exception1 = factory.createServiceException();
+  exception1.name = 'OwnershipViolation';
+  exception1.type = 'OwnershipViolation';
+  exception1.description = 'The caller is not the provider of that implementation.';
+  exception1.properties.push(props.int('code', 211));
+  serviceInterface.exceptions.push(exception1);
+
+  const exception2 = factory.createServiceException();
+  exception2.name = 'ImplementationNotPublished';
+  exception2.type = 'ImplementationNotPublished';
+  exception2.description = 'No live registration for that implementation.';
+  exception2.properties.push(props.int('code', 212));
+  serviceInterface.exceptions.push(exception2);
+
+  const exception3 = factory.createServiceException();
+  exception3.name = 'ContractChanged';
+  exception3.type = 'ContractChanged';
+  exception3.description = 'The implementation states a different contract than the one it is registered against.';
+  exception3.properties.push(props.int('code', 214));
+  serviceInterface.exceptions.push(exception3);
+
+  const exception4 = factory.createServiceException();
+  exception4.name = 'PersistenceFailed';
+  exception4.type = 'PersistenceFailed';
+  exception4.description = 'The broker could not write its registry; nothing was changed.';
+  exception4.properties.push(props.int('code', 500));
+  serviceInterface.exceptions.push(exception4);
 
   const operation0 = factory.createServiceOperation();
   operation0.name = 'publishImplementation';
-  operation0.returnType = 'Diagnostic';
-  operation0.description = 'Register a ServiceImplementation. Validates ownership and catalog membership; returns WARNING if any referenced interface is deprecated.';
+  operation0.description = 'Announce one implementation of a contract that is in the catalog. Announcing the identical implementation again is the same registration, not a second one.';
+  operation0.exceptions.push(exception0);
+  operation0.exceptions.push(exception1);
+  operation0.exceptions.push(exception3);
+  operation0.exceptions.push(exception4);
+  const operation0Result = factory.createParameter();
+  operation0Result.name = 'result';
+  operation0Result.description = 'What the broker made of it.';
+  operation0Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//Diagnostic');
+  operation0.returnValue = operation0Result;
   const operation0Parameter0 = factory.createParameter();
   operation0Parameter0.name = 'provider';
-  operation0Parameter0.type = 'ServiceProvider';
-  operation0Parameter0.description = 'The provider that owns the implementation (must contain it).';
+  operation0Parameter0.description = 'The provider document, carrying exactly one implementation. Contracts it references may travel as sibling roots.';
+  operation0Parameter0.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//ServiceProvider');
   operation0.parameters.push(operation0Parameter0);
-  const operation0Parameter1 = factory.createParameter();
-  operation0Parameter1.name = 'implementation';
-  operation0Parameter1.type = 'ServiceImplementation';
-  operation0Parameter1.description = 'The implementation to publish; MUST be contained in provider.implementations.';
-  operation0Parameter1.index = 1;
-  operation0.parameters.push(operation0Parameter1);
   serviceInterface.operations.push(operation0);
 
   const operation1 = factory.createServiceOperation();
-  operation1.name = 'withdrawImplementation';
-  operation1.returnType = 'Diagnostic';
-  operation1.description = 'Withdraw a previously published implementation. Provider ownership is verified.';
+  operation1.name = 'modifyImplementation';
+  operation1.description = 'Change a live implementation in place — same identity, drifted endpoint. Consumers see MODIFIED under the reference id they already hold, instead of losing and rebinding it.';
+  operation1.exceptions.push(exception1);
+  operation1.exceptions.push(exception2);
+  operation1.exceptions.push(exception3);
+  operation1.exceptions.push(exception4);
+  const operation1Result = factory.createParameter();
+  operation1Result.name = 'result';
+  operation1Result.description = 'What the broker made of it.';
+  operation1Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//Diagnostic');
+  operation1.returnValue = operation1Result;
   const operation1Parameter0 = factory.createParameter();
   operation1Parameter0.name = 'provider';
-  operation1Parameter0.type = 'ServiceProvider';
+  operation1Parameter0.description = 'The provider document, carrying the changed implementation under its existing identity.';
+  operation1Parameter0.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//ServiceProvider');
   operation1.parameters.push(operation1Parameter0);
-  const operation1Parameter1 = factory.createParameter();
-  operation1Parameter1.name = 'implementation';
-  operation1Parameter1.type = 'ServiceImplementation';
-  operation1Parameter1.index = 1;
-  operation1.parameters.push(operation1Parameter1);
   serviceInterface.operations.push(operation1);
+
+  const operation2 = factory.createServiceOperation();
+  operation2.name = 'withdrawImplementation';
+  operation2.description = 'Take an implementation back. Answers only once consumers have been told, so a provider can stop serving afterwards and no one calls a dead endpoint.';
+  operation2.exceptions.push(exception1);
+  operation2.exceptions.push(exception2);
+  operation2.exceptions.push(exception4);
+  const operation2Result = factory.createParameter();
+  operation2Result.name = 'result';
+  operation2Result.description = 'What the broker made of it.';
+  operation2Result.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//Diagnostic');
+  operation2.returnValue = operation2Result;
+  const operation2Parameter0 = factory.createParameter();
+  operation2Parameter0.name = 'provider';
+  operation2Parameter0.description = 'The provider document naming the implementation to withdraw.';
+  operation2Parameter0.eType = eTypeProxy('http://eclipse.org/fennec/services/1.0#//ServiceProvider');
+  operation2.parameters.push(operation2Parameter0);
+  serviceInterface.operations.push(operation2);
   return serviceInterface;
+}
+
+/**
+ * An eType as the broker holds it: a proxy naming the classifier by
+ * URI. The fingerprint reads that URI and nothing else, so the
+ * provider's metamodel need not be loaded to publish the contract.
+ */
+function eTypeProxy(uri: string): EClassifier {
+  const proxy = new BasicEClass();
+  proxy.eSetProxyURI(URI.createURI(uri));
+  return proxy;
 }
 

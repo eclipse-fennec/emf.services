@@ -8,36 +8,51 @@ import { serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer } from '@ddsr/client';
 
 /**
- * DDSR broker catalog management: list, add, deprecate, remove
- * ServiceInterface entries.
+ * Governance of the contracts a broker knows: list them, read one, add
+ * one, deprecate or remove one. What this states is what the broker
+ * serves — the flavor beside it says where every value travels.
  */
 export interface BrokerCatalog {
   /**
-   * Return the current registry snapshot including the catalog.
+   * The registry as it stands, catalog included.
    */
   listCatalog(): Promise<RemoteServiceRegistry>;
 
   /**
-   * Add a new ServiceInterface to the catalog. Rejects duplicates by
-   * name.
-   * @param serviceInterface The interface to add, fully populated.
+   * One contract by name. Several contracts may share a name — they are
+   * told apart by content fingerprint — so a bare name is only answered
+   * while it is unambiguous.
+   * @param name Name of the contract.
+   * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
+   */
+  getCatalogEntry(name: string, fingerprint?: string): Promise<ServiceInterface>;
+
+  /**
+   * Add a contract. Adding the identical contract again is accepted; a
+   * different one under a name already taken is not.
+   * @param serviceInterface The contract to add, fully populated.
    * @param requestor Symbolic identity that initiated the change (governance audit).
    */
   addCatalogEntry(serviceInterface: ServiceInterface, requestor?: string): Promise<Diagnostic>;
 
   /**
-   * Soft-deprecate an existing entry. Existing implementations keep
-   * working; new publishes emit a WARNING.
-   * @param name Name of the ServiceInterface to deprecate.
-   * @param deprecationReason Free-form reason surfaced in the WARNING diagnostic.
+   * Soft-deprecate a contract. Existing implementations keep working;
+   * new publishes against it are answered with a WARNING.
+   * @param name Name of the contract to deprecate.
+   * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
+   * @param governance Carries deprecationReason and replacedBy; everything else about it is ignored.
+   * @param requestor Symbolic identity that initiated the change (governance audit).
    */
-  deprecateCatalogEntry(name: string, deprecationReason?: string, requestor?: string): Promise<Diagnostic>;
+  deprecateCatalogEntry(name: string, fingerprint?: string, governance?: ServiceInterface, requestor?: string): Promise<Diagnostic>;
 
   /**
-   * Strict-Reject removal: rejects while any implementation references
-   * the interface.
+   * Remove a contract. Refused while any live implementation still
+   * references it.
+   * @param name Name of the contract to remove.
+   * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
+   * @param requestor Symbolic identity that initiated the change (governance audit).
    */
-  removeCatalogEntry(name: string, requestor?: string): Promise<Diagnostic>;
+  removeCatalogEntry(name: string, fingerprint?: string, requestor?: string): Promise<Diagnostic>;
 }
 
 /** The ServiceInterface.name this contract is registered under. */
@@ -52,7 +67,7 @@ export const BrokerCatalogVersion = '1.0.0';
  * hashes to exactly this - compatibility by identity, so a provider
  * that changed its operations is not called with these signatures.
  */
-export const BrokerCatalogFingerprint = 'sd1:d350ef4184061319d603adfcbe9aa1555d3acfbced0dd8267e73854456e64f96';
+export const BrokerCatalogFingerprint = 'sd1:68e478848b15a931939a7badae44e5070c4711d4b2d36cdc204eba33316d245a';
 
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker

@@ -23,6 +23,7 @@ header:
     - 'itest/fixtures/**'
     # generated code (emfts-codegen resp. EMF codegen into legacy src/)
     - 'ddsr-ts-client/packages/ddsr-model/src/**'
+    - 'ddsr-ts-client/packages/ddsr-stubs/src/**'
     - 'org.eclipse.fennec.services.examples.model/src/**'
     # container build files and configs
     - '**/Containerfile*'

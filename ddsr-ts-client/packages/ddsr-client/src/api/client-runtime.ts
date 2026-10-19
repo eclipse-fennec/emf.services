@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { LocatorState } from './service-locator';
+import type { LocatorState } from './service-locator.js';
 
 /**
  * One implementation this runtime published — the twin of the Java

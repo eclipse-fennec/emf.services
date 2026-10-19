@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-export { RestFlavorPlugin } from './rest-flavor-plugin';
-export { serializeToXmi, deserializeFromXmi } from './xmi-support';
+export { RestFlavorPlugin } from './rest-flavor-plugin.js';
+export { serializeToXmi, deserializeFromXmi } from './xmi-support.js';
 export { restDispatcher } from './operation-dispatch.js';
 export type { DispatchRequest, DispatchResult, DispatchOptions, OperationTarget } from './operation-dispatch.js';

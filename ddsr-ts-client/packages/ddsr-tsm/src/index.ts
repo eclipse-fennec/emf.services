@@ -11,8 +11,8 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-export { DdsrClientService, FlavorPluginService, remoteServiceId } from './contracts';
-export { publishClient, publishFlavorPlugin, flavorPluginsFrom, bindFlavorPlugins } from './registry-wiring';
-export type { FlavorSink } from './registry-wiring';
-export { mirrorRemoteServices } from './remote-mirror';
-export type { RemoteMirror, RemoteMirrorOptions } from './remote-mirror';
+export { DdsrClientService, FlavorPluginService, remoteServiceId } from './contracts.js';
+export { publishClient, publishFlavorPlugin, flavorPluginsFrom, bindFlavorPlugins } from './registry-wiring.js';
+export type { FlavorSink } from './registry-wiring.js';
+export { mirrorRemoteServices } from './remote-mirror.js';
+export type { RemoteMirror, RemoteMirrorOptions } from './remote-mirror.js';

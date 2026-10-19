@@ -20,14 +20,14 @@ import type {
   ServiceReference,
 } from '@ddsr/model';
 import { DDSRFactory } from '@ddsr/model';
-import type { DdsrProvider } from '../api/ddsr-provider';
-import type { Registration } from '../api/registration';
-import { DdsrClientError } from '../api/errors';
-import { BrokerHttp, isError } from './broker-http';
-import { eClassName, toArray } from './emf-util';
-import { fingerprint as sd1 } from '../fingerprint/service-description-fingerprint';
-import { implementationFingerprint } from '../fingerprint/service-implementation-fingerprint';
-import { propertyValue } from '../properties';
+import type { DdsrProvider } from '../api/ddsr-provider.js';
+import type { Registration } from '../api/registration.js';
+import { DdsrClientError } from '../api/errors.js';
+import { BrokerHttp, isError } from './broker-http.js';
+import { eClassName, toArray } from './emf-util.js';
+import { fingerprint as sd1 } from '../fingerprint/service-description-fingerprint.js';
+import { implementationFingerprint } from '../fingerprint/service-implementation-fingerprint.js';
+import { propertyValue } from '../properties.js';
 
 /**
  * DdsrProvider implementation over the broker REST API — the TS mirror

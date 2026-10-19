@@ -16,11 +16,11 @@ import type { ConsumerSession, Diagnostic, ServiceInterface, ServiceProvider, Se
   ServiceImplementation,
 } from '@ddsr/model';
 import { DDSRFactory } from '@ddsr/model';
-import { serializeToXmi, deserializeFromXmi } from '../xmi/xmi-support';
-import { asRoots, eClassName, firstOfClass, toArray } from './emf-util';
-import { clientOrigin, withOrigin, type ClientOrigin } from './client-origin';
+import { serializeToXmi, deserializeFromXmi } from '../xmi/xmi-support.js';
+import { asRoots, eClassName, firstOfClass, toArray } from './emf-util.js';
+import { clientOrigin, withOrigin, type ClientOrigin } from './client-origin.js';
 import { NO_TRACER, type CallTracer } from '@ddsr/telemetry';
-import { withTracing } from './broker-tracing';
+import { withTracing } from './broker-tracing.js';
 
 export interface BrokerHttpOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */

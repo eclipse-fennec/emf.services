@@ -30,7 +30,7 @@ import {
   replySubtreeFor,
   requestTopicFor,
   topicSegment,
-} from './mqtt-rpc';
+} from './mqtt-rpc.js';
 
 export interface MqttFlavorPluginOptions {
   /**

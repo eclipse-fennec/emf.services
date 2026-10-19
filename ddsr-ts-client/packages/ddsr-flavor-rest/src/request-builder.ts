@@ -14,7 +14,7 @@
 import type { ServiceOperation, RestFlavor, RestOperationFlavor, RestParameterBinding } from '@ddsr/model';
 import { HttpMethod, ParameterBinding } from '@ddsr/model';
 import type { EObject } from '@emfts/core';
-import { serializeToXmi } from './xmi-support';
+import { serializeToXmi } from './xmi-support.js';
 
 export interface RestRequest {
   url: string;

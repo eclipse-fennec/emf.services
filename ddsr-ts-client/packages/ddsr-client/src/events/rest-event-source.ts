@@ -12,12 +12,12 @@
  ********************************************************************/
 
 import type { ServiceEvent } from '@ddsr/model';
-import { deserializeFromXmi } from '../xmi/xmi-support';
-import { asRoots, firstOfClass } from '../internal/emf-util';
-import { SseParser } from './sse-parser';
-import type { DdsrEventSource, EventSourceHandler, EventSubscription } from './event-source';
-import { clientOrigin, withOrigin } from '../internal/client-origin';
-import { dataAsText, lifecycleEventTypeOf, readStructured } from '../cloudevents/cloud-events';
+import { deserializeFromXmi } from '../xmi/xmi-support.js';
+import { asRoots, firstOfClass } from '../internal/emf-util.js';
+import { SseParser } from './sse-parser.js';
+import type { DdsrEventSource, EventSourceHandler, EventSubscription } from './event-source.js';
+import { clientOrigin, withOrigin } from '../internal/client-origin.js';
+import { dataAsText, lifecycleEventTypeOf, readStructured } from '../cloudevents/cloud-events.js';
 
 export interface RestEventSourceOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */

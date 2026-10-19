@@ -15,7 +15,7 @@ import type { ServiceRegistration, ServiceRegistry, ServiceProperties } from '@e
 import type { DdsrConsumer, ServiceLocator } from '@ddsr/client';
 import { propertiesOf, serviceProxy } from '@ddsr/client';
 import type { ServiceEvent } from '@ddsr/model';
-import { remoteServiceId } from './contracts';
+import { remoteServiceId } from './contracts.js';
 
 export interface RemoteMirrorOptions {
   /** The registry the remote services appear in. */

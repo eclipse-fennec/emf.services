@@ -11,51 +11,51 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-export type { FlavorPlugin } from './api/flavor-plugin';
-export type { DdsrClient } from './api/ddsr-client';
-export type { DdsrProvider } from './api/ddsr-provider';
-export type { DdsrConsumer } from './api/ddsr-consumer';
-export type { DdsrCatalog } from './api/ddsr-catalog';
-export type { ClientRuntime, ClientRuntimeDTO, BindingDTO, PublishedDTO } from './api/client-runtime';
-export type { ServiceLocator, TrackedServiceLocator, LocatorState } from './api/service-locator';
-export type { Registration } from './api/registration';
-export type { DdsrServiceListener } from './api/service-listener';
-export { DiagnosticCode } from './api/diagnostics';
-export { DdsrClientError, DdsrTransportError } from './api/errors';
-export { DdsrClientImpl } from './internal/ddsr-client-impl';
-export type { DdsrClientOptions } from './internal/ddsr-client-impl';
-export { ServiceLocatorImpl } from './proxy/service-locator-impl';
-export { serviceProxy } from './proxy/service-proxy';
-export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http';
+export type { FlavorPlugin } from './api/flavor-plugin.js';
+export type { DdsrClient } from './api/ddsr-client.js';
+export type { DdsrProvider } from './api/ddsr-provider.js';
+export type { DdsrConsumer } from './api/ddsr-consumer.js';
+export type { DdsrCatalog } from './api/ddsr-catalog.js';
+export type { ClientRuntime, ClientRuntimeDTO, BindingDTO, PublishedDTO } from './api/client-runtime.js';
+export type { ServiceLocator, TrackedServiceLocator, LocatorState } from './api/service-locator.js';
+export type { Registration } from './api/registration.js';
+export type { DdsrServiceListener } from './api/service-listener.js';
+export { DiagnosticCode } from './api/diagnostics.js';
+export { DdsrClientError, DdsrTransportError } from './api/errors.js';
+export { DdsrClientImpl } from './internal/ddsr-client-impl.js';
+export type { DdsrClientOptions } from './internal/ddsr-client-impl.js';
+export { ServiceLocatorImpl } from './proxy/service-locator-impl.js';
+export { serviceProxy } from './proxy/service-proxy.js';
+export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http.js';
 // One runtime, one identity: a caller that builds both a client and a
 // flavor plugin needs the same origin token in both, and the token is
 // this function's answer rather than something to reassemble by hand.
-export { clientOrigin, ORIGIN_HEADER } from './internal/client-origin';
-export type { ClientOrigin } from './internal/client-origin';
-export type { BrokerHttpOptions } from './internal/broker-http';
-export { ServiceListenerRegistry } from './internal/service-listener-registry';
-export type { DdsrEventSource, EventSourceHandler, EventSubscription } from './events/event-source';
-export { RestEventSource } from './events/rest-event-source';
-export type { RestEventSourceOptions } from './events/rest-event-source';
-export { SseParser } from './events/sse-parser';
+export { clientOrigin, ORIGIN_HEADER } from './internal/client-origin.js';
+export type { ClientOrigin } from './internal/client-origin.js';
+export type { BrokerHttpOptions } from './internal/broker-http.js';
+export { ServiceListenerRegistry } from './internal/service-listener-registry.js';
+export type { DdsrEventSource, EventSourceHandler, EventSubscription } from './events/event-source.js';
+export { RestEventSource } from './events/rest-event-source.js';
+export type { RestEventSourceOptions } from './events/rest-event-source.js';
+export { SseParser } from './events/sse-parser.js';
 export {
   newEnvelope, writeStructured, readStructured, toHeaders, fromHeaders, dataAsText,
   isTextual, lifecycleTypeOf, lifecycleEventTypeOf,
   CE_SPEC_VERSION, CE_STRUCTURED_MEDIA_TYPE, CE_HEADER_PREFIX,
   CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY, CE_TYPE_RESYNC,
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO,
-} from './cloudevents/cloud-events';
-export type { CloudEventEnvelope, CloudEventMessage } from './cloudevents/cloud-events';
-export { attachShutdownHooks } from './lifecycle/shutdown-hooks';
-export type { ShutdownHookOptions } from './lifecycle/shutdown-hooks';
-export { serializeToXmi, deserializeFromXmi } from './xmi/xmi-support';
+} from './cloudevents/cloud-events.js';
+export type { CloudEventEnvelope, CloudEventMessage } from './cloudevents/cloud-events.js';
+export { attachShutdownHooks } from './lifecycle/shutdown-hooks.js';
+export type { ShutdownHookOptions } from './lifecycle/shutdown-hooks.js';
+export { serializeToXmi, deserializeFromXmi } from './xmi/xmi-support.js';
 export {
   encodeInvocation, decodeInvocation, encodeResult, encodeFailure, decodeResult,
   propertyFor, valueOf,
-} from './invocation/invocation';
-export type { DecodedInvocation, DecodedResult } from './invocation/invocation';
-export { propertyValue, propertiesOf, propertyOf, props, FINGERPRINT_PROPERTY } from './properties';
-export { fingerprint, canonicalForm, FINGERPRINT_SCHEME } from './fingerprint/service-description-fingerprint';
-export { implementationFingerprint, implementationCanonicalForm, IMPL_FINGERPRINT_SCHEME } from './fingerprint/service-implementation-fingerprint';
-export type { PropertyValue } from './properties';
-export { eClassName, toArray, asRoots, firstOfClass } from './internal/emf-util';
+} from './invocation/invocation.js';
+export type { DecodedInvocation, DecodedResult } from './invocation/invocation.js';
+export { propertyValue, propertiesOf, propertyOf, props, FINGERPRINT_PROPERTY } from './properties.js';
+export { fingerprint, canonicalForm, FINGERPRINT_SCHEME } from './fingerprint/service-description-fingerprint.js';
+export { implementationFingerprint, implementationCanonicalForm, IMPL_FINGERPRINT_SCHEME } from './fingerprint/service-implementation-fingerprint.js';
+export type { PropertyValue } from './properties.js';
+export { eClassName, toArray, asRoots, firstOfClass } from './internal/emf-util.js';

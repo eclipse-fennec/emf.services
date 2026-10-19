@@ -12,11 +12,11 @@
  ********************************************************************/
 
 import type { Diagnostic, MqttFlavor, RestFlavor, ServiceFlavor, ServiceInterface } from '@ddsr/model';
-import type { BindingDTO, ClientRuntime, ClientRuntimeDTO, PublishedDTO } from '../api/client-runtime';
-import type { DdsrConsumerImpl } from './consumer-impl';
-import type { DdsrProviderImpl } from './provider-impl';
-import type { ServiceListenerRegistry } from './service-listener-registry';
-import { eClassName, toArray } from './emf-util';
+import type { BindingDTO, ClientRuntime, ClientRuntimeDTO, PublishedDTO } from '../api/client-runtime.js';
+import type { DdsrConsumerImpl } from './consumer-impl.js';
+import type { DdsrProviderImpl } from './provider-impl.js';
+import type { ServiceListenerRegistry } from './service-listener-registry.js';
+import { eClassName, toArray } from './emf-util.js';
 
 /**
  * What this client holds, as data (#167) — the twin of the Java

@@ -12,9 +12,9 @@
  ********************************************************************/
 
 import type { ServiceEvent, ServiceImplementation, ServiceInterface, ServiceProvider } from '@ddsr/model';
-import type { DdsrServiceListener } from '../api/service-listener';
-import type { DdsrEventSource, EventSubscription } from '../events/event-source';
-import { toArray } from './emf-util';
+import type { DdsrServiceListener } from '../api/service-listener.js';
+import type { DdsrEventSource, EventSubscription } from '../events/event-source.js';
+import { toArray } from './emf-util.js';
 
 interface Entry {
   interfaceName: string;

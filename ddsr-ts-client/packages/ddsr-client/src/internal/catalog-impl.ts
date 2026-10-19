@@ -12,9 +12,9 @@
  ********************************************************************/
 
 import type { Diagnostic, ServiceInterface } from '@ddsr/model';
-import type { DdsrCatalog } from '../api/ddsr-catalog';
-import { DdsrClientError } from '../api/errors';
-import { BrokerHttp, isError } from './broker-http';
+import type { DdsrCatalog } from '../api/ddsr-catalog.js';
+import { DdsrClientError } from '../api/errors.js';
+import { BrokerHttp, isError } from './broker-http.js';
 
 const CATALOG_ENTRY_ALREADY_EXISTS = 202;
 

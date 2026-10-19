@@ -11,16 +11,16 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-export { MqttEventSource, DEFAULT_TOPIC_PREFIX } from './mqtt-event-source';
-export type { MqttEventSourceOptions, MqttClientLike } from './mqtt-event-source';
-export { MqttFlavorPlugin } from './mqtt-flavor-plugin';
-export type { MqttFlavorPluginOptions } from './mqtt-flavor-plugin';
-export { MqttOperationServer } from './mqtt-operation-server';
-export type { MqttOperationServerOptions, OperationHandlers } from './mqtt-operation-server';
+export { MqttEventSource, DEFAULT_TOPIC_PREFIX } from './mqtt-event-source.js';
+export type { MqttEventSourceOptions, MqttClientLike } from './mqtt-event-source.js';
+export { MqttFlavorPlugin } from './mqtt-flavor-plugin.js';
+export type { MqttFlavorPluginOptions } from './mqtt-flavor-plugin.js';
+export { MqttOperationServer } from './mqtt-operation-server.js';
+export type { MqttOperationServerOptions, OperationHandlers } from './mqtt-operation-server.js';
 export {
   requestTopicFor, replyBaseFor, qosFor,
   encodeRequest, decodeRequest, encodeResponse, decodeResponse, connectMqtt,
-} from './mqtt-rpc';
-export type { MqttRpcRequest, MqttRpcResponse, MqttRpcClientLike } from './mqtt-rpc';
+} from './mqtt-rpc.js';
+export type { MqttRpcRequest, MqttRpcResponse, MqttRpcClientLike } from './mqtt-rpc.js';
 export { operationHandlers } from './operation-target.js';
 export type { OperationTarget, HandlersOptions } from './operation-target.js';

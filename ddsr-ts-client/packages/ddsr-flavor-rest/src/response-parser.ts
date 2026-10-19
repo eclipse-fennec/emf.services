@@ -12,7 +12,7 @@
  ********************************************************************/
 
 import type { EObject } from '@emfts/core';
-import { deserializeFromXmi } from './xmi-support';
+import { deserializeFromXmi } from './xmi-support.js';
 
 /**
  * Parses a fetch Response into a usable result.

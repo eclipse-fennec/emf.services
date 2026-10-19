@@ -24,8 +24,8 @@ import type {
   RestOperationFlavor,
 } from '@ddsr/model';
 import { FlavorKind, HttpMethod } from '@ddsr/model';
-import { buildRequest } from './request-builder';
-import { parseResponse } from './response-parser';
+import { buildRequest } from './request-builder.js';
+import { parseResponse } from './response-parser.js';
 import { NO_TRACER, carrierOver, type CallTracer } from '@ddsr/telemetry';
 
 /**

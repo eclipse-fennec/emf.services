@@ -41,9 +41,9 @@ import type {
 } from '@ddsr/model';
 import { DDSRFactory, DiagnosticSeverity } from '@ddsr/model';
 import type { EObject } from '@emfts/core';
-import { deserializeFromXmi, serializeToXmi } from '../xmi/xmi-support';
-import { asRoots, eClassName, firstOfClass, toArray } from '../internal/emf-util';
-import { propertyValue, props } from '../properties';
+import { deserializeFromXmi, serializeToXmi } from '../xmi/xmi-support.js';
+import { asRoots, eClassName, firstOfClass, toArray } from '../internal/emf-util.js';
+import { propertyValue, props } from '../properties.js';
 
 const factory = DDSRFactory.eINSTANCE;
 

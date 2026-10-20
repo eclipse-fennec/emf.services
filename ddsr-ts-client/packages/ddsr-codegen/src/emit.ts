@@ -15,7 +15,7 @@ import { eClassName, fingerprint, propertyValue, toArray } from '@ddsr/client';
 import type {
   Parameter, Property, SecurityRequirement, ServiceException, ServiceInterface, ServiceOperation,
 } from '@ddsr/model';
-import { identifier, mapType } from './type-mapping.js';
+import { identifier, mapEType, mapType } from './type-mapping.js';
 import type { MappedType } from './type-mapping.js';
 
 export interface GeneratedFile {
@@ -366,15 +366,17 @@ function buildSlot(local: string, slot: Parameter, at: number): string[] {
 }
 
 /**
- * The TypeScript type of a slot - a parameter, or the return value. A
- * free `type` string wins; otherwise the eType names it, read from the
- * proxy URI as the fingerprint does, since the provider's metamodel is
- * normally not on hand. A multi-valued slot is an array of that, and no
- * slot at all is a void return.
+ * The TypeScript type of a slot - a parameter, or the return value. The
+ * eType wins where it is set, read from the proxy URI as the fingerprint
+ * does, since the provider's metamodel is normally not on hand; only
+ * without one does the `type` string decide. That precedence is
+ * java-types.mtl's, and the two must not differ. A multi-valued slot is
+ * an array, and no slot at all is a void return.
  */
 function slotType(slot: Parameter | undefined): MappedType {
   if (!slot) return { text: 'void' };
-  const mapped = slot.type ? mapType(slot.type) : mapType(eTypeName(slot.eType));
+  const uri = eTypeUri(slot.eType);
+  const mapped = uri !== undefined ? mapEType(uri) : mapType(slot.type);
   const upper = boundOf(slot.upperBound);
   const many = upper === -1 || upper > 1;
   return many && !mapped.text.endsWith('[]') ? { ...mapped, text: `${mapped.text}[]` } : mapped;
@@ -400,12 +402,6 @@ function eTypeUri(eType: unknown): string | undefined {
   const name = classifier.getName?.();
   if (!name) return undefined;
   return nsURI ? `${nsURI}#//${name}` : name;
-}
-
-/** The classifier name an eType carries, the last segment of its URI. */
-function eTypeName(eType: unknown): string | undefined {
-  const uri = eTypeUri(eType);
-  return uri === undefined ? undefined : uri.slice(uri.lastIndexOf('/') + 1);
 }
 
 /**

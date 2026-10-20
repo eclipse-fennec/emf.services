@@ -14,6 +14,7 @@
     "@ddsr/client": "workspace:*",
     "@ddsr/flavor-rest": "workspace:*",
     "@ddsr/model": "workspace:*",
+    "@ddsr/stubs": "workspace:*",
     "@ddsr/transport-mqtt": "workspace:*",
     "@emfts/core": "0.3.0-next.4",
     "mqtt": "^5.15.2",

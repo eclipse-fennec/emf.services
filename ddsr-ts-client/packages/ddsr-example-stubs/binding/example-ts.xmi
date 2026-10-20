@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:TypeScriptBinding xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="example-ts"
+    targetPackage="@ddsr/example-stubs">
+  <serviceInterfaces href="../../../../org.eclipse.fennec.services.m2t/model/payment.xmi#/"/>
+  <serviceInterfaces href="../../../../org.eclipse.fennec.services.m2t/model/persons.xmi#/"/>
+  <fileHeader>Copyright (c) 2026 Contributors to the Eclipse Foundation.</fileHeader>
+  <fileHeader/>
+  <fileHeader>This program and the accompanying materials are made</fileHeader>
+  <fileHeader>available under the terms of the Eclipse Public License 2.0</fileHeader>
+  <fileHeader>which is available at https://www.eclipse.org/legal/epl-2.0/</fileHeader>
+  <fileHeader/>
+  <fileHeader>SPDX-License-Identifier: EPL-2.0</fileHeader>
+  <typeMappings neutralType="fennec.services.example.PersonNotFound"
+      target="PersonNotFoundException"
+      generated="true"/>
+  <packageMappings nsURI="http://geckoprojects.org/ddsr/example"
+      target="@ddsr/example-model"/>
+</services:TypeScriptBinding>

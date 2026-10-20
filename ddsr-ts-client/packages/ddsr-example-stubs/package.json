@@ -1,0 +1,28 @@
+{
+  "name": "@ddsr/example-stubs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TypeScript stubs for the m2t example contracts, generated from example-ts.xmi — the twin of what example-java.xmi generates in Java (#151)",
+  "license": "EPL-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./*": { "types": "./dist/*.d.ts", "import": "./dist/*.js" }
+  },
+  "scripts": {
+    "generate": "node ../ddsr-codegen/dist/cli.js --binding binding/example-ts.xmi --out .",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@ddsr/client": "workspace:*",
+    "@ddsr/example-model": "workspace:*",
+    "@ddsr/model": "workspace:*",
+    "@emfts/core": "0.3.0-next.4"
+  },
+  "devDependencies": {
+    "@ddsr/codegen": "workspace:*",
+    "typescript": "~5.8.0",
+    "vitest": "^4.1.11"
+  }
+}

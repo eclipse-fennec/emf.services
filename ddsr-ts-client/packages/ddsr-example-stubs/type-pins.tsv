@@ -1,0 +1,32 @@
+# Copyright (c) 2026 Contributors to the Eclipse Foundation.
+#
+# This program and the accompanying materials are made
+# available under the terms of the Eclipse Public License 2.0
+# which is available at https://www.eclipse.org/legal/epl-2.0/
+#
+# SPDX-License-Identifier: EPL-2.0
+#
+# One contract, two languages, one meaning (#151).
+#
+# Every slot of the contracts example-java.xmi (m2t) and
+# binding/example-ts.xmi both render, with the type each language gives
+# it - the discipline of the sd1 golden fixtures, applied to the type
+# mapping. test/type-pins.test.ts holds the generated TypeScript to it;
+# the Java column is checked once the m2t side reads it too (#185).
+#
+# Rows of an operation are in parameter order; 'return' is the return
+# slot, 'throws' a declared exception. optional: whether the slot may be
+# left out (Java boxes it, TypeScript marks it '?').
+#
+# contract	operation	slot	optional	java	typescript
+Payment	charge	amount	false	double	number
+Payment	charge	currency	true	String	string
+Payment	charge	return	false	double	number
+Payment	getBalance	accountId	false	String	string
+Payment	getBalance	return	false	double	number
+PersonDirectory	get	id	false	String	string
+PersonDirectory	get	return	false	Person	Person
+PersonDirectory	get	throws	false	PersonNotFoundException	PersonNotFoundException
+PersonDirectory	list	offset	true	Integer	number
+PersonDirectory	list	limit	true	Integer	number
+PersonDirectory	list	return	false	List<Person>	Person[]

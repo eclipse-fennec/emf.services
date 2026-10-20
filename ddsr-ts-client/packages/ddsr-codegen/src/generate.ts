@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import type { ServiceInterface } from '@ddsr/model';
 import { loadCatalog } from './catalog.js';
 import type { CatalogSource } from './catalog.js';
-import { emitConsumer, emitException, emitModule, emitProvider, generatedExceptions } from './emit.js';
+import { emitConsumer, emitException, emitModule, emitProvider, generatedExceptions, header } from './emit.js';
 import { loadBinding, NO_BINDING } from './binding.js';
 import type { Binding } from './binding.js';
 import type { GeneratedFile } from './emit.js';
@@ -100,7 +100,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   for (const { exception, className } of generatedExceptions(wanted, binding)) {
     files.push(emitException(exception, className, binding));
   }
-  files.push(indexFile(files));
+  files.push(indexFile(files, binding));
 
   // The scaffolding is written once. A generated stub is replaced on
   // every run, but the package.json of a checked-in project carries
@@ -145,11 +145,14 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
  * id and `Payment` the interface are the same name on purpose, and a
  * star export cannot carry both.
  */
-function indexFile(files: GeneratedFile[]): GeneratedFile {
+function indexFile(files: GeneratedFile[], binding: Binding): GeneratedFile {
   const exports = files
     .filter(file => file.path.startsWith('src/') && !file.path.endsWith('Module.ts'))
     .map(file => `export * from './${file.path.replace(/^src\//, '').replace(/\.ts$/, '.js')}';`);
-  return { path: 'src/index.ts', content: exports.join('\n') + '\n' };
+  // The barrel carries the binding's header like every other file; without
+  // a binding it stays the bare list it always was
+  const preamble = binding.fileHeader.length > 0 ? header(binding) + '\n' : '';
+  return { path: 'src/index.ts', content: preamble + exports.join('\n') + '\n' };
 }
 
 function packageJson(name: string, version: string, tsm: boolean, binding: Binding): GeneratedFile {

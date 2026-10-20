@@ -37,7 +37,7 @@ const HEADER = `/*
  * header serves every language; wrapping them is the generator's part,
  * as headerLines() is in java-types.mtl.
  */
-function header(binding: Binding): string {
+export function header(binding: Binding): string {
   if (binding.fileHeader.length === 0) return HEADER;
   const lines = binding.fileHeader.map(line => (line === '' ? ' *' : ` * ${line}`));
   return ['/*', ...lines, ' */', '', HEADER].join('\n');

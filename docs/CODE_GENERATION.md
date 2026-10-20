@@ -80,9 +80,42 @@ adds whether the result is a provider or a consumer API.
 A binding is build-time configuration. It never travels on the wire and
 it is not part of a fingerprint.
 
-`TypeScriptBinding` and `PythonBinding` exist as discriminators with no
-attributes yet — a place to hang language specifics when a generator
-for them arrives.
+`TypeScriptBinding` adds nothing to `LanguageBinding` and needs nothing:
+the TypeScript generator below reads the same four features the Java
+templates do. `PythonBinding` is a discriminator with no generator yet.
+
+### Contract stubs in TypeScript
+
+Generated on the TypeScript side, by `@ddsr/codegen` — not by an `.mtl`
+in the pnpm workspace (#151). It reads its contracts from one of three
+places:
+
+```bash
+ddsr-codegen --binding model/example-ts.xmi --out <dir>   # a TypeScriptBinding
+ddsr-codegen --catalog catalog.xmi --out <dir>            # a saved catalog
+ddsr-codegen --broker http://localhost:8887/ddsr/rest --out <dir>
+```
+
+Per contract it writes the interface to call (with the sd1 fingerprint
+and a `get<Name>()` that looks it up by that fingerprint), the provider
+side (an implementation interface and a `build<Name>Interface()` that
+reproduces the contract to the same fingerprint), and with `--tsm` a
+module that injects it. From a binding it also takes:
+
+| Binding feature | Becomes |
+| --- | --- |
+| `targetPackage` | the npm name of the generated package |
+| `fileHeader` | a block comment on every file |
+| `packageMappings` | imports for eTypes of a mapped metamodel: `Person` from `@ddsr/example-model`, not `unknown` |
+| `typeMappings` with `generated` | a class per declared error; the generated proxy throws it, so a caller catches it by `instanceof` |
+
+The same slot must mean the same type in both languages, and the
+mapping now lives twice — `java-types.mtl` and `@ddsr/codegen`. So
+`packages/ddsr-example-stubs/binding/example-ts.xmi` renders the same
+contracts as `example-java.xmi`, and `type-pins.tsv` beside it lists
+every slot with its Java and its TypeScript type. The package's
+`type-pins.test.ts` holds the generated TypeScript to it; holding the
+Java output to the same table is #185.
 
 ### When you need generated code at all
 
@@ -114,9 +147,11 @@ instance runs, which document to read, and what it supersedes.
 
 Not built yet, part of the open issue #25:
 
-- **No TypeScript stub generation** — split out as its own issue,
-  because the decision it carries is where the generator runs and in
-  what. `TypeScriptBinding` is still an empty discriminator.
+- **TypeScript stubs** exist (see above). A declared error travels over
+  REST in both directions: a TypeScript provider answers it with the
+  status its flavor binds, as `RestDispatcher` does, and the client
+  recognises that status. MQTT still reports a failure as a plain
+  `Error`.
 - **No MQTT template.** There is no generated MQTT handler, and since
   the generic MQTT distribution arrived there is less reason for one:
   serving a contract over topics is a factory configuration.

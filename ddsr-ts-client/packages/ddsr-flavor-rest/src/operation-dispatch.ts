@@ -13,6 +13,7 @@
 
 import type {
   Parameter,
+  RestExceptionBinding,
   RestFlavor,
   RestOperationFlavor,
   RestParameterBinding,
@@ -125,9 +126,36 @@ export function restDispatcher(
       // the caller is waiting, and silence would cost it a timeout to
       // learn nothing.
       log(`${operation.name} failed: ${String(failure)}`);
-      return { status: 500, body: String((failure as Error)?.message ?? failure), contentType: 'text/plain' };
+      return {
+        status: declaredStatus(match.opFlavor, failure) ?? 500,
+        body: String((failure as Error)?.message ?? failure),
+        contentType: 'text/plain',
+      };
     }
   };
+}
+
+/**
+ * The status the flavor binds to the declared error this failure is, if
+ * it is one - the twin of RestDispatcher.failed(). The contract names an
+ * error symbolically, so the match is by name: the error's class name or
+ * its `name`, against the last segment of the symbolic type with or
+ * without an `Exception` suffix, as RestDispatcher.raises() does. A class
+ * a binding generated carries the symbolic type itself and matches by it.
+ */
+function declaredStatus(opFlavor: RestOperationFlavor, failure: unknown): number | undefined {
+  if (!(failure instanceof Error)) return undefined;
+  const generatedType = (failure.constructor as { type?: unknown }).type;
+  const names = new Set([failure.constructor.name, failure.name]);
+  for (const binding of toArray<RestExceptionBinding>(opFlavor.exceptionBindings)) {
+    const symbolic = binding.exception?.type;
+    if (!symbolic) continue;
+    const simple = symbolic.slice(symbolic.lastIndexOf('.') + 1);
+    if (generatedType === symbolic || names.has(simple) || names.has(`${simple}Exception`)) {
+      return Number(binding.status);
+    }
+  }
+  return undefined;
 }
 
 /** The path below the mount point, or undefined when the request is elsewhere. */

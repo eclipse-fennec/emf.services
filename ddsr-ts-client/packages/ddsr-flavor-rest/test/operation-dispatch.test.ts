@@ -15,6 +15,8 @@ import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
 import type { RestFlavor } from '@ddsr/model';
 import { restDispatcher } from '../src/operation-dispatch';
+import { RestFlavorPlugin } from '../src/rest-flavor-plugin';
+import { DdsrServiceError } from '@ddsr/client';
 
 /**
  * The provider side of a flavor, read back from where the consumer
@@ -114,6 +116,70 @@ describe('serving a contract from its flavor', () => {
 
     expect(answer?.status).toBe(500);
     expect(answer?.body).toBe('no such tenant');
+  });
+
+  describe('a declared error', () => {
+    function withDeclaredError(): RestFlavor {
+      const f = DDSRFactory.eINSTANCE;
+      const flavor = bindingProbe();
+      const unknownTenant = f.createServiceException();
+      unknownTenant.name = 'UnknownTenant';
+      unknownTenant.type = 'org.example.UnknownTenant';
+      const binding = f.createRestExceptionBinding();
+      binding.status = 404;
+      binding.exception = unknownTenant;
+      flavor.operationFlavors.get(0).exceptionBindings.push(binding);
+      return flavor;
+    }
+
+    const request = { method: 'GET', url: '/probe/echo/acct-42?currency=EUR', headers: { 'X-Tenant': 'acme' } };
+
+    it('answers with the status the flavor binds, matched by class name', async () => {
+      class UnknownTenantException extends Error {}
+      const dispatch = restDispatcher(withDeclaredError(), {
+        echo: () => { throw new UnknownTenantException('no tenant acme'); },
+      });
+
+      expect(await dispatch(request)).toEqual({ status: 404, body: 'no tenant acme', contentType: 'text/plain' });
+    });
+
+    it('matches a generated class by the symbolic type it carries', async () => {
+      class Whatever extends Error {
+        static readonly type = 'org.example.UnknownTenant';
+      }
+      const dispatch = restDispatcher(withDeclaredError(), { echo: () => { throw new Whatever('x'); } });
+
+      expect((await dispatch(request))?.status).toBe(404);
+    });
+
+    it('arrives at the caller as that error, end to end', async () => {
+      // The provider throws, the dispatcher answers with the bound status,
+      // the consumer's plugin recognises it - both halves in one process.
+      class UnknownTenantException extends Error {}
+      const flavor = withDeclaredError();
+      flavor.host = 'http://provider.test';
+      const dispatch = restDispatcher(flavor, {
+        echo: () => { throw new UnknownTenantException('no tenant acme'); },
+      });
+      const fetchFn = (async (url: string, init?: RequestInit) => {
+        const target = new URL(url);
+        const answer = await dispatch({
+          method: init?.method ?? 'GET',
+          url: target.pathname + target.search,
+          headers: init?.headers as Record<string, string>,
+        });
+        return new Response(answer?.body ?? '', { status: answer?.status ?? 404 });
+      }) as unknown as typeof fetch;
+      const opFlavor = flavor.operationFlavors.get(0);
+
+      const error = await new RestFlavorPlugin(fetchFn)
+        .invoke(opFlavor.operation!, { id: 'acct-42', currency: 'EUR', tenant: 'acme' }, flavor, opFlavor)
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(DdsrServiceError);
+      expect((error as DdsrServiceError).exception.type).toBe('org.example.UnknownTenant');
+      expect((error as Error).message).toBe('no tenant acme');
+    });
   });
 
   it('coerces to the types the contract declares, and answers 204 for nothing', async () => {

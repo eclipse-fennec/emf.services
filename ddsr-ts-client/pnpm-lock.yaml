@@ -7,7 +7,6 @@ settings:
 overrides:
   brace-expansion@2: ^2.1.4
   vite@8: ^8.0.16
-  '@emfts/codegen>@emfts/core': 0.3.0-next.1
 
 importers:
 
@@ -201,8 +200,8 @@ importers:
         version: 0.3.0-next.4(sax@1.6.0)
     devDependencies:
       '@emfts/codegen':
-        specifier: 0.0.2-next.7
-        version: 0.0.2-next.7
+        specifier: 0.0.2-next.8
+        version: 0.0.2-next.8
       sax:
         specifier: ^1.4.3
         version: 1.6.0
@@ -349,14 +348,9 @@ packages:
   '@eclipse-daanse/tsm@0.1.0-next.1':
     resolution: {integrity: sha512-ClNPhU1Z31LwtQsbazYbhJopXP6kUXzFotnDTLdUWxsE+XIuM8bxXvMgfwVR3AmaZD6j45Xm1lNiK3kx9S/QGw==}
 
-  '@emfts/codegen@0.0.2-next.7':
-    resolution: {integrity: sha512-W/HE51cmk7Dans6qpL8lUBhKcZ/J4Uq9T2HAKRLYhaB0E5Q2CEfW54x2n0EDOYMUq5yxCQXaBeyaoAfY/bYwTw==}
+  '@emfts/codegen@0.0.2-next.8':
+    resolution: {integrity: sha512-CTsyGT7hlna6Q8cyqZU8R7NP4YModfYLEV1JKw3LzrZobOBwtOYgM/zgSCWvZUpg1x00NGquKwku2AkldOT14A==}
     hasBin: true
-
-  '@emfts/core@0.3.0-next.1':
-    resolution: {integrity: sha512-SKLBuuo3P58kd2CuvMygEAVUBcoIUf1j/JAmFpcwMufpvbpBHvGXNgQOYAwqfb9j31pQ68G07ijX1Epdgmw7tw==}
-    peerDependencies:
-      sax: ^1.4.3
 
   '@emfts/core@0.3.0-next.4':
     resolution: {integrity: sha512-2nV/ya92uDfGSmlofExx2mMA9+OxebY/+Mtw5FUNE3y53wzk/SwTNYGRPT4p2rYuTNmGOC/2N7luHgtWqx1FQw==}
@@ -1463,15 +1457,11 @@ snapshots:
       reflect-metadata: 0.2.2
       semver: 7.8.5
 
-  '@emfts/codegen@0.0.2-next.7':
+  '@emfts/codegen@0.0.2-next.8':
     dependencies:
-      '@emfts/core': 0.3.0-next.1(sax@1.6.0)
+      '@emfts/core': 0.3.0-next.4(sax@1.6.0)
       commander: 12.1.0
       ejs: 3.1.10
-      sax: 1.6.0
-
-  '@emfts/core@0.3.0-next.1(sax@1.6.0)':
-    dependencies:
       sax: 1.6.0
 
   '@emfts/core@0.3.0-next.4(sax@1.6.0)':

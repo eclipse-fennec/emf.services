@@ -16,8 +16,8 @@ allowBuilds:
   # than approved, so an install stays a download and nothing else.
   protobufjs: false
 minimumReleaseAgeExclude:
-  - '@emfts/codegen@0.0.2-next.7'
-  - '@emfts/core@0.3.0-next.1 || 0.3.0-next.4'
+  - '@emfts/codegen@0.0.2-next.8'
+  - '@emfts/core@0.3.0-next.4'
 # GHSA-3jxr-9vmj-r5cp / GHSA-mh99-v99m-4gvg / GHSA-rgw5-rvv9-x895:
 # transitive brace-expansion@2.1.1 has three high-severity DoS advisories;
 # 2.1.4 is the first fully patched 2.x (semver-compatible for minimatch & co).
@@ -25,10 +25,3 @@ overrides:
   "brace-expansion@2": "^2.1.4"
   # GHSA-fx2h-pf6j-xcff: vite server.fs.deny bypass (high); 8.0.16 patcht.
   "vite@8": "^8.0.16"
-  # The generator stays on core 0.3.0-next.1 until a codegen release has
-  # emf.ts.codegen 339be07: from core 0.3.0-next.2 on, an unresolved
-  # reference is a typed stand-in, and codegen took the genconfig's
-  # ecorePackage stand-in for the model - an empty package, no error.
-  # Only `generate` is affected; the runtime uses next.4. Drop this with
-  # the codegen bump.
-  "@emfts/codegen>@emfts/core": "0.3.0-next.1"

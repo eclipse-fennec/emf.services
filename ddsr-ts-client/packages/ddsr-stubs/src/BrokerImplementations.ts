@@ -19,6 +19,10 @@ export interface BrokerImplementations {
    * Announcing the identical implementation again is the same
    * registration, not a second one.
    * @param provider The provider document, carrying exactly one implementation. Contracts it references may travel as sibling roots.
+   * @throws {DdsrServiceError} The implementation names a contract the catalog does not hold.
+   * @throws {DdsrServiceError} The caller is not the provider of that implementation.
+   * @throws {DdsrServiceError} The implementation states a different contract than the one it is registered against.
+   * @throws {DdsrServiceError} The broker could not write its registry; nothing was changed.
    */
   publishImplementation(provider: ServiceProvider): Promise<Diagnostic>;
 
@@ -27,6 +31,10 @@ export interface BrokerImplementations {
    * endpoint. Consumers see MODIFIED under the reference id they already
    * hold, instead of losing and rebinding it.
    * @param provider The provider document, carrying the changed implementation under its existing identity.
+   * @throws {DdsrServiceError} The caller is not the provider of that implementation.
+   * @throws {DdsrServiceError} No live registration for that implementation.
+   * @throws {DdsrServiceError} The implementation states a different contract than the one it is registered against.
+   * @throws {DdsrServiceError} The broker could not write its registry; nothing was changed.
    */
   modifyImplementation(provider: ServiceProvider): Promise<Diagnostic>;
 
@@ -35,6 +43,9 @@ export interface BrokerImplementations {
    * told, so a provider can stop serving afterwards and no one calls a
    * dead endpoint.
    * @param provider The provider document naming the implementation to withdraw.
+   * @throws {DdsrServiceError} The caller is not the provider of that implementation.
+   * @throws {DdsrServiceError} No live registration for that implementation.
+   * @throws {DdsrServiceError} The broker could not write its registry; nothing was changed.
    */
   withdrawImplementation(provider: ServiceProvider): Promise<Diagnostic>;
 }

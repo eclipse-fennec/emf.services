@@ -17,6 +17,8 @@ import type {
 } from '@ddsr/model';
 import { identifier, mapEType, mapType } from './type-mapping.js';
 import type { MappedType } from './type-mapping.js';
+import { NO_BINDING } from './binding.js';
+import type { Binding } from './binding.js';
 
 export interface GeneratedFile {
   path: string;
@@ -30,6 +32,107 @@ const HEADER = `/*
 `;
 
 /**
+ * The binding's file header as a block comment, then the generator's own
+ * note. The binding states its lines without comment markers so that one
+ * header serves every language; wrapping them is the generator's part,
+ * as headerLines() is in java-types.mtl.
+ */
+function header(binding: Binding): string {
+  if (binding.fileHeader.length === 0) return HEADER;
+  const lines = binding.fileHeader.map(line => (line === '' ? ' *' : ` * ${line}`));
+  return ['/*', ...lines, ' */', '', HEADER].join('\n');
+}
+
+/** Type imports grouped by module, each name once, in a stable order. */
+class TypeImports {
+  private readonly modules = new Map<string, Set<string>>();
+
+  add(mapped: MappedType): void {
+    if (mapped.modelImport) this.name(mapped.module ?? '@ddsr/model', mapped.modelImport);
+  }
+
+  name(module: string, name: string): void {
+    const names = this.modules.get(module) ?? new Set<string>();
+    names.add(name);
+    this.modules.set(module, names);
+  }
+
+  lines(): string[] {
+    return [...this.modules.keys()].sort().map(module =>
+      `import type { ${[...this.modules.get(module)!].sort().join(', ')} } from '${module}';`);
+  }
+}
+
+/**
+ * The class a binding generates for a declared error, if it generates
+ * one: a typeMapping for the exception's symbolic type marked generated.
+ * Named after the last segment of the mapping's target, as
+ * java-types.mtl names the Java class.
+ */
+export function exceptionClass(binding: Binding, exception: ServiceException): string | undefined {
+  const mapping = binding.typeMappings.find(entry => entry.generated && entry.neutralType === exception.type);
+  if (!mapping) return undefined;
+  return identifier(mapping.target.slice(mapping.target.lastIndexOf('.') + 1), 'ServiceError');
+}
+
+/**
+ * The declared errors of these contracts the binding generates a class
+ * for, once each - two contracts may raise the same one.
+ */
+export function generatedExceptions(
+  interfaces: ServiceInterface[],
+  binding: Binding,
+): Array<{ exception: ServiceException; className: string }> {
+  const found = new Map<string, ServiceException>();
+  for (const serviceInterface of interfaces) {
+    for (const exception of toArray<ServiceException>(serviceInterface.exceptions)) {
+      const className = exceptionClass(binding, exception);
+      if (className && !found.has(className)) found.set(className, exception);
+    }
+  }
+  return [...found].map(([className, exception]) => ({ exception, className }));
+}
+
+/**
+ * A declared error as a class a caller can catch by instanceof. It
+ * carries the contract's symbolic type and the properties declared for
+ * it, like the Java class java-types.mtl generates for the same mapping;
+ * the DdsrServiceError it was recognised from rides along.
+ */
+export function emitException(exception: ServiceException, className: string, binding: Binding = NO_BINDING): GeneratedFile {
+  const properties = toArray<Property>(exception.properties)
+    .map(property => `${quote(property.name ?? '')}: ${literal(property)}`);
+  const body: Array<string | null> = [
+    header(binding),
+    `import type { DdsrServiceError } from '@ddsr/client';`,
+    ``,
+    docOrNull(exception.description, ''),
+    `export class ${className} extends Error {`,
+    `  /** The symbolic type the contract names this error by. */`,
+    `  static readonly type = ${quote(exception.type ?? '')};`,
+    ``,
+    `  /** The properties the contract declares for this error. */`,
+    `  static readonly properties: Readonly<Record<string, unknown>> = { ${properties.join(', ')} };`,
+    ``,
+    `  constructor(message: string, readonly serviceError?: DdsrServiceError) {`,
+    `    super(message);`,
+    `    this.name = ${quote(className)};`,
+    `  }`,
+    `}`,
+    ``,
+  ];
+  return { path: `src/${className}.ts`, content: render(body) };
+}
+
+/** A property's value as a TypeScript literal. */
+function literal(property: Property): string {
+  const value = propertyValue(property);
+  if (Array.isArray(value)) return `[${value.map(entry => quote(String(entry))).join(', ')}]`;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return value === undefined ? 'undefined' : quote(String(value));
+}
+
+/**
  * The consumer's side of a contract: the interface to call, the name to
  * look it up under, and the fingerprint the catalog carried when this
  * was generated.
@@ -41,30 +144,40 @@ const HEADER = `/*
  * signature this file believes in. A handwritten stub cannot know that
  * number.
  */
-export function emitConsumer(serviceInterface: ServiceInterface): GeneratedFile {
+export function emitConsumer(serviceInterface: ServiceInterface, binding: Binding = NO_BINDING): GeneratedFile {
   const name = identifier(serviceInterface.name, 'Service');
   const operations = toArray<ServiceOperation>(serviceInterface.operations);
-  const imports = new Set<string>();
+  const imports = new TypeImports();
+  const raisedClasses = new Map<string, string>();
 
   const methods = operations.map(operation => {
     const method = identifier(operation.name, 'operation');
-    const returned = slotType(operation.returnValue);
-    if (returned.modelImport) imports.add(returned.modelImport);
+    const returned = slotType(operation.returnValue, binding);
+    imports.add(returned);
 
     const parameters = sortedParameters(operation).map(parameter => {
-      const mapped = slotType(parameter);
-      if (mapped.modelImport) imports.add(mapped.modelImport);
+      const mapped = slotType(parameter, binding);
+      imports.add(mapped);
       const optional = parameter.optional === true ? '?' : '';
       return `${identifier(parameter.name, 'arg')}${optional}: ${mapped.text}`;
     });
 
-    return `${doc(operation.description, '  ', parameterDocs(operation))}  ${method}(${parameters.join(', ')}): Promise<${returned.text === 'void' ? 'void' : returned.text}>;`;
+    const throws = toArray<ServiceException>(operation.exceptions).map(raised => {
+      const className = exceptionClass(binding, raised);
+      if (className) raisedClasses.set(raised.type ?? '', className);
+      return `@throws {${className ?? 'DdsrServiceError'}} ${raised.description ?? raised.name ?? ''}`.trimEnd();
+    });
+
+    return `${doc(operation.description, '  ', [...parameterDocs(operation), ...throws])}  ${method}(${parameters.join(', ')}): Promise<${returned.text === 'void' ? 'void' : returned.text}>;`;
   });
 
+  const classes = [...raisedClasses.values()].sort();
+  const exceptionMap = [...raisedClasses].map(([type, className]) => `${quote(type)}: ${className}`).join(', ');
   const sd1 = fingerprint(serviceInterface);
   const body: Array<string | null> = [
-    HEADER,
-    imports.size > 0 ? `import type { ${[...imports].sort().join(', ')} } from '@ddsr/model';` : null,
+    header(binding),
+    ...imports.lines(),
+    ...classes.map(className => `import { ${className} } from './${className}.js';`),
     `import { serviceProxy } from '@ddsr/client';`,
     `import type { DdsrConsumer } from '@ddsr/client';`,
     ``,
@@ -102,7 +215,9 @@ export function emitConsumer(serviceInterface: ServiceInterface): GeneratedFile 
     `  filter?: string`,
     `): Promise<${name} | undefined> {`,
     `  const locator = await consumer.findOne(${name}InterfaceName, filter, ${name}Fingerprint);`,
-    `  return locator ? serviceProxy<${name}>(locator) : undefined;`,
+    exceptionMap === ''
+      ? `  return locator ? serviceProxy<${name}>(locator) : undefined;`
+      : `  return locator ? serviceProxy<${name}>(locator, { ${exceptionMap} }) : undefined;`,
     `}`,
     ``,
   ];
@@ -135,10 +250,10 @@ export function emitConsumer(serviceInterface: ServiceInterface): GeneratedFile 
  * to exactly this contract are registered, so what gets injected has
  * the operations this package declares.
  */
-export function emitModule(serviceInterface: ServiceInterface): GeneratedFile {
+export function emitModule(serviceInterface: ServiceInterface, binding: Binding = NO_BINDING): GeneratedFile {
   const name = identifier(serviceInterface.name, 'Service');
   const body: Array<string | null> = [
-    HEADER,
+    header(binding),
     `import { serviceId } from '@eclipse-daanse/tsm';`,
     `import type { ModuleContext } from '@eclipse-daanse/tsm';`,
     `import { DdsrClientService, mirrorRemoteServices, remoteServiceId } from '@ddsr/tsm';`,
@@ -189,18 +304,19 @@ export function emitModule(serviceInterface: ServiceInterface): GeneratedFile {
  * which means consumers stop finding the service. Generated from the
  * catalog, it cannot drift.
  */
-export function emitProvider(serviceInterface: ServiceInterface): GeneratedFile {
+export function emitProvider(serviceInterface: ServiceInterface, binding: Binding = NO_BINDING): GeneratedFile {
   const name = identifier(serviceInterface.name, 'Service');
   const operations = toArray<ServiceOperation>(serviceInterface.operations);
-  const imports = new Set<string>();
+  const imports = new TypeImports();
+  imports.name('@ddsr/model', 'ServiceInterface');
 
   const methods = operations.map(operation => {
     const method = identifier(operation.name, 'operation');
-    const returned = slotType(operation.returnValue);
-    if (returned.modelImport) imports.add(returned.modelImport);
+    const returned = slotType(operation.returnValue, binding);
+    imports.add(returned);
     const parameters = sortedParameters(operation).map(parameter => {
-      const mapped = slotType(parameter);
-      if (mapped.modelImport) imports.add(mapped.modelImport);
+      const mapped = slotType(parameter, binding);
+      imports.add(mapped);
       return `${identifier(parameter.name, 'arg')}${parameter.optional === true ? '?' : ''}: ${mapped.text}`;
     });
     const result = returned.text === 'void' ? 'void | Promise<void>' : `${returned.text} | Promise<${returned.text}>`;
@@ -213,12 +329,12 @@ export function emitProvider(serviceInterface: ServiceInterface): GeneratedFile 
   const needsProps = exceptions.some(exception => toArray(exception.properties).length > 0);
 
   const body: Array<string | null> = [
-    HEADER,
+    header(binding),
     needsProxy ? `import { BasicEClass, URI } from '@emfts/core';` : null,
     needsProxy ? `import type { EClassifier } from '@emfts/core';` : null,
     needsProps ? `import { props } from '@ddsr/client';` : null,
     `import { DDSRFactory } from '@ddsr/model';`,
-    `import type { ${[...new Set([...imports, 'ServiceInterface'])].sort().join(', ')} } from '@ddsr/model';`,
+    ...imports.lines(),
     ``,
     docOrNull(serviceInterface.description, '', [`The implementation side of ${serviceInterface.name ?? name}. Every operation`, 'the catalog declares has to be here; a return value may be a', 'promise or not.']),
     `export interface ${name}Implementation {`,
@@ -373,10 +489,10 @@ function buildSlot(local: string, slot: Parameter, at: number): string[] {
  * java-types.mtl's, and the two must not differ. A multi-valued slot is
  * an array, and no slot at all is a void return.
  */
-function slotType(slot: Parameter | undefined): MappedType {
+function slotType(slot: Parameter | undefined, binding: Binding): MappedType {
   if (!slot) return { text: 'void' };
   const uri = eTypeUri(slot.eType);
-  const mapped = uri !== undefined ? mapEType(uri) : mapType(slot.type);
+  const mapped = uri !== undefined ? mapEType(uri, binding.packageMappings) : mapType(slot.type);
   const upper = boundOf(slot.upperBound);
   const many = upper === -1 || upper > 1;
   return many && !mapped.text.endsWith('[]') ? { ...mapped, text: `${mapped.text}[]` } : mapped;

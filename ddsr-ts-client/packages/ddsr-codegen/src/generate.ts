@@ -16,14 +16,23 @@ import { dirname, join } from 'node:path';
 import type { ServiceInterface } from '@ddsr/model';
 import { loadCatalog } from './catalog.js';
 import type { CatalogSource } from './catalog.js';
-import { emitConsumer, emitModule, emitProvider } from './emit.js';
+import { emitConsumer, emitException, emitModule, emitProvider, generatedExceptions } from './emit.js';
+import { loadBinding, NO_BINDING } from './binding.js';
+import type { Binding } from './binding.js';
 import type { GeneratedFile } from './emit.js';
 import { identifier } from './type-mapping.js';
 
 export type Side = 'consumer' | 'provider' | 'both';
 
 export interface GenerateOptions {
-  source: CatalogSource;
+  /** Where the contracts come from; not needed with a binding, which names them. */
+  source?: CatalogSource;
+  /**
+   * A TypeScriptBinding document (#151). It names the contracts it
+   * renders and says how: the package name, a file header, the modules
+   * of referenced metamodels and the errors to generate classes for.
+   */
+  binding?: string;
   /** Directory the package is written to. */
   outDir: string;
   /** Which stubs to write; both by default. */
@@ -40,6 +49,8 @@ export interface GenerateOptions {
   packageName?: string;
   packageVersion?: string;
   fetchFn?: typeof fetch;
+  /** Write nothing; return the generated files in `contents`. */
+  dryRun?: boolean;
 }
 
 export interface GenerateResult {
@@ -49,6 +60,8 @@ export interface GenerateResult {
   files: string[];
   /** Scaffolding left alone because it was already there. */
   kept: string[];
+  /** The generated stubs themselves, scaffolding excluded. */
+  contents: GeneratedFile[];
 }
 
 /**
@@ -61,8 +74,11 @@ export interface GenerateResult {
  */
 export async function generate(options: GenerateOptions): Promise<GenerateResult> {
   const side = options.side ?? 'both';
-  const packageName = options.packageName ?? '@ddsr/generated-stubs';
-  const all = await loadCatalog(options.source, options.fetchFn ?? fetch);
+  const loaded = options.binding ? loadBinding(options.binding) : undefined;
+  const binding: Binding = loaded?.binding ?? NO_BINDING;
+  const packageName = options.packageName ?? binding.targetPackage ?? '@ddsr/generated-stubs';
+  if (!loaded && !options.source) throw new Error('a catalog source or a binding is required');
+  const all = loaded?.interfaces ?? await loadCatalog(options.source!, options.fetchFn ?? fetch);
   const wanted = options.only && options.only.length > 0
     ? all.filter(entry => options.only!.includes(entry.name ?? ''))
     : all;
@@ -75,11 +91,14 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
 
   const files: GeneratedFile[] = [];
   for (const serviceInterface of wanted) {
-    if (side === 'consumer' || side === 'both') files.push(emitConsumer(serviceInterface));
-    if (side === 'provider' || side === 'both') files.push(emitProvider(serviceInterface));
+    if (side === 'consumer' || side === 'both') files.push(emitConsumer(serviceInterface, binding));
+    if (side === 'provider' || side === 'both') files.push(emitProvider(serviceInterface, binding));
     if (options.tsm === true && (side === 'consumer' || side === 'both')) {
-      files.push(emitModule(serviceInterface));
+      files.push(emitModule(serviceInterface, binding));
     }
+  }
+  for (const { exception, className } of generatedExceptions(wanted, binding)) {
+    files.push(emitException(exception, className, binding));
   }
   files.push(indexFile(files));
 
@@ -89,13 +108,13 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
   // the workspace, dependencies someone added — and overwriting it
   // would take them away on the next regeneration.
   const scaffolding = [
-    packageJson(packageName, options.packageVersion ?? '1.0.0', options.tsm === true),
+    packageJson(packageName, options.packageVersion ?? '1.0.0', options.tsm === true, binding),
     tsconfig(),
   ];
   const written: string[] = [];
   const kept: string[] = [];
 
-  for (const file of [...files, ...scaffolding]) {
+  for (const file of options.dryRun === true ? [] : [...files, ...scaffolding]) {
     const path = join(options.outDir, file.path);
     const isScaffolding = scaffolding.includes(file);
     if (isScaffolding && existsSync(path)) {
@@ -112,6 +131,7 @@ export async function generate(options: GenerateOptions): Promise<GenerateResult
     interfaces: wanted.map(entry => identifier(entry.name, 'Service')),
     files: written,
     kept,
+    contents: files,
   };
 }
 
@@ -132,7 +152,7 @@ function indexFile(files: GeneratedFile[]): GeneratedFile {
   return { path: 'src/index.ts', content: exports.join('\n') + '\n' };
 }
 
-function packageJson(name: string, version: string, tsm: boolean): GeneratedFile {
+function packageJson(name: string, version: string, tsm: boolean, binding: Binding): GeneratedFile {
   return {
     path: 'package.json',
     content: JSON.stringify({
@@ -155,6 +175,9 @@ function packageJson(name: string, version: string, tsm: boolean): GeneratedFile
         // A provider whose contract carries an eType builds it as a proxy
         '@emfts/core': '0.3.0-next.4',
         ...(tsm ? { '@ddsr/tsm': 'workspace:*', '@eclipse-daanse/tsm': '0.1.0-next.1' } : {}),
+        // The modules a binding maps metamodels to; their version is not
+        // the binding's to know, so the scaffolding leaves it open
+        ...Object.fromEntries(binding.packageMappings.map(mapping => [mapping.target, '*'])),
       },
       devDependencies: { typescript: '~5.8.0' },
     }, null, 2) + '\n',

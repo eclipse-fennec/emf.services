@@ -44,8 +44,10 @@ const MODEL_TYPES = new Set([
 export interface MappedType {
   /** The TypeScript type as it appears in the signature. */
   text: string;
-  /** The @ddsr/model name to import, if any. */
+  /** The type name to import, if any. */
   modelImport?: string;
+  /** The module it is imported from; @ddsr/model when not given. */
+  module?: string;
 }
 
 export function mapType(ddsrType: string | undefined): MappedType {
@@ -89,17 +91,23 @@ const ECORE_DATA_TYPES: Record<string, string> = {
 /**
  * A slot's eType, given as the `<nsURI>#//<Name>` the fingerprint reads.
  * An Ecore data type maps along its instance class, a class of the
- * services model is imported from @ddsr/model; any other metamodel is
- * unknown here, since only its own code generator knows where its types
- * live.
+ * services model is imported from @ddsr/model, and a class of a metamodel
+ * the binding maps is imported from the module it names - what
+ * java-types.mtl does with the same packageMappings. Any other metamodel
+ * is unknown: only its own code generator knows where its types live.
  */
-export function mapEType(uri: string | undefined): MappedType {
+export function mapEType(
+  uri: string | undefined,
+  packageMappings: ReadonlyArray<{ nsURI: string; target: string }> = [],
+): MappedType {
   if (!uri) return { text: 'unknown' };
   const hash = uri.indexOf('#');
   const nsURI = hash < 0 ? '' : uri.slice(0, hash);
   const name = uri.slice(uri.lastIndexOf('/') + 1);
   if (nsURI === ECORE_NS_URI) return { text: ECORE_DATA_TYPES[name] ?? 'unknown' };
   if (nsURI === SERVICES_NS_URI && MODEL_TYPES.has(name)) return { text: name, modelImport: name };
+  const mapped = packageMappings.find(mapping => mapping.nsURI === nsURI);
+  if (mapped) return { text: name, modelImport: name, module: mapped.target };
   return { text: 'unknown' };
 }
 

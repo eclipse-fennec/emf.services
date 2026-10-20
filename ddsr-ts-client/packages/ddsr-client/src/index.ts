@@ -21,11 +21,12 @@ export type { ServiceLocator, TrackedServiceLocator, LocatorState } from './api/
 export type { Registration } from './api/registration.js';
 export type { DdsrServiceListener } from './api/service-listener.js';
 export { DiagnosticCode } from './api/diagnostics.js';
-export { DdsrClientError, DdsrTransportError } from './api/errors.js';
+export { DdsrClientError, DdsrServiceError, DdsrTransportError } from './api/errors.js';
 export { DdsrClientImpl } from './internal/ddsr-client-impl.js';
 export type { DdsrClientOptions } from './internal/ddsr-client-impl.js';
 export { ServiceLocatorImpl } from './proxy/service-locator-impl.js';
 export { serviceProxy } from './proxy/service-proxy.js';
+export type { ExceptionClasses } from './proxy/service-proxy.js';
 export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http.js';
 // One runtime, one identity: a caller that builds both a client and a
 // flavor plugin needs the same origin token in both, and the token is

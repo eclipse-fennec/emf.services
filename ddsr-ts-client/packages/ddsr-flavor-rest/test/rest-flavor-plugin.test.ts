@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
 import type { RestFlavor, RestOperationFlavor, ServiceOperation } from '@ddsr/model';
-import { DdsrTransportError } from '@ddsr/client';
+import { DdsrServiceError, DdsrTransportError } from '@ddsr/client';
 import { RestFlavorPlugin } from '../src/rest-flavor-plugin';
 
 function charge(): { operation: ServiceOperation; flavor: RestFlavor; opFlavor: RestOperationFlavor } {
@@ -77,6 +77,39 @@ describe('RestFlavorPlugin timeouts', () => {
         expect((error as Error).message).toContain('500');
         return true;
       });
+  });
+
+  it('a status the flavor binds to a declared error is that error', async () => {
+    const f = DDSRFactory.eINSTANCE;
+    const { operation, flavor, opFlavor } = charge();
+    const declined = f.createServiceException();
+    declined.name = 'Declined';
+    declined.type = 'org.example.Declined';
+    const binding = f.createRestExceptionBinding();
+    binding.status = 402;
+    binding.exception = declined;
+    opFlavor.exceptionBindings.push(binding);
+    const answers = (async () => new Response('card declined', { status: 402 })) as unknown as typeof fetch;
+    const plugin = new RestFlavorPlugin(answers);
+
+    await expect(plugin.invoke(operation, { amount: 1 }, flavor, opFlavor))
+      .rejects.toSatisfy((error: unknown) => {
+        expect(error).toBeInstanceOf(DdsrServiceError);
+        expect(error).not.toBeInstanceOf(DdsrTransportError);
+        expect((error as DdsrServiceError).exception.type).toBe('org.example.Declined');
+        expect((error as DdsrServiceError).status).toBe(402);
+        expect((error as Error).message).toBe('card declined');
+        return true;
+      });
+  });
+
+  it('an unbound status stays a plain error', async () => {
+    const answers = (async () => new Response('nope', { status: 409 })) as unknown as typeof fetch;
+    const plugin = new RestFlavorPlugin(answers);
+    const { operation, flavor, opFlavor } = charge();
+
+    await expect(plugin.invoke(operation, { amount: 1 }, flavor, opFlavor))
+      .rejects.toSatisfy((error: unknown) => !(error instanceof DdsrServiceError));
   });
 
   it('timeoutMillis 0 disables the signal', async () => {

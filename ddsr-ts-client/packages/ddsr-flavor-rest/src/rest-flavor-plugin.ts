@@ -13,13 +13,14 @@
 
 import type { FlavorPlugin } from '@ddsr/client';
 import {
-  CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrTransportError,
-  newEnvelope, toHeaders,
+  CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrServiceError, DdsrTransportError,
+  newEnvelope, toArray, toHeaders,
 } from '@ddsr/client';
 import type {
   ServiceFlavor,
   ServiceOperationFlavor,
   ServiceOperation,
+  RestExceptionBinding,
   RestFlavor,
   RestOperationFlavor,
 } from '@ddsr/model';
@@ -156,9 +157,15 @@ export class RestFlavorPlugin implements FlavorPlugin {
 
     if (!response.ok) {
       const body = await response.text();
-      const failed = new Error(
-        `REST call failed: ${response.status} ${response.statusText} — ${request.url}\n${body}`
-      );
+      // A status the flavor binds to a declared error is that error: the
+      // provider side answers a raised ServiceException with exactly this
+      // status (RestDispatcher.failed), and the body is its message.
+      const declared = toArray<RestExceptionBinding>(restOpFlavor?.exceptionBindings)
+        .find(binding => Number(binding.status) === response.status && binding.exception);
+      const failed = declared
+        ? new DdsrServiceError(body || `${declared.exception.name} (${response.status})`,
+          declared.exception, response.status)
+        : new Error(`REST call failed: ${response.status} ${response.statusText} — ${request.url}\n${body}`);
       span.failed(failed);
       span.end();
       throw failed;

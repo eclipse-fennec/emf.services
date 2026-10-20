@@ -1,0 +1,29 @@
+{
+  "name": "@ddsr/example-model",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "The example domain model (Person, Address, ...) generated from example.ecore, for contracts typed by eType",
+  "license": "EPL-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "generate": "emfts-codegen generate -m model/example.ecore -c model/example.genconfig.xmi -o src -v",
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@emfts/core": "0.3.0-next.4"
+  },
+  "devDependencies": {
+    "@emfts/codegen": "0.0.2-next.8",
+    "sax": "^1.4.3",
+    "typescript": "~5.8.0",
+    "vitest": "^4.1.11"
+  }
+}

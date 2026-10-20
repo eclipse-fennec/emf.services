@@ -27,7 +27,10 @@ import {
   fingerprint,
   propertiesOf,
   propertyOf,
+  serviceProxy,
 } from '@ddsr/client';
+import { PaymentFingerprint, PaymentInterfaceName } from '@ddsr/stubs';
+import type { Payment } from '@ddsr/stubs';
 import { BROKER_URL } from './payment-api';
 
 const log = (m: string) => console.log(`[ts-consumer] ${m}`);
@@ -40,11 +43,14 @@ async function main(): Promise<void> {
     consumerId: 'ts-consumer-demo',
   });
 
-  client.consumer.addServiceListener('Payment', undefined, event => {
+  client.consumer.addServiceListener(PaymentInterfaceName, undefined, event => {
     log(`event: ${event.type} for reference ${event.reference?.id}`);
   });
 
-  const locator = await client.consumer.findOne('Payment');
+  // Addressed by the fingerprint the generated contract carries: the
+  // broker answers only with implementations of exactly the Payment
+  // these signatures describe (#151).
+  const locator = await client.consumer.findOne(PaymentInterfaceName, undefined, PaymentFingerprint);
   if (!locator) {
     log('no Payment provider available');
     if (!watch) {
@@ -68,9 +74,10 @@ async function main(): Promise<void> {
     log(`  ${name} = ${JSON.stringify(value)} (${typeof value})`);
   }
 
-  const before = await locator.invoke('getBalance', { accountId: 'default' });
+  const payment = serviceProxy<Payment>(locator);
+  const before = await payment.getBalance('default');
   log(`getBalance -> ${before}`);
-  const after = await locator.invoke('charge', { amount: 12.5, currency: 'EUR' });
+  const after = await payment.charge(12.5, 'EUR');
   log(`charge(12.5 EUR) -> ${after}`);
 
   if (!watch) {

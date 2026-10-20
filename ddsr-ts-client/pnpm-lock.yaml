@@ -30,6 +30,9 @@ importers:
       '@ddsr/model':
         specifier: workspace:*
         version: link:../../packages/ddsr-model
+      '@ddsr/stubs':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-stubs
       '@ddsr/telemetry-otel':
         specifier: workspace:*
         version: link:../../packages/ddsr-telemetry-otel

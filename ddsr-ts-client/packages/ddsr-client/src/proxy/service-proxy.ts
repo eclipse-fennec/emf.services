@@ -13,6 +13,7 @@
 
 import type { ServiceLocator } from '../api/service-locator.js';
 import { toArray } from '../internal/emf-util.js';
+import { DdsrServiceError } from '../api/errors.js';
 
 /**
  * A calling surface for a located service: `service.charge(100, 'EUR')`
@@ -27,8 +28,13 @@ import { toArray } from '../internal/emf-util.js';
  * `then` and symbol properties answer undefined, so awaiting the proxy
  * is safe — without that guard `await service` would call `then()` on it
  * and hang.
+ *
+ * `exceptions` maps a declared error's symbolic type to the class a
+ * binding generated for it: a DdsrServiceError of that type is thrown
+ * as an instance of the class instead, so `catch` can tell one declared
+ * error from another by `instanceof`, as a Java caller does.
  */
-export function serviceProxy<T>(locator: ServiceLocator): T {
+export function serviceProxy<T>(locator: ServiceLocator, exceptions: ExceptionClasses = {}): T {
   return new Proxy<object>({}, {
     get: (_target, prop) => {
       if (typeof prop !== 'string' || prop === 'then') return undefined;
@@ -46,8 +52,16 @@ export function serviceProxy<T>(locator: ServiceLocator): T {
         } else if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
           Object.assign(params, args[0]);
         }
-        return locator.invoke(prop, params);
+        return locator.invoke(prop, params).catch((error: unknown) => {
+          if (error instanceof DdsrServiceError && exceptions[error.exception.type]) {
+            throw new exceptions[error.exception.type](error.message, error);
+          }
+          throw error;
+        });
       };
     },
   }) as unknown as T;
 }
+
+/** A generated class per declared error, by its symbolic type. */
+export type ExceptionClasses = Record<string, new (message: string, cause: DdsrServiceError) => Error>;

@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { Diagnostic } from '@ddsr/model';
+import type { Diagnostic, ServiceException } from '@ddsr/model';
 
 /**
  * Error carrying the broker Diagnostic that caused it — the TS mirror
@@ -37,5 +37,22 @@ export class DdsrTransportError extends DdsrClientError {
   constructor(message: string, readonly cause?: unknown) {
     super(message);
     this.name = 'DdsrTransportError';
+  }
+}
+
+/**
+ * The provider answered, and the answer is one of the errors the
+ * contract declares: `exception` is that ServiceException, recognised by
+ * the status its flavor binds it to - the twin of what RestDispatcher
+ * writes. Not a transport error, so nothing retries it: calling again
+ * would get the same answer.
+ *
+ * Generated stubs turn it into the class their binding generates for
+ * the exception type, so a caller can write `instanceof`.
+ */
+export class DdsrServiceError extends DdsrClientError {
+  constructor(message: string, readonly exception: ServiceException, readonly status?: number) {
+    super(message);
+    this.name = 'DdsrServiceError';
   }
 }

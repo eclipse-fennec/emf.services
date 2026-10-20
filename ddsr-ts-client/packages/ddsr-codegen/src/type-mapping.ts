@@ -70,6 +70,39 @@ export function mapType(ddsrType: string | undefined): MappedType {
   return { text: 'unknown' };
 }
 
+const ECORE_NS_URI = 'http://www.eclipse.org/emf/2002/Ecore';
+const SERVICES_NS_URI = 'http://eclipse.org/fennec/services/1.0';
+
+/**
+ * Ecore's data types, along the instance class java-types.mtl renders
+ * them by. Those whose Java class has no faithful TypeScript counterpart
+ * (BigDecimal, Date, Object) stay unknown, for the reason mapType gives.
+ */
+const ECORE_DATA_TYPES: Record<string, string> = {
+  EString: 'string', EChar: 'string', ECharacterObject: 'string',
+  EBoolean: 'boolean', EBooleanObject: 'boolean',
+  EInt: 'number', EIntegerObject: 'number', ELong: 'number', ELongObject: 'number',
+  EShort: 'number', EShortObject: 'number', EByte: 'number', EByteObject: 'number',
+  EFloat: 'number', EFloatObject: 'number', EDouble: 'number', EDoubleObject: 'number',
+};
+
+/**
+ * A slot's eType, given as the `<nsURI>#//<Name>` the fingerprint reads.
+ * An Ecore data type maps along its instance class, a class of the
+ * services model is imported from @ddsr/model; any other metamodel is
+ * unknown here, since only its own code generator knows where its types
+ * live.
+ */
+export function mapEType(uri: string | undefined): MappedType {
+  if (!uri) return { text: 'unknown' };
+  const hash = uri.indexOf('#');
+  const nsURI = hash < 0 ? '' : uri.slice(0, hash);
+  const name = uri.slice(uri.lastIndexOf('/') + 1);
+  if (nsURI === ECORE_NS_URI) return { text: ECORE_DATA_TYPES[name] ?? 'unknown' };
+  if (nsURI === SERVICES_NS_URI && MODEL_TYPES.has(name)) return { text: name, modelImport: name };
+  return { text: 'unknown' };
+}
+
 /** A name the catalog carries, as a TypeScript identifier. */
 export function identifier(name: string | undefined, fallback: string): string {
   const cleaned = (name ?? '').replace(/[^A-Za-z0-9_$]/g, '_');

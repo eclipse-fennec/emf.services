@@ -56,9 +56,11 @@ export function serializeToXmi(eObject: EObject, ...additionalRoots: EObject[]):
  * interpreted from their URI alone (the broker never expects a client
  * to dereference them).
  */
-export function deserializeFromXmi(xmiString: string): EObject | EObject[] {
+export function deserializeFromXmi(xmiString: string, baseUri = 'temp://deserialize.xmi'): EObject | EObject[] {
   const resourceSet = createResourceSet();
-  const resource = new XMIResource(URI.createURI('temp://deserialize.xmi'));
+  // The document's own URI: relative hrefs in it resolve against this,
+  // so a caller reading a file passes the file's URI
+  const resource = new XMIResource(URI.createURI(baseUri));
   resourceSet.getResources().push(resource);
   resource.loadFromString(xmiString);
 

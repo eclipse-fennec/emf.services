@@ -24,6 +24,8 @@ export interface BrokerCatalog {
    * while it is unambiguous.
    * @param name Name of the contract.
    * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
+   * @throws {DdsrServiceError} No contract of that name — or none with that fingerprint.
+   * @throws {DdsrServiceError} The name covers several coexisting contracts — address one by its fingerprint.
    */
   getCatalogEntry(name: string, fingerprint?: string): Promise<ServiceInterface>;
 
@@ -32,6 +34,7 @@ export interface BrokerCatalog {
    * different one under a name already taken is not.
    * @param serviceInterface The contract to add, fully populated.
    * @param requestor Symbolic identity that initiated the change (governance audit).
+   * @throws {DdsrServiceError} A different contract already holds that name.
    */
   addCatalogEntry(serviceInterface: ServiceInterface, requestor?: string): Promise<Diagnostic>;
 
@@ -42,6 +45,8 @@ export interface BrokerCatalog {
    * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
    * @param governance Carries deprecationReason and replacedBy; everything else about it is ignored.
    * @param requestor Symbolic identity that initiated the change (governance audit).
+   * @throws {DdsrServiceError} No contract of that name — or none with that fingerprint.
+   * @throws {DdsrServiceError} The name covers several coexisting contracts — address one by its fingerprint.
    */
   deprecateCatalogEntry(name: string, fingerprint?: string, governance?: ServiceInterface, requestor?: string): Promise<Diagnostic>;
 
@@ -51,6 +56,9 @@ export interface BrokerCatalog {
    * @param name Name of the contract to remove.
    * @param fingerprint sd1 fingerprint, when the name alone does not name one contract.
    * @param requestor Symbolic identity that initiated the change (governance audit).
+   * @throws {DdsrServiceError} No contract of that name — or none with that fingerprint.
+   * @throws {DdsrServiceError} Live implementations still reference this contract.
+   * @throws {DdsrServiceError} The name covers several coexisting contracts — address one by its fingerprint.
    */
   removeCatalogEntry(name: string, fingerprint?: string, requestor?: string): Promise<Diagnostic>;
 }

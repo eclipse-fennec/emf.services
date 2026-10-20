@@ -31,6 +31,8 @@ export interface BrokerLookup {
    * that died without withdrawing.
    * @param referenceId The registration this heartbeat is for.
    * @param intervalSeconds How often the provider intends to report in. The broker sweeps on twice this.
+   * @throws {DdsrServiceError} The interval is not one the broker accepts.
+   * @throws {DdsrServiceError} No live registration under that reference id.
    */
   heartbeat(referenceId: string, intervalSeconds?: number): Promise<Diagnostic>;
 }

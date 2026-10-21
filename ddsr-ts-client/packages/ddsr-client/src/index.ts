@@ -34,6 +34,8 @@ export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http
 export { clientOrigin, ORIGIN_HEADER } from './internal/client-origin.js';
 export { clientCredentials, withBearer, RENEW_BEFORE_SECONDS } from './internal/bearer-token.js';
 export { effectiveRequirement, demandsAuthentication, bearerScheme } from './internal/security-requirements.js';
+export { createJwtVerifier, TokenRejectedError } from './internal/jwt-verifier.js';
+export type { JwtVerifier, JwtVerifierOptions, VerifiedPrincipal } from './internal/jwt-verifier.js';
 export type { TokenSupplier, ClientCredentialsOptions } from './internal/bearer-token.js';
 export type { ClientOrigin } from './internal/client-origin.js';
 export type { BrokerHttpOptions } from './internal/broker-http.js';

@@ -68,6 +68,7 @@ interpolation plugin. The defaults are the ones
 | `DDSR_JWT_ISSUER` | *(empty)* | The token issuer the broker trusts (`iss`), e.g. a Keycloak realm URL. Empty means no verifier — and in bearer mode a broker that serves nothing. |
 | `DDSR_JWT_JWKS_URI` | *(empty)* | Where the issuer's signing keys are fetched. May be an internal address the broker reaches the identity provider by. Required with an issuer. |
 | `DDSR_JWT_AUDIENCES` | `ddsr-broker` | Comma-separated `aud` values a token must carry one of. One audience for the broker keeps a token minted for somebody else from being replayed here. |
+| `DDSR_JWT_SUBJECT_CLAIM` | `sub` | The claim that names the caller — what a registration's owner and a session's `consumerId` are held against. With Keycloak client credentials, `sub` is the service account's generated id; `azp` is the client id, the readable and stable name of a node. |
 | `DDSR_JWT_SCOPE_CLAIM` | `scope` | Dot path of the claim carrying the scopes: `scope` (OAuth, space-separated) or e.g. `realm_access.roles` (Keycloak realm roles). |
 
 The context path (`/ddsr/rest`) is a frozen wire contract, not a

@@ -80,7 +80,8 @@ ENV APP_HOME=${APP_HOME} \
     DDSR_JWT_ISSUER= \
     DDSR_JWT_JWKS_URI= \
     DDSR_JWT_AUDIENCES=ddsr-broker \
-    DDSR_JWT_SCOPE_CLAIM=scope
+    DDSR_JWT_SCOPE_CLAIM=scope \
+    DDSR_JWT_SUBJECT_CLAIM=sub
 
 COPY --from=builder --chown=65532:65532 ${APP_HOME} ${APP_HOME}
 COPY --from=builder --chown=65532:65532 ${TMPDIR} ${TMPDIR}

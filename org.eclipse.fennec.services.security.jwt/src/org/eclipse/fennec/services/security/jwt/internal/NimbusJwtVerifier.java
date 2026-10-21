@@ -97,6 +97,13 @@ public class NimbusJwtVerifier implements JwtVerifier {
 						+ "space-separated string) or e.g. 'realm_access.roles' (Keycloak, a list).")
 		String scope_claim() default "scope";
 
+		@AttributeDefinition(name = "Subject claim",
+				description = "The claim that names the caller — what a registration's owner and a "
+						+ "session's consumerId are held against. 'sub' is the standard; a client-credentials "
+						+ "token from Keycloak carries the service account's generated id there, and 'azp' — "
+						+ "the client id — is the stable, readable name of the node.")
+		String subject_claim() default "sub";
+
 		@AttributeDefinition(name = "Clock skew (seconds)",
 				description = "Tolerance on exp, nbf and iat.")
 		int clock_skew_seconds() default 30;
@@ -107,6 +114,7 @@ public class NimbusJwtVerifier implements JwtVerifier {
 	private DefaultJWTProcessor<SecurityContext> processor;
 	private String issuer;
 	private String[] scopePath;
+	private String subjectClaim = "sub";
 
 	private ServiceRegistration<JwtVerifier> registration;
 
@@ -124,10 +132,12 @@ public class NimbusJwtVerifier implements JwtVerifier {
 					+ " is configured, but jwks.uri and audiences are needed as well");
 		}
 		JWKSource<SecurityContext> keys = JWKSourceBuilder.create(URI.create(config.jwks_uri()).toURL()).build();
-		init(keys, config.issuer(), audiencesOf(config), config.scope_claim(), config.clock_skew_seconds());
+		init(keys, config.issuer(), audiencesOf(config), config.scope_claim(), config.subject_claim(),
+				config.clock_skew_seconds());
 		registration = context.registerService(JwtVerifier.class, this, null);
 		LOG.info("[DDSR] bearer verifier ready: issuer=" + config.issuer()
-				+ " audiences=" + audiencesOf(config) + " jwks=" + config.jwks_uri());
+				+ " audiences=" + audiencesOf(config) + " jwks=" + config.jwks_uri()
+				+ " subject=" + config.subject_claim());
 	}
 
 	@Deactivate
@@ -152,12 +162,20 @@ public class NimbusJwtVerifier implements JwtVerifier {
 	/** Package-visible so a test can hand in keys without a JWKS endpoint. */
 	void init(JWKSource<SecurityContext> keys, String issuer, Set<String> audiences, String scopeClaim,
 			int skewSeconds) {
+		init(keys, issuer, audiences, scopeClaim, "sub", skewSeconds);
+	}
+
+	void init(JWKSource<SecurityContext> keys, String issuer, Set<String> audiences, String scopeClaim,
+			String subjectClaim, int skewSeconds) {
 		this.issuer = issuer;
 		this.scopePath = scopeClaim.split("\\.");
+		this.subjectClaim = subjectClaim == null || subjectClaim.isBlank() ? "sub" : subjectClaim;
 		processor = new DefaultJWTProcessor<>();
 		processor.setJWSKeySelector(new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, keys));
 		JWTClaimsSet exact = new JWTClaimsSet.Builder().issuer(issuer).build();
-		Set<String> required = new HashSet<>(List.of("sub", "exp", "iat"));
+		// Whatever names the caller has to be there: a token without it
+		// would verify and then own nothing, or everything.
+		Set<String> required = new HashSet<>(List.of(this.subjectClaim, "exp", "iat"));
 		// Nimbus asks the audience set whether it contains null (its
 		// spelling of "no audience accepted"); an immutable Set.of throws
 		// on that question, so it gets a copy that does not.
@@ -175,7 +193,11 @@ public class NimbusJwtVerifier implements JwtVerifier {
 		} catch (BadJOSEException | JOSEException | ParseException e) {
 			throw new TokenRejectedException(e.getMessage(), e);
 		}
-		return new VerifiedPrincipal(claims.getSubject(), issuer, scopesOf(claims));
+		Object subject = claims.getClaim(subjectClaim);
+		if (!(subject instanceof String name) || name.isBlank()) {
+			throw new TokenRejectedException("the subject claim '" + subjectClaim + "' is not a name");
+		}
+		return new VerifiedPrincipal(name, issuer, scopesOf(claims));
 	}
 
 	/**

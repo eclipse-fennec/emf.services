@@ -28,7 +28,11 @@ account, say — not a user. Every peer is one: a provider runtime, a
 consumer process, an RSA node, a TypeScript service. What the token
 carries is what the broker needs:
 
-- **`sub` / `azp`**, the authenticated identity;
+- **`sub` / `azp`**, the authenticated identity. Which of the two names
+  the caller is the verifier's `subject.claim` (`DDSR_JWT_SUBJECT_CLAIM`):
+  `sub` by default, `azp` for Keycloak client credentials, where `sub`
+  is a generated service-account id and `azp` the client id a node is
+  configured by — and the `consumerId` its session must carry;
 - **`aud`**, one audience for the broker and one per target the peer
   calls, so a token minted for the broker cannot be replayed against a
   provider, nor one tenant's token against another's node;
@@ -332,6 +336,7 @@ same `config.json`:
 | `DDSR_JWT_JWKS_URI` | `jwks.uri` |
 | `DDSR_JWT_AUDIENCES` | `audiences`, comma-separated, default `ddsr-broker` |
 | `DDSR_JWT_SCOPE_CLAIM` | `scope.claim`, default `scope` |
+| `DDSR_JWT_SUBJECT_CLAIM` | `subject.claim`, default `sub` — which claim names the caller |
 
 The configuration is always there; whether it amounts to a verifier
 depends on the issuer. `NimbusJwtVerifier` registers its service itself,

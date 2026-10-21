@@ -24,7 +24,8 @@
 		"issuer": "$[env:DDSR_JWT_ISSUER;default=]",
 		"jwks.uri": "$[env:DDSR_JWT_JWKS_URI;default=]",
 		"audiences": "$[env:DDSR_JWT_AUDIENCES;default=ddsr-broker;type=String[];delimiter=,]",
-		"scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]"
+		"scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]",
+		"subject.claim": "$[env:DDSR_JWT_SUBJECT_CLAIM;default=sub]"
 	},
 	"org.eclipse.fennec.services.broker.rest.application":
 	{

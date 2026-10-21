@@ -74,6 +74,9 @@ export function buildBrokerCatalogInterface(): ServiceInterface {
   serviceInterface.name = 'BrokerCatalog';
   serviceInterface.version = '1.0.0';
   serviceInterface.description = 'Governance of the contracts a broker knows: list them, read one, add one, deprecate or remove one. What this states is what the broker serves — the flavor beside it says where every value travels.';
+  const serviceInterfaceSecurity = factory.createSecurityRequirement();
+  serviceInterfaceSecurity.authenticated = true;
+  serviceInterface.security = serviceInterfaceSecurity;
 
   const exception0 = factory.createServiceException();
   exception0.name = 'CatalogEntryNotFound';
@@ -140,6 +143,10 @@ export function buildBrokerCatalogInterface(): ServiceInterface {
   const operation2 = factory.createServiceOperation();
   operation2.name = 'addCatalogEntry';
   operation2.description = 'Add a contract. Adding the identical contract again is accepted; a different one under a name already taken is not.';
+  const operation2Security = factory.createSecurityRequirement();
+  operation2Security.authenticated = true;
+  operation2Security.scopes.push('service-provider');
+  operation2.security = operation2Security;
   operation2.exceptions.push(exception1);
   const operation2Result = factory.createParameter();
   operation2Result.name = 'result';
@@ -164,6 +171,10 @@ export function buildBrokerCatalogInterface(): ServiceInterface {
   const operation3 = factory.createServiceOperation();
   operation3.name = 'deprecateCatalogEntry';
   operation3.description = 'Soft-deprecate a contract. Existing implementations keep working; new publishes against it are answered with a WARNING.';
+  const operation3Security = factory.createSecurityRequirement();
+  operation3Security.authenticated = true;
+  operation3Security.scopes.push('service-admin');
+  operation3.security = operation3Security;
   operation3.exceptions.push(exception0);
   operation3.exceptions.push(exception3);
   const operation3Result = factory.createParameter();
@@ -203,6 +214,10 @@ export function buildBrokerCatalogInterface(): ServiceInterface {
   const operation4 = factory.createServiceOperation();
   operation4.name = 'removeCatalogEntry';
   operation4.description = 'Remove a contract. Refused while any live implementation still references it.';
+  const operation4Security = factory.createSecurityRequirement();
+  operation4Security.authenticated = true;
+  operation4Security.scopes.push('service-admin');
+  operation4.security = operation4Security;
   operation4.exceptions.push(exception0);
   operation4.exceptions.push(exception2);
   operation4.exceptions.push(exception3);

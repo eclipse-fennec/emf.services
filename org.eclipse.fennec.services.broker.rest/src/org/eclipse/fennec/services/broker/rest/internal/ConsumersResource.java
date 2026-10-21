@@ -90,6 +90,10 @@ public class ConsumersResource {
 	@Produces(MediaType.APPLICATION_XML)
 	public Response put(@PathParam("consumerId") String consumerId, InputStream entityStream)
 			throws IOException {
+		Response refused = BrokerRoles.refusal(BrokerRoles.CONSUMER);
+		if (refused != null) {
+			return refused;
+		}
 		XmiBundle bundle = parse(entityStream);
 		ConsumerSession session = null;
 		List<String> referenceIds = new ArrayList<>();
@@ -123,6 +127,10 @@ public class ConsumersResource {
 	@Path("{consumerId}")
 	@Produces(MediaType.APPLICATION_XML)
 	public Response get(@PathParam("consumerId") String consumerId) {
+		Response refused = BrokerRoles.refusal(BrokerRoles.CONSUMER);
+		if (refused != null) {
+			return refused;
+		}
 		return sessions.getSession(consumerId)
 				.map(snapshot -> {
 					List<EObject> roots = new ArrayList<>();
@@ -142,6 +150,10 @@ public class ConsumersResource {
 	@Path("{consumerId}")
 	@Produces(MediaType.APPLICATION_XML)
 	public Response delete(@PathParam("consumerId") String consumerId) {
+		Response refused = BrokerRoles.refusal(BrokerRoles.CONSUMER);
+		if (refused != null) {
+			return refused;
+		}
 		return HttpDiagnostics.toResponse(sessions.deleteSession(consumerId));
 	}
 

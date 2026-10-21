@@ -55,6 +55,7 @@
 
   <services:ServiceInterface name="BrokerCatalog" version="1.0.0"
       description="Governance of the contracts a broker knows: list them, read one, add one, deprecate or remove one. What this states is what the broker serves — the flavor beside it says where every value travels.">
+    <security authenticated="true"/>
     <operations name="listCatalog"
         description="The registry as it stands, catalog included.">
       <returnValue name="result" description="The whole registry document.">
@@ -82,6 +83,7 @@
       <returnValue name="result" description="What the broker made of it.">
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
+      <security authenticated="true" scopes="service-provider"/>
     </operations>
     <operations name="deprecateCatalogEntry" exceptions="/1/@exceptions.0 /1/@exceptions.3"
         description="Soft-deprecate a contract. Existing implementations keep working; new publishes against it are answered with a WARNING.">
@@ -98,6 +100,7 @@
       <returnValue name="result" description="What the broker made of it.">
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
+      <security authenticated="true" scopes="service-admin"/>
     </operations>
     <operations name="removeCatalogEntry" exceptions="/1/@exceptions.0 /1/@exceptions.2 /1/@exceptions.3"
         description="Remove a contract. Refused while any live implementation still references it.">
@@ -110,6 +113,7 @@
       <returnValue name="result" description="What the broker made of it.">
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
+      <security authenticated="true" scopes="service-admin"/>
     </operations>
 
     <exceptions name="CatalogEntryNotFound" type="CatalogEntryNotFound"

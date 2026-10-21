@@ -163,6 +163,7 @@ if secured; then
   [ "$ANON_STATUS" = 401 ] \
     || { echo "BROKER NOT SECURED: a call without a token answered $ANON_STATUS, expected 401"; exit 1; }
   echo "  ✓ broker-secured: a call without a token is 401"
+  check_role_matrix
 fi
 
 # A raw tap on the event stream, opened before anything publishes: no

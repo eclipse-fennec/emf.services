@@ -16,7 +16,9 @@
 # scope=ddsr-broker, one for the RSA example with scope=rsa-example, and
 # neither carries the other's audience (SECURITY.md §1). The broker takes
 # the caller's name from azp — the client id — so a consumer's session id
-# is its client id. Roles are realm roles, read from realm_access.roles.
+# is its client id. Roles are realm roles, read from realm_access.roles —
+# the broker's three (service-provider, service-consumer, service-admin,
+# SECURITY.md §3) and the RSA example's ledger roles.
 
 HARNESS_AUTH="${HARNESS_AUTH:-bearer}"
 KEYCLOAK_IMAGE="${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.4}"
@@ -69,13 +71,15 @@ broker_auth_env() {
   echo "DDSR_JWT_ISSUER=$KEYCLOAK_REALM_URL"
   echo "DDSR_JWT_JWKS_URI=$KEYCLOAK_REALM_URL/protocol/openid-connect/certs"
   echo "DDSR_JWT_SUBJECT_CLAIM=azp"
+  echo "DDSR_JWT_SCOPE_CLAIM=realm_access.roles"
 }
 
 # Runs a command (start_jar) with the broker's half of the above.
 as_broker() { # command...
   if secured; then
     DDSR_AUTH_MODE=bearer DDSR_JWT_ISSUER="$KEYCLOAK_REALM_URL" \
-      DDSR_JWT_JWKS_URI="$KEYCLOAK_REALM_URL/protocol/openid-connect/certs" DDSR_JWT_SUBJECT_CLAIM=azp "$@"
+      DDSR_JWT_JWKS_URI="$KEYCLOAK_REALM_URL/protocol/openid-connect/certs" DDSR_JWT_SUBJECT_CLAIM=azp \
+      DDSR_JWT_SCOPE_CLAIM=realm_access.roles "$@"
   else
     "$@"
   fi
@@ -136,4 +140,20 @@ curl_broker() { # curl args...
   else
     curl "$@"
   fi
+}
+
+# The role matrix, checked from outside right after the broker is up: a
+# consumer may not announce, and only an admin reads the whole registry.
+check_role_matrix() {
+  secured || return 0
+  local consumer status
+  consumer="Authorization: Bearer $(token_for java-client)"
+  status=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$consumer" -H 'Content-Type: application/xml' \
+    --data-binary '<x/>' "$BROKER_URL/implementations/")
+  [ "$status" = 403 ] || { echo "ROLE MATRIX BROKEN: a consumer's publish answered $status, expected 403"; return 1; }
+  status=$(curl -s -o /dev/null -w '%{http_code}' -H "$consumer" "$BROKER_URL/registry")
+  [ "$status" = 403 ] || { echo "ROLE MATRIX BROKEN: a consumer read the registry with $status, expected 403"; return 1; }
+  status=$(curl_broker -s -o /dev/null -w '%{http_code}' "$BROKER_URL/registry")
+  [ "$status" = 200 ] || { echo "ROLE MATRIX BROKEN: the admin read the registry with $status, expected 200"; return 1; }
+  echo "  ✓ role-matrix: a consumer may not publish nor read the registry, an admin may"
 }

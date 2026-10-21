@@ -23,6 +23,7 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
@@ -101,6 +102,25 @@ public class RsaConsumer extends NodeConfiguration {
 				description = "The prefix calls served over MQTT use. It has to match the providers' own.")
 		String topic_prefix() default "ddsr/rpc";
 
+		@AttributeDefinition(name = "Token URI",
+				description = "The identity provider's token endpoint. With it this node calls the broker and "
+						+ "the providers it imports with a token of its own (client credentials). Empty means "
+						+ "it calls without one.")
+		String token_uri() default "";
+
+		@AttributeDefinition(name = "Client id",
+				description = "This node's client id at the identity provider — its identity, and its "
+						+ "consumer id unless one is said above.")
+		String client_id() default "";
+
+		@AttributeDefinition(name = "Client secret", type = AttributeType.PASSWORD,
+				description = "The client's secret.")
+		String client_secret() default "";
+
+		@AttributeDefinition(name = "Scope",
+				description = "Space-separated scopes to ask for; empty asks for the client's defaults.")
+		String scope() default "";
+
 	}
 
 	@Reference
@@ -141,6 +161,8 @@ public class RsaConsumer extends NodeConfiguration {
 				config.registry_name(), config.default_version(), config.flavor(),
 				config.policy(), config.import_policy(), config.provider_heartbeat_seconds(),
 				config.session_interval_seconds(), config.consumer_id(), config.mqtt_url(),
-				config.topic_prefix(), "", config.discovery_flavor());
+				config.topic_prefix(), "", config.discovery_flavor(),
+				new NodeIdentity(config.token_uri(), config.client_id(), config.client_secret(), config.scope(),
+						"", "", List.of(), "scope", "sub"));
 	}
 }

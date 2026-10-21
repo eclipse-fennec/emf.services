@@ -101,12 +101,29 @@ final class DerivedConfigurations implements AutoCloseable {
 		written.addAll(plan);
 	}
 
+	/**
+	 * Equal key by key, arrays by content: a derived list of audiences
+	 * comes back from Configuration Admin as a new array, and a plain
+	 * {@code equals} would rewrite — and reconfigure — on every apply.
+	 */
+	static boolean same(Map<String, Object> current, Map<String, ?> wanted) {
+		if (!current.keySet().equals(wanted.keySet())) {
+			return false;
+		}
+		for (Map.Entry<String, ?> entry : wanted.entrySet()) {
+			if (!Objects.deepEquals(current.get(entry.getKey()), entry.getValue())) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	private void write(DerivedConfiguration entry) throws IOException {
 		Configuration configuration = entry.isFactory()
 				? admin.getFactoryConfiguration(entry.pid(), entry.name(), ANY_LOCATION)
 				: admin.getConfiguration(entry.pid(), ANY_LOCATION);
 		Map<String, Object> current = asMap(configuration.getProperties());
-		if (current.equals(entry.properties())) {
+		if (same(current, entry.properties())) {
 			LOG.fine(() -> "[DDSR] " + owner + " leaves " + entry.label() + " as it is");
 			return;
 		}

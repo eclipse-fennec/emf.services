@@ -23,6 +23,7 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
@@ -149,6 +150,46 @@ public class RsaProvider extends NodeConfiguration {
 						+ "<prefix>/res/…. One prefix per deployment keeps two of them on one broker apart.")
 		String topic_prefix() default "ddsr/rpc";
 
+		@AttributeDefinition(name = "Token URI",
+				description = "The identity provider's token endpoint. With it this node calls the broker and "
+						+ "the providers it imports with a token of its own (client credentials). Empty means "
+						+ "it calls without one.")
+		String token_uri() default "";
+
+		@AttributeDefinition(name = "Client id",
+				description = "This node's client id at the identity provider — its identity, and its "
+						+ "consumer id unless one is said above.")
+		String client_id() default "";
+
+		@AttributeDefinition(name = "Client secret", type = AttributeType.PASSWORD,
+				description = "The client's secret.")
+		String client_secret() default "";
+
+		@AttributeDefinition(name = "Scope",
+				description = "Space-separated scopes to ask for; empty asks for the client's defaults.")
+		String scope() default "";
+
+		@AttributeDefinition(name = "Token issuer",
+				description = "The issuer of the tokens this node accepts for what it serves. With it, a "
+						+ "contract that demands authentication (@RolesAllowed) is exported; without it, it "
+						+ "is not. Empty means this node verifies nothing.")
+		String issuer() default "";
+
+		@AttributeDefinition(name = "JWKS URI", description = "Where the issuer's signing keys are fetched.")
+		String jwks_uri() default "";
+
+		@AttributeDefinition(name = "Audiences",
+				description = "What a token for this node must carry one of — usually its own client id.")
+		String[] audiences() default {};
+
+		@AttributeDefinition(name = "Scope claim",
+				description = "Where scopes are read from: 'scope', or 'realm_access.roles' for roles.")
+		String scope_claim() default "scope";
+
+		@AttributeDefinition(name = "Subject claim",
+				description = "Which claim names a caller: 'sub', or 'azp' for Keycloak client credentials.")
+		String subject_claim() default "sub";
+
 	}
 
 	@Reference
@@ -190,6 +231,9 @@ public class RsaProvider extends NodeConfiguration {
 				config.http_id(), config.registry_name(), config.default_version(), config.flavor(),
 				config.policy(), config.import_policy(), config.provider_heartbeat_seconds(),
 				config.session_interval_seconds(), config.consumer_id(), config.mqtt_url(),
-				config.topic_prefix(), config.distribution_flavor(), config.discovery_flavor());
+				config.topic_prefix(), config.distribution_flavor(), config.discovery_flavor(),
+				new NodeIdentity(config.token_uri(), config.client_id(), config.client_secret(), config.scope(),
+						config.issuer(), config.jwks_uri(), List.of(config.audiences()), config.scope_claim(),
+						config.subject_claim()));
 	}
 }

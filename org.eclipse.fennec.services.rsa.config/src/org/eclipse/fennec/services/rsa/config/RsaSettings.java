@@ -43,6 +43,7 @@ import java.util.Set;
  * @param heartbeatSeconds how often a provider says it is still there
  * @param sessionIntervalSeconds the consumer session interval, 0 to switch it off
  * @param consumerId how this node names itself to the broker
+ * @param identity who this node is to its identity provider (SECURITY.md §6)
  */
 public record RsaSettings(
 		String brokerUrl,
@@ -64,7 +65,32 @@ public record RsaSettings(
 		String mqttUrl,
 		String topicPrefix,
 		String distributionFlavor,
-		String discoveryFlavor) {
+		String discoveryFlavor,
+		NodeIdentity identity) {
+
+	public RsaSettings {
+		identity = identity == null ? NodeIdentity.NONE : identity;
+	}
+
+	/** A node without an identity — what every node was before SECURITY.md §6. */
+	public RsaSettings(String brokerUrl, String publicUrl, String publicHost, int httpPort, String httpHost,
+			String contextPath, boolean manageHttp, String httpId, String registryName, String defaultVersion,
+			String flavor, String exportPolicy, String importPolicy, long heartbeatSeconds,
+			long sessionIntervalSeconds, String consumerId, String mqttUrl, String topicPrefix,
+			String distributionFlavor, String discoveryFlavor) {
+		this(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp, httpId, registryName,
+				defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds, sessionIntervalSeconds,
+				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, NodeIdentity.NONE);
+	}
+
+	/**
+	 * The consumer id, or the client id when none is said: on a broker in
+	 * mode bearer a session belongs to the name the token carries, so a
+	 * node with an identity is that name unless told otherwise.
+	 */
+	public String effectiveConsumerId() {
+		return consumerId == null || consumerId.isBlank() ? identity.clientId() : consumerId;
+	}
 
 	/** The configuration types this node knows how to serve over. */
 	public static final String REST = "fennec.rest";

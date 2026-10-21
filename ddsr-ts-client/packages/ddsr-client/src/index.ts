@@ -65,3 +65,5 @@ export { fingerprint, canonicalForm, FINGERPRINT_SCHEME } from './fingerprint/se
 export { implementationFingerprint, implementationCanonicalForm, IMPL_FINGERPRINT_SCHEME } from './fingerprint/service-implementation-fingerprint.js';
 export type { PropertyValue } from './properties.js';
 export { eClassName, toArray, asRoots, firstOfClass } from './internal/emf-util.js';
+export { tlsFetch } from './tls/tls-fetch.js';
+export type { TlsOptions } from './tls/tls-fetch.js';

@@ -8,11 +8,13 @@
 #
 # One contract, two languages, one meaning (#151).
 #
-# Every slot of the contracts example-java.xmi (m2t) and
-# binding/example-ts.xmi both render, with the type each language gives
-# it - the discipline of the sd1 golden fixtures, applied to the type
-# mapping. test/type-pins.test.ts holds the generated TypeScript to it;
-# the Java column is checked once the m2t side reads it too (#185).
+# Every slot of the contracts example-java.xmi (beside this file) and
+# ddsr-example-stubs/binding/example-ts.xmi both render, with the type
+# each language gives it - the discipline of the sd1 golden fixtures,
+# applied to the type mapping. One table, read by both tracks, so a
+# mapping cannot change on one side without the other noticing (#185):
+# TypePinsTest (m2t) holds the generated Java to the Java column,
+# type-pins.test.ts (@ddsr/example-stubs) the TypeScript to its column.
 #
 # Rows of an operation are in parameter order; 'return' is the return
 # slot, 'throws' a declared exception. optional: whether the slot may be

@@ -112,10 +112,14 @@ module that injects it. From a binding it also takes:
 The same slot must mean the same type in both languages, and the
 mapping now lives twice — `java-types.mtl` and `@ddsr/codegen`. So
 `packages/ddsr-example-stubs/binding/example-ts.xmi` renders the same
-contracts as `example-java.xmi`, and `type-pins.tsv` beside it lists
-every slot with its Java and its TypeScript type. The package's
-`type-pins.test.ts` holds the generated TypeScript to it; holding the
-Java output to the same table is #185.
+contracts as `example-java.xmi`, and `type-pins.tsv` lists every slot
+with its Java and its TypeScript type. The table lives in one neutral
+place, `org.eclipse.fennec.services.m2t/model/`, beside the Java
+binding, and both tracks read it: `TypePinsTest` holds the generated
+Java to its column, `type-pins.test.ts` the generated TypeScript to its
+own. A change to a mapping on one side fails a test until the table —
+and with it the other side — agrees. Gradle knows the table as an input
+of the m2t tests, so a change to the table alone re-runs them.
 
 ### When you need generated code at all
 

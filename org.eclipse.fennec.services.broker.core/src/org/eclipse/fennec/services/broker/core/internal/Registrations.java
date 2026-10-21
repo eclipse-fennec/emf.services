@@ -193,6 +193,13 @@ final class Registrations implements Retirement, Republication {
 				boolean ownIdentity = live != null
 						&& Objects.equals(live.getName(), implementation.getName())
 						&& Objects.equals(live.getVersion(), implementation.getVersion());
+				// Handing over is changing what somebody registered: only
+				// the principal that published the predecessor may.
+				Diagnostic refused = live == null || ownIdentity ? null
+						: Ownership.refusal(state.registrationOf(live), "replacing");
+				if (refused != null) {
+					return refused;
+				}
 				if (live == null || ownIdentity) {
 					replacesNote = "replaces " + wanted.getName() + "/" + wanted.getVersion()
 							+ (live == null
@@ -223,6 +230,13 @@ final class Registrations implements Retirement, Republication {
 			ServiceImplementation old = BrokerState.implementationNamed(
 					provider.getImplementations(), implementation.getName(), implementation.getVersion());
 			if (old != null && old != implementation) {
+				// Publishing the same identity again replaces it, so it is
+				// a change like any other — and the one that would let a
+				// stranger take a registration over by re-announcing it.
+				Diagnostic refused = Ownership.refusal(state.registrationOf(old), "publishing over");
+				if (refused != null) {
+					return refused;
+				}
 				retired = retire(provider, old);
 			}
 
@@ -257,6 +271,9 @@ final class Registrations implements Retirement, Republication {
 			reg.setProvider(provider);
 			reg.setImplementation(implementation);
 			reg.setPublishedBy(CallOrigin.requestor(null));
+			// Who published it, as verified — what withdraw, modify and
+			// heartbeat are held against. publishedBy above is the claim.
+			Ownership.claim(reg);
 			ref.setRegistration(reg);
 			state.registrations().add(reg);
 			cold.touch(reg);
@@ -321,6 +338,10 @@ final class Registrations implements Retirement, Republication {
 				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
 						"modify needs a live registration of " + implementation.getName() + "/"
 						+ implementation.getVersion() + " — publish instead");
+			}
+			Diagnostic refused = Ownership.refusal(registration, "modifying");
+			if (refused != null) {
+				return refused;
 			}
 			CatalogStore.ContractResolution contracts = catalog.resolveContracts(implementation);
 			if (contracts.refusal() != null) {
@@ -433,6 +454,10 @@ final class Registrations implements Retirement, Republication {
 			// Find and drop the matching registration / reference pair
 			// (deterministic: insertion order of the registrations list).
 			ServiceRegistration toRemove = state.registrationOf(liveImpl);
+			Diagnostic refused = Ownership.refusal(toRemove, "withdrawing");
+			if (refused != null) {
+				return refused;
+			}
 			ServiceReference withdrawn = toRemove != null ? toRemove.getReference() : null;
 
 			// Build the event material BEFORE anything is detached, so the

@@ -95,6 +95,12 @@ final class Liveness {
 				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_NOT_PUBLISHED,
 						"no live registration for reference '" + referenceId + "' — publish again");
 			}
+			// A heartbeat keeps a registration alive, so a stranger's
+			// would keep a dead provider listed.
+			Diagnostic refused = Ownership.refusal(registration, "heartbeat for");
+			if (refused != null) {
+				return refused;
+			}
 			boolean armed = providerLeases.containsKey(registration);
 			providerLeases.put(registration, new ProviderLease(Instant.now(), intervalSeconds));
 			if (!armed) {

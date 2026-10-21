@@ -84,6 +84,13 @@ public final class DdsrDiagnostics {
 	/** The implementation document violates an invariant of the model, e.g. a flavor that cannot satisfy its contract's security requirement. */
 	public static final int CODE_IMPL_INVALID                = 216;
 	public static final int CODE_SESSION_INVALID             = 230;
+	/**
+	 * On an authenticated broker a session belongs to the principal whose
+	 * subject is its consumerId: a PUT or DELETE naming somebody else's id
+	 * is refused (ACQUISITION.md §7, SECURITY.md §3). The session twin of
+	 * {@link #CODE_IMPL_OWNERSHIP_VIOLATION}.
+	 */
+	public static final int CODE_SESSION_OWNERSHIP_VIOLATION = 231;
 	public static final int CODE_INTERFACE_DEPRECATED        = 300;
 	public static final int CODE_PERSISTENCE_FAILED          = 500;
 

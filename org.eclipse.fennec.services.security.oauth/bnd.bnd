@@ -1,0 +1,28 @@
+Bundle-Name: Fennec Services OAuth Client Credentials
+Bundle-Description: \
+	The calling half of bearer authentication: a node obtains the token \
+	it shows the broker with the OAuth 2.0 client-credentials grant, \
+	caches it and renews it before it expires, and offers it as a \
+	TokenSupplier, which the REST transport puts on calls to the broker \
+	and on nothing else. \
+	\
+	Configured from the environment like the verifier on the other side \
+	(DDSR_OAUTH_*), and silent without a token endpoint: a node talking \
+	to an open broker carries the configuration and supplies nothing. \
+	\
+	Nothing here is specific to the service registry; it moves to \
+	emf.util together with the verifier (see that bundle's README).
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	jakarta.json-api;version=latest
+
+# A JDK HttpServer stands in for the token endpoint, so the tests run the
+# real HTTP exchange; parsson is the JSON implementation the launches carry.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest

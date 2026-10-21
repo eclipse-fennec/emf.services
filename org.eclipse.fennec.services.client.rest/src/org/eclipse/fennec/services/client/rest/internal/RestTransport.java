@@ -16,12 +16,14 @@ package org.eclipse.fennec.services.client.rest.internal;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.TokenSupplier;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
@@ -44,9 +46,11 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.client.ClientRequestContext;
 import jakarta.ws.rs.client.ClientRequestFilter;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 
 /**
@@ -114,6 +118,15 @@ public final class RestTransport {
 	 */
 	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
 	private volatile CallTracer tracer;
+
+	/**
+	 * Where the bearer token for the broker comes from, if this node
+	 * has one (SECURITY.md §4). Optional and dynamic: against a broker
+	 * in mode none nothing is registered, and a supplier that arrives
+	 * later is used from the next call on.
+	 */
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	private volatile TokenSupplier tokens;
 
 	private static final Logger LOG = Logger.getLogger(RestTransport.class.getName());
 
@@ -195,7 +208,38 @@ public final class RestTransport {
 				// nothing if it stops at the registry's door.
 				.register((ClientRequestFilter) request ->
 						request.getHeaders().putSingle(ClientOrigin.HEADER, origin.token()))
+				.register((ClientRequestFilter) this::authorize)
 				.build();
+	}
+
+	/**
+	 * The bearer token, on calls to the broker and on nothing else.
+	 *
+	 * <p>The same client carries service invocations to providers, and
+	 * a token minted for the broker's audience must not travel there —
+	 * a provider holding it could replay it against the broker. So the
+	 * header goes by address: under the broker URL, or not at all.
+	 * Tokens for providers are a matter of the contract's own
+	 * requirement (slice 3), not of this filter.
+	 */
+	void authorize(ClientRequestContext request) {
+		TokenSupplier supplier = tokens;
+		URI broker = baseUrl;
+		if (supplier == null || broker == null || !isUnder(request.getUri(), broker)) {
+			return;
+		}
+		request.getHeaders().putSingle(HttpHeaders.AUTHORIZATION, "Bearer " + supplier.token());
+	}
+
+	/** Same scheme, host and port, and a path at or below the broker's. */
+	static boolean isUnder(URI target, URI broker) {
+		if (target == null || !Objects.equals(target.getScheme(), broker.getScheme())
+				|| !Objects.equals(target.getHost(), broker.getHost()) || target.getPort() != broker.getPort()) {
+			return false;
+		}
+		String base = broker.getPath() == null ? "" : broker.getPath().replaceFirst("/+$", "");
+		String path = target.getPath() == null ? "" : target.getPath();
+		return path.equals(base) || path.startsWith(base + "/");
 	}
 
 	/**

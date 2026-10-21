@@ -27,7 +27,7 @@ import { DdsrClientImpl, attachShutdownHooks, fingerprint, toArray } from '@ddsr
 import type { MqttFlavor, RestFlavor } from '@ddsr/model';
 import { MqttOperationServer, operationHandlers } from '@ddsr/transport-mqtt';
 import { restDispatcher } from '@ddsr/flavor-rest';
-import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, buildPaymentInterface, buildPaymentProvider } from './payment-api';
+import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, loadPaymentProvider } from './payment-api';
 import { brokerTokens, consumerId } from './broker-auth';
 
 const log = (m: string) => console.log(`[ts-provider] ${m}`);
@@ -56,8 +56,10 @@ const payments = {
 const serviceUrl = new URL(SERVICE_URL);
 const basePath = serviceUrl.pathname.replace(/\/+$/, '');
 
-const paymentInterface = buildPaymentInterface();
-const paymentProvider = buildPaymentProvider(PROVIDER_NAME, SERVICE_URL, paymentInterface, MQTT_URL);
+// The contract, the implementation and its flavors are a document (#154);
+// what is set here is only where this instance runs and what it is called.
+const paymentProvider = loadPaymentProvider(PROVIDER_NAME, SERVICE_URL, MQTT_URL);
+const paymentInterface = paymentProvider.serviceInterface;
 const restFlavor = toArray<RestFlavor>(paymentProvider.implementation.flavors)
   .find(f => (f as { eClass?: () => { name?: string } }).eClass?.()?.name === 'RestFlavor')!;
 

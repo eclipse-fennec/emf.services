@@ -11,188 +11,74 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { Parameter, RestOperationFlavor, ServiceImplementation, ServiceInterface, ServiceOperation, ServiceProvider } from '@ddsr/model';
-import { DDSRFactory, ParameterBinding } from '@ddsr/model';
-import { props, toArray } from '@ddsr/client';
+import { readFileSync } from 'node:fs';
+import type { EObject } from '@emfts/core';
+import type { MqttFlavor, RestFlavor, ServiceFlavor, ServiceImplementation, ServiceInterface, ServiceProvider } from '@ddsr/model';
+import { deserializeFromXmi, toArray } from '@ddsr/client';
 
-const factory = DDSRFactory.eINSTANCE;
-
-/**
- * The Payment service description — field-for-field the same contract
- * the Java PaymentPublisher builds, so both sides produce the SAME sd1
- * fingerprint (that is the point of FR-P6: divergence becomes a string
- * comparison).
- */
-export function buildPaymentInterface(): ServiceInterface {
-  const payment = factory.createServiceInterface();
-  payment.name = 'Payment';
-  payment.version = '1.0.0';
-  payment.description = 'Payment processing service — charges accounts and reports balances.';
-
-  const charge = factory.createServiceOperation();
-  charge.name = 'charge';
-  charge.returnValue = returnValue('double');
-  charge.description = 'Charge an amount. Returns the remaining balance.';
-  charge.parameters.push(parameter('amount', 0, 'double', false, undefined, 'Amount to charge.'));
-  charge.parameters.push(parameter('currency', 1, 'string', true, 'EUR', 'ISO 4217 currency code.'));
-  payment.operations.push(charge);
-
-  const getBalance = factory.createServiceOperation();
-  getBalance.name = 'getBalance';
-  getBalance.returnValue = returnValue('double');
-  getBalance.description = 'Get current account balance.';
-  getBalance.parameters.push(parameter('accountId', 0, 'string', false, undefined, 'The account identifier.'));
-  payment.operations.push(getBalance);
-
-  return payment;
-}
+/** The provider document this example serves from (#154). */
+export const PAYMENT_PROVIDER_DOCUMENT = new URL('./payment-provider.xmi', import.meta.url);
 
 /**
- * Say where each argument goes. That binds the endpoint to the catalog
- * instead of to a convention: a consumer reads where each value belongs
- * instead of guessing from its type (#74).
+ * The Payment provider, read from its document — the contract, the
+ * implementation with the same property keys as the Java
+ * PaymentPublisher (only ddsr.provider.lang differs, which the property
+ * fidelity probes compare), and where every argument travels on both
+ * transports. Nothing here states the contract: that is the document's
+ * job, the same construction a Java provider served by configuration
+ * uses (#84, #154).
  *
- * @param places binding per parameter name; anything unnamed goes in the
- *               query, which is what the SDKs fall back to anyway
- * @param wireNames the name on the wire where it differs from the
- *               parameter's
+ * What is filled in is only what a deployment decides: the provider's
+ * name (and the implementation's, which derive from it), where it is
+ * reachable, and whether it speaks MQTT — without an MQTT broker the
+ * MQTT flavor is not announced at all.
  */
-function bindArguments(
-  opFlavor: RestOperationFlavor,
-  places: Record<string, ParameterBinding> = {},
-  wireNames: Record<string, string> = {}
-): void {
-  for (const parameter of toArray<Parameter>(opFlavor.operation!.parameters)) {
-    const binding = factory.createRestParameterBinding();
-    binding.parameter = parameter;
-    binding.binding = places[parameter.name!] ?? ParameterBinding.QUERY;
-    const wireName = wireNames[parameter.name!];
-    if (wireName) binding.wireName = wireName;
-    opFlavor.parameterBindings.push(binding);
-  }
-}
-
-function parameter(
-  name: string,
-  index: number,
-  type: string,
-  optional: boolean,
-  defaultValue: string | undefined,
-  description: string
-) {
-  const p = factory.createParameter();
-  p.name = name;
-  p.index = index;
-  p.type = type;
-  p.optional = optional;
-  if (defaultValue !== undefined) p.defaultValue = defaultValue;
-  p.description = description;
-  return p;
-}
-
-/**
- * The return slot, a Parameter of its own since #41. NamedElement forces
- * a name on it; 'result' is the convention both SDKs use, and the name
- * never reaches the fingerprint (it has no wire role).
- */
-function returnValue(type: string) {
-  const p = factory.createParameter();
-  p.name = 'result';
-  p.index = 0;
-  p.type = type;
-  return p;
-}
-
-/**
- * Provider + implementation with the SAME property keys as the Java
- * PaymentPublisher (only ddsr.provider.lang differs) — the property
- * fidelity probes of the cross-language harness compare these.
- */
-export function buildPaymentProvider(
+export function loadPaymentProvider(
   providerName: string,
   serviceUrl: string,
-  serviceInterface: ServiceInterface,
-  mqttUrl?: string
-): { provider: ServiceProvider; implementation: ServiceImplementation } {
-  const provider = factory.createServiceProvider();
-  provider.name = providerName;
+  mqttUrl?: string,
+  document: URL = PAYMENT_PROVIDER_DOCUMENT
+): { provider: ServiceProvider; implementation: ServiceImplementation; serviceInterface: ServiceInterface } {
+  const read = deserializeFromXmi(readFileSync(document, 'utf8'), document.href);
+  const roots = Array.isArray(read) ? read : [read];
+  const provider = ofClass<ServiceProvider>(roots, 'ServiceProvider');
+  const serviceInterface = ofClass<ServiceInterface>(roots, 'ServiceInterface');
+  const implementation = toArray<ServiceImplementation>(provider.implementations)[0];
 
-  const implementation = factory.createServiceImplementation();
+  provider.name = providerName;
   implementation.name = `${providerName}-rest`;
   implementation.implementationId = `ts:${providerName}:1.0.0`;
-  implementation.serviceInterfaces.push(serviceInterface);
-
-  implementation.properties.push(props.string('ddsr.provider.lang', 'typescript'));
-  implementation.properties.push(props.int('service.ranking', 10));
-  implementation.properties.push(props.long('payments.maxAmountCents', 5000000000));
-  implementation.properties.push(props.double('payments.feeRate', 0.025));
-  implementation.properties.push(props.float('payments.timeoutSeconds', 1.5));
-  implementation.properties.push(props.short('payments.maxRetries', 3));
-  implementation.properties.push(props.bool('payments.sandbox', true));
-  implementation.properties.push(props.stringList('payments.tags', ['demo', 'payments']));
 
   const url = new URL(serviceUrl);
-  const flavor = factory.createRestFlavor();
-  flavor.name = 'payments-rest';
-  flavor.host = `${url.protocol}//${url.host}`;
-  flavor.basePath = url.pathname.replace(/\/+$/, '') || '/payments';
+  const rest = flavorOf<RestFlavor>(implementation, 'RestFlavor');
+  rest.host = `${url.protocol}//${url.host}`;
+  rest.basePath = url.pathname.replace(/\/+$/, '') || rest.basePath;
 
-  const operations = toArray<ServiceOperation>(serviceInterface.operations);
-
-  // charge places its two arguments differently on purpose: the amount
-  // in the path, the currency in a header under a name of its own. A
-  // consumer that ignored the bindings and put both in the query would
-  // miss this endpoint entirely — which is what makes the harness's
-  // Java-consumer call a proof that a TypeScript provider's bindings
-  // arrive, rather than a proof that both sides guess alike (#82).
-  const chargeFlavor = factory.createRestOperationFlavor();
-  chargeFlavor.name = 'charge';
-  chargeFlavor.method = 'POST';
-  chargeFlavor.path = '/charge/{amount}';
-  chargeFlavor.operation = operations.find(o => o.name === 'charge')!;
-  bindArguments(chargeFlavor,
-    { amount: ParameterBinding.PATH, currency: ParameterBinding.HEADER },
-    { currency: 'X-Currency' });
-  flavor.operationFlavors.push(chargeFlavor);
-
-  const balanceFlavor = factory.createRestOperationFlavor();
-  balanceFlavor.name = 'getBalance';
-  balanceFlavor.method = 'GET';
-  balanceFlavor.path = '/balance';
-  balanceFlavor.operation = operations.find(o => o.name === 'getBalance')!;
-  bindArguments(balanceFlavor);
-  flavor.operationFlavors.push(balanceFlavor);
-
-  implementation.flavors.push(flavor);
-
-  // A2 Etappe 2: with an MQTT broker configured the SAME implementation
-  // additionally announces the MqttFlavor — same interface, second
-  // transport (the DoD scenario's "intentional: same interface,
-  // different transports"). Topics follow the frozen request/response
-  // convention (mqtt-rpc.ts): <requestTopic>/<operation>, replies on
-  // consumer-chosen per-request topics.
+  // The same implementation, a second transport (A2 Etappe 2): announced
+  // only where an MQTT broker is configured. Topics follow the frozen
+  // request/response convention (mqtt-rpc.ts), per provider.
+  const mqtt = flavorOf<MqttFlavor>(implementation, 'MqttFlavor');
   if (mqttUrl) {
-    const mqtt = factory.createMqttFlavor();
-    mqtt.name = 'payments-mqtt';
-    mqtt.kind = 'MQTT';
     mqtt.brokers.push(mqttUrl);
     mqtt.requestTopic = `ddsr/rpc/${providerName}`;
-
-    const chargeMqtt = factory.createMqttOperationFlavor();
-    chargeMqtt.name = 'charge';
-    chargeMqtt.operation = operations.find(o => o.name === 'charge')!;
-    mqtt.operationFlavors.push(chargeMqtt);
-
-    const balanceMqtt = factory.createMqttOperationFlavor();
-    balanceMqtt.name = 'getBalance';
-    balanceMqtt.operation = operations.find(o => o.name === 'getBalance')!;
-    mqtt.operationFlavors.push(balanceMqtt);
-
-    implementation.flavors.push(mqtt);
+  } else {
+    implementation.flavors.remove(mqtt);
   }
 
-  provider.implementations.push(implementation);
-  return { provider, implementation };
+  return { provider, implementation, serviceInterface };
+}
+
+function ofClass<T>(roots: EObject[], name: string): T {
+  const found = roots.find(root => root.eClass().getName() === name);
+  if (!found) throw new Error(`${PAYMENT_PROVIDER_DOCUMENT.pathname} holds no ${name}`);
+  return found as unknown as T;
+}
+
+function flavorOf<T extends ServiceFlavor>(implementation: ServiceImplementation, name: string): T {
+  const found = toArray<ServiceFlavor>(implementation.flavors)
+    .find(flavor => (flavor as unknown as EObject).eClass().getName() === name);
+  if (!found) throw new Error(`the Payment implementation has no ${name}`);
+  return found as T;
 }
 
 export const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';

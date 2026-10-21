@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026 Contributors to the Eclipse Foundation.
+
+  This program and the accompanying materials are made
+  available under the terms of the Eclipse Public License 2.0
+  which is available at https://www.eclipse.org/legal/epl-2.0/
+
+  SPDX-License-Identifier: EPL-2.0
+
+  The TypeScript Payment provider, as a document (#154): the contract,
+  the implementation with its typed properties, and where every argument
+  travels on both transports. provider.ts reads this at startup and fills
+  in only what a deployment decides — its name, where it is reachable,
+  and whether it speaks MQTT at all; nothing in code states the contract
+  a second time.
+
+  The ServiceInterface is field for field the one the Java
+  PaymentPublisher builds and itest/fixtures/fingerprint/payment.xmi
+  pins, so both providers announce the same sd1. charge places its two
+  arguments differently on purpose — the amount in the path, the currency
+  in a header under a name of its own — so a consumer that guessed
+  instead of reading the bindings would miss the endpoint (#82).
+-->
+<xmi:XMI xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="payments-ts">
+    <implementations name="payments-ts-rest" implementationId="ts:payments-ts:1.0.0" serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="payments-rest" host="http://localhost:9090" basePath="/payments">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="charge" method="POST" path="/charge/{amount}"
+            operation="/1/@operations.0">
+          <parameterBindings parameter="/1/@operations.0/@parameters.0" binding="PATH"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.1" binding="HEADER" wireName="X-Currency"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getBalance" method="GET" path="/balance"
+            operation="/1/@operations.1">
+          <parameterBindings parameter="/1/@operations.1/@parameters.0" binding="QUERY"/>
+        </operationFlavors>
+      </flavors>
+      <flavors xsi:type="services:MqttFlavor" name="payments-mqtt" kind="MQTT" requestTopic="ddsr/rpc/payments-ts">
+        <operationFlavors xsi:type="services:MqttOperationFlavor" name="charge" operation="/1/@operations.0"/>
+        <operationFlavors xsi:type="services:MqttOperationFlavor" name="getBalance" operation="/1/@operations.1"/>
+      </flavors>
+      <properties xsi:type="services:StringProperty" name="ddsr.provider.lang" value="typescript"/>
+      <properties xsi:type="services:IntProperty" name="service.ranking" value="10"/>
+      <properties xsi:type="services:LongProperty" name="payments.maxAmountCents" value="5000000000"/>
+      <properties xsi:type="services:DoubleProperty" name="payments.feeRate" value="0.025"/>
+      <properties xsi:type="services:FloatProperty" name="payments.timeoutSeconds" value="1.5"/>
+      <properties xsi:type="services:ShortProperty" name="payments.maxRetries" value="3"/>
+      <properties xsi:type="services:BoolProperty" name="payments.sandbox" value="true"/>
+      <properties xsi:type="services:StringListProperty" name="payments.tags">
+        <value>demo</value>
+        <value>payments</value>
+      </properties>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceInterface name="Payment" version="1.0.0" description="Payment processing service — charges accounts and reports balances.">
+    <operations name="charge" description="Charge an amount. Returns the remaining balance.">
+      <parameters name="amount" type="double" description="Amount to charge."/>
+      <parameters name="currency" index="1" type="string" optional="true" defaultValue="EUR" description="ISO 4217 currency code."/>
+      <returnValue name="result" type="double"/>
+    </operations>
+    <operations name="getBalance" description="Get current account balance.">
+      <parameters name="accountId" type="string" description="The account identifier."/>
+      <returnValue name="result" type="double"/>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

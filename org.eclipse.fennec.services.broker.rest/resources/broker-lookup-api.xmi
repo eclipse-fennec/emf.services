@@ -34,6 +34,7 @@
 
   <services:ServiceInterface name="BrokerLookup" version="1.0.0"
       description="What a consumer asks the broker: who implements this contract, and — once bound — that the provider is still alive.">
+    <security authenticated="true" scopes="service-consumer"/>
     <operations name="getServiceReferences"
         description="Every live registration of a contract that a consumer can use. The answer is one document: the references, the implementations behind them, and the contracts they name, copied out of the broker's state so nothing in it can be reached from the answer.">
       <parameters name="interfaceName" index="0" type="string"
@@ -59,6 +60,7 @@
       <returnValue name="result" description="What the broker made of it.">
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
       </returnValue>
+      <security authenticated="true" scopes="service-provider"/>
     </operations>
 
     <exceptions name="HeartbeatInvalid" type="HeartbeatInvalid"

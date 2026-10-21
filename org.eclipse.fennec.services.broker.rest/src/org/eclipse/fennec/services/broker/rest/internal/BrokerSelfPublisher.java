@@ -22,12 +22,17 @@ import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.BearerTokenScheme;
+import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.SecurityScheme;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
@@ -90,6 +95,22 @@ public final class BrokerSelfPublisher {
 						+ "the path becomes RestFlavor.basePath. Consumers use this to build "
 						+ "operation URLs without any client-side fallback config.")
 		String public_url() default "http://localhost:8887/ddsr/rest";
+
+		@AttributeDefinition(name = "Authentication mode",
+				description = "The broker's mode, from the same placeholder as its applications: bearer or none.")
+		String auth_mode() default "bearer";
+
+		@AttributeDefinition(name = "Token issuer", description = "The issuer the broker's verifier accepts.")
+		String issuer() default "";
+
+		@AttributeDefinition(name = "Token audiences", description = "The audiences a token for the broker carries.")
+		String[] audiences() default {};
+
+		@AttributeDefinition(name = "JWKS URI", description = "Where the issuer's signing keys are.")
+		String jwks_uri() default "";
+
+		@AttributeDefinition(name = "Scope claim", description = "Where the verifier reads roles and scopes from.")
+		String scope_claim() default "scope";
 	}
 
 	@Reference
@@ -101,8 +122,11 @@ public final class BrokerSelfPublisher {
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
+	private Config config;
+
 	@Activate
 	void activate(Config config) {
+		this.config = config;
 		for (String document : List.of("broker-catalog-api.xmi", "broker-implementations-api.xmi",
 				"broker-lookup-api.xmi")) {
 			try {
@@ -157,6 +181,13 @@ public final class BrokerSelfPublisher {
 		String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
 		flavor.setHost(publicUrl.getScheme() + "://" + publicUrl.getAuthority());
 		flavor.setBasePath((publicUrl.getPath() != null ? publicUrl.getPath() : "") + mountPath);
+		// The other deployment fact: how a caller proves itself here. The
+		// documents say who may call (the role matrix, SECURITY.md §3);
+		// only the instance knows which issuer it trusts.
+		SecurityScheme scheme = schemeOf(config);
+		if (scheme != null) {
+			flavor.getSecuritySchemes().add(scheme);
+		}
 
 		provider.setSymbolicName("org.eclipse.fennec.services.broker");
 		Diagnostic published = implementations.publishImplementation(provider, implementation);
@@ -197,5 +228,40 @@ public final class BrokerSelfPublisher {
 			}
 			return roots;
 		}
+	}
+
+	/**
+	 * The scheme the broker's own flavors name. In mode bearer, the
+	 * issuer its verifier accepts. In mode none, a connection scheme —
+	 * which is the model's way of saying that this node checks nothing
+	 * per call, and exactly what an open broker is; the contracts and
+	 * their requirements stay the same in both modes, so does their sd1.
+	 * Bearer without an issuer names nothing: such a broker serves
+	 * nothing either, and announcing a scheme nobody can satisfy would be
+	 * the one lie here.
+	 */
+	static SecurityScheme schemeOf(Config config) {
+		String mode = config.auth_mode() == null ? "" : config.auth_mode().strip();
+		if ("none".equals(mode)) {
+			ConnectionScheme open = ServicesFactory.eINSTANCE.createConnectionScheme();
+			open.setName("none");
+			open.setKind(SecuritySchemeKind.CONNECTION);
+			return open;
+		}
+		if (config.issuer() == null || config.issuer().isBlank()) {
+			return null;
+		}
+		BearerTokenScheme bearer = ServicesFactory.eINSTANCE.createBearerTokenScheme();
+		bearer.setName("bearer");
+		bearer.setKind(SecuritySchemeKind.BEARER_TOKEN);
+		bearer.setIssuer(config.issuer().strip());
+		for (String audience : config.audiences()) {
+			if (audience != null && !audience.isBlank()) {
+				bearer.getAudiences().add(audience.strip());
+			}
+		}
+		bearer.setJwksUri(config.jwks_uri() == null || config.jwks_uri().isBlank() ? null : config.jwks_uri());
+		bearer.setScopeClaim(config.scope_claim());
+		return bearer;
 	}
 }

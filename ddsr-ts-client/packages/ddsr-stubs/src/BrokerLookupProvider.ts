@@ -54,6 +54,10 @@ export function buildBrokerLookupInterface(): ServiceInterface {
   serviceInterface.name = 'BrokerLookup';
   serviceInterface.version = '1.0.0';
   serviceInterface.description = 'What a consumer asks the broker: who implements this contract, and — once bound — that the provider is still alive.';
+  const serviceInterfaceSecurity = factory.createSecurityRequirement();
+  serviceInterfaceSecurity.authenticated = true;
+  serviceInterfaceSecurity.scopes.push('service-consumer');
+  serviceInterface.security = serviceInterfaceSecurity;
 
   const exception0 = factory.createServiceException();
   exception0.name = 'HeartbeatInvalid';
@@ -115,6 +119,10 @@ export function buildBrokerLookupInterface(): ServiceInterface {
   const operation1 = factory.createServiceOperation();
   operation1.name = 'heartbeat';
   operation1.description = 'A provider says it is still there. Missing two intervals is what makes the broker declare it lost, so consumers hear about a provider that died without withdrawing.';
+  const operation1Security = factory.createSecurityRequirement();
+  operation1Security.authenticated = true;
+  operation1Security.scopes.push('service-provider');
+  operation1.security = operation1Security;
   operation1.exceptions.push(exception0);
   operation1.exceptions.push(exception1);
   const operation1Result = factory.createParameter();

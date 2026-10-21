@@ -58,6 +58,10 @@ export function buildBrokerImplementationsInterface(): ServiceInterface {
   serviceInterface.name = 'BrokerImplementations';
   serviceInterface.version = '1.0.0';
   serviceInterface.description = 'What a provider does with the broker: announce an implementation, change it in place, take it back. Every one of them carries the provider document itself — the broker reads the single implementation inside it.';
+  const serviceInterfaceSecurity = factory.createSecurityRequirement();
+  serviceInterfaceSecurity.authenticated = true;
+  serviceInterfaceSecurity.scopes.push('service-provider');
+  serviceInterface.security = serviceInterfaceSecurity;
 
   const exception0 = factory.createServiceException();
   exception0.name = 'InterfaceNotInCatalog';

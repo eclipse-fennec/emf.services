@@ -60,6 +60,11 @@ public class RegistryResource {
 	@GET
 	@Produces(MediaType.APPLICATION_XML)
 	public Response snapshot() {
+		// The whole registry, every provider's document: an admin's view.
+		Response refused = BrokerRoles.refusal(BrokerRoles.ADMIN);
+		if (refused != null) {
+			return refused;
+		}
 		// With its providers as sibling roots, by the rule every other
 		// answer follows (#88): the registry names its implementations
 		// and providers without containing them, and a reader can only

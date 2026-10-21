@@ -6,6 +6,18 @@
   "roles": {
     "realm": [
       {
+        "name": "service-provider",
+        "description": "may announce, change, withdraw and keep alive implementations, and add contracts (SECURITY.md \u00a73)"
+      },
+      {
+        "name": "service-consumer",
+        "description": "may look up, hold a session and hear the event stream"
+      },
+      {
+        "name": "service-admin",
+        "description": "may curate the catalog and read the whole registry"
+      },
+      {
         "name": "ledger-reader",
         "description": "may read the RSA example's ledger"
       },
@@ -326,10 +338,86 @@
   ],
   "users": [
     {
+      "username": "service-account-harness",
+      "enabled": true,
+      "serviceAccountClientId": "harness",
+      "realmRoles": [
+        "service-consumer",
+        "service-admin"
+      ]
+    },
+    {
+      "username": "service-account-payment-java",
+      "enabled": true,
+      "serviceAccountClientId": "payment-java",
+      "realmRoles": [
+        "service-provider"
+      ]
+    },
+    {
+      "username": "service-account-ts-provider",
+      "enabled": true,
+      "serviceAccountClientId": "ts-provider",
+      "realmRoles": [
+        "service-provider",
+        "service-consumer"
+      ]
+    },
+    {
+      "username": "service-account-java-client",
+      "enabled": true,
+      "serviceAccountClientId": "java-client",
+      "realmRoles": [
+        "service-consumer"
+      ]
+    },
+    {
+      "username": "service-account-harness-probe-ts",
+      "enabled": true,
+      "serviceAccountClientId": "harness-probe-ts",
+      "realmRoles": [
+        "service-consumer"
+      ]
+    },
+    {
+      "username": "service-account-harness-lifecycle-f",
+      "enabled": true,
+      "serviceAccountClientId": "harness-lifecycle-f",
+      "realmRoles": [
+        "service-consumer"
+      ]
+    },
+    {
+      "username": "service-account-harness-lifecycle-g",
+      "enabled": true,
+      "serviceAccountClientId": "harness-lifecycle-g",
+      "realmRoles": [
+        "service-consumer"
+      ]
+    },
+    {
+      "username": "service-account-harness-lifecycle-h",
+      "enabled": true,
+      "serviceAccountClientId": "harness-lifecycle-h",
+      "realmRoles": [
+        "service-consumer"
+      ]
+    },
+    {
+      "username": "service-account-rsa-example",
+      "enabled": true,
+      "serviceAccountClientId": "rsa-example",
+      "realmRoles": [
+        "service-provider",
+        "service-consumer"
+      ]
+    },
+    {
       "username": "service-account-rsa-example-consumer",
       "enabled": true,
       "serviceAccountClientId": "rsa-example-consumer",
       "realmRoles": [
+        "service-consumer",
         "ledger-reader"
       ]
     }

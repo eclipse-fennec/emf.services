@@ -49,7 +49,7 @@ export const BrokerLookupVersion = '1.0.0';
  * hashes to exactly this - compatibility by identity, so a provider
  * that changed its operations is not called with these signatures.
  */
-export const BrokerLookupFingerprint = 'sd1:755ad93771b6e85f062fb93042ec27525cf63444e7f8def425be8203f96f102e';
+export const BrokerLookupFingerprint = 'sd1:b0334e07f4674fc27a587f45d0b5631dca00b6d6e76e488f66569c7e10cfb609';
 
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker

@@ -2,6 +2,7 @@
 <xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" xmlns:services="http://eclipse.org/fennec/services/1.0">
   <services:RemoteServiceRegistry name="ddsr-broker" kind="REMOTE" implementations="/1/@implementations.0 /1/@implementations.1 /1/@implementations.2 /2/@implementations.0" providers="/1 /2">
     <catalog name="BrokerCatalog" version="1.0.0" description="Governance of the contracts a broker knows: list them, read one, add one, deprecate or remove one. What this states is what the broker serves — the flavor beside it says where every value travels." addedBy="broker-self-publisher">
+      <security authenticated="true"/>
       <operations name="listCatalog" description="The registry as it stands, catalog included.">
         <returnValue name="result" description="The whole registry document.">
           <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//RemoteServiceRegistry"/>
@@ -22,6 +23,7 @@
         <returnValue name="result" description="What the broker made of it.">
           <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
         </returnValue>
+        <security authenticated="true" scopes="service-provider"/>
       </operations>
       <operations name="deprecateCatalogEntry" description="Soft-deprecate a contract. Existing implementations keep working; new publishes against it are answered with a WARNING." exceptions="/0/@catalog.0/@exceptions.0 /0/@catalog.0/@exceptions.3">
         <parameters name="name" type="string" description="Name of the contract to deprecate."/>
@@ -33,6 +35,7 @@
         <returnValue name="result" description="What the broker made of it.">
           <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
         </returnValue>
+        <security authenticated="true" scopes="service-admin"/>
       </operations>
       <operations name="removeCatalogEntry" description="Remove a contract. Refused while any live implementation still references it." exceptions="/0/@catalog.0/@exceptions.0 /0/@catalog.0/@exceptions.2 /0/@catalog.0/@exceptions.3">
         <parameters name="name" type="string" description="Name of the contract to remove."/>
@@ -41,6 +44,7 @@
         <returnValue name="result" description="What the broker made of it.">
           <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
         </returnValue>
+        <security authenticated="true" scopes="service-admin"/>
       </operations>
       <exceptions name="CatalogEntryNotFound" description="No contract of that name — or none with that fingerprint." type="CatalogEntryNotFound">
         <properties xsi:type="services:IntProperty" name="code" value="201"/>
@@ -56,6 +60,7 @@
       </exceptions>
     </catalog>
     <catalog name="BrokerImplementations" version="1.0.0" description="What a provider does with the broker: announce an implementation, change it in place, take it back. Every one of them carries the provider document itself — the broker reads the single implementation inside it." addedBy="broker-self-publisher">
+      <security authenticated="true" scopes="service-provider"/>
       <operations name="publishImplementation" description="Announce one implementation of a contract that is in the catalog. Announcing the identical implementation again is the same registration, not a second one." exceptions="/0/@catalog.1/@exceptions.0 /0/@catalog.1/@exceptions.1 /0/@catalog.1/@exceptions.3 /0/@catalog.1/@exceptions.4">
         <parameters name="provider" description="The provider document, carrying exactly one implementation. Contracts it references may travel as sibling roots.">
           <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//ServiceProvider"/>
@@ -97,6 +102,7 @@
       </exceptions>
     </catalog>
     <catalog name="BrokerLookup" version="1.0.0" description="What a consumer asks the broker: who implements this contract, and — once bound — that the provider is still alive." addedBy="broker-self-publisher">
+      <security authenticated="true" scopes="service-consumer"/>
       <operations name="getServiceReferences" description="Every live registration of a contract that a consumer can use. The answer is one document: the references, the implementations behind them, and the contracts they name, copied out of the broker's state so nothing in it can be reached from the answer.">
         <parameters name="interfaceName" type="string" description="Name of the contract. Travels as 'interface' — the word is a keyword in more than one of the languages that read this."/>
         <parameters name="filter" index="1" type="string" optional="true" description="LDAP filter over the registration's properties."/>
@@ -113,6 +119,7 @@
         <returnValue name="result" description="What the broker made of it.">
           <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//Diagnostic"/>
         </returnValue>
+        <security authenticated="true" scopes="service-provider"/>
       </operations>
       <exceptions name="HeartbeatInvalid" description="The interval is not one the broker accepts." type="HeartbeatInvalid">
         <properties xsi:type="services:IntProperty" name="code" value="215"/>

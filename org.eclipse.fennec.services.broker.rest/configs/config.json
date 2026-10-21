@@ -17,7 +17,12 @@
 	},
 	"org.eclipse.fennec.services.broker.rest":
 	{
-		"public.url": "$[env:DDSR_PUBLIC_URL;default=http://localhost:8887/ddsr/rest]"
+		"public.url": "$[env:DDSR_PUBLIC_URL;default=http://localhost:8887/ddsr/rest]",
+		"auth.mode": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"issuer": "$[env:DDSR_JWT_ISSUER;default=]",
+		"audiences": "$[env:DDSR_JWT_AUDIENCES;default=ddsr-broker;type=String[];delimiter=,]",
+		"jwks.uri": "$[env:DDSR_JWT_JWKS_URI;default=]",
+		"scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]"
 	},
 	"org.eclipse.fennec.services.security.jwt":
 	{

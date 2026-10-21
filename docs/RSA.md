@@ -116,6 +116,28 @@ uses the client id as the consumer id unless one is said. The consumer
 role takes the four client attributes only. Without them a node is what
 it was: open, and calling without a token. See [Who may call](#who-may-call).
 
+Against a broker in mode `mtls` ([Security](SECURITY.md) §7d) both
+roles also take the node's **certificate**, and can prove themselves to
+the broker with it while calls to providers keep their tokens:
+
+```json
+"org.eclipse.fennec.services.rsa.consumer": {
+  "...": "as above",
+  "broker.url": "https://registry.example.com:8443/ddsr/rest",
+  "broker.authentication": "certificate",
+  "tls.keystore": "/etc/fennec/tls/my-node.p12",
+  "tls.keystore.password": "…",
+  "tls.truststore": "/etc/fennec/tls/truststore.p12",
+  "tls.truststore.password": "…"
+}
+```
+
+The role derives them into the client's REST transport. Give the
+certificate the CN of the client id, so the node is one name for the
+broker and for the providers it calls; `broker.authentication` is
+`token` unless said, and `certificate` without a key store is refused
+before anything is written.
+
 Everything both roles accept is in the metatype, visible in any OSGi
 console, on `RsaProvider.Config` and `RsaConsumer.Config`.
 

@@ -129,7 +129,12 @@ provider (`payment-java`, port 9095) announces `PersonStore` over its
 certificate and serves it in mode `bearer` for the Keycloak audience
 `person-store`; a call without a token is `401`, the lookup names the
 bearer scheme, and a client with both credentials finds the store by
-certificate and calls it with a token of that audience.
+certificate and calls it with a token of that audience. Last, scenario
+K's Ledger runs the same way through Remote Service Admin: export
+(`rsa-example`, port 9096) and import (`rsa-example-consumer`) name
+their certificates in the role configuration, find each other through
+the mtls broker, the import calls with a token for `rsa-example`, and
+version, balance and the refused record come out as in K.
 
 ## Scenarios
 

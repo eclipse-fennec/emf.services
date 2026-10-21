@@ -36,7 +36,9 @@ broker. Requirements and decisions:
   gateway's address, and the Java client subscribes and lists the
   catalog with its key store. Secured, it goes on: a provider announces
   `PersonStore` by certificate and serves it in bearer, and a client
-  finds it by certificate and calls it with a token for `person-store`.
+  finds it by certificate and calls it with a token for `person-store`;
+  then the Ledger of K is exported and imported over the mtls broker by
+  RSA nodes whose role configuration names their certificates.
   The mTLS half runs whatever `HARNESS_AUTH` says.
 - **C (podman only) — the MQTT wire proof:** a Mosquitto container; the
   TS `MqttEventSource` receives and decodes the broker-shaped message

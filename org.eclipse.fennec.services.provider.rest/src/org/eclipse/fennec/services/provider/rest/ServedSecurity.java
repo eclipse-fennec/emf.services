@@ -12,12 +12,18 @@
  ********************************************************************/
 package org.eclipse.fennec.services.provider.rest;
 
+import java.util.ArrayList;
 import java.util.Dictionary;
+import java.util.List;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.ConnectionScheme;
+import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 
 /**
@@ -99,6 +105,56 @@ final class ServedSecurity {
 					+ " — its requirements are passed over on this node");
 		}
 		return false;
+	}
+
+	/**
+	 * What the announced flavor tells a caller about proving itself, when
+	 * the mode came from configuration: a document is written once and
+	 * served in many deployments, so the issuer a bearer node trusts, or
+	 * the authorities an mtls node accepts, are deployment facts the
+	 * document cannot carry. A scheme the document does name is left as
+	 * the author wrote it.
+	 *
+	 * <p>Without this a caller cannot tell from the catalog which token to
+	 * bring — the client asks for one per audience of the flavor's bearer
+	 * scheme — and would call without one.
+	 */
+	static void announceScheme(String contract, RestFlavor flavor, Object mode, String issuer, String[] audiences,
+			String jwksUri, String scopeClaim, String[] trustedIssuers) {
+		if (BEARER.equals(mode) || BEARER_OPTIONAL.equals(mode)) {
+			if (SecurityRequirements.bearerScheme(flavor) != null) {
+				return;
+			}
+			if (issuer == null || issuer.isBlank()) {
+				LOG.warning("[DDSR] " + contract + " is served in mode " + mode + " and announced without a"
+						+ " bearer scheme — configure its issuer, or callers cannot tell which token to bring");
+				return;
+			}
+			BearerTokenScheme bearer = ServicesFactory.eINSTANCE.createBearerTokenScheme();
+			bearer.setName(BEARER);
+			bearer.setKind(SecuritySchemeKind.BEARER_TOKEN);
+			bearer.setIssuer(issuer.strip());
+			bearer.getAudiences().addAll(nonBlank(audiences));
+			bearer.setJwksUri(jwksUri == null || jwksUri.isBlank() ? null : jwksUri.strip());
+			bearer.setScopeClaim(scopeClaim == null || scopeClaim.isBlank() ? null : scopeClaim.strip());
+			flavor.getSecuritySchemes().add(bearer);
+		} else if (MTLS.equals(mode) && SecurityRequirements.mutualTlsScheme(flavor) == null) {
+			MutualTlsScheme certificates = ServicesFactory.eINSTANCE.createMutualTlsScheme();
+			certificates.setName(MTLS);
+			certificates.setKind(SecuritySchemeKind.MUTUAL_TLS);
+			certificates.getTrustedIssuers().addAll(nonBlank(trustedIssuers));
+			flavor.getSecuritySchemes().add(certificates);
+		}
+	}
+
+	private static List<String> nonBlank(String[] values) {
+		List<String> kept = new ArrayList<>();
+		for (String value : values == null ? new String[0] : values) {
+			if (value != null && !value.isBlank()) {
+				kept.add(value.strip());
+			}
+		}
+		return kept;
 	}
 
 	/**

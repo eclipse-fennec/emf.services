@@ -547,7 +547,8 @@ host as in the container — see [DEPLOYMENT.md](DEPLOYMENT.md).
 | Model: possibly put iD back on selected classes (ServiceInterface, ServiceProvider) — if global uniqueness is wanted | open |
 | The `/registry` response: providers as sibling roots (instead of cross-document hrefs) | done (the XmiBundle pattern, and since #88 a rule rather than a hand-written answer) |
 | Operation / parameter marshalling for complex payloads (e.g. a nested DTO as JSON or XMI) | partly — the generic distribution reads a body by the type the contract declares (EClass → XMI, otherwise text); there is no JSON |
-| Ordering in the headless provider: the publish goes out before the whiteboard has mounted the application, and on deactivation the endpoint dies before the withdraw (DS takes the service away before `deactivate`) | open — whoever needs FR-P3 publishes from a component of their own |
+| Ordering in the headless provider: the publish goes out before the whiteboard has mounted the application | done (#204) — it announces only once a whiteboard runtime lists its application, watched through `service.changecount` |
+| Ordering in the headless provider on the way down: the endpoint dies before the withdraw (DS takes the service away before `deactivate`) | open — whoever needs FR-P3 on shutdown announces from a component of their own (see [Eventing](EVENTING.md)) |
 | Service health / reachability probing in the client (filtering dead locators) | open — today `PaymentProxyRegistrar` picks every provider, callers filter via `ddsr.provider.name` |
 | A code generator for service stubs (`PaymentRemote` style) out of the catalog | open |
 | A wire convention for POST/PUT with mixed EObject + primitive args | open |

@@ -358,6 +358,13 @@ configuration serves an open broker. The token is cached and renewed
 reached fails the call with its reason instead of a bare `401` from the
 broker.
 
+On a bearer broker the node also needs the **role** for what it does:
+`service-provider` to publish, change, withdraw and send heartbeats,
+`service-consumer` to look up and hold a session ([Security](SECURITY.md)
+§3). A missing role is `403` naming it. A Java provider needs both: on
+restart it looks up its own earlier registration to change it in place
+rather than replace it, and a lookup is a consumer's call.
+
 On a bearer broker a session belongs to the name the token carries (the
 broker's `subject.claim` — with Keycloak client credentials, `azp`, the
 client id), so the client's `consumer.id` has to be that name:

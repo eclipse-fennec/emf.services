@@ -43,6 +43,14 @@ whom to trust. Without them there is no verifier, and a bearer broker
 without a verifier serves nothing at all — it fails closed, never open.
 For a broker to develop against, say `-e DDSR_AUTH_MODE=none` instead.
 
+A secured broker also asks for **roles**: a provider needs
+`service-provider`, a consumer `service-consumer`, and curating the
+catalog or reading the registry snapshot `service-admin`
+([Security](SECURITY.md) §3). Give your clients those roles in the
+identity provider and tell the verifier where they are — for Keycloak
+realm roles `-e DDSR_JWT_SCOPE_CLAIM=realm_access.roles`. A client
+without the role gets `403`, naming the role it lacks.
+
 The broker is up as soon as `GET /ddsr/rest/catalog` answers — about
 two seconds; `401` in bearer mode, `200` in mode none. A `404` that does
 not go away means the applications were never deployed: bearer without

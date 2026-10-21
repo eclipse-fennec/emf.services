@@ -62,6 +62,16 @@ serves, and no token carries another target's audience
 | `rsa-example` | the RSA exporting framework (I, K) — and the audience of what it serves |
 | `rsa-example-consumer` | the RSA importing framework (I, K); holds the realm role `ledger-reader`, not `ledger-writer` |
 
+Each service account holds the broker roles it needs and no more
+([Security](SECURITY.md) §3): the providers `service-provider` and
+`service-consumer` — the Java provider looks its own earlier
+registration up to change it in place (scenario F), the TS provider
+holds a session, the RSA exporter imports — the consumers and probes
+`service-consumer`, the harness itself `service-consumer` and
+`service-admin`. Right after the
+broker is up, both harnesses check that a consumer may neither publish
+nor read the registry, while the admin may.
+
 The broker names a caller by `azp` — the client id — so a consumer's
 session id is its client id, and a provider can only withdraw what it
 published itself. The processes get their identity from the same

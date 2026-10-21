@@ -87,8 +87,12 @@ DDSR_JWT_JWKS_URI=http://localhost:8080/realms/fennec/protocol/openid-connect/ce
   -jar org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar
 ```
 
-In bearer mode every call needs `Authorization: Bearer <token>`, and a
-provider can only withdraw or change what it published itself. A broker
+In bearer mode every call needs `Authorization: Bearer <token>`, the
+caller needs the role for what it does — `service-provider` to publish,
+`service-consumer` to look up and hold a session, `service-admin` to
+curate the catalog — and a provider can only withdraw or change what it
+published itself. With Keycloak, add `DDSR_JWT_SCOPE_CLAIM=realm_access.roles`
+so the broker reads realm roles. A broker
 in bearer mode without an issuer serves nothing — it fails closed, so a
 forgotten variable never leaves it open. What a client needs to obtain
 a token, and why the switch exists at all, is in

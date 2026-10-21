@@ -508,7 +508,7 @@ log "Scenario M: client certificates, mode mtls"
 # where a gateway hands the certificate on in a header. Roles come from
 # the broker's own mapping of the certificates' CNs.
 TLS_DIR="$WORK/tls"
-"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness payment-java rsa-example rsa-example-consumer
+"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness payment-java rsa-example rsa-example-consumer ts-provider
 MTLS_URL="https://localhost:8898/ddsr/rest"
 GATEWAY_URL="http://127.0.0.1:8899/ddsr/rest"
 require_port_free 8898
@@ -519,7 +519,7 @@ require_port_free 8899
        DDSR_HTTPS_KEYSTORE="$TLS_DIR/server.p12" DDSR_HTTPS_KEYSTORE_PASSWORD=changeit \
        DDSR_HTTPS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_HTTPS_TRUSTSTORE_PASSWORD=changeit \
        DDSR_HTTPS_CLIENT_CERTIFICATE=needs DDSR_MTLS_TRUSTED_ISSUERS="CN=Fennec Harness CA,O=Fennec" \
-       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|payment-java=service-provider,service-consumer|rsa-example=service-provider,service-consumer|rsa-example-consumer=service-consumer|harness=service-admin" \
+       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|payment-java=service-provider,service-consumer|rsa-example=service-provider,service-consumer|rsa-example-consumer=service-consumer|ts-provider=service-provider,service-consumer|harness=service-admin" \
        DDSR_MTLS_GATEWAY_HEADER=X-Client-Cert DDSR_MTLS_GATEWAY_ADDRESSES=127.0.0.1 \
        java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-mtls.log" 2>&1 &
 MTLS_PID=$!
@@ -572,6 +572,25 @@ fi
 echo "  ✓ java-client: subscribed and listed the catalog with its certificate"
 kill "$MTLS_CLIENT_PID" 2>/dev/null || true
 wait "$MTLS_CLIENT_PID" 2>/dev/null || true
+
+# The TypeScript provider, the same way: its fetch shows the certificate
+# (tlsFetch), it believes the harness CA, and it publishes Payment from
+# its document without a token anywhere.
+require_port_free 9097
+(cd "$TS/examples/payment" \
+  && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$MTLS_URL" SERVICE_URL="http://localhost:9097/payments" \
+       PROVIDER_NAME=payments-ts-mtls DDSR_CONSUMER_ID=ts-provider DDSR_BROKER_AUTHENTICATION=certificate \
+       DDSR_TLS_KEYSTORE="$TLS_DIR/ts-provider.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit DDSR_TLS_CA="$TLS_DIR/ca.crt" \
+       node --import tsx provider.ts) >"$WORK/provider-ts-mtls.log" 2>&1 &
+MTLS_TS_PID=$!
+PIDS+=("$MTLS_TS_PID")
+wait_for_line "$WORK/provider-ts-mtls.log" "published as reference" 60
+curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \
+    "$MTLS_URL/references?interface=Payment" | grep -q 'payments-ts-mtls' \
+  || { echo "SCENARIO M FAILED: the mtls broker does not list the TypeScript provider"; tail -20 "$WORK/provider-ts-mtls.log"; exit 1; }
+kill "$MTLS_TS_PID" 2>/dev/null || true
+wait "$MTLS_TS_PID" 2>/dev/null || true
+echo "  ✓ ts-provider: published Payment over its certificate, listed to a consumer of the CA"
 
 if secured; then
   # Discovery by certificate, calls by token (SECURITY.md §7d): the Java

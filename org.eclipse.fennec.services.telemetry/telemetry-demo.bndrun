@@ -67,6 +67,7 @@
 	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\
 	org.eclipse.fennec.emf.osgi.component.minimal;version='[1.1.0,1.1.1)',\
 	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.runtime;version=snapshot,\
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.telemetry;version=snapshot,\

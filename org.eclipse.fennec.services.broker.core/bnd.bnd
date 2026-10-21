@@ -16,6 +16,7 @@ Bundle-Description: \
 	org.osgi.util.promise;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.runtime;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 
 # Plain JUnit, no OSGi runtime: DdsrBrokerImpl is deliberately pure Java

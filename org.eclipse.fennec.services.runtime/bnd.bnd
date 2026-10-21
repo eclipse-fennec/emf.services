@@ -1,0 +1,21 @@
+Bundle-Name: Fennec Services Runtime
+Bundle-Description: \
+	What a node holds, as a service: the BrokerRuntime and ClientRuntime \
+	interfaces with their DTOs, and ChangeCountPublisher, which \
+	registers such a service and tells its watchers through \
+	service.changecount. \
+	\
+	Deliberately free of the EMF model. The runtime services describe a \
+	node in plain DTOs, and the publisher needs nothing but the \
+	framework — so an application that only wants a change-count \
+	service installs this bundle and not the model, the fingerprints \
+	and the role interfaces with it (#187).
+
+-buildpath: \
+	osgi.core;version=latest
+
+# Plain JUnit against a fake BundleContext: the publisher is a thread
+# and a registration, and neither needs a framework to exercise.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

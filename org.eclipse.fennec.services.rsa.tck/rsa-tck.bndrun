@@ -117,6 +117,7 @@ runbundles.files: ${uniq;\
 	${repo;org.eclipse.fennec.emf.osgi.component.minimal;[1.1.0,1.1.1)},\
 	${repo;org.eclipse.fennec.emf.osgi.eobject.registry;[1.1.0,1.1.1)},\
 	${repo;org.eclipse.fennec.services.api;latest},\
+	${repo;org.eclipse.fennec.services.runtime;latest},\
 	${repo;org.eclipse.fennec.services.client.java;latest},\
 	${repo;org.eclipse.fennec.services.client.rest;latest},\
 	${repo;org.eclipse.fennec.services.flavor.rest;latest},\
@@ -197,6 +198,7 @@ runbundles.files: ${uniq;\
 	org.eclipse.fennec.emf.osgi.component.minimal;version='[1.1.0,1.1.1)',\
 	org.eclipse.fennec.emf.osgi.eobject.registry;version='[1.1.0,1.1.1)',\
 	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.runtime;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.eclipse.fennec.services.client.rest;version=snapshot,\
 	org.eclipse.fennec.services.flavor.rest;version=snapshot,\

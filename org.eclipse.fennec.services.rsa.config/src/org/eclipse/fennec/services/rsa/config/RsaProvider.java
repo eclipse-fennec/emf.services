@@ -190,6 +190,29 @@ public class RsaProvider extends NodeConfiguration {
 				description = "Which claim names a caller: 'sub', or 'azp' for Keycloak client credentials.")
 		String subject_claim() default "sub";
 
+		@AttributeDefinition(name = "Broker authentication", required = false,
+				description = "How this node proves itself to the broker: token, or certificate — the key "
+						+ "store below, for a broker in mode mtls. With certificate the broker gets no token; "
+						+ "calls to providers keep theirs.")
+		String broker_authentication() default "token";
+
+		@AttributeDefinition(name = "TLS key store", required = false,
+				description = "This node's certificate and key (PKCS12). Its CN should be the client id, so the "
+						+ "node is one name for the broker and for the providers it calls.")
+		String tls_keystore() default "";
+
+		@AttributeDefinition(name = "TLS key store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the key store and of its key.")
+		String tls_keystore_password() default "";
+
+		@AttributeDefinition(name = "TLS trust store", required = false,
+				description = "The authorities whose server certificates this node believes. Empty: the JVM's.")
+		String tls_truststore() default "";
+
+		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the trust store.")
+		String tls_truststore_password() default "";
+
 	}
 
 	@Reference
@@ -234,6 +257,8 @@ public class RsaProvider extends NodeConfiguration {
 				config.topic_prefix(), config.distribution_flavor(), config.discovery_flavor(),
 				new NodeIdentity(config.token_uri(), config.client_id(), config.client_secret(), config.scope(),
 						config.issuer(), config.jwks_uri(), List.of(config.audiences()), config.scope_claim(),
-						config.subject_claim()));
+						config.subject_claim(), config.tls_keystore(), config.tls_keystore_password(),
+						config.tls_truststore(), config.tls_truststore_password(),
+						"certificate".equals(config.broker_authentication().strip())));
 	}
 }

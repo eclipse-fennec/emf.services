@@ -81,6 +81,10 @@ final class SettingsChecks {
 				problems.add("issuer is set, so audiences are needed as well: a token for this node must name it");
 			}
 		}
+		if (identity.brokerByCertificate() && identity.keyStore().isBlank()) {
+			problems.add("broker.authentication is certificate, so tls.keystore is needed as well: without it "
+					+ "the broker is shown neither a token nor a certificate");
+		}
 	}
 
 	/**

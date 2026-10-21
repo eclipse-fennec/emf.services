@@ -113,7 +113,7 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 	 */
 	public DdsrBrokerImpl(BrokerSettings settings, LookupBackend lookup, EventSink events) {
 		this.maintenance = new Maintenance(settings);
-		this.state = new BrokerState(settings.snapshotPath());
+		this.state = new BrokerState(settings.snapshotPath(), settings.domain());
 		this.delivery = new EventDelivery(events);
 		this.announcements = new Announcements(delivery);
 		this.sessions = new Sessions(state);

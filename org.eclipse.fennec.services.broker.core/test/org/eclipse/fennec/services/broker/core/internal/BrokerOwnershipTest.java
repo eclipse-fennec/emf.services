@@ -227,6 +227,37 @@ class BrokerOwnershipTest {
 	}
 
 	// ------------------------------------------------------------------
+	// domain
+	// ------------------------------------------------------------------
+
+	@Test
+	void aBrokerOfADomainWritesItOntoWhatACallCreates() {
+		// One broker per domain (SECURITY.md §3): the verifier already
+		// refused tokens of others, so everything a call creates here is
+		// of this broker's domain — and says so, for the day one broker
+		// holds several.
+		broker.close();
+		broker = new DdsrBrokerImpl(new BrokerSettings(tmp.resolve("tenant-state.xmi"), 0, 0, 0, 0, 0,
+				UpdatePolicies.DEFAULT_CUTOVER_GRACE_MILLIS, "dim"), new InMemoryLookupBackend(), null);
+		broker.addCatalogEntry(contract(), "test");
+
+		as("provider-a", () -> publish("1.0.0"));
+		as("consumer-a", () -> broker.putSession(session("consumer-a"), List.of()));
+
+		assertThat(liveReference().getRegistration().getDomain()).isEqualTo("dim");
+		assertThat(broker.getSession("consumer-a").orElseThrow().session().getDomain()).isEqualTo("dim");
+	}
+
+	@Test
+	void aBrokerOfTheDefaultDomainWritesNone() {
+		as("provider-a", () -> publish("1.0.0"));
+		as("consumer-a", () -> broker.putSession(session("consumer-a"), List.of()));
+
+		assertThat(liveReference().getRegistration().getDomain()).isNull();
+		assertThat(broker.getSession("consumer-a").orElseThrow().session().getDomain()).isNull();
+	}
+
+	// ------------------------------------------------------------------
 	// fixtures
 	// ------------------------------------------------------------------
 

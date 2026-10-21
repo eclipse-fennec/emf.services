@@ -128,6 +128,7 @@ final class Registrations implements Retirement, Republication {
 			// carries no call origin, and then this records "anonymous" —
 			// which is honest: nothing crossed a system boundary.
 			reg.setPublishedBy(CallOrigin.requestor(null));
+			reg.setDomain(state.domain());
 			ref.setRegistration(reg);
 			state.registrations().add(reg);
 			decorateReference(ref, impl);
@@ -274,6 +275,7 @@ final class Registrations implements Retirement, Republication {
 			// Who published it, as verified — what withdraw, modify and
 			// heartbeat are held against. publishedBy above is the claim.
 			Ownership.claim(reg);
+			reg.setDomain(state.domain());
 			ref.setRegistration(reg);
 			state.registrations().add(reg);
 			cold.touch(reg);

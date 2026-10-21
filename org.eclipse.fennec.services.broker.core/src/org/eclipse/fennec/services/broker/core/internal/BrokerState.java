@@ -92,8 +92,18 @@ final class BrokerState {
 	/** Whether a snapshot was read, so the caller knows to rebuild the index. */
 	private final boolean rehydrated;
 
-	BrokerState(Path snapshotPath) {
+	/**
+	 * The domain this broker serves, or {@code null} for the default one.
+	 * One per broker in the first version (SECURITY.md §3): which tokens
+	 * belong to it is the verifier's issuer and audience, so a token of
+	 * another domain never gets this far. What is left to do here is to
+	 * say so on what a call creates.
+	 */
+	private final String domain;
+
+	BrokerState(Path snapshotPath, String domain) {
 		this.snapshotPath = snapshotPath != null ? snapshotPath : Paths.get(DEFAULT_SNAPSHOT_PATH);
+		this.domain = domain == null || domain.isBlank() ? null : domain.trim();
 
 		// EMF setup: register the DDSR package and an XMI resource factory
 		// for the .xmi extension. This has to work both in OSGi (where
@@ -283,6 +293,11 @@ final class BrokerState {
 	 * which gave the references a target in memory and left them as
 	 * hrefs into a document nobody was sent (#174).
 	 */
+	/** The domain this broker serves; {@code null} is the default domain. */
+	String domain() {
+		return domain;
+	}
+
 	RemoteServiceRegistry getRegistry() {
 		lock.readLock().lock();
 		try {

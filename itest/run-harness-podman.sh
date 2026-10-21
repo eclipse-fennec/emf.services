@@ -145,6 +145,7 @@ if secured; then
     || { echo "BROKER NOT SECURED: a call without a token answered $ANON_STATUS, expected 401"; exit 1; }
   echo "  ✓ broker-secured: a call without a token is 401"
   check_role_matrix
+  check_domain "$(podman logs ddsr-broker 2>&1)"
 fi
 echo "broker up"
 

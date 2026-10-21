@@ -144,6 +144,15 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 						+ "then accepted but never enforced.",
 				required = false)
 		long liveness_sweep_seconds() default 5;
+
+		@AttributeDefinition(
+				name = "Domain",
+				description = "The one tenant or topology this broker serves (SECURITY.md \u00a73), written "
+						+ "onto every registration and session. Which callers belong to it is decided by the "
+						+ "token verifier's issuer and audience, so a token of another domain is refused "
+						+ "before it gets here. Empty is the single default domain.",
+				required = false)
+		String domain() default "";
 	}
 
 	@Reference(name="broker.backend")
@@ -242,7 +251,8 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 					config.cold_after_seconds(),
 					config.policy_sweep_seconds(),
 					config.liveness_sweep_seconds(),
-					config.cutover_grace_seconds() * 1000L);
+					config.cutover_grace_seconds() * 1000L,
+					config.domain());
 			DdsrBrokerImpl broker = new DdsrBrokerImpl(settings, externalLookup, this::fanOut);
 			this.delegate = broker;
 			broker.activate();
@@ -253,7 +263,8 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 					(BrokerRuntime) broker::runtimeSnapshot, broker::runtimeChangeCount,
 					"broker runtime service");
 			runtime.open();
-			LOG.info("[DDSR] BrokerCore activated, snapshot=" + settings.snapshotPath().toAbsolutePath());
+			LOG.info("[DDSR] BrokerCore activated, snapshot=" + settings.snapshotPath().toAbsolutePath()
+					+ ", domain=" + (settings.domain() == null || settings.domain().isBlank() ? "(default)" : settings.domain()));
 		} catch (RuntimeException activationFailure) {
 			LOG.log(Level.SEVERE, "[DDSR] BrokerCore could not be activated", activationFailure);
 			throw activationFailure;

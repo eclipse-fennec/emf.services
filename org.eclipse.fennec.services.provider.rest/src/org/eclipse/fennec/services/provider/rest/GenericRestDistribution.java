@@ -16,6 +16,9 @@ package org.eclipse.fennec.services.provider.rest;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Dictionary;
+import java.util.Enumeration;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +47,7 @@ import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -83,17 +87,13 @@ import jakarta.ws.rs.core.Application;
  *
  * <p>With {@code publish} it also announces what it serves, which is what
  * makes a headless provider possible: a configuration and a service, no
- * code. Two ordering caveats come with putting both jobs in one
- * component, and neither is hidden here. On activation the announcement
- * goes out before the whiteboard has mounted the application, because
- * Declarative Services registers this component's service only after
- * {@code activate} returns — so there is a brief window in which a
- * consumer can find an endpoint that is not answering yet. On
- * deactivation it is the other way round: the service is unregistered
- * before {@code deactivate} runs, so the endpoint stops before the
- * withdrawal is announced, which is the opposite of the order FR-P3
- * asks for. A deployment that must have that order announces from a
- * separate component and leaves {@code publish} off here.
+ * code — in the FR-P3 order both ways (#204). It registers the
+ * application itself rather than letting Declarative Services do it,
+ * because DS would register it only after {@code activate} and take it
+ * away before {@code deactivate}: the announcement would go out before
+ * the endpoint answers, and the endpoint would stop before the
+ * withdrawal. So: register, wait until a whiteboard lists the
+ * application, announce; and on the way down withdraw, then unregister.
  */
 @Designate(ocd = GenericRestDistribution.Config.class, factory = true)
 // `ddsr.distribution` says what this service is. Declarative Services
@@ -103,7 +103,7 @@ import jakarta.ws.rs.core.Application;
 // distribution of the same contract finds this application and tries to
 // invoke the contract's operations on it (found in harness scenario J).
 @Component(
-		service = Application.class,
+		service = {},
 		property = "ddsr.distribution=rest",
 		configurationPid = "org.eclipse.fennec.services.provider.rest",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
@@ -227,8 +227,12 @@ public class GenericRestDistribution extends Application {
 	/** The authentication mode this application states, for the scheme it announces. */
 	private Object mode;
 
-	/** For this application's own service id, which is what the whiteboard's DTOs name it by. */
-	private ComponentContext componentContext;
+	/**
+	 * This application's registration, made by this component and not by
+	 * DS, so that it can come before the announcement and go after the
+	 * withdrawal. Its service id is what the whiteboard's DTOs name it by.
+	 */
+	private ServiceRegistration<Application> application;
 
 	private final Set<JakartarsServiceRuntime> runtimes = ConcurrentHashMap.newKeySet();
 
@@ -317,7 +321,12 @@ public class GenericRestDistribution extends Application {
 
 	/** Where this application stands in the whiteboards, by its own service id. */
 	private Deployment deployment() {
-		ServiceReference<?> self = componentContext == null ? null : componentContext.getServiceReference();
+		ServiceReference<Application> self;
+		try {
+			self = application == null ? null : application.getReference();
+		} catch (IllegalStateException unregistered) {
+			self = null;
+		}
 		if (self == null) {
 			return Deployment.PENDING;
 		}
@@ -352,13 +361,37 @@ public class GenericRestDistribution extends Application {
 		// Under the same monitor announceIfReady takes: a binding on
 		// another thread must either see both of these or neither.
 		synchronized (this) {
-			this.componentContext = componentContext;
 			this.config = config;
 			this.implementation = implementation;
 			this.mode = componentContext.getProperties().get(ServedSecurity.AUTH);
+			// Registered under the monitor, so a runtime update that lists
+			// it cannot slip in before the field is set and be missed.
+			this.application = context.registerService(Application.class, this,
+					serviceProperties(componentContext.getProperties()));
 		}
 		announceIfReady();
 	}
+
+	/**
+	 * What DS would have put on the service: the configuration and the
+	 * component's own properties, which is where the whiteboard reads the
+	 * base, the name, the mode and the extension selector from — minus
+	 * what only the framework may set on a registration.
+	 */
+	static Dictionary<String, Object> serviceProperties(Dictionary<String, Object> component) {
+		Dictionary<String, Object> properties = new Hashtable<>();
+		for (Enumeration<String> keys = component.keys(); keys.hasMoreElements();) {
+			String key = keys.nextElement();
+			if (key.startsWith(".") || FRAMEWORK_PROPERTIES.contains(key)) {
+				continue;
+			}
+			properties.put(key, component.get(key));
+		}
+		return properties;
+	}
+
+	private static final Set<String> FRAMEWORK_PROPERTIES = Set.of(Constants.OBJECTCLASS, Constants.SERVICE_ID,
+			Constants.SERVICE_BUNDLEID, Constants.SERVICE_SCOPE);
 
 	/**
 	 * Announce once everything it takes is there — the model, both
@@ -438,7 +471,19 @@ public class GenericRestDistribution extends Application {
 
 	@Deactivate
 	void deactivate() {
+		// FR-P3 on the way down: consumers hear of it while the endpoint
+		// still answers, and only then does it go.
 		withdraw();
+		synchronized (this) {
+			if (application != null) {
+				try {
+					application.unregister();
+				} catch (IllegalStateException alreadyGone) {
+					// the framework is on its way out and took it already
+				}
+				application = null;
+			}
+		}
 		if (publishedFrom != null) {
 			resourceSets.ungetService(publishedFrom);
 			publishedFrom = null;

@@ -190,11 +190,12 @@ in the gap reaches nobody.
   gone.
 - **A lease is not a contract.** The broker may forget leases, and a
   restart does. Handle `RETIRED` even while holding one.
-- **One known FR-P3 violation.** The generic REST distribution
-  (`…provider.rest`) is unregistered by Declarative Services before its
-  deactivate runs, so its endpoint stops before the withdrawal is
-  announced. A deployment that needs the order announces from a
-  separate component and leaves `publish` off there.
+- **The generic REST distribution keeps the order too** (#204). It
+  registers its application itself instead of leaving that to
+  Declarative Services, which would register it only after activation
+  and take it away before deactivation. So it announces only once a
+  whiteboard lists the application as deployed, and on the way down it
+  withdraws first and stops serving after.
 
 ## Provider liveness
 

@@ -1,10 +1,12 @@
-# enableFennecServicesSecurity — bearer tokens in a launch: the token a
-# node shows (client credentials, DDSR_OAUTH_*) and the verifier of the
-# tokens it is shown (DDSR_JWT_*). Both register nothing without their
-# configuration, so the bundles are safe in a launch that runs open.
+# enableFennecServicesSecurity — authentication in a launch: the token a
+# node shows (client credentials, DDSR_OAUTH_*), the verifier of the
+# tokens it is shown (DDSR_JWT_*), and the client-certificate filter of
+# mode mtls. Each acts only where configured or where an application asks
+# for its mode, so the bundles are safe in a launch that runs open.
 fennec.services.range: [0.1.0,0.2.0)
 
 -runbundles.fennec.services.security: \
 	org.eclipse.fennec.services.security.oauth;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.security.jwt;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.security.mtls;version='${fennec.services.range}',\
 	com.nimbusds.nimbus-jose-jwt;version='[10.3.0,10.3.1)'

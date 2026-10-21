@@ -16,13 +16,7 @@
  * the Java `SecurityRequirements` (SECURITY.md §2): the operation's own
  * requirement where it states one, else the interface's default.
  */
-import type {
-  BearerTokenScheme,
-  SecurityRequirement,
-  ServiceFlavor,
-  ServiceInterface,
-  ServiceOperation,
-} from '@ddsr/model';
+import type { BearerTokenScheme, MutualTlsScheme, SecurityRequirement, ServiceFlavor, ServiceInterface, ServiceOperation } from '@ddsr/model';
 
 /** The requirement that applies to the operation, or undefined when neither it nor its interface states one. */
 export function effectiveRequirement(operation: ServiceOperation | undefined): SecurityRequirement | undefined {
@@ -48,6 +42,21 @@ export function bearerScheme(flavor: ServiceFlavor | undefined): BearerTokenSche
     const name = (scheme as unknown as { eClass?: () => { getName?: () => string } }).eClass?.()?.getName?.();
     if (name === 'BearerTokenScheme' || 'issuer' in (scheme as object)) {
       return scheme as BearerTokenScheme;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The client-certificate scheme the flavor offers, or undefined: a caller
+ * of it proves itself on the TLS connection, with nothing in the request
+ * (SECURITY.md §7d).
+ */
+export function mutualTlsScheme(flavor: ServiceFlavor | undefined): MutualTlsScheme | undefined {
+  for (const scheme of toArray(flavor?.securitySchemes)) {
+    const name = (scheme as unknown as { eClass?: () => { getName?: () => string } }).eClass?.()?.getName?.();
+    if (name === 'MutualTlsScheme') {
+      return scheme as MutualTlsScheme;
     }
   }
   return undefined;

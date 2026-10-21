@@ -21,6 +21,8 @@ header:
     - 'licenses'
     # golden fingerprint fixtures are hash-pinned byte-for-byte
     - 'itest/fixtures/**'
+    # public test certificates: a header would break the PEM
+    - '**/test/fixtures/tls/*.pem'
     # generated code (emfts-codegen resp. EMF codegen into legacy src/)
     - 'ddsr-ts-client/packages/ddsr-model/src/**'
     - 'ddsr-ts-client/packages/ddsr-stubs/src/**'

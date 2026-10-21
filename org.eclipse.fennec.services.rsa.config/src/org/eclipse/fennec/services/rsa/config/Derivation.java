@@ -135,8 +135,22 @@ public final class Derivation {
 	}
 
 	private static void client(List<DerivedConfiguration> plan, RsaSettings settings) {
-		plan.add(DerivedConfiguration.of(CLIENT_REST_PID, Map.of(
-				"broker.url", settings.brokerUrl())));
+		Map<String, Object> rest = new LinkedHashMap<>();
+		rest.put("broker.url", settings.brokerUrl());
+		NodeIdentity identity = settings.identity();
+		// The certificate the node shows, and how it proves itself to the
+		// broker (SECURITY.md §7d): with certificate the broker gets no
+		// token, while calls to providers keep theirs.
+		if (identity.hasTls()) {
+			rest.put("tls.keystore", identity.keyStore());
+			rest.put("tls.keystore.password", identity.keyStorePassword());
+			rest.put("tls.truststore", identity.trustStore());
+			rest.put("tls.truststore.password", identity.trustStorePassword());
+		}
+		if (identity.brokerByCertificate()) {
+			rest.put("broker.authentication", "certificate");
+		}
+		plan.add(DerivedConfiguration.of(CLIENT_REST_PID, Map.copyOf(rest)));
 		Map<String, Object> client = new LinkedHashMap<>();
 		client.put("provider.heartbeat.seconds", String.valueOf(settings.heartbeatSeconds()));
 		client.put("session.interval.seconds", String.valueOf(settings.sessionIntervalSeconds()));

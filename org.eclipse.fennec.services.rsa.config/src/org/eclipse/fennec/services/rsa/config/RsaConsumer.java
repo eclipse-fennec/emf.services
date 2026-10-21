@@ -121,6 +121,29 @@ public class RsaConsumer extends NodeConfiguration {
 				description = "Space-separated scopes to ask for; empty asks for the client's defaults.")
 		String scope() default "";
 
+		@AttributeDefinition(name = "Broker authentication", required = false,
+				description = "How this node proves itself to the broker: token, or certificate — the key "
+						+ "store below, for a broker in mode mtls. With certificate the broker gets no token; "
+						+ "calls to providers keep theirs.")
+		String broker_authentication() default "token";
+
+		@AttributeDefinition(name = "TLS key store", required = false,
+				description = "This node's certificate and key (PKCS12). Its CN should be the client id, so the "
+						+ "node is one name for the broker and for the providers it calls.")
+		String tls_keystore() default "";
+
+		@AttributeDefinition(name = "TLS key store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the key store and of its key.")
+		String tls_keystore_password() default "";
+
+		@AttributeDefinition(name = "TLS trust store", required = false,
+				description = "The authorities whose server certificates this node believes. Empty: the JVM's.")
+		String tls_truststore() default "";
+
+		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the trust store.")
+		String tls_truststore_password() default "";
+
 	}
 
 	@Reference
@@ -163,6 +186,8 @@ public class RsaConsumer extends NodeConfiguration {
 				config.session_interval_seconds(), config.consumer_id(), config.mqtt_url(),
 				config.topic_prefix(), "", config.discovery_flavor(),
 				new NodeIdentity(config.token_uri(), config.client_id(), config.client_secret(), config.scope(),
-						"", "", List.of(), "scope", "sub"));
+						"", "", List.of(), "scope", "sub", config.tls_keystore(), config.tls_keystore_password(),
+						config.tls_truststore(), config.tls_truststore_password(),
+						"certificate".equals(config.broker_authentication().strip())));
 	}
 }

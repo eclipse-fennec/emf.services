@@ -104,6 +104,39 @@ class IdentityDerivationTest {
 	}
 
 	@Test
+	void aCertificateGoesToTheClientAndTheBrokerGetsNoToken() {
+		// Discovery by certificate, calls by token (SECURITY.md §7d): the
+		// token supplier stays for the providers, the client shows the
+		// broker the certificate instead.
+		NodeIdentity both = new NodeIdentity(REALM + "/protocol/openid-connect/token", "rsa-example",
+				"rsa-example-secret", "", "", "", List.of(), "", "", "/tls/rsa-example.p12", "changeit",
+				"/tls/truststore.p12", "changeit", true);
+		List<DerivedConfiguration> plan = Derivation.forConsumer(provider(both, ""));
+
+		assertThat(byLabel(plan, Derivation.CLIENT_REST_PID).properties())
+				.containsEntry("broker.url", "http://broker:8887/ddsr/rest")
+				.containsEntry("tls.keystore", "/tls/rsa-example.p12")
+				.containsEntry("tls.keystore.password", "changeit")
+				.containsEntry("tls.truststore", "/tls/truststore.p12")
+				.containsEntry("broker.authentication", "certificate");
+		assertThat(plan).anyMatch(entry -> entry.label().equals(Derivation.OAUTH_PID));
+	}
+
+	@Test
+	void aTokenOnlyNodeWritesNothingAboutTls() {
+		assertThat(byLabel(Derivation.forProvider(provider(IDENTITY, "")), Derivation.CLIENT_REST_PID).properties())
+				.containsOnlyKeys("broker.url");
+	}
+
+	@Test
+	void theBrokerByCertificateWithoutOneIsAProblem() {
+		NodeIdentity noKeyStore = new NodeIdentity("", "", "", "", "", "", List.of(), "", "", "", "", "", "", true);
+
+		assertThat(SettingsChecks.problems(provider(noKeyStore, ""), false))
+				.anyMatch(problem -> problem.contains("tls.keystore"));
+	}
+
+	@Test
 	void audiencesReadBackAsANewArrayAreNotAChange() {
 		// Configuration Admin hands back a new array; equal content must not
 		// rewrite — and reconfigure the verifier — on every apply.

@@ -7,10 +7,10 @@ through the moving parts and how to run them yourself.
 ## The contract
 
 `Payment` (operations `charge(amount, currency)` and
-`getBalance(accountId)`, both returning `double`) is built field for
-field identically on both sides — `PaymentPublisher` (Java) and
-`payment-api.ts` (TypeScript) — so both produce the **same sd1
-fingerprint**. That is the point: contract divergence between the
+`getBalance(accountId)`, both returning `double`) is the same on both
+sides — built by `PaymentPublisher` (Java), read from the document
+`payment-provider.xmi` by the TypeScript provider — so both produce the
+**same sd1 fingerprint**. That is the point: contract divergence between the
 languages becomes a string comparison, pinned by the golden fixtures
 under `itest/fixtures/fingerprint/`.
 

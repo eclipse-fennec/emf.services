@@ -539,12 +539,16 @@ verify, or a guarded contract without a scheme, is not built unless
 `auth: 'none'` says open. A host writes `answer.headers` with the
 answer. `examples/payment/ledger-ts.ts` is the whole of it.
 
-**What a TypeScript provider still states in code**, and Java does not:
-the contract itself. `payment-api.ts` builds `ServiceInterface` and the
-flavors with the factory, where a Java provider reads a model document
-and a configuration serves it. That second statement of the contract is
-the remaining half of #154 — until then the two languages agree because
-the harness pins the sd1 golden hash beside them, not by construction.
+**A TypeScript provider states its contract as a document**, like a
+Java provider served by configuration (#154). The payment example's
+`payment-provider.xmi` holds the contract, the implementation with its
+typed properties and both flavors with their parameter bindings;
+`loadPaymentProvider` reads it with `deserializeFromXmi` and fills in
+only what a deployment decides — the provider's name, where it is
+reachable, and whether it speaks MQTT. A test in the example holds the
+document's sd1 to the golden fixture the Java side is pinned to, so the
+two languages agree by one statement and a check, not by two
+statements kept in step.
 
 ---
 

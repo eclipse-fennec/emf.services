@@ -20,6 +20,10 @@ broker. Requirements and decisions:
   provider: the withdraw is acknowledged by the broker **before** the
   HTTP endpoint stops, and the broker no longer lists the provider
   afterwards.
+- **N (host only) — the developer's broker, open:** a second broker from
+  the development launch with no security variable, a TypeScript
+  provider without credentials publishing to it, and a lookup without a
+  token finding it.
 - **C (podman only) — the MQTT wire proof:** a Mosquitto container; the
   TS `MqttEventSource` receives and decodes the broker-shaped message
   over real MQTT/TCP (topics `<prefix>/<interface>` and
@@ -73,9 +77,17 @@ drain in scenario G.
 ## Runs
 
 ```bash
-./itest/run-harness.sh          # host processes (no podman needed): A + B + F + G + H
+./itest/run-harness.sh          # host processes: A + B + F + G + H + N (podman only for Keycloak)
 ./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + J + F + G + H
+HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 ```
+
+Both run the broker **secured** by default: Keycloak
+(`keycloak/fennec-realm.json`, port 18080) issues every process a token
+of its own client, the broker verifies them in mode bearer, and a call
+without a token is checked to be `401`. `keycloak/auth.sh` holds the
+helpers both scripts share. The table of clients and why the consumer
+id is the client id is in [HARNESS.md](../docs/HARNESS.md#secured-by-default).
 
 Both build first (`./gradlew build` + the bnd exports, `pnpm install` +
 build). The export jars are deleted before the export: the bnd export

@@ -11,12 +11,15 @@ over a real wire.
 ## Running it
 
 ```bash
-# host processes (no containers; scenarios A + B + F + G + H)
+# host processes (scenarios A + B + F + G + H + N); podman only for Keycloak
 ./itest/run-harness.sh
 
 # containerized incl. Mosquitto (scenarios A–J) — podman is the
 # vehicle, not a requirement
 ./itest/run-harness-podman.sh
+
+# either of them against an open broker, without Keycloak
+HARNESS_AUTH=none ./itest/run-harness.sh
 ```
 
 The podman variant builds four images from the exported BND launches
@@ -30,6 +33,43 @@ host that resolves through the systemd-resolved stub (`127.0.0.53`, the
 GitHub runners among them) that nameserver is unreachable from inside
 and every lookup fails as `EAI_AGAIN`. Logs of failing scenarios land
 under `itest/work-podman/`.
+
+## Secured by default
+
+Both harnesses run the broker the way a deployment should: in mode
+`bearer` ([Security](SECURITY.md) §7a), against a Keycloak realm that
+runs as a container for the length of the run
+(`quay.io/keycloak/keycloak:26.4` on port 18080, realm
+`itest/keycloak/fennec-realm.json`). The first check after the broker
+is up is that a call **without** a token is turned away with `401`.
+
+Every process calls the broker as a client of its own — one
+confidential client per role, secret `<client>-secret`, each putting the
+audience `ddsr-broker` into its tokens:
+
+| Client | Who |
+| --- | --- |
+| `harness` | the scripts' own curl checks |
+| `payment-java` | every Java payment provider instance (A, F, G, H, J) |
+| `ts-provider` | the TypeScript provider (B, E) |
+| `java-client` | `client.jar`, `client-mqtt.jar` (P, B, D) |
+| `harness-probe-ts` | the TypeScript probe (A, E, J) |
+| `harness-lifecycle-f/-g/-h` | the lifecycle probes |
+| `rsa-example`, `rsa-example-consumer` | the RSA frameworks (I) |
+
+The broker names a caller by `azp` — the client id — so a consumer's
+session id is its client id, and a provider can only withdraw what it
+published itself. The processes get their identity from the same
+environment variables in both languages (`DDSR_OAUTH_TOKEN_URI`,
+`DDSR_OAUTH_CLIENT_ID`, `DDSR_OAUTH_CLIENT_SECRET`; the consumer id
+falls back to the client id); `itest/keycloak/auth.sh` hands them out.
+
+`HARNESS_AUTH=none` runs either harness open, without Keycloak — and
+without podman for the host variant. Independently of that, the host
+harness ends with **scenario N**: a second broker from the development
+launch with no security variable at all, a provider without credentials
+publishing to it, and a lookup without a token finding it. The path a
+developer takes stays proven whatever the rest of the run did.
 
 ## Scenarios
 

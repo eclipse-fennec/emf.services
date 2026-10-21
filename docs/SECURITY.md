@@ -384,11 +384,11 @@ audience is 401 on all four applications and the SSE stream, a valid
 token is 200, and a withdraw, re-publish or session PUT by a second
 principal is 403 while the owner's goes through.
 
-Not in slice 2, and deliberately: the domain (`registration.domain`
-stays null, the broker's single default domain), the role filter per
-operation (slice 3), and the token supplier in the SDKs — an
-authenticated broker cannot yet be used by the Java or TypeScript
-client, which is why every launch that runs them says none.
+Not built yet, and deliberately: the domain (`registration.domain`
+stays null, the broker's single default domain) and the role filter per
+operation (slice 3). The token supplier in the SDKs came with slice 4
+(§4), and with it a harness that runs against the secured broker by
+default ([Harness](HARNESS.md#secured-by-default)).
 
 ## 8. Decisions taken, decisions open
 
@@ -426,7 +426,7 @@ Open, in the order they will come up:
 | the broker's applications state a mode (`DDSR_AUTH_MODE`, default bearer), ownership rule on registration, heartbeat and session | implemented — slice 2, see §7a |
 | verifier configured from the environment (`DDSR_JWT_*`), image secured by default | implemented — slice 4 |
 | token supplier for the broker in both SDKs (`TokenSupplier`, `…security.oauth`, `clientCredentials`) | implemented — slice 4 |
-| Keycloak in the harness, harness secured by default | not yet — slice 4 |
+| Keycloak in both harnesses, harness secured by default, scenario N for the open path | implemented — slice 4, see [Harness](HARNESS.md#secured-by-default) |
 | role filter on the broker's contracts | not yet — slice 3 |
 | token supplier in the Java and TypeScript SDKs | not yet |
 | domain enforcement from issuer/audience | not yet |

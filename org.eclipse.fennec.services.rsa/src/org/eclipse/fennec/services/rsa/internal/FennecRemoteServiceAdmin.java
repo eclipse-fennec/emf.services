@@ -30,11 +30,13 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.client.DdsrClient;
+import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.rsa.registry.ServiceModels;
@@ -278,7 +280,21 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 			// there is one, and derives only otherwise. From here on
 			// nothing can tell which it was.
 			ServiceInterface contract = models.contractFor(exportedAs, effective);
+			// Asking for fennec.bearer is the OSGi way to say "only an
+			// authenticated caller" without annotating the interface. A
+			// contract that states nothing of its own is told so; one that
+			// states roles keeps them.
+			if (intentsAskedFor(effective).contains(FlavorDistribution.BEARER_INTENT) && contract.getSecurity() == null
+					&& !SecurityRequirements.demandsAuthentication(contract)) {
+				SecurityRequirement authenticated = ServicesFactory.eINSTANCE.createSecurityRequirement();
+				authenticated.setAuthenticated(true);
+				contract.setSecurity(authenticated);
+			}
 			endpoint = distribution.export(service, contract, effective);
+			// The endpoint says what this call is, not everything the
+			// transport could do: fennec.bearer only where the contract
+			// demands a caller.
+			List<String> described = intentsOf(endpoint.contract(), intents);
 			String frameworkUuid = context.getProperty(Constants.FRAMEWORK_UUID);
 			// Who exported it, on the implementation itself and before
 			// anyone hears about it. A node that both exports a contract
@@ -290,7 +306,7 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 			inRegistry = models.add(endpoint.implementation());
 			announcement = discovery.announce(endpoint);
 			EndpointDescription description = Endpoints.describe(effective, reference, exportedAs,
-					endpoint.contract(), endpoint.implementation(), frameworkUuid, configType, intents,
+					endpoint.contract(), endpoint.implementation(), frameworkUuid, configType, described,
 					endpoint.properties());
 
 			// An update describes the endpoint again from the service's
@@ -304,7 +320,7 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 					lastOverrides.set(new LinkedHashMap<>(changed));
 				}
 				return Endpoints.describe(effectiveProperties(reference, lastOverrides.get()), reference,
-						exportedAs, served.contract(), served.implementation(), frameworkUuid, configType, intents,
+						exportedAs, served.contract(), served.implementation(), frameworkUuid, configType, described,
 						served.properties());
 			};
 
@@ -420,6 +436,20 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 		// Nothing asked for: this admin's own type answers, because there
 		// is exactly one and the deployment named it.
 		return "";
+	}
+
+	/**
+	 * What an endpoint promises: everything the transport does, except the
+	 * bearer intent where the contract does not demand a caller — an open
+	 * endpoint must not be filtered for as an authenticated one.
+	 */
+	static List<String> intentsOf(ServiceInterface contract, List<String> promised) {
+		if (SecurityRequirements.demandsAuthentication(contract)) {
+			return promised;
+		}
+		List<String> open = new ArrayList<>(promised);
+		open.remove(FlavorDistribution.BEARER_INTENT);
+		return open;
 	}
 
 	/**

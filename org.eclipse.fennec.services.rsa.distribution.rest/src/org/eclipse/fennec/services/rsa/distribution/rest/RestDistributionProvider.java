@@ -15,15 +15,19 @@ package org.eclipse.fennec.services.rsa.distribution.rest;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.provider.rest.RestDistribution;
 import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
@@ -84,6 +88,24 @@ public class RestDistributionProvider implements FlavorDistribution {
 						+ "exported contract is served under its own path below it.")
 		String public_url();
 
+		@AttributeDefinition(name = "Token issuer",
+				description = "The issuer of the bearer tokens this node's verifier accepts. With it, this "
+						+ "distribution promises the intent fennec.bearer and serves contracts that demand "
+						+ "authentication; without it, such contracts are not exported. Empty means none.")
+		String issuer() default "";
+
+		@AttributeDefinition(name = "Token audiences",
+				description = "The audiences a token for this node must carry one of — what a consumer asks "
+						+ "its identity provider for, per target.")
+		String[] audiences() default {};
+
+		@AttributeDefinition(name = "JWKS URI", description = "Where the issuer's signing keys are fetched.")
+		String jwks_uri() default "";
+
+		@AttributeDefinition(name = "Scope claim",
+				description = "Where the verifier reads scopes from: 'scope', or 'realm_access.roles' for roles.")
+		String scope_claim() default "scope";
+
 	}
 
 	@Reference
@@ -136,6 +158,13 @@ public class RestDistributionProvider implements FlavorDistribution {
 		return FlavorKind.REST;
 	}
 
+	/** {@code osgi.basic}, and {@code fennec.bearer} once there is an issuer to name. */
+	@Override
+	public String[] supportedIntents() {
+		return config.issuer().isBlank() ? new String[] { "osgi.basic" }
+				: new String[] { "osgi.basic", BEARER_INTENT };
+	}
+
 	@Override
 	public ExportedEndpoint export(Object service, ServiceInterface contract, Map<String, ?> properties) {
 		if (contract == null) {
@@ -149,6 +178,13 @@ public class RestDistributionProvider implements FlavorDistribution {
 		// for both.
 		String mountPath = "/" + provider + RestFlavors.basePathFor(contract);
 		RestFlavor flavor = RestFlavors.flavorFor(contract, mountPath);
+		// How a caller proves itself, said in the flavor — and only for a
+		// contract that asks: an open contract stays exactly what it was.
+		// Without an issuer a guarded contract gets no scheme, and serving
+		// it refuses (fail closed).
+		if (SecurityRequirements.demandsAuthentication(contract) && !config.issuer().isBlank()) {
+			flavor.getSecuritySchemes().add(bearerScheme());
+		}
 
 		RestDistribution.Served served = distribution.serve(flavor, service, provider + ":" + contract.getName());
 
@@ -162,6 +198,17 @@ public class RestDistributionProvider implements FlavorDistribution {
 		LOG.info("[DDSR] exported " + contract.getName() + " over REST at "
 				+ flavor.getHost() + flavor.getBasePath());
 		return new RestEndpoint(contract, implementation, served);
+	}
+
+	private BearerTokenScheme bearerScheme() {
+		BearerTokenScheme scheme = ServicesFactory.eINSTANCE.createBearerTokenScheme();
+		scheme.setName("bearer");
+		scheme.setKind(SecuritySchemeKind.BEARER_TOKEN);
+		scheme.setIssuer(config.issuer());
+		scheme.getAudiences().addAll(List.of(config.audiences()));
+		scheme.setJwksUri(config.jwks_uri().isBlank() ? null : config.jwks_uri());
+		scheme.setScopeClaim(config.scope_claim());
+		return scheme;
 	}
 
 	/**

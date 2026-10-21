@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Set;
 
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.common.CallPrincipal;
 import org.eclipse.fennec.services.security.jwt.SecurityNames;
 import org.eclipse.fennec.services.security.jwt.TestTokens;
@@ -133,5 +134,48 @@ class BearerAuthFilterTest {
 		when(empty.getHeaderString("Authorization")).thenReturn("Bearer ");
 		filter.filter(empty);
 		verify(empty).abortWith(any());
+	}
+
+	// ------------------------------------------------------------------
+	// mode bearer-optional
+
+	@Test
+	void optionalModeLetsARequestWithoutATokenThroughWithNoPrincipal() {
+		CallPrincipal.set(ServicesFactory.eINSTANCE.createPrincipal());
+
+		optional().filter(request);
+
+		verify(request, never()).abortWith(any());
+		assertThat(CallPrincipal.current()).as("nobody is lent the previous caller's identity").isNull();
+	}
+
+	@Test
+	void optionalModeStillTurnsABadTokenAway() throws Exception {
+		String forged = tokens.token(tokens.otherKey, "node", null, null,
+				new java.util.Date(System.currentTimeMillis() + 60_000), TestTokens.ISSUER, TestTokens.AUDIENCE);
+		when(request.getHeaderString("Authorization")).thenReturn("Bearer " + forged);
+
+		optional().filter(request);
+
+		ArgumentCaptor<Response> response = ArgumentCaptor.forClass(Response.class);
+		verify(request).abortWith(response.capture());
+		assertThat(response.getValue().getStatus()).as("a bad credential is never the same as none").isEqualTo(401);
+	}
+
+	@Test
+	void optionalModeVerifiesAGoodToken() throws Exception {
+		when(request.getHeaderString("Authorization"))
+				.thenReturn("Bearer " + tokens.token("payments-node", "provider", null));
+
+		optional().filter(request);
+
+		verify(request, never()).abortWith(any());
+		assertThat(CallPrincipal.subject()).isEqualTo("payments-node");
+	}
+
+	private OptionalBearerAuthFilter optional() {
+		OptionalBearerAuthFilter optional = new OptionalBearerAuthFilter();
+		optional.verifier = filter.verifier;
+		return optional;
 	}
 }

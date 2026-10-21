@@ -38,6 +38,8 @@ final class ServedSecurity {
 
 	static final String BEARER = "bearer";
 
+	static final String BEARER_OPTIONAL = "bearer-optional";
+
 	static final String NONE = "none";
 
 	static final String EXTENSION_SELECT = "osgi.jakartars.extension.select";
@@ -58,6 +60,16 @@ final class ServedSecurity {
 		return false;
 	}
 
+	/** Whether every operation the flavor serves needs one — then the strict filter may turn the anonymous away. */
+	static boolean everyOperationDemandsAuthentication(RestFlavor flavor) {
+		for (ServiceOperationFlavor operationFlavor : flavor.getOperationFlavors()) {
+			if (!SecurityRequirements.demandsAuthentication(operationFlavor.getOperation())) {
+				return false;
+			}
+		}
+		return !flavor.getOperationFlavors().isEmpty();
+	}
+
 	/** The extension selector an application of this mode carries. */
 	static String selectorFor(String mode) {
 		return "(osgi.jakartars.name=fennec-auth-" + mode + ")";
@@ -73,7 +85,7 @@ final class ServedSecurity {
 	 */
 	static boolean enforcedByConfiguration(String contract, RestFlavor flavor, Object mode) {
 		boolean demands = demandsAuthentication(flavor);
-		if (BEARER.equals(mode)) {
+		if (BEARER.equals(mode) || BEARER_OPTIONAL.equals(mode)) {
 			return true;
 		}
 		if (demands && mode == null) {
@@ -90,7 +102,9 @@ final class ServedSecurity {
 	/**
 	 * The mode a contract served from a flavor runs in (the RSA path):
 	 * bearer when the flavor offers a bearer scheme, which also puts the
-	 * mode on the application. A contract that demands authentication on a
+	 * mode on the application — {@value #BEARER} when every operation
+	 * needs a principal, {@value #BEARER_OPTIONAL} when some are open
+	 * ({@code @PermitAll}), so their anonymous callers reach the dispatcher. A contract that demands authentication on a
 	 * flavor with no scheme is refused; a connection scheme serves it
 	 * open, because something in front of the node checks.
 	 *
@@ -98,8 +112,9 @@ final class ServedSecurity {
 	 */
 	static boolean enforcedByFlavor(String contract, RestFlavor flavor, Dictionary<String, Object> properties) {
 		if (SecurityRequirements.bearerScheme(flavor) != null) {
-			properties.put(AUTH, BEARER);
-			properties.put(EXTENSION_SELECT, selectorFor(BEARER));
+			String mode = everyOperationDemandsAuthentication(flavor) ? BEARER : BEARER_OPTIONAL;
+			properties.put(AUTH, mode);
+			properties.put(EXTENSION_SELECT, selectorFor(mode));
 			return true;
 		}
 		if (!demandsAuthentication(flavor)) {

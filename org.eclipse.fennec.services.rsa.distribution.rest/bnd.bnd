@@ -14,7 +14,8 @@ Bundle-Description: \
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.provider.rest;version=snapshot,\
-	org.eclipse.fennec.services.rsa;version=snapshot
+	org.eclipse.fennec.services.rsa;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot
 
 -testpath: \
 	${junit},\

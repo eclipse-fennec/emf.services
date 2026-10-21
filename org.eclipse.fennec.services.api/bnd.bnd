@@ -24,4 +24,5 @@ Bundle-Description: \
 # the TypeScript side reads too.
 -testpath: \
 	${junit},\
-	junit-platform-launcher;version=latest
+	junit-platform-launcher;version=latest,\
+	jakarta.annotation-api;version=latest

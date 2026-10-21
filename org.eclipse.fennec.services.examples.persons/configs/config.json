@@ -1,0 +1,15 @@
+{
+  ":configurator:resource-version": 1,
+  "org.eclipse.fennec.services.client.rest": {
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+  },
+  "org.eclipse.fennec.services.client": {
+    "consumer.id": "$[env:DDSR_CONSUMER_ID;default=$[env:DDSR_OAUTH_CLIENT_ID;default=]]"
+  },
+  "org.eclipse.fennec.services.security.oauth": {
+    "token.uri": "$[env:DDSR_OAUTH_TOKEN_URI;default=]",
+    "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
+    "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
+    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
+  }
+}

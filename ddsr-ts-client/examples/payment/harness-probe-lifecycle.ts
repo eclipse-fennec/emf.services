@@ -43,11 +43,12 @@
 import { RestFlavorPlugin } from '@ddsr/flavor-rest';
 import { BrokerHttp, DdsrClientImpl } from '@ddsr/client';
 import type { TrackedServiceLocator } from '@ddsr/client';
+import { brokerTokens, consumerId } from './broker-auth';
 
 const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 const SCENARIO = process.env.SCENARIO ?? 'F';
 const NEW_PORT = process.env.NEW_PORT ?? '9092';
-const CONSUMER_ID = `harness-lifecycle-${SCENARIO.toLowerCase()}`;
+const CONSUMER_ID = consumerId(`harness-lifecycle-${SCENARIO.toLowerCase()}`)!;
 
 interface Seen { type: string; reason: string | undefined; id: string | undefined; }
 const events: Seen[] = [];
@@ -108,10 +109,11 @@ async function main(): Promise<void> {
     brokerUrl: BROKER_URL,
     flavorPlugins: [new RestFlavorPlugin({ timeoutMillis: 5000 })],
     consumerId: CONSUMER_ID,
+    tokenSupplier: brokerTokens(),
     reconnectSeconds: 1,
     sessionIntervalSeconds: 0, // the lease is renewed and released explicitly below
   });
-  const brokerHttp = new BrokerHttp({ brokerUrl: BROKER_URL });
+  const brokerHttp = new BrokerHttp({ brokerUrl: BROKER_URL, tokenSupplier: brokerTokens() });
 
   client.consumer.addServiceListener('Payment', undefined, event => {
     const seen: Seen = { type: String(event.type), reason: event.reasonCode ?? undefined, id: event.reference?.id };

@@ -14,8 +14,13 @@
 #             provider shutdown: withdraw confirmed BEFORE the endpoint
 #             stops, and the broker no longer lists the provider.
 #
-# Runs everything as host processes (no podman required); see
-# containers/ for the containerized variant.
+# Runs everything as host processes; see containers/ for the
+# containerized variant. Secured by default (SECURITY.md §7a): the broker
+# runs in mode bearer against a Keycloak realm in a podman container, and
+# every process calls it with a client identity of its own — so podman is
+# needed for that one container. HARNESS_AUTH=none runs the broker open,
+# without Keycloak and without podman. Either way the last scenario, N,
+# starts a second, open broker: the developer's path stays proven too.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,6 +28,8 @@ WORK="$ROOT/itest/work"
 TS="$ROOT/ddsr-ts-client"
 BROKER_URL="http://localhost:8887/ddsr/rest"
 PIDS=()
+# shellcheck source=keycloak/auth.sh
+. "$ROOT/itest/keycloak/auth.sh"
 
 log() { printf '\n=== %s ===\n' "$*"; }
 now_ms() { date +%s%3N; }
@@ -32,12 +39,13 @@ cleanup() {
     kill "$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
+  stop_keycloak
 }
 trap cleanup EXIT
 
 wait_for_url() { # url timeout_s
   local url="$1" timeout="${2:-30}" waited=0
-  until curl -sf -o /dev/null "$url"; do
+  until curl_broker -sf -o /dev/null "$url"; do
     sleep 0.5
     waited=$((waited + 1))
     if [ "$waited" -ge $((timeout * 2)) ]; then
@@ -103,7 +111,12 @@ command -v corepack >/dev/null 2>&1 \
 NODE_MAJOR="$(node -p 'Number(process.versions.node.split(".")[0])')"
 [ "$NODE_MAJOR" -ge 22 ] \
   || { echo "Node $(node --version) is too old — pnpm 11 needs Node 22+, the harness runs on 24 (nvm use 24)" >&2; exit 1; }
+if secured; then
+  command -v podman >/dev/null 2>&1 \
+    || { echo "HARNESS_AUTH=bearer needs podman for Keycloak — install it, or run HARNESS_AUTH=none" >&2; exit 1; }
+fi
 echo "java: $(java -version 2>&1 | head -1)"
+echo "auth: $HARNESS_AUTH"
 echo "node: $(node --version), pnpm: $(corepack pnpm --version)"
 
 # ---------------------------------------------------------------- build
@@ -130,20 +143,33 @@ ls "$BROKER_JAR" "$PROVIDER_JAR" "$CLIENT_JAR" >/dev/null
   || { tail -30 "$WORK/pnpm.log"; exit 1; }
 
 # --------------------------------------------------------------- broker
+if secured; then
+  log "starting keycloak"
+  start_keycloak
+fi
+
 log "starting broker"
 require_port_free 8887
 require_port_free 9091
 require_port_free 9090
-start_jar broker "$BROKER_JAR" "$WORK/broker"
+as_broker start_jar broker "$BROKER_JAR" "$WORK/broker"
 BROKER_PID=$LAST_PID
 wait_for_url "$BROKER_URL/catalog" 60
 echo "broker up (pid $BROKER_PID)"
+if secured; then
+  # The other half of the proof: secured means a caller without a token is
+  # turned away, not merely that a caller with one gets in.
+  ANON_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BROKER_URL/catalog")
+  [ "$ANON_STATUS" = 401 ] \
+    || { echo "BROKER NOT SECURED: a call without a token answered $ANON_STATUS, expected 401"; exit 1; }
+  echo "  ✓ broker-secured: a call without a token is 401"
+fi
 
 # A raw tap on the event stream, opened before anything publishes: no
 # SDK, no model, just what a curl sees. The envelope is a cross-language
 # contract (#101), and the honest proof that it is on the wire is one
 # that reads the wire.
-curl -sN --max-time 300 -H 'Accept: text/event-stream' "$BROKER_URL/events" \
+curl_broker -sN --max-time 300 -H 'Accept: text/event-stream' "$BROKER_URL/events" \
   >"$WORK/sse-tap.log" 2>&1 &
 SSE_TAP_PID=$!
 PIDS+=("$SSE_TAP_PID")
@@ -163,7 +189,7 @@ export PAYMENTS_PUBLISH_BINDING_PROBE=true
 # factory configuration of the generic distribution serves it and
 # announces it from the same document, with no endpoint code anywhere.
 export PAYMENTS_PUBLISH_PERSON_STORE=true
-start_jar payment-java "$PROVIDER_JAR" "$WORK/payment-java"
+as_client payment-java start_jar payment-java "$PROVIDER_JAR" "$WORK/payment-java"
 unset PAYMENTS_PUBLISH_BINDING_PROBE
 unset PAYMENTS_PUBLISH_PERSON_STORE
 PROVIDER_PID=$LAST_PID
@@ -185,7 +211,7 @@ grep -q "^event: ddsr-service-event" "$WORK/sse-tap.log" \
   || { echo "SCENARIO A FAILED: the frozen SSE event name is gone"; exit 1; }
 echo "  ✓ sse-frame-is-a-cloud-event: $(echo "$SSE_FRAME" | cut -c1-96)…"
 
-(cd "$TS/examples/payment" \
+(cd "$TS/examples/payment" && export_client harness-probe-ts \
   && BROKER_URL="$BROKER_URL" EXPECT_LANG=java EXPECT_BINDINGS=1 corepack pnpm exec tsx harness-probe.ts) \
   >"$WORK/probe-a.log" 2>&1 &
 PROBE_PID=$!
@@ -204,7 +230,7 @@ log "Scenario P: Java provider -> Java consumer, body encoded as protobuf"
 # protobuf-to-EMF binding, so this contract is one a TS consumer cannot
 # read. That is why it runs here, while the Java provider from scenario
 # A is still up, and not as a cross-language scenario.
-start_jar client-protobuf "$CLIENT_JAR" "$WORK/client-protobuf"
+as_client java-client start_jar client-protobuf "$CLIENT_JAR" "$WORK/client-protobuf"
 PROTOBUF_CLIENT_PID=$LAST_PID
 wait_for_line "$WORK/client-protobuf.log" "travelled as protobuf" 90
 grep -E "\[DDSR-Protobuf\]" "$WORK/client-protobuf.log" | tail -2
@@ -242,14 +268,14 @@ log "Scenario B: TS provider -> Java consumer"
 # exec node directly (no pnpm/corepack wrappers): the SIGTERM of the
 # FR-P3 check must reach the node process itself, wrapper chains do not
 # reliably forward signals.
-(cd "$TS/examples/payment" \
+(cd "$TS/examples/payment" && export_client ts-provider \
   && BROKER_URL="$BROKER_URL" SERVICE_URL="http://localhost:9090/payments" exec node --import tsx provider.ts) \
   >"$WORK/provider-ts.log" 2>&1 &
 TS_PROVIDER_PID=$!
 PIDS+=("$TS_PROVIDER_PID")
 wait_for_line "$WORK/provider-ts.log" "published as reference" 60
 
-start_jar client "$CLIENT_JAR" "$WORK/client"
+as_client java-client start_jar client "$CLIENT_JAR" "$WORK/client"
 CLIENT_PID=$LAST_PID
 wait_for_line "$WORK/client.log" 'ts.charge(10.0, "EUR") =' 90
 echo "Java consumer called the TS provider:"
@@ -261,7 +287,7 @@ grep -E 'ts\.(getBalance|charge)' "$WORK/client.log"
 # carry them through publish, snapshot and lookup for that to work —
 # assert them on the wire too, so a regression names itself instead of
 # showing up as a failed call.
-TS_LOOKUP=$(curl -sf "$BROKER_URL/references?interface=Payment")
+TS_LOOKUP=$(curl_broker -sf "$BROKER_URL/references?interface=Payment")
 if ! grep -q 'binding="PATH"' <<<"$TS_LOOKUP" || ! grep -q 'parameter="' <<<"$TS_LOOKUP"; then
   echo "SCENARIO B FAILED: the broker does not re-serve the TS provider's parameter bindings"
   echo "$TS_LOOKUP"
@@ -291,7 +317,7 @@ if [ -z "$CONFIRM_LINE" ]; then
   echo "SCENARIO B FAILED: no broker confirmation before endpoint stop"; cat "$WORK/provider-ts.log"; exit 1
 fi
 # the broker must no longer list the TS provider
-if curl -sf "$BROKER_URL/references?interface=Payment" | grep -q 'payments-ts'; then
+if curl_broker -sf "$BROKER_URL/references?interface=Payment" | grep -q 'payments-ts'; then
   echo "SCENARIO B FAILED: broker still lists payments-ts after withdraw"; exit 1
 fi
 echo "Scenario B OK: withdraw confirmed before endpoint stop; broker no longer lists payments-ts"
@@ -306,17 +332,17 @@ kill "$CLIENT_PID" 2>/dev/null || true
 log "Scenario F: same identity restarts on a new port -> MODIFIED in place, consumer follows"
 require_port_free 9091
 require_port_free 9092
-start_jar payment-f1 "$PROVIDER_JAR" "$WORK/payment-f1"
+as_client payment-java start_jar payment-f1 "$PROVIDER_JAR" "$WORK/payment-f1"
 F1_PID=$LAST_PID
 wait_for_line "$WORK/payment-f1.log" "published payments-java" 60
-(cd "$TS/examples/payment" \
+(cd "$TS/examples/payment" && export_client harness-lifecycle-f \
   && BROKER_URL="$BROKER_URL" SCENARIO=F NEW_PORT=9092 exec node --import tsx harness-probe-lifecycle.ts) \
   >"$WORK/probe-f.log" 2>&1 &
 PROBE_F_PID=$!
 PIDS+=("$PROBE_F_PID")
 wait_for_line "$WORK/probe-f.log" "PROBE_READY" 90
 PAYMENTS_HTTP_PORT=9092 PAYMENTS_PUBLIC_URL="http://localhost:9092/payments" \
-  start_jar payment-f2 "$PROVIDER_JAR" "$WORK/payment-f2"
+  as_client payment-java start_jar payment-f2 "$PROVIDER_JAR" "$WORK/payment-f2"
 F2_PID=$LAST_PID
 wait_for_line "$WORK/payment-f2.log" "published payments-java" 60
 if ! wait "$PROBE_F_PID"; then
@@ -338,10 +364,10 @@ kill "$F1_PID"; wait "$F1_PID" 2>/dev/null || true
 log "Scenario G: DEPRECATE_AND_DRAIN with two provider versions"
 require_port_free 9091
 require_port_free 9092
-start_jar payment-g1 "$PROVIDER_JAR" "$WORK/payment-g1"
+as_client payment-java start_jar payment-g1 "$PROVIDER_JAR" "$WORK/payment-g1"
 G1_PID=$LAST_PID
 wait_for_line "$WORK/payment-g1.log" "published payments-java" 60
-(cd "$TS/examples/payment" \
+(cd "$TS/examples/payment" && export_client harness-lifecycle-g \
   && BROKER_URL="$BROKER_URL" SCENARIO=G exec node --import tsx harness-probe-lifecycle.ts) \
   >"$WORK/probe-g.log" 2>&1 &
 PROBE_G_PID=$!
@@ -349,7 +375,7 @@ PIDS+=("$PROBE_G_PID")
 wait_for_line "$WORK/probe-g.log" "PROBE_READY" 90
 PAYMENTS_HTTP_PORT=9092 PAYMENTS_PUBLIC_URL="http://localhost:9092/payments" \
   PAYMENTS_IMPL_VERSION=2.0.0 PAYMENTS_REPLACES_VERSION=1.0.0 PAYMENTS_UPDATE_POLICY=DEPRECATE_AND_DRAIN \
-  start_jar payment-g2 "$PROVIDER_JAR" "$WORK/payment-g2"
+  as_client payment-java start_jar payment-g2 "$PROVIDER_JAR" "$WORK/payment-g2"
 G2_PID=$LAST_PID
 wait_for_line "$WORK/payment-g2.log" "published payments-java" 60
 if ! wait "$PROBE_G_PID"; then
@@ -369,10 +395,10 @@ kill "$G1_PID"; wait "$G1_PID" 2>/dev/null || true
 log "Scenario H: provider dies without withdraw (SIGKILL) -> PROVIDER_LOST via heartbeat"
 require_port_free 9091
 ARMED_BEFORE=$(grep -c "provider liveness armed" "$WORK/broker.log" || true)
-DDSR_PROVIDER_HEARTBEAT_SECONDS=2 start_jar payment-h "$PROVIDER_JAR" "$WORK/payment-h"
+DDSR_PROVIDER_HEARTBEAT_SECONDS=2 as_client payment-java start_jar payment-h "$PROVIDER_JAR" "$WORK/payment-h"
 H_PID=$LAST_PID
 wait_for_line "$WORK/payment-h.log" "published payments-java" 60
-(cd "$TS/examples/payment" \
+(cd "$TS/examples/payment" && export_client harness-lifecycle-h \
   && BROKER_URL="$BROKER_URL" SCENARIO=H corepack pnpm exec tsx harness-probe-lifecycle.ts) \
   >"$WORK/probe-h.log" 2>&1 &
 PROBE_H_PID=$!
@@ -401,4 +427,30 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS PASSED (A + B + F + G + H)"
+# ============================================================ Scenario N
+log "Scenario N: the developer's broker, open"
+# Whatever the harness ran above, the path a developer takes has to keep
+# working: the development launch without a single security variable is
+# an open broker, and a provider without credentials publishes to it.
+OPEN_URL="http://localhost:8897/ddsr/rest"
+require_port_free 8897
+require_port_free 9093
+(cd "$WORK" && mkdir -p broker-open && cd broker-open \
+  && exec env -u DDSR_AUTH_MODE -u DDSR_JWT_ISSUER DDSR_HTTP_PORT=8897 DDSR_PUBLIC_URL="$OPEN_URL" \
+       java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-open.log" 2>&1 &
+OPEN_PID=$!
+PIDS+=("$OPEN_PID")
+wait_for_url "$OPEN_URL/catalog" 60
+(cd "$TS/examples/payment" \
+  && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$OPEN_URL" SERVICE_URL="http://localhost:9093/payments" \
+       node --import tsx provider.ts) >"$WORK/provider-open.log" 2>&1 &
+OPEN_PROVIDER_PID=$!
+PIDS+=("$OPEN_PROVIDER_PID")
+wait_for_line "$WORK/provider-open.log" "published as reference" 60
+curl -sf "$OPEN_URL/references?interface=Payment" | grep -q 'payments-ts' \
+  || { echo "SCENARIO N FAILED: the open broker does not list the provider"; exit 1; }
+kill "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
+wait "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
+echo "Scenario N OK: no token anywhere — published, and listed to a caller without one"
+
+log "HARNESS PASSED (A + B + F + G + H + N, auth: $HARNESS_AUTH)"

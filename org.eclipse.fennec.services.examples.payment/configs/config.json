@@ -21,7 +21,15 @@
   "org.eclipse.fennec.services.client":
   {
     "provider.heartbeat.seconds": "$[env:DDSR_PROVIDER_HEARTBEAT_SECONDS;default=30]",
-    "session.interval.seconds": "$[env:DDSR_SESSION_INTERVAL_SECONDS;default=0]"
+    "session.interval.seconds": "$[env:DDSR_SESSION_INTERVAL_SECONDS;default=0]",
+    "consumer.id": "$[env:DDSR_CONSUMER_ID;default=$[env:DDSR_OAUTH_CLIENT_ID;default=]]"
+  },
+  "org.eclipse.fennec.services.security.oauth":
+  {
+    "token.uri": "$[env:DDSR_OAUTH_TOKEN_URI;default=]",
+    "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
+    "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
+    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
   },
   "org.eclipse.fennec.services.provider.rest~bindingProbe":
   {

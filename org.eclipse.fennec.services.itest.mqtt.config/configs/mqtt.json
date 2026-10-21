@@ -3,6 +3,14 @@
     "broker.url": "tcp://localhost:1883"
   },
   "org.eclipse.fennec.services.client": {
-    "eventSource.target": "(ddsr.event.transport=mqtt)"
+    "eventSource.target": "(ddsr.event.transport=mqtt)",
+    "consumer.id": "$[env:DDSR_CONSUMER_ID;default=$[env:DDSR_OAUTH_CLIENT_ID;default=]]"
+  },
+  "org.eclipse.fennec.services.security.oauth":
+  {
+    "token.uri": "$[env:DDSR_OAUTH_TOKEN_URI;default=]",
+    "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
+    "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
+    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
   }
 }

@@ -24,6 +24,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.common.TokenSupplier;
@@ -103,9 +105,11 @@ public class ClientCredentialsTokens implements TokenSupplier {
 
 	private String scope;
 
-	private String current;
+	/** One token per scope asked for — the configured one for the broker, one per provider audience. */
+	private final Map<String, Held> held = new HashMap<>();
 
-	private Instant renewAt = Instant.MIN;
+	private record Held(String token, Instant renewAt) {
+	}
 
 	private ServiceRegistration<TokenSupplier> registration;
 
@@ -150,13 +154,31 @@ public class ClientCredentialsTokens implements TokenSupplier {
 
 	@Override
 	public synchronized String token() {
-		if (current == null || !clock.instant().isBefore(renewAt)) {
-			fetch();
-		}
-		return current;
+		return tokenFor(scope);
 	}
 
-	private void fetch() {
+	/**
+	 * A token for one target: the scope of the audience's name, which the
+	 * identity provider maps to that audience (Keycloak: an optional
+	 * client scope with an audience mapper). The broker's own token is
+	 * asked for the same way, with the configured scope, so neither
+	 * carries the other's audience.
+	 */
+	@Override
+	public synchronized String token(String audience) {
+		return tokenFor(audience == null || audience.isBlank() ? scope : audience.strip());
+	}
+
+	private String tokenFor(String scope) {
+		Held current = held.get(scope);
+		if (current == null || !clock.instant().isBefore(current.renewAt())) {
+			current = fetch(scope);
+			held.put(scope, current);
+		}
+		return current.token();
+	}
+
+	private Held fetch(String scope) {
 		String body = "grant_type=client_credentials" + (scope.isEmpty() ? "" : "&scope=" + form(scope));
 		HttpRequest request = HttpRequest.newBuilder(tokenUri)
 				.timeout(Duration.ofSeconds(10))
@@ -192,9 +214,8 @@ public class ClientCredentialsTokens implements TokenSupplier {
 		Instant now = clock.instant();
 		// Renew RENEW_BEFORE ahead, or half-way for a short-lived token.
 		Duration margin = lifetime > 2 * RENEW_BEFORE.toSeconds() ? RENEW_BEFORE : Duration.ofSeconds(lifetime / 2);
-		this.current = token;
-		this.renewAt = now.plusSeconds(lifetime).minus(margin);
-		LOG.fine(() -> "[DDSR] bearer token renewed, valid for " + lifetime + " s");
+		LOG.fine(() -> "[DDSR] bearer token for '" + scope + "' renewed, valid for " + lifetime + " s");
+		return new Held(token, now.plusSeconds(lifetime).minus(margin));
 	}
 
 	private static String form(String value) {

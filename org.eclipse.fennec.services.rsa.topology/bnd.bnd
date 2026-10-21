@@ -13,7 +13,8 @@ Bundle-Description: \
 	org.osgi.service.remoteserviceadmin;version=latest,\
 	org.osgi.util.tracker;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
-	org.eclipse.fennec.services.rsa;version=snapshot
+	org.eclipse.fennec.services.rsa;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot
 
 -testpath: \
 	${junit},\

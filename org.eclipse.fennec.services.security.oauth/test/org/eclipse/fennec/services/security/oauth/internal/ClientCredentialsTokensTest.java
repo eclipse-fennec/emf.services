@@ -119,6 +119,21 @@ class ClientCredentialsTokensTest {
 	}
 
 	@Test
+	void aProviderAudienceGetsATokenOfItsOwn() {
+		ClientCredentialsTokens tokens = configured("rsa-example-consumer", "s3cr3t", "ddsr-broker");
+
+		String broker = tokens.token();
+		String provider = tokens.token("rsa-example");
+
+		assertThat(broker).isNotEqualTo(provider);
+		assertThat(bodies).containsExactly("grant_type=client_credentials&scope=ddsr-broker",
+				"grant_type=client_credentials&scope=rsa-example");
+		assertThat(tokens.token("rsa-example")).as("kept like any other").isEqualTo(provider);
+		assertThat(tokens.token()).isEqualTo(broker);
+		assertThat(bodies).hasSize(2);
+	}
+
+	@Test
 	void aRefusalFailsWithTheProvidersReasonAndNotTheSecret() {
 		status = 401;
 		ClientCredentialsTokens tokens = configured("payments-node", "s3cr3t", "");

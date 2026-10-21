@@ -17,6 +17,7 @@ import { asRoots, firstOfClass } from '../internal/emf-util.js';
 import { SseParser } from './sse-parser.js';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from './event-source.js';
 import { clientOrigin, withOrigin } from '../internal/client-origin.js';
+import { withBearer, type TokenSupplier } from '../internal/bearer-token.js';
 import { dataAsText, lifecycleEventTypeOf, readStructured } from '../cloudevents/cloud-events.js';
 
 export interface RestEventSourceOptions {
@@ -35,6 +36,12 @@ export interface RestEventSourceOptions {
    */
   originLabel?: string;
   fetchFn?: typeof fetch;
+  /**
+   * Where the bearer token for the broker comes from, when the broker
+   * runs in mode bearer (SECURITY.md §4) — e.g. `clientCredentials(...)`.
+   * It goes on broker calls only, never on service invocations.
+   */
+  tokenSupplier?: TokenSupplier;
   log?: (message: string) => void;
 }
 
@@ -59,7 +66,7 @@ export class RestEventSource implements DdsrEventSource {
       : `${base}/events`;
     this.reconnectMillis = (options.reconnectSeconds ?? 3) * 1000;
     this.fetchFn = withOrigin(
-      options.fetchFn ?? globalThis.fetch.bind(globalThis),
+      withBearer(options.fetchFn ?? globalThis.fetch.bind(globalThis), options.tokenSupplier),
       clientOrigin(options.originLabel));
     this.log = options.log ?? ((m) => console.error(`[ddsr-events] ${m}`));
   }

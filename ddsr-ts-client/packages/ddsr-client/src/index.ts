@@ -32,6 +32,8 @@ export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http
 // flavor plugin needs the same origin token in both, and the token is
 // this function's answer rather than something to reassemble by hand.
 export { clientOrigin, ORIGIN_HEADER } from './internal/client-origin.js';
+export { clientCredentials, withBearer, RENEW_BEFORE_SECONDS } from './internal/bearer-token.js';
+export type { TokenSupplier, ClientCredentialsOptions } from './internal/bearer-token.js';
 export type { ClientOrigin } from './internal/client-origin.js';
 export type { BrokerHttpOptions } from './internal/broker-http.js';
 export { ServiceListenerRegistry } from './internal/service-listener-registry.js';

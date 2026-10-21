@@ -24,6 +24,7 @@ import { ServiceListenerRegistry } from './service-listener-registry.js';
 import { RestEventSource } from '../events/rest-event-source.js';
 import type { DdsrEventSource } from '../events/event-source.js';
 import type { CallTracer } from '@ddsr/telemetry';
+import type { TokenSupplier } from './bearer-token.js';
 
 export interface DdsrClientOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -69,6 +70,14 @@ export interface DdsrClientOptions {
   reconnectSeconds?: number;
   /** Injectable transport seam (tests). */
   fetchFn?: typeof fetch;
+  /**
+   * Where the bearer token for the broker comes from, when the broker
+   * runs in mode bearer (SECURITY.md §4) — e.g. `clientCredentials(...)`.
+   * It goes on broker calls and the event stream, never on service
+   * invocations. On a bearer broker `consumerId` has to be the name the
+   * token carries (the broker's subject claim), or the session is refused.
+   */
+  tokenSupplier?: TokenSupplier;
   /** Injectable event source (tests / alternative transports). */
   eventSource?: DdsrEventSource;
   /**
@@ -152,6 +161,7 @@ export class DdsrClientImpl implements DdsrClient {
       requestor: options.requestor,
       originLabel: options.originLabel,
       fetchFn: options.fetchFn,
+      tokenSupplier: options.tokenSupplier,
       tracer: options.tracer,
       originRuntimeId: options.originRuntimeId,
     });
@@ -161,6 +171,7 @@ export class DdsrClientImpl implements DdsrClient {
       flavors: options.eventFlavors ?? 'REST',
       reconnectSeconds: options.reconnectSeconds,
       fetchFn: options.fetchFn,
+      tokenSupplier: options.tokenSupplier,
     });
 
     // The registry needs the consumer's snapshot refresh; resolved via

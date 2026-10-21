@@ -259,3 +259,70 @@ describe('RestFlavorPlugin tracing', () => {
     expect(state.ended).toBe(true);
   });
 });
+
+/**
+ * A provider call carries a token of the provider's audience — never the
+ * broker's (SECURITY.md §1, §6); the twin of the Java
+ * RestServiceInvokerBearerTest.
+ */
+describe('RestFlavorPlugin bearer', () => {
+  function guarded(): ReturnType<typeof charge> {
+    const fixture = charge();
+    const f = DDSRFactory.eINSTANCE;
+    const requirement = f.createSecurityRequirement();
+    requirement.authenticated = true;
+    requirement.scopes.push('payment-writer');
+    fixture.operation.security = requirement;
+    const scheme = f.createBearerTokenScheme();
+    scheme.issuer = 'http://localhost:18080/realms/fennec';
+    scheme.audiences.push('payments');
+    fixture.flavor.securitySchemes.push(scheme);
+    return fixture;
+  }
+
+  function recording(): { fetchFn: typeof fetch; seen: () => Record<string, string> } {
+    let headers: Record<string, string> = {};
+    const fetchFn = (async (_url: any, init?: any) => {
+      headers = { ...(init?.headers ?? {}) };
+      return new Response('990.0', { status: 200, headers: { 'Content-Type': 'text/plain' } });
+    }) as unknown as typeof fetch;
+    return { fetchFn, seen: () => headers };
+  }
+
+  it('asks for a token of the audience the scheme names', async () => {
+    const asked: (string | undefined)[] = [];
+    const { fetchFn, seen } = recording();
+    const plugin = new RestFlavorPlugin({
+      fetchFn,
+      tokenSupplier: async (audience?: string) => {
+        asked.push(audience);
+        return `token-for-${audience}`;
+      },
+    });
+    const { operation, flavor, opFlavor } = guarded();
+
+    await plugin.invoke(operation, { amount: 10 }, flavor, opFlavor);
+
+    expect(asked).toEqual(['payments']);
+    expect(seen().Authorization).toBe('Bearer token-for-payments');
+  });
+
+  it('calls a target without a scheme without a token', async () => {
+    const { fetchFn, seen } = recording();
+    const plugin = new RestFlavorPlugin({ fetchFn, tokenSupplier: async () => 'broker-token' });
+    const { operation, flavor, opFlavor } = charge();
+
+    await plugin.invoke(operation, { amount: 10 }, flavor, opFlavor);
+
+    expect(seen().Authorization).toBeUndefined();
+  });
+
+  it('fails a guarded call without a supplier, saying why', async () => {
+    const { fetchFn } = recording();
+    const plugin = new RestFlavorPlugin({ fetchFn });
+    const { operation, flavor, opFlavor } = guarded();
+
+    await expect(plugin.invoke(operation, { amount: 10 }, flavor, opFlavor))
+      .rejects.toThrow(/no token supplier/);
+  });
+});

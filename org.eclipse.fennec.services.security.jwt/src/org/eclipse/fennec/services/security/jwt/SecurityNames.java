@@ -38,7 +38,11 @@ package org.eclipse.fennec.services.security.jwt;
  */
 public final class SecurityNames {
 
-	/** The application property naming its authentication mode: {@value #BEARER}, {@value #BEARER_OPTIONAL} or {@value #NONE}. */
+	/**
+	 * The application property naming its authentication mode:
+	 * {@value #BEARER}, {@value #BEARER_OPTIONAL}, {@value #MTLS} or
+	 * {@value #NONE}.
+	 */
 	public static final String AUTH = "fennec.auth";
 
 	/** Mode: every request carries a bearer token the verifier accepts. */
@@ -54,6 +58,16 @@ public final class SecurityNames {
 	 */
 	public static final String BEARER_OPTIONAL = "bearer-optional";
 
+	/**
+	 * Mode: every request comes with a client certificate (SECURITY.md
+	 * §7d) — from the TLS session, or from a trusted gateway that ended
+	 * it. The principal is the certificate's subject, its roles the
+	 * node's own mapping. A certificate is a credential of the
+	 * connection, so there is no optional variant: a TLS listener that
+	 * demands one admits nobody without it.
+	 */
+	public static final String MTLS = "mtls";
+
 	/** Mode: no authentication, chosen explicitly by the deployment. */
 	public static final String NONE = "none";
 
@@ -66,15 +80,21 @@ public final class SecurityNames {
 	/** The whiteboard name of the filter for {@value #BEARER_OPTIONAL}. */
 	public static final String OPTIONAL_BEARER_FILTER = FILTER_PREFIX + BEARER_OPTIONAL;
 
+	/** The whiteboard name of the filter for {@value #MTLS}. */
+	public static final String MTLS_FILTER = FILTER_PREFIX + MTLS;
+
 	/** The whiteboard name of the filter for {@value #NONE}. */
 	public static final String NO_AUTH_FILTER = FILTER_PREFIX + NONE;
 
 	/**
 	 * The whiteboard name of the feature that holds annotated resource
 	 * methods to their {@code @RolesAllowed} / {@code @PermitAll}, on
-	 * every application of a bearer mode.
+	 * every application that verifies its callers.
 	 */
 	public static final String ROLES_FILTER = "fennec-roles";
+
+	/** The applications that verify a caller: a bearer mode or mutual TLS. */
+	public static final String SELECT_VERIFYING = "(|(" + AUTH + "=" + BEARER + "*)(" + AUTH + "=" + MTLS + "))";
 
 	/** The request property the bearer filter sets: the {@link VerifiedPrincipal}. */
 	public static final String REQUEST_PRINCIPAL = "fennec.principal";

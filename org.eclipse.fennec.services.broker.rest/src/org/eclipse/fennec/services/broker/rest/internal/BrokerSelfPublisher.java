@@ -24,6 +24,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.ConnectionScheme;
+import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RestFlavor;
@@ -97,7 +98,7 @@ public final class BrokerSelfPublisher {
 		String public_url() default "http://localhost:8887/ddsr/rest";
 
 		@AttributeDefinition(name = "Authentication mode",
-				description = "The broker's mode, from the same placeholder as its applications: bearer or none.")
+				description = "The broker's mode, from the same placeholder as its applications: bearer, mtls or none.")
 		String auth_mode() default "bearer";
 
 		@AttributeDefinition(name = "Token issuer", description = "The issuer the broker's verifier accepts.")
@@ -111,6 +112,11 @@ public final class BrokerSelfPublisher {
 
 		@AttributeDefinition(name = "Scope claim", description = "Where the verifier reads roles and scopes from.")
 		String scope_claim() default "scope";
+
+		@AttributeDefinition(name = "Trusted certificate issuers",
+				description = "Mode mtls: the DNs of the authorities whose client certificates the broker "
+						+ "accepts, as its flavors announce them. Empty: the trust store decides.")
+		String[] trusted_issuers() default {};
 	}
 
 	@Reference
@@ -235,7 +241,9 @@ public final class BrokerSelfPublisher {
 	 * issuer its verifier accepts. In mode none, a connection scheme —
 	 * which is the model's way of saying that this node checks nothing
 	 * per call, and exactly what an open broker is; the contracts and
-	 * their requirements stay the same in both modes, so does their sd1.
+	 * their requirements stay the same in every mode, so does their sd1.
+	 * In mode mtls, a client-certificate scheme naming the authorities the
+	 * broker trusts.
 	 * Bearer without an issuer names nothing: such a broker serves
 	 * nothing either, and announcing a scheme nobody can satisfy would be
 	 * the one lie here.
@@ -247,6 +255,17 @@ public final class BrokerSelfPublisher {
 			open.setName("none");
 			open.setKind(SecuritySchemeKind.CONNECTION);
 			return open;
+		}
+		if ("mtls".equals(mode)) {
+			MutualTlsScheme certificates = ServicesFactory.eINSTANCE.createMutualTlsScheme();
+			certificates.setName("mtls");
+			certificates.setKind(SecuritySchemeKind.MUTUAL_TLS);
+			for (String issuer : config.trusted_issuers()) {
+				if (issuer != null && !issuer.isBlank()) {
+					certificates.getTrustedIssuers().add(issuer.strip());
+				}
+			}
+			return certificates;
 		}
 		if (config.issuer() == null || config.issuer().isBlank()) {
 			return null;

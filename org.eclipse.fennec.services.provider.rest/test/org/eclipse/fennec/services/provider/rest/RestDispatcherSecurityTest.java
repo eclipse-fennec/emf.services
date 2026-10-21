@@ -158,6 +158,24 @@ class RestDispatcherSecurityTest {
 	}
 
 	@Test
+	void aClientCertificateSchemeServesInModeMtls() {
+		RestFlavor flavor = flavor();
+		flavor.getSecuritySchemes().add(F.createMutualTlsScheme());
+		Hashtable<String, Object> properties = new Hashtable<>();
+
+		assertThat(ServedSecurity.enforcedByFlavor("Payment", flavor, properties)).isTrue();
+		assertThat(properties)
+				.as("a certificate belongs to the connection: there is no optional variant, even with ping open")
+				.containsEntry("fennec.auth", "mtls")
+				.containsEntry("osgi.jakartars.extension.select", "(osgi.jakartars.name=fennec-auth-mtls)");
+	}
+
+	@Test
+	void modeMtlsIsEnforcedFromConfigurationToo() {
+		assertThat(ServedSecurity.enforcedByConfiguration("Payment", flavor(), "mtls")).isTrue();
+	}
+
+	@Test
 	void aGuardedContractOnAFlavorWithoutASchemeIsNotServed() {
 		assertThatThrownBy(() -> ServedSecurity.enforcedByFlavor("Payment", flavor(), new Hashtable<>()))
 				.isInstanceOf(IllegalStateException.class);

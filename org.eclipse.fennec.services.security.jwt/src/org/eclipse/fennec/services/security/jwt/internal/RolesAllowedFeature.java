@@ -52,7 +52,9 @@ import jakarta.ws.rs.core.Response;
  * missing scopes is {@code 403} naming them. {@code @DenyAll} is
  * {@code 403} for everybody.
  *
- * <p>Only on applications of a bearer mode: under {@code none} the
+ * <p>Only on applications that verify callers — a bearer mode or
+ * {@code mtls}, whose filters both leave the principal on the
+ * request in the same place. Under {@code none} the
  * deployment has chosen to run open, and the annotations are a
  * statement nobody is asked to check. Resources that carry no
  * annotation — the generic dispatcher's, the broker's — are left alone.
@@ -60,7 +62,7 @@ import jakarta.ws.rs.core.Response;
 @Component(service = DynamicFeature.class)
 @JakartarsExtension
 @JakartarsName(SecurityNames.ROLES_FILTER)
-@JakartarsApplicationSelect("(" + SecurityNames.AUTH + "=" + SecurityNames.BEARER + "*)")
+@JakartarsApplicationSelect(SecurityNames.SELECT_VERIFYING)
 public class RolesAllowedFeature implements DynamicFeature {
 
 	private static final Logger LOG = Logger.getLogger(RolesAllowedFeature.class.getName());
@@ -120,9 +122,9 @@ public class RolesAllowedFeature implements DynamicFeature {
 				refuse(request, Response.status(Response.Status.FORBIDDEN).build(), "denied to everybody");
 				return;
 			}
-			// Put there by the bearer filter of either mode, after it
-			// verified the token; under bearer-optional a call without one
-			// arrives here with none.
+			// Put there by the filter of the application's mode, after it
+			// verified the token or the certificate; under bearer-optional
+			// a call without a token arrives here with none.
 			if (!(request.getProperty(SecurityNames.REQUEST_PRINCIPAL) instanceof VerifiedPrincipal principal)) {
 				refuse(request, Response.status(Response.Status.UNAUTHORIZED)
 						.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer").build(), "no principal");

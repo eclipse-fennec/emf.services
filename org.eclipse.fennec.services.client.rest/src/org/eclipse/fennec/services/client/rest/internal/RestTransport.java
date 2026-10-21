@@ -15,11 +15,14 @@ package org.eclipse.fennec.services.client.rest.internal;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
+
+import javax.net.ssl.SSLContext;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.common.ClientOrigin;
@@ -41,6 +44,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
@@ -104,6 +108,30 @@ public final class RestTransport {
 						+ "the system, not the machine.",
 				required = false)
 		String origin_label() default "";
+
+		@AttributeDefinition(name = "TLS key store", required = false,
+				description = "The certificate and key this node shows to a server that asks for one (mode "
+						+ "mtls, SECURITY.md §7d). Empty: it shows none.")
+		String tls_keystore() default "";
+
+		@AttributeDefinition(name = "TLS key store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the key store and of its key.")
+		String tls_keystore_password() default "";
+
+		@AttributeDefinition(name = "TLS key store type", required = false, description = "PKCS12 or JKS.")
+		String tls_keystore_type() default "PKCS12";
+
+		@AttributeDefinition(name = "TLS trust store", required = false,
+				description = "The authorities whose server certificates this node believes. Empty: the JVM's "
+						+ "own.")
+		String tls_truststore() default "";
+
+		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the trust store.")
+		String tls_truststore_password() default "";
+
+		@AttributeDefinition(name = "TLS trust store type", required = false, description = "PKCS12 or JKS.")
+		String tls_truststore_type() default "PKCS12";
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -170,7 +198,8 @@ public final class RestTransport {
 	void modified(Config config) {
 		this.baseUrl = URI.create(config.broker_url());
 		boolean timeoutsChanged = config.connect_timeout_millis() != this.config.connect_timeout_millis()
-				|| config.read_timeout_millis() != this.config.read_timeout_millis();
+				|| config.read_timeout_millis() != this.config.read_timeout_millis()
+				|| !tlsOf(config).equals(tlsOf(this.config));
 		// The runtime half stays; only the deployment's name for itself
 		// is configuration. The filter reads the field, so a new label
 		// takes effect without rebuilding the client.
@@ -179,7 +208,7 @@ public final class RestTransport {
 		if (!timeoutsChanged) {
 			return;
 		}
-		LOG.info("[DDSR-Client] REST transport timeouts changed — building a new client");
+		LOG.info("[DDSR-Client] REST transport timeouts or TLS changed — building a new client");
 		Client previous = this.client;
 		this.client = build(config);
 		if (previous != null) {
@@ -193,6 +222,20 @@ public final class RestTransport {
 		}
 		if (config.read_timeout_millis() > 0) {
 			clientBuilder.readTimeout(config.read_timeout_millis(), TimeUnit.MILLISECONDS);
+		}
+		// One context for everything this client calls: the broker, its
+		// event stream and the providers. The certificate is the node's
+		// identity, not the broker's audience, so unlike the broker's
+		// token it may go wherever the node calls.
+		SSLContext tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(),
+				config.tls_keystore_type(), config.tls_truststore(), config.tls_truststore_password(),
+				config.tls_truststore_type());
+		if (tls != null) {
+			clientBuilder.sslContext(tls);
+			LOG.info("[DDSR-Client] TLS: " + (config.tls_keystore().isBlank() ? "no client certificate"
+					: "client certificate from " + config.tls_keystore())
+					+ (config.tls_truststore().isBlank() ? ", the JVM's authorities" : ", authorities from "
+							+ config.tls_truststore()));
 		}
 		return clientBuilder
 				.register(new XmiMessageBodyReader(rsObjects))
@@ -210,6 +253,12 @@ public final class RestTransport {
 						request.getHeaders().putSingle(ClientOrigin.HEADER, origin.token()))
 				.register((ClientRequestFilter) this::authorize)
 				.build();
+	}
+
+	/** What decides the TLS context, for telling a changed configuration from a repeated one. */
+	private static List<String> tlsOf(Config config) {
+		return List.of(config.tls_keystore(), config.tls_keystore_password(), config.tls_keystore_type(),
+				config.tls_truststore(), config.tls_truststore_password(), config.tls_truststore_type());
 	}
 
 	/**

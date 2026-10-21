@@ -1,7 +1,11 @@
 {
   ":configurator:resource-version": 1,
   "org.eclipse.fennec.services.client.rest": {
-    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
+    "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
+    "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
+    "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
+    "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",
+    "tls.truststore.password": "$[env:DDSR_TLS_TRUSTSTORE_PASSWORD;default=]"
   },
   "org.eclipse.fennec.services.client": {
     "consumer.id": "$[env:DDSR_CONSUMER_ID;default=$[env:DDSR_OAUTH_CLIENT_ID;default=]]"

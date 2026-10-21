@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.eclipse.fennec.services.BearerTokenScheme;
+import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -91,6 +92,21 @@ public final class SecurityRequirements {
 		return flavor.getSecuritySchemes().stream()
 				.filter(BearerTokenScheme.class::isInstance)
 				.map(BearerTokenScheme.class::cast)
+				.findFirst().orElse(null);
+	}
+
+	/**
+	 * The client-certificate scheme a flavor offers, or {@code null}: a
+	 * caller of it proves itself on the TLS connection, with nothing in
+	 * the request (SECURITY.md §7d).
+	 */
+	public static MutualTlsScheme mutualTlsScheme(ServiceFlavor flavor) {
+		if (flavor == null) {
+			return null;
+		}
+		return flavor.getSecuritySchemes().stream()
+				.filter(MutualTlsScheme.class::isInstance)
+				.map(MutualTlsScheme.class::cast)
 				.findFirst().orElse(null);
 	}
 }

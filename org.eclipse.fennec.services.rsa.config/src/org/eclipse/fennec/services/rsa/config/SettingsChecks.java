@@ -57,7 +57,30 @@ final class SettingsChecks {
 			}
 			checkUrl(problems, "the public URL", settings.effectivePublicUrl());
 		}
+		identity(problems, settings.identity(), serves);
 		return List.copyOf(problems);
+	}
+
+	/**
+	 * Half an identity is worse than none: a token endpoint without a
+	 * client fails every call, an issuer without keys or audiences would
+	 * either verify nothing or accept tokens meant for somebody else. Said
+	 * here, before anything is written, rather than by the supplier and
+	 * the verifier refusing to start one by one.
+	 */
+	private static void identity(List<String> problems, NodeIdentity identity, boolean serves) {
+		if (identity.callsWithToken()) {
+			checkUrl(problems, "token.uri", identity.tokenUri());
+			if (identity.clientId().isBlank() || identity.clientSecret().isBlank()) {
+				problems.add("token.uri is set, so client.id and client.secret are needed as well");
+			}
+		}
+		if (serves && identity.verifies()) {
+			checkUrl(problems, "jwks.uri", identity.jwksUri());
+			if (identity.audiences().isEmpty()) {
+				problems.add("issuer is set, so audiences are needed as well: a token for this node must name it");
+			}
+		}
 	}
 
 	/**

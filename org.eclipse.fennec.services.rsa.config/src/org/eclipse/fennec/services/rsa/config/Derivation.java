@@ -64,6 +64,12 @@ public final class Derivation {
 
 	static final String TOPOLOGY_PID = "org.eclipse.fennec.services.rsa.topology";
 
+	/** Where the token for this node's calls comes from (SECURITY.md §6). */
+	static final String OAUTH_PID = "org.eclipse.fennec.services.security.oauth";
+
+	/** Who verifies the tokens of the calls this node serves. */
+	static final String VERIFIER_PID = "org.eclipse.fennec.services.security.jwt";
+
 	/** The distribution a node points at when it exports nothing. */
 	static final String NO_DISTRIBUTION = "(ddsr.rsa.flavor=none)";
 
@@ -76,6 +82,7 @@ public final class Derivation {
 	 */
 	public static List<DerivedConfiguration> forProvider(RsaSettings settings) {
 		List<DerivedConfiguration> plan = new ArrayList<>();
+		identity(plan, settings, true);
 		// An HTTP stack only where something is served over HTTP. A node
 		// that exports over MQTT talks to the broker as a client and
 		// needs no server of its own.
@@ -109,6 +116,7 @@ public final class Derivation {
 	 */
 	public static List<DerivedConfiguration> forConsumer(RsaSettings settings) {
 		List<DerivedConfiguration> plan = new ArrayList<>();
+		identity(plan, settings, false);
 		contracts(plan, settings);
 		client(plan, settings);
 		discovery(plan, settings);
@@ -135,8 +143,8 @@ public final class Derivation {
 		client.put("supported.flavors", settings.supportedFlavors());
 		client.put("eventSource.target", "(ddsr.event.transport="
 				+ (settings.hearsOverMqtt() ? "mqtt" : "rest") + ")");
-		if (!settings.consumerId().isBlank()) {
-			client.put("consumer.id", settings.consumerId());
+		if (!settings.effectiveConsumerId().isBlank()) {
+			client.put("consumer.id", settings.effectiveConsumerId());
 		}
 		plan.add(DerivedConfiguration.of(CLIENT_PID, Map.copyOf(client)));
 	}
@@ -170,8 +178,44 @@ public final class Derivation {
 					"topic.prefix", settings.topicPrefix())));
 			return;
 		}
-		plan.add(DerivedConfiguration.of(DISTRIBUTION_PID, Map.of(
-				"public.url", settings.effectivePublicUrl())));
+		Map<String, Object> rest = new LinkedHashMap<>();
+		rest.put("public.url", settings.effectivePublicUrl());
+		NodeIdentity identity = settings.identity();
+		if (identity.verifies()) {
+			// The scheme a guarded contract's flavor names: the same issuer
+			// the verifier checks, so what a consumer is told and what this
+			// node accepts cannot drift apart.
+			rest.put("issuer", identity.issuer());
+			rest.put("audiences", identity.audiences().toArray(String[]::new));
+			rest.put("jwks.uri", identity.jwksUri());
+			rest.put("scope.claim", identity.scopeClaim());
+		}
+		plan.add(DerivedConfiguration.of(DISTRIBUTION_PID, Map.copyOf(rest)));
+	}
+
+	/**
+	 * Who this node is (SECURITY.md §6), first in the plan: the token
+	 * supplier and the verifier are there before the client calls the
+	 * broker and before anything is served — and, the plan coming down in
+	 * reverse, they go last. A node without an identity writes neither.
+	 */
+	private static void identity(List<DerivedConfiguration> plan, RsaSettings settings, boolean serves) {
+		NodeIdentity identity = settings.identity();
+		if (identity.callsWithToken()) {
+			plan.add(DerivedConfiguration.of(OAUTH_PID, Map.of(
+					"token.uri", identity.tokenUri(),
+					"client.id", identity.clientId(),
+					"client.secret", identity.clientSecret(),
+					"scope", identity.scope())));
+		}
+		if (serves && identity.verifies()) {
+			plan.add(DerivedConfiguration.of(VERIFIER_PID, Map.of(
+					"issuer", identity.issuer(),
+					"jwks.uri", identity.jwksUri(),
+					"audiences", identity.audiences().toArray(String[]::new),
+					"scope.claim", identity.scopeClaim(),
+					"subject.claim", identity.subjectClaim())));
+		}
 	}
 
 	/**

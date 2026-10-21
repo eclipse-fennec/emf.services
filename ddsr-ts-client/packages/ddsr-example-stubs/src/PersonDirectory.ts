@@ -21,7 +21,7 @@ import type { DdsrConsumer } from '@ddsr/client';
 /**
  * Reads persons from the example directory. Exercises the parts of a
  * contract the Payment example does not have: EClass-typed slots, a
- * list result and a declared exception.
+ * list result, a declared exception and who may call.
  */
 export interface PersonDirectory {
   /**
@@ -51,7 +51,7 @@ export const PersonDirectoryVersion = '1.0.0';
  * hashes to exactly this - compatibility by identity, so a provider
  * that changed its operations is not called with these signatures.
  */
-export const PersonDirectoryFingerprint = 'sd1:571e5ac6b33ee1ae87a1b394337751852ffde4f388cd3f1d9910a54cd9261f92';
+export const PersonDirectoryFingerprint = 'sd1:b4df173ec3f952e82de6c97c0faff69d10ddee94c1b16b4023e4560dfb101209';
 
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker

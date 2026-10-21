@@ -23,7 +23,7 @@ import type { ServiceInterface } from '@ddsr/model';
 /**
  * Reads persons from the example directory. Exercises the parts of a
  * contract the Payment example does not have: EClass-typed slots, a
- * list result and a declared exception.
+ * list result, a declared exception and who may call.
  * The implementation side of PersonDirectory. Every operation
  * the catalog declares has to be here; a return value may be a
  * promise or not.
@@ -56,7 +56,10 @@ export function buildPersonDirectoryInterface(): ServiceInterface {
   const serviceInterface = factory.createServiceInterface();
   serviceInterface.name = 'PersonDirectory';
   serviceInterface.version = '1.0.0';
-  serviceInterface.description = 'Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result and a declared exception.';
+  serviceInterface.description = 'Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result, a declared exception and who may call.';
+  const serviceInterfaceSecurity = factory.createSecurityRequirement();
+  serviceInterfaceSecurity.authenticated = true;
+  serviceInterface.security = serviceInterfaceSecurity;
 
   const exception0 = factory.createServiceException();
   exception0.name = 'PersonNotFound';
@@ -70,6 +73,10 @@ export function buildPersonDirectoryInterface(): ServiceInterface {
   const operation0 = factory.createServiceOperation();
   operation0.name = 'get';
   operation0.description = 'One person by identifier.';
+  const operation0Security = factory.createSecurityRequirement();
+  operation0Security.authenticated = true;
+  operation0Security.scopes.push('person-reader');
+  operation0.security = operation0Security;
   operation0.exceptions.push(exception0);
   const operation0Result = factory.createParameter();
   operation0Result.name = 'result';

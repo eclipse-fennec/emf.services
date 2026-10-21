@@ -138,6 +138,28 @@
           }
         }
       ]
+    },
+    {
+      "name": "person-store",
+      "description": "a token for the PersonStore the Java provider serves in scenario M",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "person-store-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "person-store",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "defaultDefaultClientScopes": [
@@ -171,7 +193,7 @@
     {
       "clientId": "payment-java",
       "name": "payment-java",
-      "description": "the Java payment provider, every instance of it (A, F, G, H, J)",
+      "description": "the Java payment provider, every instance of it (A, F, G, H, J, M)",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -213,7 +235,7 @@
     {
       "clientId": "java-client",
       "name": "java-client",
-      "description": "the Java consumer client.jar and client-mqtt.jar (B, D, P)",
+      "description": "the Java consumer client.jar and client-mqtt.jar (B, D, P, M)",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -228,7 +250,8 @@
         "roles"
       ],
       "optionalClientScopes": [
-        "ddsr-broker"
+        "ddsr-broker",
+        "person-store"
       ]
     },
     {

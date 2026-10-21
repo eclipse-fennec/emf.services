@@ -594,9 +594,10 @@ if secured; then
   MTLS_PROVIDER_PID=$!
   PIDS+=("$MTLS_PROVIDER_PID")
   wait_for_line "$WORK/payment-mtls.log" "published PersonStore" 90
-  # Announced is not yet served: the whiteboard deploys the bearer
-  # application on its own time — later still on a slow runner — and
-  # until then the path is 404. Served guarded means 401 without a token.
+  # Since #204 the generic distribution announces only what the
+  # whiteboard lists as deployed, so this should hold at once; the wait
+  # stays as a guard, because a slow runner is where that order was
+  # first seen broken. Served guarded means 401 without a token.
   waited=0
   until [ "$(curl -s -o /dev/null -w '%{http_code}' "$PERSONS_URL/persons/nobody")" = 401 ]; do
     sleep 1

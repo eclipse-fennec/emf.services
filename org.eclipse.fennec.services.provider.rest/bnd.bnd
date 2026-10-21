@@ -30,4 +30,5 @@ Bundle-Description: \
 	org.eclipse.parsson.jakarta.json;version=latest,\
 	${junit},\
 	junit-platform-launcher;version=latest,\
-	org.glassfish.jersey.core.jersey-common;version=latest
+	org.glassfish.jersey.core.jersey-common;version=latest,\
+	osgi.core;version=latest

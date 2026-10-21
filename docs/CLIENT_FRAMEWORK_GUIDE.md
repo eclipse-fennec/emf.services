@@ -363,6 +363,17 @@ broker's `subject.claim` — with Keycloak client credentials, `azp`, the
 client id), so the client's `consumer.id` has to be that name:
 configure it to the node's client id.
 
+**Calling a guarded provider.** When the target's flavor names a
+bearer scheme, `RestServiceInvoker` asks the supplier for a token of the
+scheme's audience (`TokenSupplier.token(audience)`) — never the
+broker's. The client-credentials supplier requests the scope of that
+name and keeps one token per scope, so set `scope` to the broker's
+(`ddsr-broker`) and let the identity provider map a scope per provider
+audience. A guarded operation on a node without a supplier fails with
+that reason. Roles per operation, and how a Java interface says them
+with `@RolesAllowed`, are in [Security](SECURITY.md) §7b and
+[Remote Service Admin](RSA.md#who-may-call).
+
 ### 5.5 Module layout & buildpath
 
 `bnd.bnd`:

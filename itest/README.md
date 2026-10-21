@@ -48,6 +48,15 @@ broker. Requirements and decisions:
   invocation path. Deliberately MQTT distribution with REST discovery:
   the announcement is a publish to the broker as always, only the calls
   travel over mosquitto (#98).
+  The same framework is asked to export the guarded `Ledger` too, and
+  the scenario checks that MQTT refuses it — a call there carries no
+  credential.
+- **K (podman only, secured) — roles per operation over RSA:** the
+  `Ledger` interface carries `@RolesAllowed` and `@PermitAll`; exported
+  over REST with the node's verifier, imported by a framework whose
+  client holds `ledger-reader` only. Version and balance answer,
+  `record` is refused with `403`, and a token minted for the broker is
+  `401` at the provider. Skipped with `HARNESS_AUTH=none`.
 - **J (podman only) — MQTT with no provider code:** the implementation
   is an ordinary OSGi service; a factory configuration of
   `provider.mqtt` reads the contract from a model document, subscribes
@@ -78,7 +87,7 @@ drain in scenario G.
 
 ```bash
 ./itest/run-harness.sh          # host processes: A + B + F + G + H + N (podman only for Keycloak)
-./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + J + F + G + H
+./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + K + J + F + G + H
 HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 ```
 

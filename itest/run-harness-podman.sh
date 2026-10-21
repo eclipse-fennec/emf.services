@@ -366,9 +366,60 @@ grep -q "greetings so far, none of them local" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the consumer never got an answer"; cat "$WORK/rsa-import.log"; exit 1; }
 grep -q "ddsr/rpc/req/" "$WORK/rsa-export.log" \
   || { echo "SCENARIO I FAILED: the export did not listen on the request tree"; cat "$WORK/rsa-export.log"; exit 1; }
+# The same framework also asks to export the Ledger, whose interface says
+# who may call it. Over MQTT a call carries no credential, so a guarded
+# contract is not served there — refused, never served open.
+if grep -q "exported Ledger" "$WORK/rsa-export.log"; then
+  echo "SCENARIO I FAILED: a guarded contract was exported over MQTT"; exit 1
+fi
+grep -q "cannot check it" "$WORK/rsa-export.log" \
+  || { echo "SCENARIO I FAILED: the guarded Ledger was not refused over MQTT"; cat "$WORK/rsa-export.log"; exit 1; }
+echo "  ✓ guarded-contract-refused-over-mqtt: the Ledger is not served where no caller can be checked"
 podman stop -t 20 ddsr-rsa-import >/dev/null 2>&1 || true
 podman stop -t 20 ddsr-rsa-export >/dev/null 2>&1 || true
 echo "Scenario I OK: an OSGi service exported over MQTT and bound by @Reference in another framework"
+
+# ============================================================ Scenario K
+log "Scenario K: RSA over REST, secured — the interface says who may call"
+# The Ledger's interface carries @RolesAllowed("ledger-reader"), its
+# record method @RolesAllowed("ledger-writer"), its version @PermitAll
+# (SECURITY.md §6). Exported, that is the contract's requirement; the
+# exporting node verifies tokens of its own audience (rsa-example); the
+# importing node holds ledger-reader only and calls with its own token
+# through a plain @Reference. Reading and the version go through, writing
+# is refused with 403 — and a token minted for the broker is no use at
+# the provider.
+if secured; then
+  # shellcheck disable=SC2046
+  run_container ddsr-rsa-export-k ddsr/rsa-example $(client_args rsa-example) $(provider_args rsa-example) \
+    -e DDSR_BROKER_URL="$BROKER_URL"
+  wait_for_log ddsr-rsa-export-k "exported Ledger over REST" 150
+
+  # shellcheck disable=SC2046
+  run_container ddsr-rsa-import-k ddsr/rsa-consumer $(client_args rsa-example-consumer) \
+    -e DDSR_BROKER_URL="$BROKER_URL"
+  wait_for_log ddsr-rsa-import-k "ledger record" 150
+
+  podman logs ddsr-rsa-import-k >"$WORK/rsa-import-k.log" 2>&1
+  for expected in "ledger says ledger 1.0" "ledger balance of demo: 100.0" \
+                  "ledger record refused, as it should be: HTTP 403"; do
+    grep -q "$expected" "$WORK/rsa-import-k.log" \
+      || { echo "SCENARIO K FAILED: no '$expected'"; cat "$WORK/rsa-import-k.log"; exit 1; }
+  done
+  echo "  ✓ permit-all: version answered without a role"
+  echo "  ✓ role-held: balance read as ledger-reader"
+  echo "  ✓ role-missing: record refused with 403"
+  WRONG_AUDIENCE=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $(token_for harness)" \
+    "http://localhost:9095/services/rsa-example/ledger/balance")
+  [ "$WRONG_AUDIENCE" = 401 ] \
+    || { echo "SCENARIO K FAILED: a broker token reached the provider with $WRONG_AUDIENCE, expected 401"; exit 1; }
+  echo "  ✓ audience-separated: a token minted for the broker is 401 at the provider"
+  podman stop -t 20 ddsr-rsa-import-k >/dev/null 2>&1 || true
+  podman stop -t 20 ddsr-rsa-export-k >/dev/null 2>&1 || true
+  echo "Scenario K OK: roles from the interface, held by the exporting node against the importing node's token"
+else
+  echo "Scenario K skipped: a guarded export needs an issuer to verify against (HARNESS_AUTH=none)"
+fi
 
 # ============================================================ Scenario J
 log "Scenario J: MQTT with no provider code — a factory configuration serves BindingProbe over topics"
@@ -494,4 +545,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + I + J + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + K + J + F + G + H)"

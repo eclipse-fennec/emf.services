@@ -111,6 +111,24 @@ describe('clientCredentials', () => {
     expect(seen).toHaveLength(1);
   });
 
+  it('keeps one token per audience, the broker\'s apart from a provider\'s', async () => {
+    const seen: Seen[] = [];
+    const state = { issued: 0, status: 200, expiresIn: 300 };
+    const tokens = clientCredentials({ ...options(tokenEndpoint(seen, state), () => 0), scope: 'ddsr-broker' });
+
+    const broker = await tokens();
+    const provider = await tokens('payments');
+
+    expect(broker).not.toBe(provider);
+    expect(seen.map((call) => call.body)).toEqual([
+      'grant_type=client_credentials&scope=ddsr-broker',
+      'grant_type=client_credentials&scope=payments',
+    ]);
+    expect(await tokens('payments')).toBe(provider);
+    expect(await tokens()).toBe(broker);
+    expect(seen).toHaveLength(2);
+  });
+
   it('reports a refusal with the reason and never the secret', async () => {
     const state = { issued: 0, status: 401, expiresIn: 300 };
     const tokens = clientCredentials(options(tokenEndpoint([], state), () => 0));

@@ -21,8 +21,13 @@
  * audience must not reach a provider, where it could be replayed.
  */
 
-/** Where a node gets the token it shows the broker; called on every broker call. */
-export type TokenSupplier = () => Promise<string>;
+/**
+ * Where a node gets its tokens; called on every call. Without an
+ * audience it answers the broker's token; with one, a token of that
+ * target (SECURITY.md §1) — a provider must not receive a token it could
+ * replay against the broker.
+ */
+export type TokenSupplier = (audience?: string) => Promise<string>;
 
 /** The token on every call through `inner`; without a supplier, `inner` itself. */
 export function withBearer(inner: typeof fetch, tokens?: TokenSupplier): typeof fetch {
@@ -65,11 +70,12 @@ export function clientCredentials(options: ClientCredentialsOptions): TokenSuppl
   const now = options.now ?? Date.now;
   const basic = btoa(`${encodeURIComponent(options.clientId)}:${encodeURIComponent(options.clientSecret)}`);
   const scope = options.scope?.trim() ?? '';
-  let current: string | undefined;
-  let renewAt = 0;
-  let pending: Promise<string> | undefined;
+  // One token per scope asked for — the configured one for the broker,
+  // one per provider audience — like the Java supplier.
+  const held = new Map<string, { token: string; renewAt: number }>();
+  const pending = new Map<string, Promise<string>>();
 
-  async function fetchToken(): Promise<string> {
+  async function fetchToken(scope: string): Promise<string> {
     const body = new URLSearchParams({ grant_type: 'client_credentials' });
     if (scope) {
       body.set('scope', scope);
@@ -98,18 +104,24 @@ export function clientCredentials(options: ClientCredentialsOptions): TokenSuppl
     }
     const lifetime = typeof answer.expires_in === 'number' ? answer.expires_in : 60;
     const margin = lifetime > 2 * RENEW_BEFORE_SECONDS ? RENEW_BEFORE_SECONDS : lifetime / 2;
-    current = answer.access_token;
-    renewAt = now() + (lifetime - margin) * 1000;
-    return current;
+    held.set(scope, { token: answer.access_token, renewAt: now() + (lifetime - margin) * 1000 });
+    return answer.access_token;
   }
 
-  return () => {
-    if (current !== undefined && now() < renewAt) {
-      return Promise.resolve(current);
+  // A target's token asks for the scope of the audience's name, which the
+  // identity provider maps to that audience (Keycloak: an optional client
+  // scope with an audience mapper).
+  return (audience?: string) => {
+    const wanted = audience?.trim() || scope;
+    const current = held.get(wanted);
+    if (current !== undefined && now() < current.renewAt) {
+      return Promise.resolve(current.token);
     }
-    pending ??= fetchToken().finally(() => {
-      pending = undefined;
-    });
-    return pending;
+    let request = pending.get(wanted);
+    if (!request) {
+      request = fetchToken(wanted).finally(() => pending.delete(wanted));
+      pending.set(wanted, request);
+    }
+    return request;
   };
 }

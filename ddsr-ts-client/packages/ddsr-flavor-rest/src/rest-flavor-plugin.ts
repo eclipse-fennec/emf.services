@@ -11,10 +11,10 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { FlavorPlugin } from '@ddsr/client';
+import type { FlavorPlugin, TokenSupplier } from '@ddsr/client';
 import {
-  CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrServiceError, DdsrTransportError,
-  newEnvelope, toArray, toHeaders,
+  CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrClientError, DdsrServiceError,
+  DdsrTransportError, bearerScheme, demandsAuthentication, newEnvelope, toArray, toHeaders,
 } from '@ddsr/client';
 import type {
   ServiceFlavor,
@@ -66,6 +66,13 @@ export interface RestFlavorPluginOptions {
    * broker calls get it from the client and an invocation from this.
    */
   origin?: string;
+  /**
+   * Where this node's tokens come from (SECURITY.md §6), e.g. the same
+   * `clientCredentials(...)` the client shows the broker. Asked per call
+   * for the audience the target's bearer scheme names — never the
+   * broker's token: a provider must not receive one it could replay.
+   */
+  tokenSupplier?: TokenSupplier;
 }
 
 export class RestFlavorPlugin implements FlavorPlugin {
@@ -76,6 +83,7 @@ export class RestFlavorPlugin implements FlavorPlugin {
   private readonly log: (message: string) => void;
   private readonly tracer: CallTracer;
   private readonly origin: string | undefined;
+  private readonly tokenSupplier: TokenSupplier | undefined;
 
   constructor(fetchFnOrOptions?: typeof fetch | RestFlavorPluginOptions) {
     const options: RestFlavorPluginOptions =
@@ -86,6 +94,29 @@ export class RestFlavorPlugin implements FlavorPlugin {
     this.log = options.log ?? ((m) => console.error(`[ddsr-rest] ${m}`));
     this.tracer = options.tracer ?? NO_TRACER;
     this.origin = options.origin;
+    this.tokenSupplier = options.tokenSupplier;
+  }
+
+  /**
+   * The token a call to this target carries: one of the audience its
+   * bearer scheme names, or none without a scheme. A guarded operation
+   * without a supplier fails here, saying why — the twin of the Java
+   * RestServiceInvoker.bearerFor.
+   */
+  private async bearerFor(flavor: ServiceFlavor, operation: ServiceOperation): Promise<string | undefined> {
+    const scheme = bearerScheme(flavor);
+    if (!scheme) {
+      return undefined;
+    }
+    if (!this.tokenSupplier) {
+      if (demandsAuthentication(operation)) {
+        throw new DdsrClientError(
+          `'${operation.name}' needs a bearer token of ${scheme.issuer}, and this node has no token supplier`);
+      }
+      return undefined;
+    }
+    const audiences = Array.from(scheme.audiences ?? []);
+    return this.tokenSupplier(audiences[0]);
   }
 
   canHandle(flavor: ServiceFlavor): boolean {
@@ -105,6 +136,7 @@ export class RestFlavorPlugin implements FlavorPlugin {
     const restOpFlavor = operationFlavor as RestOperationFlavor;
 
     const request = buildRequest(operation, params, restFlavor, restOpFlavor);
+    const bearer = await this.bearerFor(flavor, operation);
     // Binary mode (#101): the attributes as ce-* headers, the body
     // untouched. The envelope goes in FIRST, so a contract that binds a
     // parameter to a header wins over it — the call is what the
@@ -129,6 +161,7 @@ export class RestFlavorPlugin implements FlavorPlugin {
         ...(this.origin ? { 'X-DDSR-Origin': this.origin } : {}),
         ...(request.init.headers as Record<string, string>),
         ...context,
+        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       },
       ...(this.timeoutMillis > 0 ? { signal: AbortSignal.timeout(this.timeoutMillis) } : {}),
     };

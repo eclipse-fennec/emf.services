@@ -15,7 +15,10 @@ package org.eclipse.fennec.services.provider.rest;
 
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,6 +40,7 @@ import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyWriter;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
@@ -50,6 +54,8 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.ReferencePolicyOption;
+import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
+import org.osgi.service.jakartars.runtime.dto.RuntimeDTO;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -221,6 +227,14 @@ public class GenericRestDistribution extends Application {
 	/** The authentication mode this application states, for the scheme it announces. */
 	private Object mode;
 
+	/** For this application's own service id, which is what the whiteboard's DTOs name it by. */
+	private ComponentContext componentContext;
+
+	private final Set<JakartarsServiceRuntime> runtimes = ConcurrentHashMap.newKeySet();
+
+	/** The whiteboard's refusal, said once rather than on every runtime update. */
+	private String reportedRefusal;
+
 	/**
 	 * Optional on purpose: serving and announcing are separate jobs, and
 	 * a deployment that only serves must not wait for a broker client
@@ -274,6 +288,46 @@ public class GenericRestDistribution extends Application {
 		}
 	}
 
+	/**
+	 * The whiteboards, watched for the one moment that matters here: the
+	 * application this component is shows up in a runtime's DTO (#204).
+	 * A runtime bumps its {@code service.changecount} whenever its DTOs
+	 * change, which DS delivers as an update of this reference.
+	 *
+	 * <p>Announcing before that is the FR-P3 order turned around — a
+	 * consumer would dial an address that answers 404 — and this
+	 * component cannot wait for it in {@code activate}: it is the
+	 * application, and its deployment only starts once activation is
+	 * over and the service is registered.
+	 */
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC,
+			updated = "updatedRuntime")
+	void bindRuntime(JakartarsServiceRuntime runtime) {
+		runtimes.add(runtime);
+		announceIfReady();
+	}
+
+	void updatedRuntime(JakartarsServiceRuntime runtime) {
+		announceIfReady();
+	}
+
+	void unbindRuntime(JakartarsServiceRuntime runtime) {
+		runtimes.remove(runtime);
+	}
+
+	/** Where this application stands in the whiteboards, by its own service id. */
+	private Deployment deployment() {
+		ServiceReference<?> self = componentContext == null ? null : componentContext.getServiceReference();
+		if (self == null) {
+			return Deployment.PENDING;
+		}
+		List<RuntimeDTO> dtos = new ArrayList<>();
+		for (JakartarsServiceRuntime runtime : runtimes) {
+			dtos.add(runtime.getRuntimeDTO());
+		}
+		return Deployment.of((Long) self.getProperty(Constants.SERVICE_ID), dtos);
+	}
+
 	@Activate
 	void activate(ComponentContext componentContext, BundleContext context, Config config) {
 		Object self = componentContext.getProperties().get("component.id");
@@ -298,6 +352,7 @@ public class GenericRestDistribution extends Application {
 		// Under the same monitor announceIfReady takes: a binding on
 		// another thread must either see both of these or neither.
 		synchronized (this) {
+			this.componentContext = componentContext;
 			this.config = config;
 			this.implementation = implementation;
 			this.mode = componentContext.getProperties().get(ServedSecurity.AUTH);
@@ -316,6 +371,17 @@ public class GenericRestDistribution extends Application {
 			return;
 		}
 		if (client == null || catalog == null) {
+			return;
+		}
+		// Last, because it is the one condition that changes by itself:
+		// served first, then told (FR-P3, #204).
+		Deployment deployment = deployment();
+		if (deployment.state() == Deployment.State.FAILED && !deployment.reason().equals(reportedRefusal)) {
+			reportedRefusal = deployment.reason();
+			LOG.warning("[DDSR] the whiteboard refused " + config.ddsr_contract() + " (" + deployment.reason()
+					+ ") — not announced");
+		}
+		if (!deployment.deployed()) {
 			return;
 		}
 		announce(config, implementation);

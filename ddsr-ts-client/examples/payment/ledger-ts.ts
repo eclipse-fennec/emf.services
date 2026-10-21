@@ -22,9 +22,18 @@
  * Run by the host harness (scenario T); without DDSR_JWT_ISSUER it
  * refuses to serve, because a guarded contract is never served open by
  * accident.
+ *
+ * With LEDGER_AUTH=mtls the same contract is served by client
+ * certificate instead (SECURITY.md §7d, scenario M): HTTPS with the
+ * server's PKCS12 identity (DDSR_HTTPS_KEYSTORE, _PASSWORD), a client
+ * certificate demanded and checked against DDSR_TLS_CA, the caller named
+ * by its CN and given the roles DDSR_MTLS_ROLES maps to it.
  */
-import { createServer } from 'node:http';
-import { DdsrClientImpl, attachShutdownHooks, createJwtVerifier } from '@ddsr/client';
+import { readFileSync } from 'node:fs';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createServer as createSecureServer } from 'node:https';
+import type { TLSSocket } from 'node:tls';
+import { DdsrClientImpl, attachShutdownHooks, createCertificateVerifier, createJwtVerifier } from '@ddsr/client';
 import { DDSRFactory } from '@ddsr/model';
 import type { SecurityRequirement } from '@ddsr/model';
 import { restDispatcher } from '@ddsr/flavor-rest';
@@ -44,10 +53,14 @@ function requirement(authenticated: boolean, ...scopes: string[]): SecurityRequi
   return r;
 }
 
+const MTLS = process.env.LEDGER_AUTH === 'mtls';
 const issuer = process.env.DDSR_JWT_ISSUER;
-if (!issuer) {
-  throw new Error('TsLedger demands authentication: set DDSR_JWT_ISSUER, DDSR_JWT_JWKS_URI and DDSR_JWT_AUDIENCES');
+if (!MTLS && !issuer) {
+  throw new Error('TsLedger demands authentication: set DDSR_JWT_ISSUER, DDSR_JWT_JWKS_URI and DDSR_JWT_AUDIENCES'
+    + ' — or LEDGER_AUTH=mtls with DDSR_HTTPS_KEYSTORE, DDSR_TLS_CA and DDSR_MTLS_ROLES');
 }
+/** `|`-separated, the separator the Java node's placeholders use — DNs and role lists carry commas. */
+const listOf = (value: string | undefined) => (value ?? '').split('|').map(v => v.trim()).filter(v => v !== '');
 
 // --- the contract: who may call is part of it -------------------------
 const contract = f.createServiceInterface();
@@ -83,13 +96,20 @@ for (const [name, security] of [
   opFlavor.operation = operation;
   flavor.operationFlavors.push(opFlavor);
 }
-const scheme = f.createBearerTokenScheme();
-scheme.name = 'bearer';
-scheme.issuer = issuer;
-scheme.audiences.push(AUDIENCE);
-scheme.jwksUri = process.env.DDSR_JWT_JWKS_URI ?? '';
-scheme.scopeClaim = process.env.DDSR_JWT_SCOPE_CLAIM ?? 'scope';
-flavor.securitySchemes.push(scheme);
+if (MTLS) {
+  const certificates = f.createMutualTlsScheme();
+  certificates.name = 'mtls';
+  certificates.trustedIssuers.push(...listOf(process.env.DDSR_MTLS_TRUSTED_ISSUERS));
+  flavor.securitySchemes.push(certificates);
+} else {
+  const scheme = f.createBearerTokenScheme();
+  scheme.name = 'bearer';
+  scheme.issuer = issuer!;
+  scheme.audiences.push(AUDIENCE);
+  scheme.jwksUri = process.env.DDSR_JWT_JWKS_URI ?? '';
+  scheme.scopeClaim = process.env.DDSR_JWT_SCOPE_CLAIM ?? 'scope';
+  flavor.securitySchemes.push(scheme);
+}
 
 const provider = f.createServiceProvider();
 provider.name = 'ts-ledger';
@@ -110,19 +130,37 @@ const ledger = {
   version: () => 'ts-ledger 1.0',
 };
 
-const dispatch = restDispatcher(flavor, ledger, {
-  verifier: createJwtVerifier({
-    issuer,
-    jwksUri: scheme.jwksUri,
-    audiences: [AUDIENCE],
-    scopeClaim: process.env.DDSR_JWT_SCOPE_CLAIM,
-    subjectClaim: process.env.DDSR_JWT_SUBJECT_CLAIM,
-  }),
-  log: (m) => log(m),
-});
+const dispatch = restDispatcher(flavor, ledger, MTLS
+  ? {
+      certificates: createCertificateVerifier({
+        trustedIssuers: listOf(process.env.DDSR_MTLS_TRUSTED_ISSUERS),
+        roles: listOf(process.env.DDSR_MTLS_ROLES),
+      }),
+      log: (m) => log(m),
+    }
+  : {
+      verifier: createJwtVerifier({
+        issuer: issuer!,
+        jwksUri: process.env.DDSR_JWT_JWKS_URI ?? '',
+        audiences: [AUDIENCE],
+        scopeClaim: process.env.DDSR_JWT_SCOPE_CLAIM,
+        subjectClaim: process.env.DDSR_JWT_SUBJECT_CLAIM,
+      }),
+      log: (m) => log(m),
+    });
 
-const server = createServer((request, response) => {
-  void dispatch({ method: request.method ?? 'GET', url: request.url ?? '/', headers: request.headers })
+/** The certificate the caller showed, where this server ended TLS; none over plain HTTP. */
+function clientCertificateOf(request: IncomingMessage) {
+  const socket = request.socket as Partial<TLSSocket>;
+  const peer = typeof socket.getPeerCertificate === 'function' ? socket.getPeerCertificate() : undefined;
+  return peer && peer.raw ? { raw: peer.raw } : undefined;
+}
+
+const handle = (request: IncomingMessage, response: ServerResponse) => {
+  void dispatch({
+    method: request.method ?? 'GET', url: request.url ?? '/', headers: request.headers,
+    clientCertificate: clientCertificateOf(request),
+  })
     .then(answer => {
       if (!answer) {
         response.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -136,7 +174,19 @@ const server = createServer((request, response) => {
       response.writeHead(500, { 'Content-Type': 'text/plain' });
       response.end(String(error));
     });
-});
+};
+
+// Over TLS the server asks for a client certificate and admits only one
+// of the CA it believes: no certificate, no connection.
+const server = MTLS
+  ? createSecureServer({
+      pfx: readFileSync(process.env.DDSR_HTTPS_KEYSTORE!),
+      passphrase: process.env.DDSR_HTTPS_KEYSTORE_PASSWORD,
+      ca: readFileSync(process.env.DDSR_TLS_CA!),
+      requestCert: true,
+      rejectUnauthorized: true,
+    }, handle)
+  : createServer(handle);
 
 async function main(): Promise<void> {
   await new Promise<void>(resolve => server.listen(Number(serviceUrl.port || 80), resolve));

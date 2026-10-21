@@ -7,7 +7,18 @@
 		"org.osgi.service.http.host": "$[env:DDSR_HTTP_HOST;default=0.0.0.0]",
 		"org.apache.felix.http.context_path": "ddsr",
 		"org.apache.felix.http.name": "DDSR HTTP",
-		"org.apache.felix.http.runtime.init.id": "ddsrHttp"
+		"org.apache.felix.http.runtime.init.id": "ddsrHttp",
+		"org.apache.felix.http.enable": "$[env:DDSR_HTTP_ENABLE;default=true]",
+		"org.apache.felix.https.enable": "$[env:DDSR_HTTPS_ENABLE;default=false]",
+		"org.osgi.service.http.port.secure": "$[env:DDSR_HTTPS_PORT;default=8443]",
+		"org.apache.felix.https.keystore": "$[env:DDSR_HTTPS_KEYSTORE;default=]",
+		"org.apache.felix.https.keystore.password": "$[env:DDSR_HTTPS_KEYSTORE_PASSWORD;default=]",
+		"org.apache.felix.https.keystore.key.password": "$[env:DDSR_HTTPS_KEYSTORE_PASSWORD;default=]",
+		"org.apache.felix.https.keystore.type": "$[env:DDSR_HTTPS_KEYSTORE_TYPE;default=PKCS12]",
+		"org.apache.felix.https.truststore": "$[env:DDSR_HTTPS_TRUSTSTORE;default=]",
+		"org.apache.felix.https.truststore.password": "$[env:DDSR_HTTPS_TRUSTSTORE_PASSWORD;default=]",
+		"org.apache.felix.https.truststore.type": "$[env:DDSR_HTTPS_TRUSTSTORE_TYPE;default=PKCS12]",
+		"org.apache.felix.https.clientcertificate": "$[env:DDSR_HTTPS_CLIENT_CERTIFICATE;default=none]"
 	},
 	"JakartarsServletWhiteboardRuntimeComponent~ddsrRest":
 	{
@@ -26,7 +37,15 @@
 		"issuer": "$[env:DDSR_JWT_ISSUER;default=]",
 		"audiences": "$[env:DDSR_JWT_AUDIENCES;default=ddsr-broker;type=String[];delimiter=,]",
 		"jwks.uri": "$[env:DDSR_JWT_JWKS_URI;default=]",
-		"scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]"
+		"scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]",
+		"trusted.issuers": "$[env:DDSR_MTLS_TRUSTED_ISSUERS;default=;type=String[];delimiter=|]"
+	},
+	"org.eclipse.fennec.services.security.mtls":
+	{
+		"trusted.issuers": "$[env:DDSR_MTLS_TRUSTED_ISSUERS;default=;type=String[];delimiter=|]",
+		"roles": "$[env:DDSR_MTLS_ROLES;default=;type=String[];delimiter=|]",
+		"gateway.header": "$[env:DDSR_MTLS_GATEWAY_HEADER;default=]",
+		"gateway.addresses": "$[env:DDSR_MTLS_GATEWAY_ADDRESSES;default=;type=String[];delimiter=,]"
 	},
 	"org.eclipse.fennec.services.security.jwt":
 	{

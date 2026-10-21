@@ -40,6 +40,8 @@ final class ServedSecurity {
 
 	static final String BEARER_OPTIONAL = "bearer-optional";
 
+	static final String MTLS = "mtls";
+
 	static final String NONE = "none";
 
 	static final String EXTENSION_SELECT = "osgi.jakartars.extension.select";
@@ -85,12 +87,12 @@ final class ServedSecurity {
 	 */
 	static boolean enforcedByConfiguration(String contract, RestFlavor flavor, Object mode) {
 		boolean demands = demandsAuthentication(flavor);
-		if (BEARER.equals(mode) || BEARER_OPTIONAL.equals(mode)) {
+		if (BEARER.equals(mode) || BEARER_OPTIONAL.equals(mode) || MTLS.equals(mode)) {
 			return true;
 		}
 		if (demands && mode == null) {
 			throw new IllegalStateException(contract + " demands authentication, and its configuration states no "
-					+ AUTH + " — say " + BEARER + ", or " + NONE + " for an open node");
+					+ AUTH + " — say " + BEARER + " or " + MTLS + ", or " + NONE + " for an open node");
 		}
 		if (demands) {
 			LOG.warning("[DDSR] " + contract + " demands authentication but is served in mode " + mode
@@ -104,9 +106,13 @@ final class ServedSecurity {
 	 * bearer when the flavor offers a bearer scheme, which also puts the
 	 * mode on the application — {@value #BEARER} when every operation
 	 * needs a principal, {@value #BEARER_OPTIONAL} when some are open
-	 * ({@code @PermitAll}), so their anonymous callers reach the dispatcher. A contract that demands authentication on a
-	 * flavor with no scheme is refused; a connection scheme serves it
-	 * open, because something in front of the node checks.
+	 * ({@code @PermitAll}), so their anonymous callers reach the dispatcher.
+	 * A flavor that offers client certificates instead runs in
+	 * {@value #MTLS}; a certificate belongs to the connection, so there
+	 * every caller has one and no operation is reached without it. A
+	 * contract that demands authentication on a flavor with no scheme is
+	 * refused; a connection scheme serves it open, because something in
+	 * front of the node checks.
 	 *
 	 * @return whether the dispatcher enforces the contract's requirements
 	 */
@@ -115,6 +121,11 @@ final class ServedSecurity {
 			String mode = everyOperationDemandsAuthentication(flavor) ? BEARER : BEARER_OPTIONAL;
 			properties.put(AUTH, mode);
 			properties.put(EXTENSION_SELECT, selectorFor(mode));
+			return true;
+		}
+		if (SecurityRequirements.mutualTlsScheme(flavor) != null) {
+			properties.put(AUTH, MTLS);
+			properties.put(EXTENSION_SELECT, selectorFor(MTLS));
 			return true;
 		}
 		if (!demandsAuthentication(flavor)) {

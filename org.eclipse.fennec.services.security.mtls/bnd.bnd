@@ -1,0 +1,37 @@
+Bundle-Name: Fennec Services Client Certificate Verification
+Bundle-Description: \
+	Mutual TLS as an authentication mode (fennec.auth=mtls): the caller \
+	proves itself with a client certificate, and one Jakarta REST \
+	whiteboard filter turns it into the same verified principal the \
+	bearer filter produces — on the request, as the SecurityContext and \
+	on the calling thread (CallPrincipal). The subject is the \
+	certificate's CN, the issuer its issuer's DN, and the roles come \
+	from the node's own mapping of subjects: a certificate carries none. \
+	The certificate is read from the TLS session, or from a header a \
+	trusted gateway that ended TLS puts it in.
+
+-library: enableEMF
+
+# The security annotations' bundle is not needed here, but @Priority is,
+# and the Jersey 3.1 launches carry jakarta.annotation 2.1.1.
+Import-Package: \
+	jakarta.annotation;version="[2.1,4)",\
+	*
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.osgi.service.jakartars;version=latest,\
+	jakarta.ws.rs-api;version=latest,\
+	jakarta.annotation-api;version=latest,\
+	org.apache.felix.http.servlet-api;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.security.jwt;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.glassfish.jersey.core.jersey-common;version=latest,\
+	jakarta.inject.jakarta.inject-api;version=latest,\
+	org.glassfish.hk2.osgi-resource-locator;version=latest

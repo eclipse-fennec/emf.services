@@ -25,8 +25,10 @@ import java.util.stream.Stream;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.ConnectionScheme;
+import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.Principal;
 import org.eclipse.fennec.services.SecurityRequirement;
+import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
@@ -101,6 +103,15 @@ class BrokerRoleMatrixTest {
 	}
 
 	@Test
+	void aBrokerOfClientCertificatesNamesTheAuthoritiesItTrusts() {
+		assertThat(BrokerSelfPublisher.schemeOf(config("mtls", "")))
+				.isInstanceOfSatisfying(MutualTlsScheme.class, scheme -> {
+					assertThat(scheme.getKind()).isEqualTo(SecuritySchemeKind.MUTUAL_TLS);
+					assertThat(scheme.getTrustedIssuers()).containsExactly("CN=Fennec Harness CA,O=Fennec");
+				});
+	}
+
+	@Test
 	void aSecuredBrokerWithoutAnIssuerNamesNothing() {
 		assertThat(BrokerSelfPublisher.schemeOf(config("bearer", ""))).isNull();
 	}
@@ -156,6 +167,11 @@ class BrokerRoleMatrixTest {
 			@Override
 			public String scope_claim() {
 				return "realm_access.roles";
+			}
+
+			@Override
+			public String[] trusted_issuers() {
+				return new String[] { "CN=Fennec Harness CA,O=Fennec", " " };
 			}
 		};
 	}

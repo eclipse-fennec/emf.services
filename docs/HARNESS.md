@@ -61,6 +61,7 @@ serves, and no token carries another target's audience
 | `harness-lifecycle-f/-g/-h` | the lifecycle probes |
 | `rsa-example` | the RSA exporting framework (I, K) — and the audience of what it serves |
 | `rsa-example-consumer` | the RSA importing framework (I, K); holds the realm role `ledger-reader`, not `ledger-writer` |
+| `ts-ledger` | the TypeScript ledger (T) — and the audience of what it serves |
 
 Each service account holds the broker roles it needs and no more
 ([Security](SECURITY.md) §3): the providers `service-provider` and
@@ -89,6 +90,13 @@ another binds it with a plain `@Reference` and calls as
 `rsa-example-consumer` — version and balance answer, `record` is `403`,
 and a broker token is `401` at the provider. Scenario I exports the same
 interface over MQTT and checks that it is refused there.
+
+**Scenario T** (host) is its TypeScript half: `ledger-ts.ts` serves a
+guarded `TsLedger` with a verifier of its own audience (`ts-ledger`).
+Its version answers without a token; its balance is `401` without one,
+`403` with a token whose holder lacks `ledger-reader`, `200` as
+`rsa-example-consumer`; recording is `403` for that reader; and a token
+minted for the broker is `401` there.
 
 `HARNESS_AUTH=none` runs either harness open, without Keycloak — and
 without podman for the host variant. Independently of that, the host

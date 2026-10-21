@@ -116,6 +116,28 @@
           }
         }
       ]
+    },
+    {
+      "name": "ts-ledger",
+      "description": "a token for what the TypeScript ledger serves",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "ts-ledger-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "ts-ledger",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "defaultDefaultClientScopes": [
@@ -142,7 +164,8 @@
         "roles"
       ],
       "optionalClientScopes": [
-        "ddsr-broker"
+        "ddsr-broker",
+        "ts-ledger"
       ]
     },
     {
@@ -332,7 +355,29 @@
       ],
       "optionalClientScopes": [
         "ddsr-broker",
-        "rsa-example"
+        "rsa-example",
+        "ts-ledger"
+      ]
+    },
+    {
+      "clientId": "ts-ledger",
+      "name": "ts-ledger",
+      "description": "the TypeScript ledger (T) \u2014 and the audience of what it serves",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ts-ledger-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     }
   ],
@@ -420,6 +465,15 @@
       "realmRoles": [
         "service-consumer",
         "ledger-reader"
+      ]
+    },
+    {
+      "username": "service-account-ts-ledger",
+      "enabled": true,
+      "serviceAccountClientId": "ts-ledger",
+      "realmRoles": [
+        "service-provider",
+        "service-consumer"
       ]
     }
   ]

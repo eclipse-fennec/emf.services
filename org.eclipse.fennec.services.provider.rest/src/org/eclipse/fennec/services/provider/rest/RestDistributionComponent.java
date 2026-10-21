@@ -126,10 +126,11 @@ public class RestDistributionComponent implements RestDistribution {
 		}
 		String base = flavor.getBasePath() == null || flavor.getBasePath().isBlank() ? "/" : flavor.getBasePath();
 
-		RestDispatcher dispatcher = new RestDispatcher(flavor, () -> new SingleService(service),
-				name == null ? base : name, resourceSets, CallTracer.deferred(() -> tracer));
-
 		Dictionary<String, Object> properties = new Hashtable<>();
+		boolean enforce = ServedSecurity.enforcedByFlavor(name == null ? base : name, flavor, properties);
+		RestDispatcher dispatcher = new RestDispatcher(flavor, () -> new SingleService(service),
+				name == null ? base : name, resourceSets, CallTracer.deferred(() -> tracer), enforce);
+
 		properties.put("osgi.jakartars.application.base", base);
 		properties.put("osgi.jakartars.name", name == null ? base : name);
 		String applicationName = name == null ? base : name;

@@ -34,7 +34,10 @@ broker. Requirements and decisions:
   connection without a certificate of the CA, roles per CN (consumer
   `403` on the registry, admin `200`), the header counts from the
   gateway's address, and the Java client subscribes and lists the
-  catalog with its key store. Runs whatever `HARNESS_AUTH` says.
+  catalog with its key store. Secured, it goes on: a provider announces
+  `PersonStore` by certificate and serves it in bearer, and a client
+  finds it by certificate and calls it with a token for `person-store`.
+  The mTLS half runs whatever `HARNESS_AUTH` says.
 - **C (podman only) — the MQTT wire proof:** a Mosquitto container; the
   TS `MqttEventSource` receives and decodes the broker-shaped message
   over real MQTT/TCP (topics `<prefix>/<interface>` and

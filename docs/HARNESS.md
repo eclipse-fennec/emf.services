@@ -123,7 +123,13 @@ registry (`403`), `harness` reads the registry; on the plain listener a
 call without the header is `401` and the admin's certificate in the
 header from `127.0.0.1` gets in. Finally the Java client runs against
 it with its key store and must subscribe to the event stream and list
-the catalog without a single TLS failure.
+the catalog without a single TLS failure. In the secured run M goes on
+with discovery by certificate and calls by token: the Java payment
+provider (`payment-java`, port 9095) announces `PersonStore` over its
+certificate and serves it in mode `bearer` for the Keycloak audience
+`person-store`; a call without a token is `401`, the lookup names the
+bearer scheme, and a client with both credentials finds the store by
+certificate and calls it with a token of that audience.
 
 ## Scenarios
 

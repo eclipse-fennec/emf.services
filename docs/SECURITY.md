@@ -570,12 +570,45 @@ the node's identity rather than one target's audience, so the one TLS
 context serves every call the client makes: broker, event stream and
 providers.
 
+**Discovery by certificate, calls by token.** The two modes combine,
+and the split follows the granularity: what a node does at the broker
+— publish, look up, hold a session, hear events — is a matter of three
+coarse roles bound to the node's identity, which a certificate and the
+broker's mapping state well; what a caller may do at a provider is a
+matter of roles per operation and of audiences, which only a token
+carries. So the broker runs in `mtls`, the providers in `bearer`, and a
+node holds both credentials:
+
+- the client says `broker.authentication=certificate`
+  (`DDSR_BROKER_AUTHENTICATION`): the broker gets the certificate and
+  **no** token — it would ignore it, and a credential sent where it is
+  not needed is one more place it can leak from;
+- the token supplier stays, and serves the providers per audience
+  exactly as before (`TokenSupplier.token(audience)`); its own `scope`
+  for the broker can stay empty;
+- a contract served in a mode from configuration announces the scheme
+  its document cannot carry — the issuer and audiences the node trusts
+  in `bearer`, the authorities in `mtls` — so a caller can tell from the
+  catalog which token to bring;
+- **one name, two proofs**: a node's certificate CN is its OAuth client
+  id. The broker holds sessions and registrations against the CN, a
+  provider sees the client id (`azp`); only when they are the same name
+  is a node one party on both sides.
+
+The registry then keeps working while the identity provider is away —
+discovery, sessions and events need no token endpoint — and a stolen
+token cannot register or withdraw anything.
+
 The host harness proves it in scenario M with a CA issued for the run:
 no connection without a certificate of that CA, the CN's mapped roles
 decide (a consumer may not read the registry, the admin may), a
 gateway's header counts from the gateway's address and nothing without
 it, and the Java client subscribes and lists the catalog with its key
-store.
+store. In the secured run it goes on with the combination: the Java
+provider announces `PersonStore` over its certificate and serves it in
+`bearer` for the audience `person-store`, the lookup names that scheme,
+and the client finds the store by certificate and calls it with a token
+of that audience.
 
 Not yet: mTLS over MQTT (Paho and the messaging broker's TLS), in the
 TypeScript SDK, and in the RSA role configuration.
@@ -626,4 +659,5 @@ Open, in the order they will come up:
 | one domain per broker from issuer/audience, written onto registrations and sessions (`DDSR_DOMAIN`) | implemented — first version, see §3 |
 | several domains in one broker (partitioned catalog, events per domain) | second version |
 | mutual TLS for REST: mode `mtls`, certificate from TLS or a trusted gateway, roles from the node's mapping, broker announces a `MutualTlsScheme`, Java client with key and trust store | implemented — see §7d |
+| discovery by certificate, calls by token: `broker.authentication=certificate`, configured contracts announce their scheme, CN = client id | implemented — see §7d |
 | mutual TLS over MQTT, in the TypeScript SDK, in the RSA role configuration | not yet |

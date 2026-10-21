@@ -403,6 +403,14 @@ named and cannot be read fails the client's start rather than calling
 without it. The certificate's CN is the node's name on the broker, so
 `consumer.id` has to be that CN.
 
+To prove itself to the broker by certificate and to providers by token
+— discovery over mTLS, calls over OAuth — the node keeps its token
+supplier and says `"broker.authentication": "certificate"`
+(`DDSR_BROKER_AUTHENTICATION`): the broker then gets no token, the
+providers still get one per audience. Give the certificate the CN of
+the node's OAuth client id, so it is one name on both sides
+([Security](SECURITY.md) §7d).
+
 ### 5.5 Module layout & buildpath
 
 `bnd.bnd`:

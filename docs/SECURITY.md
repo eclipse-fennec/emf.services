@@ -175,11 +175,17 @@ provider builds its own:
    authentication is not registered without a configured verifier,
    rather than served open. The m2t resource template emits
    `@RolesAllowed` from the same requirement for hand-written resources.
-3. **Both SDKs get a credential seam.** A token supplier per audience
-   in Java, the same through the `fetchFn` seam in TypeScript, with a
-   client-credentials cache. This is the request-interceptor hook that
-   [Client framework](CLIENT_FRAMEWORK_GUIDE.md) §10 has listed as open,
-   with content.
+3. **Both SDKs get a credential seam.** For the broker this is built
+   (slice 4): `TokenSupplier` in the api bundle, put on calls under the
+   broker URL by `RestTransport`; `tokenSupplier` in the TypeScript
+   client options, wrapped around the broker's own fetch and the event
+   stream; a client-credentials implementation on both sides
+   (`…services.security.oauth`, `clientCredentials(...)`) with the same
+   cache and renewal. The broker's token goes to the broker only — the
+   same client invokes providers, and a token for the broker's audience
+   must not be replayable there. A token per provider audience follows
+   with the contract requirements (slice 3). See
+   [Client framework](CLIENT_FRAMEWORK_GUIDE.md) §5.4a.
 
 Over MQTT the messaging broker is the enforcement point
 (`ConnectionScheme`): identity on the connection, ACL on the topic
@@ -419,7 +425,8 @@ Open, in the order they will come up:
 | bearer verifier and filter (`…services.security.jwt`), `CallPrincipal` | implemented |
 | the broker's applications state a mode (`DDSR_AUTH_MODE`, default bearer), ownership rule on registration, heartbeat and session | implemented — slice 2, see §7a |
 | verifier configured from the environment (`DDSR_JWT_*`), image secured by default | implemented — slice 4 |
-| token supplier in the SDKs, Keycloak in the harness, harness secured by default | not yet — slice 4 |
+| token supplier for the broker in both SDKs (`TokenSupplier`, `…security.oauth`, `clientCredentials`) | implemented — slice 4 |
+| Keycloak in the harness, harness secured by default | not yet — slice 4 |
 | role filter on the broker's contracts | not yet — slice 3 |
 | token supplier in the Java and TypeScript SDKs | not yet |
 | domain enforcement from issuer/audience | not yet |

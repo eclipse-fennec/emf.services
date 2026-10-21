@@ -33,5 +33,8 @@ updates:
       # A mermaid major bump breaks `npm ci` with ERESOLVE and thereby the docs
       # job of the snapshot build (2026-09-15). Lift this once the plugin
       # supports mermaid 12.
+      # Security updates do not honour this rule: the katex fix in #190 pulled
+      # mermaid 12 in as katex's ancestor. katex is therefore pinned through
+      # `overrides` in package.json instead, which keeps mermaid on 11.
       - dependency-name: "mermaid"
         update-types: ["version-update:semver-major"]

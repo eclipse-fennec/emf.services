@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.client.rest.internal;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -38,6 +39,7 @@ import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -326,6 +328,14 @@ public final class RestServiceInvoker implements ServiceInvoker {
 			// since #100 it answers it for every encoding the deployment
 			// knows, not only for XML. Anything else is text, as before.
 			MediaType mt = response.getMediaType();
+			if (mt != null && MediaType.APPLICATION_XML_TYPE.isCompatible(mt)) {
+				// Read as a document, not as one root: a value that points
+				// at objects it does not contain travels with them as
+				// sibling roots (#88), and the value is the first of them.
+				// The siblings stay reachable through its references.
+				List<EObject> roots = response.readEntity(XmiBundle.class).roots();
+				return roots.isEmpty() ? null : roots.get(0);
+			}
 			if (mt != null && response.hasEntity() && readsAsModel(response, mt)) {
 				return response.readEntity(EObject.class);
 			}

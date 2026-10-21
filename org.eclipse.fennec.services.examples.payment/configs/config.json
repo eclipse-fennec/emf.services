@@ -17,6 +17,7 @@
   "org.eclipse.fennec.services.client.rest":
   {
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
+    "broker.authentication": "$[env:DDSR_BROKER_AUTHENTICATION;default=token]",
     "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
     "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
     "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",
@@ -34,6 +35,14 @@
     "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
     "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
     "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
+  },
+  "org.eclipse.fennec.services.security.jwt":
+  {
+    "issuer": "$[env:DDSR_JWT_ISSUER;default=]",
+    "jwks.uri": "$[env:DDSR_JWT_JWKS_URI;default=]",
+    "audiences": "$[env:DDSR_JWT_AUDIENCES;default=;type=String[];delimiter=,]",
+    "scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]",
+    "subject.claim": "$[env:DDSR_JWT_SUBJECT_CLAIM;default=sub]"
   },
   "org.eclipse.fennec.services.provider.rest~bindingProbe":
   {
@@ -63,6 +72,12 @@
     "model.bundle": "org.eclipse.fennec.services.examples.payment",
     "model.entry": "model/person-store.xmi",
     "osgi.jakartars.application.base": "/persons",
+    "fennec.auth": "$[env:PERSON_STORE_AUTH;default=none]",
+    "osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:PERSON_STORE_AUTH;default=none])",
+    "issuer": "$[env:DDSR_JWT_ISSUER;default=]",
+    "audiences": "$[env:DDSR_JWT_AUDIENCES;default=;type=String[];delimiter=,]",
+    "jwks.uri": "$[env:DDSR_JWT_JWKS_URI;default=]",
+    "scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]",
     "publish": "$[env:PAYMENTS_PUBLISH_PERSON_STORE;default=false]",
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"

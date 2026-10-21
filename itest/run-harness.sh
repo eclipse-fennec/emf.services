@@ -502,7 +502,7 @@ log "Scenario M: client certificates, mode mtls"
 # where a gateway hands the certificate on in a header. Roles come from
 # the broker's own mapping of the certificates' CNs.
 TLS_DIR="$WORK/tls"
-"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness
+"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness payment-java
 MTLS_URL="https://localhost:8898/ddsr/rest"
 GATEWAY_URL="http://127.0.0.1:8899/ddsr/rest"
 require_port_free 8898
@@ -513,7 +513,7 @@ require_port_free 8899
        DDSR_HTTPS_KEYSTORE="$TLS_DIR/server.p12" DDSR_HTTPS_KEYSTORE_PASSWORD=changeit \
        DDSR_HTTPS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_HTTPS_TRUSTSTORE_PASSWORD=changeit \
        DDSR_HTTPS_CLIENT_CERTIFICATE=needs DDSR_MTLS_TRUSTED_ISSUERS="CN=Fennec Harness CA,O=Fennec" \
-       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|harness=service-admin" \
+       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|payment-java=service-provider,service-consumer|harness=service-admin" \
        DDSR_MTLS_GATEWAY_HEADER=X-Client-Cert DDSR_MTLS_GATEWAY_ADDRESSES=127.0.0.1 \
        java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-mtls.log" 2>&1 &
 MTLS_PID=$!
@@ -564,8 +564,56 @@ if grep -aq "SSLHandshakeException\|event stream dropped" "$WORK/client-mtls.log
   exit 1
 fi
 echo "  ✓ java-client: subscribed and listed the catalog with its certificate"
-kill "$MTLS_CLIENT_PID" "$MTLS_PID" 2>/dev/null || true
-wait "$MTLS_CLIENT_PID" "$MTLS_PID" 2>/dev/null || true
-echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client"
+kill "$MTLS_CLIENT_PID" 2>/dev/null || true
+wait "$MTLS_CLIENT_PID" 2>/dev/null || true
+
+if secured; then
+  # Discovery by certificate, calls by token (SECURITY.md §7d): the Java
+  # provider announces PersonStore to this broker with its certificate and
+  # serves it in mode bearer for the audience person-store; the client
+  # finds it with its certificate and calls it with a token of that
+  # audience. Neither shows the broker a token. One name on both sides:
+  # each certificate's CN is the node's client id.
+  PERSONS_URL="http://localhost:9095/payments"
+  require_port_free 9095
+  (cd "$WORK" && mkdir -p payment-mtls && cd payment-mtls \
+    && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_BROKER_URL="$MTLS_URL" DDSR_BROKER_AUTHENTICATION=certificate \
+         DDSR_CONSUMER_ID=payment-java DDSR_TLS_KEYSTORE="$TLS_DIR/payment-java.p12" \
+         DDSR_TLS_KEYSTORE_PASSWORD=changeit DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" \
+         DDSR_TLS_TRUSTSTORE_PASSWORD=changeit PAYMENTS_HTTP_PORT=9095 PAYMENTS_PUBLIC_URL="$PERSONS_URL" \
+         PAYMENTS_PROVIDER_NAME=payments-mtls PAYMENTS_PUBLISH_PERSON_STORE=true PERSON_STORE_AUTH=bearer \
+         DDSR_JWT_ISSUER="$KEYCLOAK_REALM_URL" DDSR_JWT_JWKS_URI="$KEYCLOAK_REALM_URL/protocol/openid-connect/certs" \
+         DDSR_JWT_AUDIENCES=person-store DDSR_JWT_SCOPE_CLAIM=realm_access.roles DDSR_JWT_SUBJECT_CLAIM=azp \
+         java -Dgosh.args=--nointeractive -jar "$PROVIDER_JAR") >"$WORK/payment-mtls.log" 2>&1 &
+  MTLS_PROVIDER_PID=$!
+  PIDS+=("$MTLS_PROVIDER_PID")
+  wait_for_line "$WORK/payment-mtls.log" "published PersonStore" 90
+  expect_status 401 "$(curl -s -o /dev/null -w '%{http_code}' "$PERSONS_URL/persons/nobody")" \
+    "PersonStore called without a token"
+  # A lookup is a consumer's call — the admin's certificate holds no
+  # service-consumer, so the consumer's is the one that asks.
+  ANNOUNCED=$(curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \
+    "$MTLS_URL/references?interface=PersonStore")
+  grep -q "BearerTokenScheme" <<<"$ANNOUNCED" && grep -q "person-store" <<<"$ANNOUNCED" \
+    || { echo "SCENARIO M FAILED: PersonStore is announced without the bearer scheme of its audience"
+         head -c 3000 <<<"$ANNOUNCED"; echo; exit 1; }
+  echo "  ✓ provider: announced over its certificate, serving in bearer, the scheme names the audience person-store"
+  (cd "$WORK" && mkdir -p client-mtls-oauth && cd client-mtls-oauth \
+    && exec env DDSR_BROKER_URL="$MTLS_URL" DDSR_BROKER_AUTHENTICATION=certificate DDSR_CONSUMER_ID=java-client \
+         DDSR_TLS_KEYSTORE="$TLS_DIR/java-client.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit \
+         DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_TLS_TRUSTSTORE_PASSWORD=changeit \
+         DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID=java-client \
+         DDSR_OAUTH_CLIENT_SECRET=java-client-secret DDSR_OAUTH_SCOPE= \
+         java -Dgosh.args=--nointeractive -jar "$CLIENT_JAR") >"$WORK/client-mtls-oauth.log" 2>&1 &
+  MTLS_OAUTH_PID=$!
+  PIDS+=("$MTLS_OAUTH_PID")
+  wait_for_line "$WORK/client-mtls-oauth.log" "travelled as protobuf" 90
+  echo "  ✓ java-client: found PersonStore by certificate, called it with a token for person-store"
+  kill "$MTLS_OAUTH_PID" "$MTLS_PROVIDER_PID" 2>/dev/null || true
+  wait "$MTLS_OAUTH_PID" "$MTLS_PROVIDER_PID" 2>/dev/null || true
+fi
+kill "$MTLS_PID" 2>/dev/null || true
+wait "$MTLS_PID" 2>/dev/null || true
+echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client$(secured && echo '; discovery by certificate, calls by token')"
 
 log "HARNESS PASSED (A + B + F + G + H + T + N + M, auth: $HARNESS_AUTH)"

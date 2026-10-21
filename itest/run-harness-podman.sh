@@ -281,9 +281,14 @@ podman logs ddsr-client-mqtt >"$WORK/client-mqtt.log" 2>&1
 # the next in which a published event reaches nobody. The check still
 # reads the log rather than trusting that: the events must come after
 # the MQTT subscription, and no SSE subscription may appear at all.
-mqtt_sub=$(grep -n "subscribed to ddsr/events/#" "$WORK/client-mqtt.log" | tail -1 | cut -d: -f1)
-sse_sub=$(grep -n "subscribed to http" "$WORK/client-mqtt.log" | tail -1 | cut -d: -f1)
-first_event=$(grep -n "EVENT REGISTERED" "$WORK/client-mqtt.log" | head -1 | cut -d: -f1)
+# `|| true` inside: "no SSE subscription at all" is the case this wants,
+# and a grep without a match would otherwise end the script under
+# pipefail. It used to find one only because the client started with
+# defaults and subscribed over SSE before its configuration arrived;
+# since the configuration stack starts first (slice 4), it never does.
+mqtt_sub=$({ grep -n "subscribed to ddsr/events/#" "$WORK/client-mqtt.log" || true; } | tail -1 | cut -d: -f1)
+sse_sub=$({ grep -n "subscribed to http" "$WORK/client-mqtt.log" || true; } | tail -1 | cut -d: -f1)
+first_event=$({ grep -n "EVENT REGISTERED" "$WORK/client-mqtt.log" || true; } | head -1 | cut -d: -f1)
 if [ -z "$mqtt_sub" ] || [ -n "$sse_sub" ] && [ "$sse_sub" -gt "$mqtt_sub" ]; then
   echo "SCENARIO D FAILED: events flowed over SSE, not MQTT (mqtt_sub=$mqtt_sub sse_sub=$sse_sub)"
   cat "$WORK/client-mqtt.log"; exit 1

@@ -40,6 +40,7 @@ import org.osgi.framework.BundleContext;
  */
 class MqttEventTransportConfigurationTest {
 
+	@SuppressWarnings("unchecked")
 	@Test
 	@DisplayName("no broker URL: nothing is registered and nothing fails")
 	void unconfiguredRegistersNothing() throws Exception {
@@ -55,6 +56,7 @@ class MqttEventTransportConfigurationTest {
 		verify(context, never()).registerService(eq(EventSink.class), any(EventSink.class), nullable(Dictionary.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	@DisplayName("a blank URL is the same as none — a deployment that says nothing said nothing")
 	void blankIsUnconfigured() throws Exception {

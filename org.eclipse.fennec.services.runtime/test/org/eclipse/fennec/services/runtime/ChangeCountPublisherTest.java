@@ -119,6 +119,7 @@ class ChangeCountPublisherTest {
 	 * {@link BundleContext} and the {@link ServiceRegistration} are
 	 * proxies that record what they were asked.
 	 */
+	@SuppressWarnings("unchecked")
 	private static final class FakeRegistrations {
 
 		volatile String registeredAs;
@@ -166,7 +167,6 @@ class ChangeCountPublisherTest {
 			Object handle(String method, Object[] args);
 		}
 
-		@SuppressWarnings("unchecked")
 		private static <P> P proxy(Class<P> type, Handler handler) {
 			return (P) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] { type },
 					(self, method, args) -> handler.handle(method.getName(), args));

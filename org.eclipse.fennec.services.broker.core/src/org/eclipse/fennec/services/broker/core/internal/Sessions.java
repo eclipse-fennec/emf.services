@@ -68,6 +68,10 @@ final class Sessions {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
 					"session and session.consumerId must not be null or blank");
 		}
+		Diagnostic refused = Ownership.sessionRefusal(session.getConsumerId(), "renewal");
+		if (refused != null) {
+			return refused;
+		}
 		state.writeLock().lock();
 		try {
 			String consumerId = session.getConsumerId();
@@ -84,6 +88,7 @@ final class Sessions {
 			// reached the broker from. Written on every renewal, so a
 			// session that moved to a restarted runtime says so.
 			session.setOrigin(CallOrigin.requestor(null));
+			Ownership.claim(session);
 			int accepted = 0;
 			List<String> unknown = new ArrayList<>();
 			if (acquiredReferenceIds != null) {
@@ -118,6 +123,10 @@ final class Sessions {
 		if (consumerId == null || consumerId.isBlank()) {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_SESSION_INVALID,
 					"consumerId must not be null or blank");
+		}
+		Diagnostic refused = Ownership.sessionRefusal(consumerId, "removal");
+		if (refused != null) {
+			return refused;
 		}
 		state.writeLock().lock();
 		try {

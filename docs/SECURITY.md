@@ -272,11 +272,11 @@ positionally. `CatalogStore.counterpart` now follows such an href along
 its containment path into the live entry — parameters and exceptions
 included.
 
-## 7a. The verifier (slice 1 of enforcement)
+## 7a. Enforcement: the verifier and the broker's mode
 
 `org.eclipse.fennec.services.security.jwt` — see its
-[README](../org.eclipse.fennec.services.security.jwt/README.md) — is
-the first piece of enforcement, and the only one so far:
+[README](../org.eclipse.fennec.services.security.jwt/README.md) — turns
+a credential into a principal:
 
 - `JwtVerifier.verify(token)` → `VerifiedPrincipal` (subject, issuer,
   scopes) or `TokenRejectedException`; `NimbusJwtVerifier` implements it,
@@ -284,40 +284,83 @@ the first piece of enforcement, and the only one so far:
   `org.eclipse.fennec.services.security.jwt`: `issuer`, `jwks.uri`,
   `audiences`, `scope.claim`, `clock.skew.seconds`) and only by
   configuration.
-- `BearerAuthFilter` guards every Jakarta REST application that carries
-  `fennec.secured=true`; a resource that wants to be unregistered
-  without it selects `(osgi.jakartars.name=fennec-bearer)`.
 - `CallPrincipal` (api bundle, next to `CallOrigin`) carries the
   verified model `Principal` on the calling thread, for the broker core.
 
-Nothing selects the filter yet: the broker's application does not say
-`fennec.secured`, and no launch configures a verifier. That is slice 2.
+### An application states its mode
 
-### Slice 2, as planned
+A Jakarta REST application that wants authentication says which, with
+two properties, and needs both:
 
-1. The broker's JAX-RS application (`…broker.rest`, see how
-   `OriginFilter` is selected) gets `fennec.secured=true` when the
-   broker's `auth.mode` is `bearer`; `RegistryResource`,
-   `ConsumersResource` and `EventsResource` select the bearer filter so
-   they are unregistered without a verifier. The generic distribution's
-   named applications stay out of it for now (they bring their own
-   providers, #125) — they are slice 3's concern together with the
-   contract requirements.
-2. `BrokerSettings` / `DdsrBrokerComponent` gain `auth.mode = none |
-   bearer`, default `bearer`; `broker.bndrun`, `broker-otel.bndrun`,
-   the harness launches and the TCK set `none` explicitly — one line
-   each.
-3. `Registrations.publishImplementation` writes
-   `registration.setPrincipal(copy of CallPrincipal.current())` and
-   `domain`; `withdraw`, `modify`, `heartbeat` refuse when a principal
-   is set and differs (`CODE_IMPL_OWNERSHIP_VIOLATION`, 403 already).
-   `Sessions.putSession` / `deleteSession` do the same with
-   `consumerId` versus the principal's subject. In-process callers
-   carry no principal and are left alone, as today.
-4. Tests: `DdsrBrokerImplTest` / `DdsrBrokerSessionsTest` with
-   `CallPrincipal.set(...)` around the calls (and `clear()` in
-   `@AfterEach`); `broker.rest` gets a test that the resources are
-   absent without the filter.
+| Property | Why |
+| --- | --- |
+| `fennec.auth=bearer` | what the bearer filter selects, so it runs on the application |
+| `osgi.jakartars.extension.select=(osgi.jakartars.name=fennec-auth-bearer)` | keeps the application down until that filter exists — fail closed |
+
+Without the second, an application asking for bearer on a node without
+a verifier would be deployed unguarded. With it, the whiteboard does
+not deploy it at all.
+
+`none` is a mode like any other: `fennec.auth=none` with a filter of
+its own (`NoAuthFilter`, `fennec-auth-none`) that asks for nothing and
+clears `CallPrincipal`, so a pooled thread does not lend the previous
+caller's identity. Turning authentication off is therefore a stated
+choice in the same words that turn it on, and both properties can come
+from one placeholder.
+
+### The broker (slice 2)
+
+All four of the broker's REST applications carry the mode, from the
+same placeholder in `broker.rest/configs/config.json`:
+
+```
+$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]
+```
+
+The environment wins, then the launch's framework property, then
+**bearer**. `broker.bndrun` sets `fennec.auth.mode=none` — it is the
+development broker and the one the harness runs — and so does the
+container image, out loud, until it can be given a verifier through the
+environment (slice 4).
+
+- The three contracts the generic distribution serves (`/catalog`,
+  `/implementations`, `/references`) get the two properties through
+  their factory configuration: Declarative Services copies a component's
+  configuration onto the application it registers, so no code changed.
+- The hand-written resources (`/events`, `/consumers`, `/registry`) live
+  in the whiteboard's default application. `BrokerApplication` replaces
+  it (`osgi.jakartars.name=.default`, base `/`), with the mode from its
+  own configuration; paths and the default-application telemetry filter
+  stay where they were. The three resources additionally select
+  `(osgi.jakartars.name=fennec-auth-*)`: the whiteboard evaluates that
+  per application, and a filter only counts for an application it
+  selects — so if the replacement cannot be deployed and the built-in
+  default comes back, the resources stay down there too.
+- The ownership rule (§3) lives in `Ownership` and is asked by
+  `Registrations` (publish over an existing registration, `replaces`,
+  modify, withdraw), `Liveness` (heartbeat) and `Sessions` (put,
+  delete). A registration records a copy of the caller's principal; a
+  session's `consumerId` must be the caller's subject. Refusals are
+  `CODE_IMPL_OWNERSHIP_VIOLATION` (211) and
+  `CODE_SESSION_OWNERSHIP_VIOLATION` (231), both 403. An identity is
+  subject and issuer together.
+- A call without a principal (in process, or mode none) and a
+  registration without one (published that way, or rebuilt from a
+  snapshot — the principal is not persisted) are left alone: nothing
+  was verified that a refusal could rest on. After a restart the
+  provider's next publish claims its registration again.
+
+Verified against a running broker: without a verifier, mode bearer
+serves nothing (404 throughout); with one, no token or a wrong
+audience is 401 on all four applications and the SSE stream, a valid
+token is 200, and a withdraw, re-publish or session PUT by a second
+principal is 403 while the owner's goes through.
+
+Not in slice 2, and deliberately: the domain (`registration.domain`
+stays null, the broker's single default domain), the role filter per
+operation (slice 3), and the token supplier in the SDKs — an
+authenticated broker cannot yet be used by the Java or TypeScript
+client, which is why every launch that runs them says none.
 
 ## 8. Decisions taken, decisions open
 
@@ -331,13 +374,15 @@ Taken, and written into the model's documentation annotations:
 - `principal` and `domain` never travel;
 - the requirement is part of sd1 and the schemes are part of im1, by
   the schemes' extension rule (a line only where something is
-  declared), so the tags stayed — see [Fingerprints](FINGERPRINTS.md).
+  declared), so the tags stayed — see [Fingerprints](FINGERPRINTS.md);
+- the broker's default mode is `bearer`; `none` is stated explicitly
+  where it applies — the development launch, the harness, the container
+  image until slice 4 (§7a).
 
 Open, in the order they will come up:
 
 | Question | Leaning |
 | --- | --- |
-| default of a launch: `bearer` or `none` | `bearer`, with `none` explicit in the dev launches and the harness — one line per bndrun |
 | an SSE stream outlives its token | the stream ends with `exp`; the client reconnects anyway |
 | the verifier's home | lifted into `…services.security.jwt` here; moves to emf.util once a second user exists (its README names the two cuts) |
 | user identity through an RSA proxy | claim for audit first, token exchange when a target needs it |
@@ -350,8 +395,9 @@ Open, in the order they will come up:
 | validation gate on the broker, codes, HTTP mapping | implemented |
 | href rewiring of parameter and exception bindings | implemented |
 | requirement in sd1, schemes in im1, cross-language goldens | implemented |
-| bearer verifier and filter (`…services.security.jwt`), `CallPrincipal` | implemented — selected by nothing yet |
-| the broker's application secured, `auth.mode`, ownership rule on registration and session | not yet — slice 2, see §7a |
+| bearer verifier and filter (`…services.security.jwt`), `CallPrincipal` | implemented |
+| the broker's applications state a mode (`DDSR_AUTH_MODE`, default bearer), ownership rule on registration, heartbeat and session | implemented — slice 2, see §7a |
+| verifier configuration for the container image, Keycloak in the harness | not yet — slice 4 |
 | role filter on the broker's contracts | not yet — slice 3 |
 | token supplier in the Java and TypeScript SDKs | not yet |
 | domain enforcement from issuer/audience | not yet |

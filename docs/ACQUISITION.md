@@ -175,20 +175,20 @@ restart drains everything by accident.
 
 ## 7. Security (a caveat)
 
-`consumerId` is unauthenticated today (S2). An idempotent
-`PUT /consumers/{id}` with somebody else's id **replaces their
-session** — which could be used to disturb the drain semantics (delete
-another consumer's leases → a premature retire) or to inflate it.
-Accepted for the prototype and recorded here.
+On a broker without authentication `consumerId` is unauthenticated
+(S2). An idempotent `PUT /consumers/{id}` with somebody else's id
+**replaces their session** — which could be used to disturb the drain
+semantics (delete another consumer's leases → a premature retire) or to
+inflate it.
 
-The design that closes it is in [Security](SECURITY.md): the session
-carries a transient `principal` the broker writes from a verified
-credential, `consumerId` is bound to its subject, and a PUT whose id is
-not the caller's own is refused — the object-level rule no contract can
-state, enforced in `Sessions` next to the rules here. The model side
-(the `Principal` class, the `principal` and `domain` features on
-session and registration) is in place; the verifier that fills them is
-not yet.
+On a broker in bearer mode this is closed ([Security](SECURITY.md)
+§7a): the session carries a transient `principal` the broker writes
+from the verified credential, `consumerId` must be the caller's
+subject, and a PUT or DELETE naming somebody else's id is refused with
+`CODE_SESSION_OWNERSHIP_VIOLATION` (403) — the object-level rule no
+contract can state, enforced in `Sessions` next to the rules here.
+Mode none, which the development launches and the harness use, keeps
+the old behaviour.
 
 What is in place today is the **validation gate**: every document the
 broker takes in — a contract on `addCatalogEntry`, an implementation on

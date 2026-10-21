@@ -53,6 +53,7 @@ interpolation plugin. The defaults are the ones
 | `DDSR_PUBLIC_URL` | `http://localhost:8887/ddsr/rest` | The address the broker **advertises for itself** in the catalog. Consumers dial exactly this URL, so in any deployment other than `--network=host` it must be the externally reachable one. |
 | `DDSR_HTTP_PORT` | `8887` | Port the broker listens on (inside the container). |
 | `DDSR_HTTP_HOST` | `0.0.0.0` | Interface the broker binds. |
+| `DDSR_AUTH_MODE` | `none` (image) | `bearer` or `none`. The broker's own default is `bearer`; the image says `none` because it cannot be given a token verifier through the environment yet, and a bearer broker without one serves nothing. See [Security](SECURITY.md) §7a. |
 
 The context path (`/ddsr/rest`) is a frozen wire contract, not a
 configuration — see the wire-name note in [CLAUDE.md](https://github.com/eclipse-fennec/emf.services/blob/snapshot/CLAUDE.md).

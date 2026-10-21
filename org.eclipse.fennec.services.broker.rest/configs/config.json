@@ -19,6 +19,11 @@
 	{
 		"public.url": "$[env:DDSR_PUBLIC_URL;default=http://localhost:8887/ddsr/rest]"
 	},
+	"org.eclipse.fennec.services.broker.rest.application":
+	{
+		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
+	},
 	"org.eclipse.fennec.services.broker.mqtt":
 	{
 		"broker.url": "$[env:DDSR_MQTT_URL;default=]",
@@ -33,7 +38,9 @@
 		"service.filter": "(ddsr.contract=BrokerCatalog)",
 		"model.bundle": "org.eclipse.fennec.services.broker.rest",
 		"model.entry": "broker-catalog-api.xmi",
-		"osgi.jakartars.application.base": "/catalog"
+		"osgi.jakartars.application.base": "/catalog",
+		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
 	},
 	"org.eclipse.fennec.services.provider.rest~brokerImplementations":
 	{
@@ -41,7 +48,9 @@
 		"service.filter": "(ddsr.contract=BrokerImplementations)",
 		"model.bundle": "org.eclipse.fennec.services.broker.rest",
 		"model.entry": "broker-implementations-api.xmi",
-		"osgi.jakartars.application.base": "/implementations"
+		"osgi.jakartars.application.base": "/implementations",
+		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
 	},
 	"org.eclipse.fennec.services.provider.rest~brokerLookup":
 	{
@@ -49,6 +58,8 @@
 		"service.filter": "(ddsr.contract=BrokerLookup)",
 		"model.bundle": "org.eclipse.fennec.services.broker.rest",
 		"model.entry": "broker-lookup-api.xmi",
-		"osgi.jakartars.application.base": "/references"
+		"osgi.jakartars.application.base": "/references",
+		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
 	}
 }

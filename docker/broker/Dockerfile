@@ -56,6 +56,15 @@ ARG BROKER_JAR
 # event transport registers no sink and says so once, so a REST-only
 # deployment carries the bundles and notices nothing. Setting the URL is
 # the whole difference between the two — there is no second image.
+#
+# DDSR_AUTH_MODE is none here, and on purpose out loud: the broker's own
+# default is bearer (SECURITY.md §7a), but bearer needs a configured
+# token verifier, and this image cannot be given one through the
+# environment yet. A broker in bearer mode without a verifier serves
+# nothing at all — it fails closed — so the image says none rather than
+# shipping a broker that never answers. Changing this is part of the
+# Keycloak slice; until then a deployment that needs authentication puts
+# a gateway in front.
 ENV APP_HOME=${APP_HOME} \
     DATA_DIR=${DATA_DIR} \
     TMPDIR=${TMPDIR} \
@@ -67,7 +76,8 @@ ENV APP_HOME=${APP_HOME} \
     DDSR_MQTT_TOPIC_PREFIX=ddsr/events \
     DDSR_MQTT_CLIENT_ID=ddsr-broker \
     DDSR_MQTT_EVENT_SOURCE=/fennec/services/broker \
-    DDSR_MQTT_QOS=0
+    DDSR_MQTT_QOS=0 \
+    DDSR_AUTH_MODE=none
 
 COPY --from=builder --chown=65532:65532 ${APP_HOME} ${APP_HOME}
 COPY --from=builder --chown=65532:65532 ${TMPDIR} ${TMPDIR}

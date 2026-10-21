@@ -30,11 +30,13 @@ import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
 import org.eclipse.fennec.services.xmi.codec.XmiHttpErrors;
+import org.eclipse.fennec.services.security.jwt.SecurityNames;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ServiceScope;
 import org.osgi.service.jakartars.whiteboard.annotations.RequireJakartarsWhiteboard;
+import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsExtensionSelect;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsName;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsResource;
 import org.osgi.service.servlet.whiteboard.annotations.RequireHttpWhiteboard;
@@ -67,6 +69,10 @@ import jakarta.ws.rs.core.Response;
 @RequireHttpWhiteboard
 @RequireJakartarsWhiteboard
 @JakartarsResource
+// Served only by an application that states its authentication mode —
+// see BrokerApplication. On a bearer application only the bearer filter
+// satisfies this, so the resource is never served unguarded.
+@JakartarsExtensionSelect(SecurityNames.SELECT_ANY_AUTH)
 @JakartarsName("ddsr-consumers")
 @Component(service = ConsumersResource.class, scope = ServiceScope.PROTOTYPE)
 @Path("/consumers")

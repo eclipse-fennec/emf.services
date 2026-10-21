@@ -37,8 +37,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 
 /**
- * The bearer filter: every request on a secured application carries a
- * token the verifier accepts, or it is {@code 401} before matching.
+ * The bearer filter: every request on an application of mode
+ * {@code fennec.auth=bearer} carries a token the verifier accepts, or
+ * it is {@code 401} before matching.
  *
  * <p>A verified principal is handed on three ways, for three readers:
  * as the request property {@link SecurityNames#REQUEST_PRINCIPAL} for
@@ -50,13 +51,13 @@ import jakarta.ws.rs.core.SecurityContext;
  *
  * <p>The filter exists only while a verifier does: the reference is
  * mandatory and static. A node without a configured verifier has no
- * filter, and a resource selecting it by name is not registered — the
- * whiteboard does the fail-closed part.
+ * filter, and an application of mode bearer, which requires it by
+ * name, is not deployed — the whiteboard does the fail-closed part.
  */
 @Component(service = { ContainerRequestFilter.class, ContainerResponseFilter.class })
 @JakartarsExtension
 @JakartarsName(SecurityNames.BEARER_FILTER)
-@JakartarsApplicationSelect("(" + SecurityNames.SECURED + "=true)")
+@JakartarsApplicationSelect("(" + SecurityNames.AUTH + "=" + SecurityNames.BEARER + ")")
 @PreMatching
 @Priority(Priorities.AUTHENTICATION)
 public class BearerAuthFilter implements ContainerRequestFilter, ContainerResponseFilter {

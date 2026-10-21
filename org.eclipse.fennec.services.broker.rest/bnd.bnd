@@ -9,7 +9,8 @@
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
 	io.cloudevents.model;version=latest,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
-	org.eclipse.fennec.services.flavor.rest;version=snapshot
+	org.eclipse.fennec.services.flavor.rest;version=snapshot,\
+	org.eclipse.fennec.services.security.jwt;version=snapshot
 
 -library: enableJakartaREST,\
 	enableEMF

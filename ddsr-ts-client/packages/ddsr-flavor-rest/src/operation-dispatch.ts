@@ -20,6 +20,8 @@ import type {
   ServiceOperation,
 } from '@ddsr/model';
 import { HttpMethod, ParameterBinding } from '@ddsr/model';
+import { bearerScheme, demandsAuthentication, effectiveRequirement } from '@ddsr/client';
+import type { JwtVerifier } from '@ddsr/client';
 
 /**
  * The provider side of a REST flavor, in TypeScript (#154).
@@ -50,6 +52,8 @@ export interface DispatchResult {
   status: number;
   body?: string;
   contentType: string;
+  /** Headers the answer needs beyond its content type — `WWW-Authenticate` on a 401. */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -68,6 +72,23 @@ export interface DispatchOptions {
   /** Where the flavor is mounted, if the request URLs carry a prefix. */
   basePath?: string;
   log?: (message: string) => void;
+  /**
+   * Checks the bearer token of a call (SECURITY.md §7b), e.g.
+   * `createJwtVerifier(...)`. Needed when the flavor names a bearer
+   * scheme: a dispatcher that cannot verify what its flavor announces is
+   * not built — fail closed.
+   */
+  verifier?: JwtVerifier;
+  /**
+   * The mode, when it is not what the flavor implies. `bearer` turns
+   * every call without a token away, `bearer-optional` lets one through
+   * without a principal for the contract to decide per operation (what a
+   * `@PermitAll` operation needs), `none` serves a guarded contract open
+   * — the explicit choice of a node for development, said once in the
+   * log. By default: `bearer` when every operation is guarded,
+   * `bearer-optional` otherwise.
+   */
+  auth?: 'bearer' | 'bearer-optional' | 'none';
 }
 
 /**
@@ -84,6 +105,7 @@ export function restDispatcher(
 ): (request: DispatchRequest) => Promise<DispatchResult | undefined> {
   const basePath = (options.basePath ?? flavor.basePath ?? '').replace(/\/+$/, '');
   const log = options.log ?? (() => {});
+  const mode = modeOf(flavor, options, log);
 
   return async (request: DispatchRequest) => {
     const [rawPath, rawQuery] = request.url.split('?', 2);
@@ -98,6 +120,15 @@ export function restDispatcher(
     const operation = match.opFlavor.operation as ServiceOperation | undefined;
     if (!operation?.name) {
       return { status: 500, body: 'the flavor binds no operation', contentType: 'text/plain' };
+    }
+
+    // Before the arguments are read: a caller who may not call the
+    // operation learns nothing about what it would have accepted.
+    if (mode !== 'none') {
+      const refused = await refusal(operation, request.headers ?? {}, mode, options.verifier!, log);
+      if (refused) {
+        return refused;
+      }
     }
 
     const args = readArguments(match.opFlavor, operation, match.pathValues,
@@ -133,6 +164,75 @@ export function restDispatcher(
       };
     }
   };
+}
+
+type Mode = 'bearer' | 'bearer-optional' | 'none';
+
+/**
+ * How this flavor is guarded, decided once — the twin of the Java
+ * ServedSecurity: a bearer scheme needs a verifier, a guarded contract
+ * without a scheme is served open only when that is said.
+ */
+function modeOf(flavor: RestFlavor, options: DispatchOptions, log: (m: string) => void): Mode {
+  const operations = toArray<RestOperationFlavor>(flavor.operationFlavors).map(of => of.operation as ServiceOperation | undefined);
+  const guarded = operations.filter(op => demandsAuthentication(op)).length;
+  if (options.auth === 'none') {
+    if (guarded > 0) {
+      log(`${flavor.name} demands authentication but is served in mode none — its requirements are passed over`);
+    }
+    return 'none';
+  }
+  if (bearerScheme(flavor) || options.auth) {
+    if (!options.verifier) {
+      throw new Error(`${flavor.name} names a bearer scheme, and the dispatcher has no verifier — not served`);
+    }
+    return options.auth ?? (guarded === operations.length && guarded > 0 ? 'bearer' : 'bearer-optional');
+  }
+  if (guarded > 0) {
+    throw new Error(`${flavor.name} demands authentication, and its flavor offers no scheme to prove it with`
+      + ' — not served (say auth: \'none\' for an open node)');
+  }
+  return 'none';
+}
+
+/**
+ * The contract's requirement for this operation, held against the
+ * verified caller: 401 without a valid token where one is needed, 403
+ * naming the scopes (roles) the caller lacks. A token that is there and
+ * does not verify is 401 in both bearer modes.
+ */
+async function refusal(operation: ServiceOperation, headers: Record<string, string | string[] | undefined>,
+  mode: Mode, verifier: JwtVerifier, log: (m: string) => void): Promise<DispatchResult | undefined> {
+  const unauthorized: DispatchResult = {
+    status: 401, contentType: 'text/plain', headers: { 'WWW-Authenticate': 'Bearer' },
+  };
+  const header = headerValue(headers, 'authorization');
+  let scopes: readonly string[] | undefined;
+  if (header !== undefined) {
+    if (!/^bearer\s+\S+/i.test(header)) {
+      return unauthorized;
+    }
+    try {
+      scopes = (await verifier.verify(header.replace(/^bearer\s+/i, '').trim())).scopes;
+    } catch (rejected) {
+      // The reason is for the log, never for the caller.
+      log(`401 ${operation.name}: ${String((rejected as Error)?.message ?? rejected)}`);
+      return unauthorized;
+    }
+  } else if (mode === 'bearer') {
+    return unauthorized;
+  }
+  if (!demandsAuthentication(operation)) {
+    return undefined;
+  }
+  if (scopes === undefined) {
+    return unauthorized;
+  }
+  const required = toArray<string>(effectiveRequirement(operation)?.scopes);
+  const missing = required.filter(scope => !scopes!.includes(scope));
+  return missing.length > 0
+    ? { status: 403, body: `${operation.name} needs ${missing.join(', ')}`, contentType: 'text/plain' }
+    : undefined;
 }
 
 /**

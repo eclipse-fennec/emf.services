@@ -594,8 +594,19 @@ if secured; then
   MTLS_PROVIDER_PID=$!
   PIDS+=("$MTLS_PROVIDER_PID")
   wait_for_line "$WORK/payment-mtls.log" "published PersonStore" 90
-  expect_status 401 "$(curl -s -o /dev/null -w '%{http_code}' "$PERSONS_URL/persons/nobody")" \
-    "PersonStore called without a token"
+  # Announced is not yet served: the whiteboard deploys the bearer
+  # application on its own time — later still on a slow runner — and
+  # until then the path is 404. Served guarded means 401 without a token.
+  waited=0
+  until [ "$(curl -s -o /dev/null -w '%{http_code}' "$PERSONS_URL/persons/nobody")" = 401 ]; do
+    sleep 1
+    waited=$((waited + 1))
+    if [ "$waited" -ge 30 ]; then
+      tail -40 "$WORK/payment-mtls.log"
+      expect_status 401 "$(curl -s -o /dev/null -w '%{http_code}' "$PERSONS_URL/persons/nobody")" \
+        "PersonStore called without a token, 30 s after it was announced"
+    fi
+  done
   # A lookup is a consumer's call — the admin's certificate holds no
   # service-consumer, so the consumer's is the one that asks.
   ANNOUNCED=$(curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \

@@ -1,0 +1,10 @@
+# enableFennecServicesRsa — a project whose services are exported or
+# imported through Remote Service Admin. Most need nothing of this
+# registry at compile time: a service is a plain OSGi service with
+# service.exported.* properties. What there is, is the specification's
+# constants and the registry's property names.
+fennec.services.range: [0.1.0,0.2.0)
+
+-buildpath.fennec.services.rsa: \
+	org.osgi.service.remoteserviceadmin;version='[1.1.0,1.2.0)',\
+	org.eclipse.fennec.services.rsa;version='${fennec.services.range}'

@@ -17,6 +17,7 @@ not built, the page says so and names the issue.
 | You want to | Read |
 | --- | --- |
 | get a broker and a provider running | [Getting started](GETTING_STARTED.md) |
+| use Fennec Services from another bnd workspace | [bnd libraries](BND_LIBRARIES.md) |
 | understand who talks to whom | this page |
 | know what a consumer is told, and when | [Eventing](EVENTING.md) |
 | know why a provider was refused, or ignored | [Fingerprints](FINGERPRINTS.md) |

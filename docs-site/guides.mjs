@@ -22,6 +22,7 @@ export const GUIDES = [
   { file: 'ARCHITECTURE.md', slug: 'architecture', title: 'Architecture (internal)' },
   { file: 'HARNESS.md', slug: 'harness', title: 'Cross-language harness' },
   { file: 'DEPLOYMENT.md', slug: 'deployment', title: 'Deployment (container image)' },
+  { file: 'BND_LIBRARIES.md', slug: 'bnd-libraries', title: 'Using it from a bnd workspace' },
 ];
 
 export const EXAMPLES = [

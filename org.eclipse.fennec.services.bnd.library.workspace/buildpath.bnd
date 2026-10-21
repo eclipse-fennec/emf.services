@@ -1,0 +1,13 @@
+# The run lists of the project libraries, as this project's buildpath —
+# the source of the Maven index (mavendeps in bnd.bnd). include=bndrun.bnd
+# because a project would otherwise take the library's project.bnd.
+-library: \
+	../org.eclipse.fennec.services.bnd.library.project/library/client;version=file;include=bndrun.bnd,\
+	../org.eclipse.fennec.services.bnd.library.project/library/rsa;version=file;include=bndrun.bnd,\
+	../org.eclipse.fennec.services.bnd.library.project/library/security;version=file;include=bndrun.bnd
+
+-buildpath: \
+	${-runbundles.fennec.services.client},\
+	${-runbundles.fennec.services.rsa},\
+	${-runbundles.fennec.services.security},\
+	org.eclipse.fennec.services.bnd.library.project;version='${fennec.services.range}'

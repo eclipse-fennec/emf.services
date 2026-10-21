@@ -1,0 +1,9 @@
+# enableFennecServicesClient — what a project that publishes, looks up
+# or invokes services compiles against.
+fennec.services.range: [0.1.0,0.2.0)
+
+-buildpath.fennec.services.client: \
+	org.eclipse.fennec.services.api;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.model;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.runtime;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.client.java;version='${fennec.services.range}'

@@ -77,12 +77,13 @@ launch that takes minutes to start.
 | --- | --- |
 | `enableFennecServicesClient` | the SDK and the REST transport, the wire codec, CloudEvents, EMF, protobuf |
 | `enableFennecServicesRsa` | the RSA core, its role configuration, REST distribution and discovery, the topology manager, the generic REST distribution, the EObject registry, the RSA and Event Admin APIs — on top of the client |
-| `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, Nimbus JOSE+JWT |
+| `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, the client-certificate filter of mode `mtls`, Nimbus JOSE+JWT |
 | `enableFennecServicesMqtt` | the MQTT client transport, the MQTT flavor rules, the MQTT distribution, Paho — on top of the client |
 | `enableFennecServicesRsaMqtt` | the RSA distribution and discovery for `fennec.mqtt` — on top of `…Rsa` and `…Mqtt` |
 
-Both security components register nothing without their configuration,
-so the security list is safe in a launch that runs open. How a node is
+The security components act only where configured or where an
+application asks for their mode, so the security list is safe in a
+launch that runs open. How a node is
 configured — `DDSR_OAUTH_*`, `DDSR_JWT_*` — is in
 [Getting started](GETTING_STARTED.md#open-or-secured) and
 [Security](SECURITY.md).

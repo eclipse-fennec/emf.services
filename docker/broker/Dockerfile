@@ -65,6 +65,9 @@ ARG BROKER_JAR
 # it fails closed rather than open. A deployment that really wants an
 # open broker says DDSR_AUTH_MODE=none (SECURITY.md §7a). DDSR_DOMAIN
 # names the one domain the broker serves; empty is the default domain.
+# Mode mtls instead wants HTTPS with client certificates: DDSR_HTTPS_*
+# (key and trust store mounted into the container) and DDSR_MTLS_ROLES
+# (SECURITY.md §7d). HTTPS stays off unless DDSR_HTTPS_ENABLE says so.
 ENV APP_HOME=${APP_HOME} \
     DATA_DIR=${DATA_DIR} \
     TMPDIR=${TMPDIR} \
@@ -83,16 +86,20 @@ ENV APP_HOME=${APP_HOME} \
     DDSR_JWT_JWKS_URI= \
     DDSR_JWT_AUDIENCES=ddsr-broker \
     DDSR_JWT_SCOPE_CLAIM=scope \
-    DDSR_JWT_SUBJECT_CLAIM=sub
+    DDSR_JWT_SUBJECT_CLAIM=sub \
+    DDSR_HTTP_ENABLE=true \
+    DDSR_HTTPS_ENABLE=false \
+    DDSR_HTTPS_PORT=8443 \
+    DDSR_HTTPS_CLIENT_CERTIFICATE=none
 
 COPY --from=builder --chown=65532:65532 ${APP_HOME} ${APP_HOME}
 COPY --from=builder --chown=65532:65532 ${TMPDIR} ${TMPDIR}
 
-# REST + SSE. Readiness is GET /ddsr/rest/catalog answering at all — 200
+# REST + SSE (8443 when DDSR_HTTPS_ENABLE). Readiness is GET /ddsr/rest/catalog answering at all — 200
 # in mode none, 401 without a token in mode bearer; 404 means the
 # applications are not deployed (bearer without a verifier). There is no HEALTHCHECK
 # because the distroless base ships no shell and no curl.
-EXPOSE 8887
+EXPOSE 8887 8443
 
 # The broker persists its registry as ./broker-state.xmi relative to the
 # working directory, so the working directory IS the data volume. This is

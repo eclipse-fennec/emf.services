@@ -381,6 +381,28 @@ that reason. Roles per operation, and how a Java interface says them
 with `@RolesAllowed`, are in [Security](SECURITY.md) §7b and
 [Remote Service Admin](RSA.md#who-may-call).
 
+**A broker in mode mtls** ([Security](SECURITY.md) §7d) wants a client
+certificate instead of a token. `RestTransport` takes a key store with
+the node's certificate and key, and a trust store with the authorities
+it believes, on its own PID:
+
+```json
+"org.eclipse.fennec.services.client.rest": {
+  "broker.url": "$[env:DDSR_BROKER_URL;default=https://localhost:8443/ddsr/rest]",
+  "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
+  "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
+  "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",
+  "tls.truststore.password": "$[env:DDSR_TLS_TRUSTSTORE_PASSWORD;default=]"
+}
+```
+
+Both are PKCS12 unless `tls.keystore.type` / `tls.truststore.type` say
+JKS. Without a trust store the JVM's authorities decide; without a key
+store the node shows no certificate (server TLS only). A store that is
+named and cannot be read fails the client's start rather than calling
+without it. The certificate's CN is the node's name on the broker, so
+`consumer.id` has to be that CN.
+
 ### 5.5 Module layout & buildpath
 
 `bnd.bnd`:

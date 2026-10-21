@@ -73,12 +73,22 @@ interpolation plugin. The defaults are the ones
 | `DDSR_HTTP_PORT` | `8887` | Port the broker listens on (inside the container). |
 | `DDSR_HTTP_HOST` | `0.0.0.0` | Interface the broker binds. |
 | `DDSR_DOMAIN` | *(empty)* | The one domain this broker serves — a tenant, a topology (see [Security](SECURITY.md) §3). Which callers belong to it is the verifier's issuer and audience below; the name is written onto every registration and session. Empty is the single default domain. |
-| `DDSR_AUTH_MODE` | `bearer` | `bearer` or `none`. Bearer needs the verifier below; `none` is an open broker, meant for development. See [Security](SECURITY.md) §7a. |
+| `DDSR_AUTH_MODE` | `bearer` | `bearer`, `mtls` or `none`. Bearer needs the verifier below, `mtls` HTTPS with client certificates (the `DDSR_HTTPS_*` and `DDSR_MTLS_*` rows); `none` is an open broker, meant for development. See [Security](SECURITY.md) §7a and §7d. |
 | `DDSR_JWT_ISSUER` | *(empty)* | The token issuer the broker trusts (`iss`), e.g. a Keycloak realm URL. Empty means no verifier — and in bearer mode a broker that serves nothing. |
 | `DDSR_JWT_JWKS_URI` | *(empty)* | Where the issuer's signing keys are fetched. May be an internal address the broker reaches the identity provider by. Required with an issuer. |
 | `DDSR_JWT_AUDIENCES` | `ddsr-broker` | Comma-separated `aud` values a token must carry one of. One audience for the broker keeps a token minted for somebody else from being replayed here. |
 | `DDSR_JWT_SUBJECT_CLAIM` | `sub` | The claim that names the caller — what a registration's owner and a session's `consumerId` are held against. With Keycloak client credentials, `sub` is the service account's generated id; `azp` is the client id, the readable and stable name of a node. |
 | `DDSR_JWT_SCOPE_CLAIM` | `scope` | Dot path of the claim carrying the scopes: `scope` (OAuth, space-separated) or e.g. `realm_access.roles` (Keycloak realm roles). |
+| `DDSR_HTTP_ENABLE` | `true` | Whether the plain HTTP listener runs. Behind TLS in the framework, `false`; next to a gateway that ends TLS, it is where the gateway talks to. |
+| `DDSR_HTTPS_ENABLE` | `false` | Whether the broker serves HTTPS itself (Felix Jetty). |
+| `DDSR_HTTPS_PORT` | `8443` | Port of the HTTPS listener. |
+| `DDSR_HTTPS_KEYSTORE` / `_PASSWORD` / `_TYPE` | *(empty)* / *(empty)* / `PKCS12` | The broker's own certificate and key. The password is also the key's. |
+| `DDSR_HTTPS_TRUSTSTORE` / `_PASSWORD` / `_TYPE` | *(empty)* / *(empty)* / `PKCS12` | The authorities whose client certificates the TLS layer accepts. |
+| `DDSR_HTTPS_CLIENT_CERTIFICATE` | `none` | `needs` for mode `mtls`: no TLS connection without a certificate; `wants` asks without requiring. |
+| `DDSR_MTLS_TRUSTED_ISSUERS` | *(empty)* | Mode `mtls`: DNs of the accepted authorities, separated by `\|`; announced in the broker's `MutualTlsScheme`. Empty: the trust store decides. |
+| `DDSR_MTLS_ROLES` | *(empty)* | Mode `mtls`: the roles per certificate CN, `subject=role,role`, entries separated by `\|`, e.g. `node-a=service-provider,service-consumer\|ops=service-admin`. |
+| `DDSR_MTLS_GATEWAY_HEADER` | *(empty)* | Mode `mtls` behind a gateway that ends TLS: the header it puts the client certificate in (PEM, URL-encoded PEM or base64 DER). |
+| `DDSR_MTLS_GATEWAY_ADDRESSES` | *(empty)* | The remote addresses that header is believed from, comma-separated. |
 
 The context path (`/ddsr/rest`) is a frozen wire contract, not a
 configuration — see the wire-name note in [CLAUDE.md](https://github.com/eclipse-fennec/emf.services/blob/snapshot/CLAUDE.md).

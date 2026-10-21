@@ -250,6 +250,11 @@ scheme for it. It is still the second step:
 The one deployment where mTLS comes first: few peers, no identity
 provider, no fine scopes.
 
+Both are built now: bearer as described in §7a–§7c, mutual TLS for REST
+and the Java client in §7d. The roles a certificate holder has come
+from the serving node's mapping, which is exactly the "no fine scopes"
+trade-off above.
+
 ## 6. Remote Service Admin: intents as the projection
 
 An RSA node is a peer like any other; its role configuration (#109) is
@@ -512,6 +517,69 @@ broker's verifier at where they are: `DDSR_JWT_SCOPE_CLAIM=realm_access.roles`
 for Keycloak realm roles. The harness checks from outside that a
 consumer may neither publish nor read the registry, while an admin may.
 
+## 7d. Mutual TLS
+
+The second authentication mode, `fennec.auth=mtls` (`DDSR_AUTH_MODE=mtls`
+on the broker): the caller proves itself with a client certificate on
+the TLS connection, and nothing in the request.
+
+**Where TLS ends.** Either in the framework — Felix Jetty serves HTTPS
+(`DDSR_HTTPS_ENABLE`, `DDSR_HTTPS_PORT`, a key store with the server's
+certificate, a trust store with the authorities whose client
+certificates it accepts, and `DDSR_HTTPS_CLIENT_CERTIFICATE=needs`) — or
+in a gateway in front, which checks the client certificate and hands it
+on in a request header. The header is believed only when the node names
+it (`DDSR_MTLS_GATEWAY_HEADER`) and only from the addresses named
+(`DDSR_MTLS_GATEWAY_ADDRESSES`); from anywhere else it is a claim, not a
+certificate, and the call is `401`. PEM, URL-encoded PEM (nginx
+`$ssl_client_escaped_cert`) and bare base64 DER are read. A certificate
+from the TLS session wins over a header.
+
+**Who the holder is.** `…services.security.mtls` turns the certificate
+into the same verified principal a token yields, on the request, as the
+`SecurityContext` and in `CallPrincipal`, so the dispatcher, the broker
+core, `BrokerRoles` and `RolesAllowedFeature` read a certificate holder
+as they read a token holder:
+
+- the **subject** is the certificate's CN — the twin of a token's
+  `azp`, and what `consumerId` and the owner of a registration are held
+  against;
+- the **issuer** is the issuing authority's DN — the same CN from
+  another authority is somebody else;
+- the **roles** are the node's own mapping, `DDSR_MTLS_ROLES`, one
+  `subject=role,role` per entry, entries separated by `|`. A
+  certificate carries no roles; an unmapped subject is authenticated and
+  holds nothing.
+
+`DDSR_MTLS_TRUSTED_ISSUERS` (DNs separated by `|`) narrows what the
+trust store admitted; empty leaves it to the trust store. A certificate
+outside its validity, from another authority or without a CN is `401`.
+A certificate belongs to the connection, so there is no optional
+variant of the mode: on a listener that demands one nobody comes in
+without it.
+
+**The broker** in mode `mtls` announces a `MutualTlsScheme` naming its
+trusted issuers on its own flavors; the generic REST distribution serves
+a flavor with such a scheme in mode `mtls`, and fails closed like in
+bearer — no filter on the node, no application.
+
+**The Java client** shows a key store and believes a trust store
+(`tls.keystore`, `tls.truststore` on `…client.rest`, `DDSR_TLS_*` in the
+example configurations). Unlike the broker's token, the certificate is
+the node's identity rather than one target's audience, so the one TLS
+context serves every call the client makes: broker, event stream and
+providers.
+
+The host harness proves it in scenario M with a CA issued for the run:
+no connection without a certificate of that CA, the CN's mapped roles
+decide (a consumer may not read the registry, the admin may), a
+gateway's header counts from the gateway's address and nothing without
+it, and the Java client subscribes and lists the catalog with its key
+store.
+
+Not yet: mTLS over MQTT (Paho and the messaging broker's TLS), in the
+TypeScript SDK, and in the RSA role configuration.
+
 ## 8. Decisions taken, decisions open
 
 Taken, and written into the model's documentation annotations:
@@ -557,4 +625,5 @@ Open, in the order they will come up:
 | `@RolesAllowed` emitted by the m2t resource template, enforced on JAX-RS resources by `RolesAllowedFeature` | implemented — see §4 |
 | one domain per broker from issuer/audience, written onto registrations and sessions (`DDSR_DOMAIN`) | implemented — first version, see §3 |
 | several domains in one broker (partitioned catalog, events per domain) | second version |
-| mutual TLS verifier | after bearer |
+| mutual TLS for REST: mode `mtls`, certificate from TLS or a trusted gateway, roles from the node's mapping, broker announces a `MutualTlsScheme`, Java client with key and trust store | implemented — see §7d |
+| mutual TLS over MQTT, in the TypeScript SDK, in the RSA role configuration | not yet |

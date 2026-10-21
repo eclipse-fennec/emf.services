@@ -566,6 +566,28 @@ verify, or a guarded contract without a scheme, is not built unless
 `auth: 'none'` says open. A host writes `answer.headers` with the
 answer. `examples/payment/ledger-ts.ts` is the whole of it.
 
+**Served by client certificate** ([Security](SECURITY.md) §7d): when the
+flavor offers a `MutualTlsScheme`, or `auth: 'mtls'` says so, the
+dispatcher takes a certificate verifier instead, and the host hands it
+the certificate the caller showed on the TLS connection:
+
+```ts
+const dispatch = restDispatcher(flavor, ledger, {
+  certificates: createCertificateVerifier({
+    trustedIssuers: ['CN=Fennec CA,O=Fennec'],
+    roles: ['node-a=ledger-reader', 'ops=ledger-reader,ledger-writer'],
+  }),
+});
+// in an https server created with requestCert and rejectUnauthorized:
+const peer = (request.socket as TLSSocket).getPeerCertificate();
+dispatch({ ...request, clientCertificate: peer.raw ? { raw: peer.raw } : undefined });
+```
+
+The caller is the certificate's CN, its roles are this node's mapping;
+a call without a certificate is `401` for every operation, a missing
+role `403` as in bearer. `ledger-ts.ts` serves this way with
+`LEDGER_AUTH=mtls`.
+
 **A TypeScript provider states its contract as a document**, like a
 Java provider served by configuration (#154). The payment example's
 `payment-provider.xmi` holds the contract, the implementation with its

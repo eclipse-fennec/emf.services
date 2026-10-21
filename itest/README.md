@@ -34,8 +34,9 @@ broker. Requirements and decisions:
   connection without a certificate of the CA, roles per CN (consumer
   `403` on the registry, admin `200`), the header counts from the
   gateway's address, the Java client subscribes and lists the catalog
-  with its key store, and the TypeScript provider publishes through
-  `tlsFetch` with its own certificate. Secured, it goes on: a provider announces
+  with its key store, the TypeScript provider publishes through
+  `tlsFetch` with its own certificate, and the TypeScript ledger serves
+  by certificate with roles per CN. Secured, it goes on: a provider announces
   `PersonStore` by certificate and serves it in bearer, and a client
   finds it by certificate and calls it with a token for `person-store`;
   then the Ledger of K is exported and imported over the mtls broker by

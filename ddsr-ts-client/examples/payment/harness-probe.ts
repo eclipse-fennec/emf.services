@@ -40,7 +40,7 @@ import {
   propertiesOf,
   propertyOf,
 } from '@ddsr/client';
-import { brokerTokens, consumerId } from './broker-auth';
+import { brokerTokens, consumerId, nodeFetch } from './broker-auth';
 
 const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 const EXPECTED_LANG = process.env.EXPECT_LANG ?? 'java';
@@ -81,10 +81,11 @@ async function main(): Promise<void> {
     flavorPlugins: mqttPlugin ? [new RestFlavorPlugin(), mqttPlugin] : [new RestFlavorPlugin()],
     consumerId: consumerId('harness-probe-ts'),
     tokenSupplier: brokerTokens(),
+    fetchFn: nodeFetch(),
     reconnectSeconds: 1,
     sessionIntervalSeconds: 0, // renewed explicitly below, deterministic
   });
-  const brokerHttp = new BrokerHttp({ brokerUrl: BROKER_URL, tokenSupplier: brokerTokens() });
+  const brokerHttp = new BrokerHttp({ brokerUrl: BROKER_URL, tokenSupplier: brokerTokens(), fetchFn: nodeFetch() });
 
   let unregistering: number | undefined;
   client.consumer.addServiceListener('Payment', undefined, event => {

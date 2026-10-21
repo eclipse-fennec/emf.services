@@ -12,7 +12,7 @@
  ********************************************************************/
 
 @Export
-@Version("1.1.0")
+@Version("1.2.0")
 package org.eclipse.fennec.services.runtime;
 
 import org.osgi.annotation.bundle.Export;

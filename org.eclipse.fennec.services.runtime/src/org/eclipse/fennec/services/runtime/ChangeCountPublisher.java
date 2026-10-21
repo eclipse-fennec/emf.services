@@ -13,14 +13,15 @@
 
 package org.eclipse.fennec.services.runtime;
 
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
-import java.util.logging.Logger;
-
 import java.util.function.LongSupplier;
+import java.util.logging.Logger;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -51,6 +52,13 @@ import org.osgi.framework.ServiceRegistration;
  * <p>The number itself is deliberately dumb: it counts changes rather
  * than describing them. "Has anything happened" is a comparison, and
  * "what" is another snapshot.
+ *
+ * <p><strong>The publisher owns the dictionary.</strong>
+ * {@link ServiceRegistration#setProperties} replaces rather than
+ * merges, so a property set on the registration from outside would be
+ * gone after the next change. Whatever describes the service — and
+ * should be filterable, the way {@code osgi.jakartars.endpoint} is —
+ * is handed in up front and carried into every update (#188).
  */
 public final class ChangeCountPublisher<T> implements AutoCloseable {
 
@@ -73,6 +81,8 @@ public final class ChangeCountPublisher<T> implements AutoCloseable {
 
 	private final String what;
 
+	private final Map<String, Object> extraProperties;
+
 	private final AtomicLong published = new AtomicLong(-1);
 
 	private final AtomicBoolean running = new AtomicBoolean(true);
@@ -89,11 +99,32 @@ public final class ChangeCountPublisher<T> implements AutoCloseable {
 	 */
 	public ChangeCountPublisher(BundleContext context, Class<T> type, T service, LongSupplier changeCount,
 			String what) {
+		this(context, type, service, changeCount, what, new Hashtable<>());
+	}
+
+	/**
+	 * @param type     the service type to register under
+	 * @param service  what answers
+	 * @param changeCount the number that moves when the answer would
+	 * @param what     how to name this in the log
+	 * @param extraProperties registered with the service and kept on
+	 *                 every update; copied, so later changes to the
+	 *                 dictionary do not reach the registration. A
+	 *                 {@value Constants#SERVICE_CHANGECOUNT} among them
+	 *                 is ignored — that one is this class's to set.
+	 */
+	public ChangeCountPublisher(BundleContext context, Class<T> type, T service, LongSupplier changeCount,
+			String what, Dictionary<String, ?> extraProperties) {
 		this.context = context;
 		this.type = type;
 		this.service = service;
 		this.changeCount = changeCount;
 		this.what = what;
+		Hashtable<String, Object> copy = new Hashtable<>();
+		for (String key : Collections.list(extraProperties.keys())) {
+			copy.put(key, extraProperties.get(key));
+		}
+		this.extraProperties = Collections.unmodifiableMap(copy);
 	}
 
 	/** Register the service and start keeping it current. */
@@ -146,8 +177,10 @@ public final class ChangeCountPublisher<T> implements AutoCloseable {
 		}
 	}
 
-	private static Dictionary<String, Object> propertiesFor(long changeCount) {
-		Dictionary<String, Object> properties = new Hashtable<>();
+	private Dictionary<String, Object> propertiesFor(long changeCount) {
+		// The caller's properties first, so they cannot override the
+		// change count.
+		Dictionary<String, Object> properties = new Hashtable<>(extraProperties);
 		properties.put(Constants.SERVICE_CHANGECOUNT, changeCount);
 		return properties;
 	}

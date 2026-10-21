@@ -16,6 +16,7 @@ Bundle-Description: \
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.runtime;version=snapshot,\
 	org.eclipse.osgi-technology.opentelemetry.repack;version=latest
 
 # The SDK comes from the same repack bundle as the API, so a test can

@@ -16,7 +16,10 @@ them exist.
 | `BrokerRuntime` | `…broker.core` | what this broker holds |
 | `ClientRuntime` | `…client.java` | what this runtime published and bound |
 
-Both live in `org.eclipse.fennec.services.runtime`, in the api bundle.
+Both live in `org.eclipse.fennec.services.runtime`, in a bundle of the
+same name. That bundle compiles against nothing but the framework — no
+EMF model, no fingerprints, no role interfaces — so a watcher installs
+it and nothing else (#187).
 
 The TypeScript client has the client half as `client.runtime.snapshot()`
 (#167), with the same fields under the same names. It is a property of
@@ -99,6 +102,32 @@ one notification per pass.
 
 A watcher whose callback throws is logged and skipped. It does not stop
 the next update, and it does not reach the broker.
+
+## Publishing a runtime service of your own
+
+Both runtimes are registered by `ChangeCountPublisher`, and it is meant
+to be reused: an application with state worth watching hands it a
+service, a type and a number that moves, and gets the same protocol.
+
+```java
+Dictionary<String, Object> properties = new Hashtable<>();
+properties.put("myapp.endpoint", endpoint);
+
+publisher = new ChangeCountPublisher<>(context, MyRuntime.class, runtime,
+        changes::get, "MyRuntime", properties);
+publisher.open();
+// ...
+publisher.close();
+```
+
+The last argument is optional. Whatever describes the service — and
+should be selectable by a filter, the way the Jakarta RS whiteboard
+publishes `osgi.jakartars.endpoint` — goes there, not onto the
+registration afterwards. `ServiceRegistration.setProperties` replaces
+the dictionary rather than merging it, so a property set from outside
+would be there until the first change and gone after it. The publisher
+holds a copy and carries it into every update; `service.changecount`
+is set last, so a caller cannot override it (#188).
 
 ## What the broker reports
 

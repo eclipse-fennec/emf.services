@@ -1,0 +1,26 @@
+Bundle-Name: Fennec Services Project Libraries
+Bundle-Description: \
+	bnd project libraries for using Fennec Services in another bnd \
+	workspace. Each one says, for one role, what a project compiles \
+	against (-buildpath) and what a launch runs (-runbundles): \
+	\
+	  enableFennecServicesClient    the SDK: publish, look up, invoke \
+	  enableFennecServicesRsa       Remote Service Admin on the registry \
+	  enableFennecServicesSecurity  bearer tokens: supply and verify \
+	\
+	The run lists carry this project's bundles and what they need \
+	directly — never an HTTP stack or Jersey, which enableJakartaREST \
+	brings, nor a configuration stack, which every launch chooses \
+	itself. Versions are ranges on this release line, so a patch \
+	release is picked up and a minor one is a decision. \
+	\
+	The same directories are what this workspace verifies the lists \
+	with (…bnd.library.itest, -library: <dir>;version=file).
+
+-resourceonly: true
+-includeresource: library=library
+
+Provide-Capability: \
+	bnd.library;bnd.library=enableFennecServicesClient;path=library/client,\
+	bnd.library;bnd.library=enableFennecServicesRsa;path=library/rsa,\
+	bnd.library;bnd.library=enableFennecServicesSecurity;path=library/security

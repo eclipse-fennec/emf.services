@@ -179,3 +179,10 @@ millisecond timestamps — see [HARNESS.md](HARNESS.md).
   cold cache
 - [DEPLOYMENT.md](DEPLOYMENT.md) — the broker container image, its
   configuration and the publishing pipeline
+
+## In your own workspace
+
+Everything above runs from this repository. To build on Fennec Services
+from another bnd workspace — one line for the repository, one per
+project and launch for what it compiles against and runs — see
+[bnd libraries](BND_LIBRARIES.md).

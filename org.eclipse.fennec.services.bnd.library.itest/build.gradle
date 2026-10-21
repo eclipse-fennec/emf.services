@@ -1,0 +1,15 @@
+/**
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation.
+ *
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+
+// The run lists are stated, not resolved: resolving would let bnd fill in
+// what a list forgot, and finding exactly that is the point of the test.
+tasks.named("testOSGi") {
+	bndrun = file("test.bndrun")
+}

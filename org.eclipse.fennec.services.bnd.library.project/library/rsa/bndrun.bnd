@@ -1,0 +1,17 @@
+# enableFennecServicesRsa — what an RSA node runs, on top of the client
+# (enableFennecServicesClient) and an HTTP stack. Configured through one
+# role: org.eclipse.fennec.services.rsa.provider or .rsa.consumer. The
+# admin posts its events to Event Admin when there is one; the API is
+# here, an implementation is the launch's choice.
+fennec.services.range: [0.1.0,0.2.0)
+
+-runbundles.fennec.services.rsa: \
+	org.eclipse.fennec.services.rsa;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.rsa.config;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.rsa.distribution.rest;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.rsa.discovery.rest;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.rsa.topology;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.provider.rest;version='${fennec.services.range}',\
+	org.eclipse.fennec.emf.osgi.eobject.registry;version='[1.1.0,1.1.1)',\
+	org.osgi.service.remoteserviceadmin;version='[1.1.0,1.1.1)',\
+	org.osgi.service.event;version='[1.4.1,1.4.2)'

@@ -1,0 +1,26 @@
+Bundle-Name: Fennec Services Library Verification
+Bundle-Description: \
+	Runs the run lists of the project libraries (…bnd.library.project) \
+	in one framework, on top of the container a launch brings itself, \
+	and checks that every bundle they name is there and resolves — the \
+	proof that a downstream launch with -library: enableFennecServices… \
+	gets a complete list, without publishing the library first. \
+	The lists are read from the very directories the library ships \
+	(-library: <dir>;version=file in test.bndrun).
+
+Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.annotation.Testable;CONCRETE}
+
+-buildpath: \
+	osgi.core;version=latest,\
+	${junit}
+
+# The library's files, and the base version they have to agree with, as
+# resources of this bundle: what the test reads is what is shipped.
+-includeresource: \
+	library=../org.eclipse.fennec.services.bnd.library.project/library,\
+	fennec.bnd=${workspace}/cnf/ext/fennec.bnd,\
+	@../org.eclipse.fennec.services.bnd.library.workspace/generated/org.eclipse.fennec.services.bnd.library.workspace.jar!/template/fennecServices.maven
+
+-dependson: \
+	org.eclipse.fennec.services.bnd.library.project,\
+	org.eclipse.fennec.services.bnd.library.workspace

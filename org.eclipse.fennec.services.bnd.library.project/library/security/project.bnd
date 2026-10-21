@@ -1,0 +1,8 @@
+# enableFennecServicesSecurity — a project that reads who is calling
+# (CallPrincipal), supplies a token of its own (TokenSupplier), or names
+# the authentication mode of an application (SecurityNames).
+fennec.services.range: [0.1.0,0.2.0)
+
+-buildpath.fennec.services.security: \
+	org.eclipse.fennec.services.api;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.security.jwt;version='${fennec.services.range}'

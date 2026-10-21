@@ -2,15 +2,17 @@
 
 Fennec Services ships two kinds of bnd library, the same way
 [EMF OSGi](https://github.com/eclipse-fennec/emf.osgi) does: one for the
-workspace, which makes the bundles resolvable, and three for projects,
+workspace, which makes the bundles resolvable, and five for projects,
 which say what a project compiles against and what a launch runs.
 
 | Library | Kind | Gives you |
 | --- | --- | --- |
-| `fennecServices` | workspace | a Maven repository with every bundle the three run lists below name, and the project libraries themselves |
+| `fennecServices` | workspace | a Maven repository with every bundle the five run lists below name, and the project libraries themselves |
 | `enableFennecServicesClient` | project | the SDK: publish, look up, invoke |
 | `enableFennecServicesRsa` | project | Remote Service Admin on the registry |
 | `enableFennecServicesSecurity` | project | bearer tokens: supply them, verify them |
+| `enableFennecServicesMqtt` | project | the MQTT transport: call, hear events, serve a contract on topics |
+| `enableFennecServicesRsaMqtt` | project | Remote Service Admin over MQTT |
 
 ## In the workspace
 
@@ -26,7 +28,7 @@ use:
 
 That puts one repository into the workspace — *Eclipse Fennec Services*,
 indexed from Maven Central and its snapshot repository — with exactly
-what the three run lists name.
+what the five run lists name.
 
 ## In a project
 
@@ -42,6 +44,8 @@ what the three run lists name.
 | `enableFennecServicesClient` | `…services.api`, `…model`, `…runtime`, `…client.java` |
 | `enableFennecServicesRsa` | `org.osgi.service.remoteserviceadmin`, `…services.rsa` |
 | `enableFennecServicesSecurity` | `…services.api` (`TokenSupplier`, `CallPrincipal`), `…security.jwt` (`SecurityNames`) |
+| `enableFennecServicesMqtt` | `…flavor.mqtt` (topics, QoS, message form), for a project that names MQTT placements itself |
+| `enableFennecServicesRsaMqtt` | nothing — the flavor is a configuration |
 
 A service exported through Remote Service Admin usually needs nothing at
 compile time: it is a plain OSGi service with `service.exported.*`
@@ -74,6 +78,8 @@ launch that takes minutes to start.
 | `enableFennecServicesClient` | the SDK and the REST transport, the wire codec, CloudEvents, EMF, protobuf |
 | `enableFennecServicesRsa` | the RSA core, its role configuration, REST distribution and discovery, the topology manager, the generic REST distribution, the EObject registry, the RSA and Event Admin APIs — on top of the client |
 | `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, Nimbus JOSE+JWT |
+| `enableFennecServicesMqtt` | the MQTT client transport, the MQTT flavor rules, the MQTT distribution, Paho — on top of the client |
+| `enableFennecServicesRsaMqtt` | the RSA distribution and discovery for `fennec.mqtt` — on top of `…Rsa` and `…Mqtt` |
 
 Both security components register nothing without their configuration,
 so the security list is safe in a launch that runs open. How a node is
@@ -81,8 +87,14 @@ configured — `DDSR_OAUTH_*`, `DDSR_JWT_*` — is in
 [Getting started](GETTING_STARTED.md#open-or-secured) and
 [Security](SECURITY.md).
 
-MQTT is not in these lists yet; a launch that needs it adds
-`…client.mqtt` and `…flavor.mqtt` and Paho itself.
+MQTT comes in two lists, so that a client that speaks MQTT does not
+pull Remote Service Admin: `enableFennecServicesMqtt` for the transport,
+and `enableFennecServicesRsaMqtt` next to it and `…Rsa` for a node that
+exports or imports over `fennec.mqtt`. Every MQTT part is dormant until
+it is given a broker (`mqtt.broker`, or the RSA role's `mqtt.url`), so
+the transport list is safe in a launch that speaks only REST. Which
+flavor a node speaks is in [Remote Service Admin](RSA.md) and
+[Transports](TRANSPORTS.md).
 
 ## Versions
 

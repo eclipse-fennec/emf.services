@@ -42,6 +42,11 @@ runs as a container for the length of the run
 (`quay.io/keycloak/keycloak:26.4` on port 18080, realm
 `itest/keycloak/fennec-realm.json`). The first check after the broker
 is up is that a call **without** a token is turned away with `401`.
+Right after it come the role matrix — a consumer may neither publish
+nor read the registry, the admin may ([Security](SECURITY.md) §7c) —
+and the domain: the broker runs as domain `fennec` (`DDSR_DOMAIN`) and
+says so when it starts, and a token of the same realm minted for
+another audience is `401`, even the admin's ([Security](SECURITY.md) §3).
 
 Every process calls the broker as a client of its own — one
 confidential client per role, secret `<client>-secret`. Audiences are

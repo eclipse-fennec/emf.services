@@ -59,7 +59,7 @@ sources checked in beside them exist to prove the templates compile.
 | Template | Produces |
 | --- | --- |
 | `service-interface.mtl` | one Java interface per contract, plus `package-info` |
-| `rest-resource.mtl` | one JAX-RS resource class per REST flavor, delegating to that interface |
+| `rest-resource.mtl` | one JAX-RS resource class per REST flavor, delegating to that interface, each method annotated with who may call it |
 | `service-publisher.mtl` | one component per implementation that announces it and withdraws it in the FR-P3 order |
 | `java-types.mtl` | shared: type mapping, imports, file header |
 
@@ -129,6 +129,22 @@ anything:
 | an endpoint you write yourself | the JAX-RS resource template, and your own implementation behind it |
 | a lifecycle of your own — publish once your endpoint serves, a version you supersede, your own configuration | the publisher template |
 | to call a contract from Java | the interface template plus `ServiceProxyFactory.newProxy(Contract.class, locator)` — no stub is generated, and none is needed |
+
+### Who may call a generated resource
+
+The resource template writes each operation's effective requirement —
+its own, else the contract's — in the Jakarta annotations:
+`@RolesAllowed({...})` for scopes, `@RolesAllowed("**")` for any
+verified caller, `@PermitAll` for an open operation, nothing where the
+contract says nothing. They are not decoration: `RolesAllowedFeature`
+in `…security.jwt` enforces them on every application of a bearer mode,
+with the model's meaning — all the named scopes, not any one of them.
+A resource whose contract says anything about callers also carries
+`@JakartarsExtensionSelect("(osgi.jakartars.name=fennec-auth-*)")`, so
+the whiteboard serves it only in an application that states an
+authentication mode; serve it in one, by its configuration's
+`osgi.jakartars.application.select`. The details are in
+[Security](SECURITY.md) §4.
 
 ### The publisher template
 

@@ -63,7 +63,8 @@ ARG BROKER_JAR
 # DDSR_JWT_ISSUER, DDSR_JWT_JWKS_URI and DDSR_JWT_AUDIENCES. Left empty,
 # the broker has no verifier and, in bearer mode, serves nothing at all:
 # it fails closed rather than open. A deployment that really wants an
-# open broker says DDSR_AUTH_MODE=none (SECURITY.md §7a).
+# open broker says DDSR_AUTH_MODE=none (SECURITY.md §7a). DDSR_DOMAIN
+# names the one domain the broker serves; empty is the default domain.
 ENV APP_HOME=${APP_HOME} \
     DATA_DIR=${DATA_DIR} \
     TMPDIR=${TMPDIR} \
@@ -76,6 +77,7 @@ ENV APP_HOME=${APP_HOME} \
     DDSR_MQTT_CLIENT_ID=ddsr-broker \
     DDSR_MQTT_EVENT_SOURCE=/fennec/services/broker \
     DDSR_MQTT_QOS=0 \
+    DDSR_DOMAIN= \
     DDSR_AUTH_MODE=bearer \
     DDSR_JWT_ISSUER= \
     DDSR_JWT_JWKS_URI= \

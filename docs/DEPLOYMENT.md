@@ -72,6 +72,7 @@ interpolation plugin. The defaults are the ones
 | `DDSR_PUBLIC_URL` | `http://localhost:8887/ddsr/rest` | The address the broker **advertises for itself** in the catalog. Consumers dial exactly this URL, so in any deployment other than `--network=host` it must be the externally reachable one. |
 | `DDSR_HTTP_PORT` | `8887` | Port the broker listens on (inside the container). |
 | `DDSR_HTTP_HOST` | `0.0.0.0` | Interface the broker binds. |
+| `DDSR_DOMAIN` | *(empty)* | The one domain this broker serves — a tenant, a topology (see [Security](SECURITY.md) §3). Which callers belong to it is the verifier's issuer and audience below; the name is written onto every registration and session. Empty is the single default domain. |
 | `DDSR_AUTH_MODE` | `bearer` | `bearer` or `none`. Bearer needs the verifier below; `none` is an open broker, meant for development. See [Security](SECURITY.md) §7a. |
 | `DDSR_JWT_ISSUER` | *(empty)* | The token issuer the broker trusts (`iss`), e.g. a Keycloak realm URL. Empty means no verifier — and in bearer mode a broker that serves nothing. |
 | `DDSR_JWT_JWKS_URI` | *(empty)* | Where the issuer's signing keys are fetched. May be an internal address the broker reaches the identity provider by. Required with an issuer. |

@@ -98,7 +98,9 @@ HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 Both run the broker **secured** by default: Keycloak
 (`keycloak/fennec-realm.json`, port 18080) issues every process a token
 of its own client, the broker verifies them in mode bearer, and a call
-without a token is checked to be `401`. `keycloak/auth.sh` holds the
+without a token is checked to be `401`, as are the broker's role matrix
+and its domain (`fennec`; a token for another audience is `401`).
+`keycloak/auth.sh` holds the
 helpers both scripts share. The table of clients and why the consumer
 id is the client id is in [HARNESS.md](../docs/HARNESS.md#secured-by-default).
 

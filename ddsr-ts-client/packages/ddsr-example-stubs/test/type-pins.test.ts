@@ -18,9 +18,10 @@ import { generate } from '@ddsr/codegen';
 
 /**
  * Holds the TypeScript rendering to type-pins.tsv, which states every
- * slot's type in both languages (#151). The Java column is held to the
- * m2t output once that side reads the table too (#185); until then this
- * pins the TypeScript half against what java-types.mtl produces today.
+ * slot's type in both languages (#151). The table lives beside the Java
+ * binding in org.eclipse.fennec.services.m2t/model, where TypePinsTest
+ * holds the generated Java to the other column (#185): one table, two
+ * renderings, neither can drift alone.
  */
 const here = fileURLToPath(new URL('.', import.meta.url));
 
@@ -33,7 +34,7 @@ interface Pin {
 }
 
 function pins(): Pin[] {
-  return readFileSync(`${here}../type-pins.tsv`, 'utf8')
+  return readFileSync(`${here}../../../../org.eclipse.fennec.services.m2t/model/type-pins.tsv`, 'utf8')
     .split('\n')
     .filter(line => line.trim() !== '' && !line.startsWith('#'))
     .map(line => {

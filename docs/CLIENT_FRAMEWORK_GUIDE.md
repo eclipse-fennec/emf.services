@@ -486,6 +486,29 @@ a 400, a failing implementation a 500, no result a 204 — the same
 answers the Java dispatcher gives, because they are HTTP's and not a
 language's.
 
+**A guarded contract.** When the contract says who may call
+(`security` on the interface or an operation) and the flavor names a
+bearer scheme, the dispatcher needs a verifier — `createJwtVerifier`
+from `@ddsr/client`, with no dependency beyond WebCrypto:
+
+```ts
+const dispatch = restDispatcher(flavor, ledger, {
+  verifier: createJwtVerifier({
+    issuer, jwksUri, audiences: ['ts-ledger'],
+    scopeClaim: 'realm_access.roles', subjectClaim: 'azp',
+  }),
+});
+```
+
+Then every call is held to its operation's requirement like on a Java
+node: `401` with `WWW-Authenticate: Bearer` without a valid token where
+one is needed, `403` naming the missing roles. The mode follows the
+contract — strict when every operation is guarded, optional when some
+permit all — and a dispatcher whose flavor names a scheme it cannot
+verify, or a guarded contract without a scheme, is not built unless
+`auth: 'none'` says open. A host writes `answer.headers` with the
+answer. `examples/payment/ledger-ts.ts` is the whole of it.
+
 **What a TypeScript provider still states in code**, and Java does not:
 the contract itself. `payment-api.ts` builds `ServiceInterface` and the
 flavors with the factory, where a Java provider reads a model document

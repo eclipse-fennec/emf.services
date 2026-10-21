@@ -428,6 +428,44 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
+# ============================================================ Scenario T
+if secured; then
+  log "Scenario T: a TypeScript provider holds a call to its contract's roles"
+  # The TypeScript half of what scenario K shows in Java (SECURITY.md §7b):
+  # TsLedger needs ledger-reader to read, ledger-writer to record, nothing
+  # for its version. The dispatcher verifies tokens of its own audience
+  # (ts-ledger) with no library but WebCrypto.
+  require_port_free 9094
+  (cd "$TS/examples/payment" && export_client ts-ledger \
+    && BROKER_URL="$BROKER_URL" SERVICE_URL="http://localhost:9094/ts-ledger" \
+       DDSR_JWT_ISSUER="$KEYCLOAK_REALM_URL" DDSR_JWT_JWKS_URI="$KEYCLOAK_REALM_URL/protocol/openid-connect/certs" \
+       DDSR_JWT_AUDIENCES=ts-ledger DDSR_JWT_SCOPE_CLAIM=realm_access.roles DDSR_JWT_SUBJECT_CLAIM=azp \
+       exec node --import tsx ledger-ts.ts) >"$WORK/ts-ledger.log" 2>&1 &
+  TS_LEDGER_PID=$!
+  PIDS+=("$TS_LEDGER_PID")
+  wait_for_line "$WORK/ts-ledger.log" "published as reference" 60
+  LEDGER="http://localhost:9094/ts-ledger"
+  status() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
+  READER="Authorization: Bearer $(token_for rsa-example-consumer ts-ledger)"
+  NO_ROLE="Authorization: Bearer $(token_for harness ts-ledger)"
+  BROKER_TOKEN="Authorization: Bearer $(token_for rsa-example-consumer)"
+  expect_status() { # what expected actual
+    [ "$3" = "$2" ] || { echo "SCENARIO T FAILED: $1 answered $3, expected $2"; cat "$WORK/ts-ledger.log"; exit 1; }
+    echo "  ✓ $1: $3"
+  }
+  expect_status "version-without-a-token" 200 "$(status "$LEDGER/version")"
+  expect_status "balance-without-a-token" 401 "$(status "$LEDGER/balance")"
+  expect_status "balance-without-the-role" 403 "$(status -H "$NO_ROLE" "$LEDGER/balance")"
+  expect_status "balance-as-ledger-reader" 200 "$(status -H "$READER" "$LEDGER/balance")"
+  expect_status "record-as-ledger-reader" 403 "$(status -H "$READER" "$LEDGER/record")"
+  expect_status "a-broker-token-at-the-provider" 401 "$(status -H "$BROKER_TOKEN" "$LEDGER/balance")"
+  kill "$TS_LEDGER_PID" 2>/dev/null || true
+  wait "$TS_LEDGER_PID" 2>/dev/null || true
+  echo "Scenario T OK: roles held by a TypeScript provider, against tokens of its own audience"
+else
+  echo "Scenario T skipped: a guarded contract needs an issuer to verify against (HARNESS_AUTH=none)"
+fi
+
 # ============================================================ Scenario N
 log "Scenario N: the developer's broker, open"
 # Whatever the harness ran above, the path a developer takes has to keep
@@ -454,4 +492,4 @@ kill "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 wait "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 echo "Scenario N OK: no token anywhere — published, and listed to a caller without one"
 
-log "HARNESS PASSED (A + B + F + G + H + N, auth: $HARNESS_AUTH)"
+log "HARNESS PASSED (A + B + F + G + H + T + N, auth: $HARNESS_AUTH)"

@@ -20,6 +20,10 @@ broker. Requirements and decisions:
   provider: the withdraw is acknowledged by the broker **before** the
   HTTP endpoint stops, and the broker no longer lists the provider
   afterwards.
+- **T (host only, secured) — a TypeScript provider holds the roles:**
+  `ledger-ts.ts` serves a guarded contract with a WebCrypto verifier;
+  401 without a token, 403 without the role, 200 with it, and a broker
+  token is 401 there. Skipped with `HARNESS_AUTH=none`.
 - **N (host only) — the developer's broker, open:** a second broker from
   the development launch with no security variable, a TypeScript
   provider without credentials publishing to it, and a lookup without a
@@ -86,7 +90,7 @@ drain in scenario G.
 ## Runs
 
 ```bash
-./itest/run-harness.sh          # host processes: A + B + F + G + H + N (podman only for Keycloak)
+./itest/run-harness.sh          # host processes: A + B + F + G + H + T + N (podman only for Keycloak)
 ./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + K + J + F + G + H
 HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 ```

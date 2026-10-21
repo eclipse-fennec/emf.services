@@ -450,6 +450,11 @@ export and on the endpoints the topology manager builds from the broker.
 An imported proxy calls with the node's own credentials. See
 [Remote Service Admin](RSA.md#who-may-call).
 
+**TypeScript providers** hold calls the same way: `createJwtVerifier`
+(`@ddsr/client`, RS256 on WebCrypto, no dependency) and
+`restDispatcher(flavor, implementation, { verifier })`, with the same
+modes and the same refusals. The host harness proves it in scenario T.
+
 Proven in the podman harness, scenario K: a `Ledger` interface with
 `@RolesAllowed("ledger-reader")`, `@RolesAllowed("ledger-writer")` on
 `record` and `@PermitAll` on `version`, exported by one framework and
@@ -524,7 +529,7 @@ Open, in the order they will come up:
 | token per target audience in both SDKs | implemented — slice 3 |
 | RSA: `@RolesAllowed` → requirement, node identity in the role configuration, `fennec.bearer` on export and import, the proxy calls with the node's token | implemented — slice 3, see §7b and [RSA](RSA.md#who-may-call) |
 | role matrix on the broker's own contracts (`service-provider` / `service-consumer` / `service-admin`) | implemented — see §3 and §7c |
-| TypeScript provider verifying tokens | not yet |
+| TypeScript provider verifying tokens (`createJwtVerifier`, `restDispatcher` holding operations to their roles) | implemented — see [Client framework](CLIENT_FRAMEWORK_GUIDE.md#serving-a-contract-in-typescript) |
 | `@RolesAllowed` emitted by the m2t resource template | not yet |
 | domain enforcement from issuer/audience | not yet |
 | mutual TLS verifier | after bearer |

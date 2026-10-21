@@ -14,6 +14,8 @@ import { defineConfig } from 'vitest/config';
 // Vitest 4: workspace files are gone; projects replaces defineWorkspace.
 export default defineConfig({
   test: {
-    projects: ['packages/*'],
+    // The payment example states its provider as a document (#154);
+    // its test holds that document to the golden fixtures.
+    projects: ['packages/*', 'examples/payment'],
   },
 });

@@ -1,0 +1,7 @@
+# enableFennecServicesMqtt — a project that names MQTT placements itself
+# (topics, QoS, message form). Most need nothing at compile time: the
+# contract says where a call travels, and the distribution reads it.
+fennec.services.range: [0.1.0,0.2.0)
+
+-buildpath.fennec.services.mqtt: \
+	org.eclipse.fennec.services.flavor.mqtt;version='${fennec.services.range}'

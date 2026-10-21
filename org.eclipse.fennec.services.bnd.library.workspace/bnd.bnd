@@ -2,14 +2,14 @@ Bundle-Name: Fennec Services Workspace Library
 Bundle-Description: \
 	bnd workspace library fennecServices: one line in a downstream \
 	workspace's -library, and the Fennec Services bundles — together \
-	with the project libraries enableFennecServicesClient, …Rsa and \
-	…Security — resolve from Maven Central. The index lists exactly \
-	what those three run lists name, so a launch built from them finds \
+	with the project libraries enableFennecServicesClient, …Rsa, \
+	…Security, …Mqtt and …RsaMqtt — resolve from Maven Central. The \
+	index lists exactly what those five run lists name, so a launch built from them finds \
 	every bundle it asks for.
 
 -resourceonly: true
 
-# What the index lists: the three run lists, read from the project
+# What the index lists: the five run lists, read from the project
 # library's own directories, and the project library itself.
 -include: ${.}/buildpath.bnd
 

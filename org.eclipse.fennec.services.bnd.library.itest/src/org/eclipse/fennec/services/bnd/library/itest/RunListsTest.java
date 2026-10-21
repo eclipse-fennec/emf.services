@@ -48,7 +48,7 @@ class RunListsTest {
 	private final BundleContext context = FrameworkUtil.getBundle(RunListsTest.class).getBundleContext();
 
 	@ParameterizedTest
-	@ValueSource(strings = { "client", "rsa", "security" })
+	@ValueSource(strings = { "client", "rsa", "security", "mqtt", "rsaMqtt" })
 	void everyBundleOfTheListIsThereAndResolves(String role) throws IOException {
 		Map<String, Bundle> installed = Arrays.stream(context.getBundles())
 				.collect(Collectors.toMap(Bundle::getSymbolicName, Function.identity(), (a, b) -> a));
@@ -76,7 +76,8 @@ class RunListsTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = { "client/project.bnd", "client/bndrun.bnd", "rsa/project.bnd", "rsa/bndrun.bnd",
-			"security/project.bnd", "security/bndrun.bnd" })
+			"security/project.bnd", "security/bndrun.bnd", "mqtt/project.bnd", "mqtt/bndrun.bnd", "rsaMqtt/project.bnd",
+			"rsaMqtt/bndrun.bnd" })
 	void theRangeIsTheReleaseLine(String file) throws IOException {
 		Matcher base = Pattern.compile("^base-version:\\s*(\\d+)\\.(\\d+)\\.(\\d+)\\s*$", Pattern.MULTILINE)
 				.matcher(read("fennec.bnd"));
@@ -90,7 +91,7 @@ class RunListsTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "client", "rsa", "security" })
+	@ValueSource(strings = { "client", "rsa", "security", "mqtt", "rsaMqtt" })
 	void theWorkspaceLibraryIndexesEveryBundleOfOurs(String role) throws IOException {
 		// A downstream workspace resolves the lists from that index; a bundle
 		// of ours missing there is a launch that fails to find it.

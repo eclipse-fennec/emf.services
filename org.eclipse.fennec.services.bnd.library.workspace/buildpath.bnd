@@ -4,10 +4,14 @@
 -library: \
 	../org.eclipse.fennec.services.bnd.library.project/library/client;version=file;include=bndrun.bnd,\
 	../org.eclipse.fennec.services.bnd.library.project/library/rsa;version=file;include=bndrun.bnd,\
-	../org.eclipse.fennec.services.bnd.library.project/library/security;version=file;include=bndrun.bnd
+	../org.eclipse.fennec.services.bnd.library.project/library/security;version=file;include=bndrun.bnd,\
+	../org.eclipse.fennec.services.bnd.library.project/library/mqtt;version=file;include=bndrun.bnd,\
+	../org.eclipse.fennec.services.bnd.library.project/library/rsaMqtt;version=file;include=bndrun.bnd
 
 -buildpath: \
 	${-runbundles.fennec.services.client},\
 	${-runbundles.fennec.services.rsa},\
 	${-runbundles.fennec.services.security},\
+	${-runbundles.fennec.services.mqtt},\
+	${-runbundles.fennec.services.rsa.mqtt},\
 	org.eclipse.fennec.services.bnd.library.project;version='${fennec.services.range}'

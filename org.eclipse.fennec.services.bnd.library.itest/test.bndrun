@@ -1,4 +1,4 @@
-# The three run lists of the project libraries, read from the directories
+# The five run lists of the project libraries, read from the directories
 # the library ships, plus what a downstream launch brings itself: the
 # HTTP stack and Jersey, Declarative Services, Configuration Admin — and
 # here the test framework. If a bundle a list needs is missing from it,
@@ -11,7 +11,9 @@
 -library: \
 	../org.eclipse.fennec.services.bnd.library.project/library/client;version=file,\
 	../org.eclipse.fennec.services.bnd.library.project/library/rsa;version=file,\
-	../org.eclipse.fennec.services.bnd.library.project/library/security;version=file
+	../org.eclipse.fennec.services.bnd.library.project/library/security;version=file,\
+	../org.eclipse.fennec.services.bnd.library.project/library/mqtt;version=file,\
+	../org.eclipse.fennec.services.bnd.library.project/library/rsaMqtt;version=file
 
 -runproperties: \
 	org.osgi.service.http.port=-1

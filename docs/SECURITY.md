@@ -139,9 +139,17 @@ axis:
 
 | Token role | May | Object-level rule |
 | --- | --- | --- |
-| `provider` | everything on `BrokerImplementations`; read the catalog; add a contract | withdraw, modify and heartbeat only on registrations whose `principal` is its own |
-| `consumer` | `BrokerLookup`, `BrokerSessions`, the event stream (SSE or MQTT) | only its own session |
-| `admin` | curate the catalog (deprecate, remove), snapshot, expire | everything |
+| `service-provider` | everything on `BrokerImplementations`; heartbeat; add a contract | withdraw, modify and heartbeat only on registrations whose `principal` is its own |
+| `service-consumer` | look up, `BrokerSessions` (`/consumers`) | only its own session |
+| `service-admin` | curate the catalog (deprecate, remove), the registry snapshot (`/registry`) | everything |
+| *any authenticated caller* | read the catalog, the event stream | — |
+
+Built (§7c): the names are what the token carries in the verifier's
+`scope.claim` — Keycloak realm roles with `realm_access.roles`. Roles
+are additive: a node that both provides and consumes holds both.
+Reading the catalog and the event stream need only a principal, because
+providers and consumers both do, and a requirement's scopes are all
+required — the model has no "either" (§2).
 
 The first two columns are expressed as requirements in the broker's own
 contract documents and enforced by the generic dispatcher like on any
@@ -450,6 +458,31 @@ only — version and balance go through, `record` is `403`, and a token
 minted for the broker is `401` at the provider. Scenario I shows the
 same interface refused over MQTT.
 
+## 7c. The broker's role matrix
+
+The broker's three contract documents state §3 operation by operation —
+the catalog's default is "authenticated", `addCatalogEntry` asks for
+`service-provider`, `deprecateCatalogEntry` and `removeCatalogEntry` for
+`service-admin`; `BrokerImplementations` asks for `service-provider`;
+`BrokerLookup` for `service-consumer`, with `heartbeat` overriding it
+with `service-provider`. The generic dispatcher holds them like on any
+peer (§7b). The hand-written resources ask `BrokerRoles` by the same
+rule: `/consumers` needs `service-consumer`, `/registry`
+`service-admin`, `/events` any principal.
+
+Because the documents now demand authentication, the broker's
+self-published flavors name how it is proven: in mode bearer the issuer
+its verifier accepts, in mode none a `ConnectionScheme` — the model's
+statement that this node checks nothing per call. The contracts, and
+their sd1, are the same in both modes. The TypeScript broker stubs
+(`@ddsr/stubs`) are regenerated from a catalog that carries the same
+requirements.
+
+A deployment gives its clients the roles they need, and points the
+broker's verifier at where they are: `DDSR_JWT_SCOPE_CLAIM=realm_access.roles`
+for Keycloak realm roles. The harness checks from outside that a
+consumer may neither publish nor read the registry, while an admin may.
+
 ## 8. Decisions taken, decisions open
 
 Taken, and written into the model's documentation annotations:
@@ -490,7 +523,7 @@ Open, in the order they will come up:
 | roles per operation enforced by the generic REST dispatcher, `bearer-optional`, fail-closed serving (REST and MQTT) | implemented — slice 3, see §7b |
 | token per target audience in both SDKs | implemented — slice 3 |
 | RSA: `@RolesAllowed` → requirement, node identity in the role configuration, `fennec.bearer` on export and import, the proxy calls with the node's token | implemented — slice 3, see §7b and [RSA](RSA.md#who-may-call) |
-| role matrix on the broker's own contracts (provider / consumer / admin) | not yet — next slice |
+| role matrix on the broker's own contracts (`service-provider` / `service-consumer` / `service-admin`) | implemented — see §3 and §7c |
 | TypeScript provider verifying tokens | not yet |
 | `@RolesAllowed` emitted by the m2t resource template | not yet |
 | domain enforcement from issuer/audience | not yet |

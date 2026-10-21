@@ -25,6 +25,9 @@ KEYCLOAK_IMAGE="${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.4}"
 KEYCLOAK_PORT="${KEYCLOAK_PORT:-18080}"
 KEYCLOAK_REALM_URL="http://localhost:${KEYCLOAK_PORT}/realms/fennec"
 KEYCLOAK_TOKEN_URI="${KEYCLOAK_REALM_URL}/protocol/openid-connect/token"
+# The domain the secured broker serves (SECURITY.md §3): one per broker,
+# its tokens are this realm's for the audience ddsr-broker.
+HARNESS_DOMAIN="${HARNESS_DOMAIN:-fennec}"
 
 case "$HARNESS_AUTH" in
   bearer|none) ;;
@@ -72,6 +75,7 @@ broker_auth_env() {
   echo "DDSR_JWT_JWKS_URI=$KEYCLOAK_REALM_URL/protocol/openid-connect/certs"
   echo "DDSR_JWT_SUBJECT_CLAIM=azp"
   echo "DDSR_JWT_SCOPE_CLAIM=realm_access.roles"
+  echo "DDSR_DOMAIN=$HARNESS_DOMAIN"
 }
 
 # Runs a command (start_jar) with the broker's half of the above.
@@ -79,7 +83,7 @@ as_broker() { # command...
   if secured; then
     DDSR_AUTH_MODE=bearer DDSR_JWT_ISSUER="$KEYCLOAK_REALM_URL" \
       DDSR_JWT_JWKS_URI="$KEYCLOAK_REALM_URL/protocol/openid-connect/certs" DDSR_JWT_SUBJECT_CLAIM=azp \
-      DDSR_JWT_SCOPE_CLAIM=realm_access.roles "$@"
+      DDSR_JWT_SCOPE_CLAIM=realm_access.roles DDSR_DOMAIN="$HARNESS_DOMAIN" "$@"
   else
     "$@"
   fi
@@ -156,4 +160,19 @@ check_role_matrix() {
   status=$(curl_broker -s -o /dev/null -w '%{http_code}' "$BROKER_URL/registry")
   [ "$status" = 200 ] || { echo "ROLE MATRIX BROKEN: the admin read the registry with $status, expected 200"; return 1; }
   echo "  ✓ role-matrix: a consumer may not publish nor read the registry, an admin may"
+}
+
+# The domain, checked from outside: the broker says which one it serves,
+# and a token of the same realm minted for another audience is not of it —
+# even the admin's (SECURITY.md §3, "one broker per domain, enforced by
+# the token").
+check_domain() { # broker log text
+  secured || return 0
+  local status
+  grep -q "domain=$HARNESS_DOMAIN" <<<"$1" \
+    || { echo "DOMAIN BROKEN: the broker does not say it serves '$HARNESS_DOMAIN'"; return 1; }
+  status=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $(token_for harness ts-ledger)" \
+    "$BROKER_URL/registry")
+  [ "$status" = 401 ] || { echo "DOMAIN BROKEN: a token for another audience answered $status, expected 401"; return 1; }
+  echo "  ✓ domain: the broker serves '$HARNESS_DOMAIN', a token of another audience is 401"
 }

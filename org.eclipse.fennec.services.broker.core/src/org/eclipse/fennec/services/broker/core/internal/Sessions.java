@@ -89,6 +89,7 @@ final class Sessions {
 			// session that moved to a restarted runtime says so.
 			session.setOrigin(CallOrigin.requestor(null));
 			Ownership.claim(session);
+			session.setDomain(state.domain());
 			int accepted = 0;
 			List<String> unknown = new ArrayList<>();
 			if (acquiredReferenceIds != null) {
@@ -158,6 +159,7 @@ final class Sessions {
 			view.setConsumerId(stored.getConsumerId());
 			view.setLastRenewal(stored.getLastRenewal());
 			view.setOrigin(stored.getOrigin());
+			view.setDomain(stored.getDomain());
 			if (stored.getCapabilities() != null) {
 				view.setCapabilities(EcoreUtil.copy(stored.getCapabilities()));
 			}

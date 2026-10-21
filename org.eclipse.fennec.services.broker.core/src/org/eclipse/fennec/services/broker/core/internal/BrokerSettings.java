@@ -30,6 +30,8 @@ import java.nio.file.Path;
  * @param policySweepSeconds how often armed handovers are advanced; 0 switches the sweep off
  * @param livenessSweepSeconds how often provider leases are checked; 0 switches the sweep off
  * @param cutoverGraceMillis the default failover window of a hard cutover
+ * @param domain the one domain this broker serves (SECURITY.md §3), written onto every
+ *        registration and session; {@code null} is the single default domain
  */
 public record BrokerSettings(
 		Path snapshotPath,
@@ -38,7 +40,15 @@ public record BrokerSettings(
 		long coldAfterSeconds,
 		long policySweepSeconds,
 		long livenessSweepSeconds,
-		long cutoverGraceMillis) {
+		long cutoverGraceMillis,
+		String domain) {
+
+	/** A broker of the default domain. */
+	public BrokerSettings(Path snapshotPath, long sessionExpirySeconds, long sessionDisconnectGraceSeconds,
+			long coldAfterSeconds, long policySweepSeconds, long livenessSweepSeconds, long cutoverGraceMillis) {
+		this(snapshotPath, sessionExpirySeconds, sessionDisconnectGraceSeconds, coldAfterSeconds,
+				policySweepSeconds, livenessSweepSeconds, cutoverGraceMillis, null);
+	}
 
 	/** What a broker does when nobody says otherwise. */
 	public static BrokerSettings defaults(Path snapshotPath) {

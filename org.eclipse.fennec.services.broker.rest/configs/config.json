@@ -15,6 +15,10 @@
 		"jersey.context.path" : "rest",
 		"osgi.http.whiteboard.target" : "(id=ddsrHttp)"
 	},
+	"org.eclipse.fennec.services.broker.core":
+	{
+		"domain": "$[env:DDSR_DOMAIN;default=]"
+	},
 	"org.eclipse.fennec.services.broker.rest":
 	{
 		"public.url": "$[env:DDSR_PUBLIC_URL;default=http://localhost:8887/ddsr/rest]",

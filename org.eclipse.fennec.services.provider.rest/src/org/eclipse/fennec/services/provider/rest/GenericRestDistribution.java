@@ -259,9 +259,14 @@ public class GenericRestDistribution extends Application {
 		RestFlavor flavor = restFlavorOf(implementation);
 		String contract = implementation.getServiceInterfaces().get(0).getName();
 
+		// The mode comes with the configuration — Declarative Services puts
+		// it on this application too, together with the selector that keeps
+		// a bearer application down without a verifier.
+		boolean enforce = ServedSecurity.enforcedByConfiguration(contract, flavor,
+				componentContext.getProperties().get(ServedSecurity.AUTH));
 		this.dispatcher = new RestDispatcher(flavor,
 				() -> implementation(context, config.service_filter(), self), contract, resourceSets,
-				CallTracer.deferred(() -> tracer));
+				CallTracer.deferred(() -> tracer), enforce);
 		LOG.info("[DDSR] serving " + contract + " generically at " + flavor.getBasePath());
 
 		// Under the same monitor announceIfReady takes: a binding on

@@ -33,6 +33,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.Principal;
 import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
@@ -41,7 +42,9 @@ import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.CallOrigin;
+import org.eclipse.fennec.services.common.CallPrincipal;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -103,6 +106,7 @@ public class RestDispatcher {
 	private final String contract;
 	private final ComponentServiceObjects<ResourceSet> resourceSets;
 	private final CallTracer tracer;
+	private final boolean enforce;
 
 	/**
 	 * @param implementations where the service behind the contract comes
@@ -124,11 +128,26 @@ public class RestDispatcher {
 	 */
 	RestDispatcher(RestFlavor flavor, Supplier<ServiceObjects<Object>> implementations, String contract,
 			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer) {
+		this(flavor, implementations, contract, resourceSets, tracer, false);
+	}
+
+	/**
+	 * @param enforce whether the contract's security requirements are held
+	 *        against the caller (SECURITY.md §4). True exactly when this
+	 *        dispatcher serves an application of mode bearer, where the
+	 *        bearer filter has verified the token and put the principal on
+	 *        the thread. In mode none they are passed over, on purpose —
+	 *        that mode is the deployment's explicit choice of an open node,
+	 *        and the component serving it says so once at startup.
+	 */
+	RestDispatcher(RestFlavor flavor, Supplier<ServiceObjects<Object>> implementations, String contract,
+			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer, boolean enforce) {
 		this.flavor = flavor;
 		this.implementations = implementations;
 		this.contract = contract;
 		this.resourceSets = resourceSets;
 		this.tracer = tracer == null ? CallTracer.NONE : tracer;
+		this.enforce = enforce;
 	}
 
 	@GET
@@ -269,6 +288,13 @@ public class RestDispatcher {
 		RestOperationFlavor operationFlavor = route.get().operationFlavor();
 		ServiceOperation operation = operationFlavor.getOperation();
 
+		// Before the body is read: a caller who may not call the operation
+		// learns nothing about what it would have accepted.
+		Response refused = enforce ? refusal(operation) : null;
+		if (refused != null) {
+			return refused;
+		}
+
 		Object body;
 		try {
 			body = body(operationFlavor, entity);
@@ -323,6 +349,32 @@ public class RestDispatcher {
 		throw new NoSuchMethodException("the service behind this contract, a "
 				+ service.getClass().getName() + ", has no method '" + operation.getName()
 				+ "' taking " + values.size() + " argument(s)");
+	}
+
+	/**
+	 * The contract's requirement for this operation, held against the
+	 * verified caller: {@code 401} without a principal, {@code 403} when it
+	 * lacks a scope (a role, when the verifier reads roles) the operation
+	 * names. The names are the contract's own and public in its document,
+	 * so the answer may say which are missing.
+	 */
+	static Response refusal(ServiceOperation operation) {
+		if (!SecurityRequirements.demandsAuthentication(operation)) {
+			return null;
+		}
+		Principal caller = CallPrincipal.current();
+		if (caller == null) {
+			// The bearer filter turns a request without a valid token away
+			// before it gets here; this is the dispatcher not relying on it.
+			return Response.status(401).header(HttpHeaders.WWW_AUTHENTICATE, "Bearer").build();
+		}
+		List<String> missing = SecurityRequirements.missingScopes(operation, caller.getScopes());
+		if (!missing.isEmpty()) {
+			return Response.status(403)
+					.entity(operation.getName() + " needs " + String.join(", ", missing))
+					.build();
+		}
+		return null;
 	}
 
 	private static Optional<String> missingRequired(ServiceOperation operation, Map<String, Object> arguments) {

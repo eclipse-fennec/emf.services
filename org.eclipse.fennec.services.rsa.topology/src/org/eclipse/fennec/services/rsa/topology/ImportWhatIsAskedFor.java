@@ -29,6 +29,8 @@ import java.util.regex.Pattern;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.ServiceImplementation;
+import org.eclipse.fennec.services.common.SecurityRequirements;
+import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
 import org.eclipse.fennec.services.rsa.spi.RsaProperties;
 import org.eclipse.fennec.services.rsa.spi.ServiceDiscovery;
 import org.osgi.framework.BundleContext;
@@ -374,6 +376,11 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			if (implementation.getImplementationId() != null) {
 				properties.put(RsaProperties.IMPLEMENTATION, implementation.getImplementationId());
 			}
+			// What the call is: osgi.basic always, and fennec.bearer where the
+			// contract demands a caller — reflected so that a consumer can
+			// filter on it like on any specification-conformant endpoint
+			// (SECURITY.md §6). The proxy shows this node's token either way.
+			properties.put(RemoteConstants.SERVICE_INTENTS, intentsOf(implementation));
 			String origin = frameworkOf(implementation);
 			if (origin != null) {
 				// Carried through, so that everything downstream — an
@@ -382,6 +389,13 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 				properties.put(RemoteConstants.ENDPOINT_FRAMEWORK_UUID, origin);
 			}
 			return new EndpointDescription(properties);
+		}
+
+		static String[] intentsOf(ServiceImplementation implementation) {
+			boolean guarded = implementation.getServiceInterfaces().stream()
+					.anyMatch(SecurityRequirements::demandsAuthentication);
+			return guarded ? new String[] { "osgi.basic", FlavorDistribution.BEARER_INTENT }
+					: new String[] { "osgi.basic" };
 		}
 
 		/** Whether this framework is the one that exported it. */

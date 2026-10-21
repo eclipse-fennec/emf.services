@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MqttFlavor;
+import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
@@ -84,6 +85,16 @@ public class MqttDistributionComponent implements MqttDistribution {
 		if (flavor.getBrokers().isEmpty()) {
 			throw new IllegalArgumentException("an MQTT export needs a broker to listen on, and "
 					+ flavor.getName() + " announces none");
+		}
+		// Over MQTT a call carries no credential of its own (Paho v3 has no
+		// user properties); identity is the messaging broker's business, on
+		// the connection (SECURITY.md §2, ConnectionScheme). A contract that
+		// demands a caller is therefore served only under a flavor that
+		// says who checks — never open by omission.
+		if (flavor.getSecuritySchemes().isEmpty() && flavor.getOperationFlavors().stream()
+				.anyMatch(op -> SecurityRequirements.demandsAuthentication(op.getOperation()))) {
+			throw new IllegalStateException((name == null ? flavor.getName() : name)
+					+ " demands authentication, and an MQTT flavor without a scheme cannot check it — not served");
 		}
 		String url = flavor.getBrokers().get(0);
 		Connection connection = connect(url);

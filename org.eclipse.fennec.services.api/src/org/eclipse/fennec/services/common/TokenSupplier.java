@@ -41,4 +41,19 @@ public interface TokenSupplier {
 	 *         broker as a bare 401
 	 */
 	String token();
+
+	/**
+	 * A token for one target (SECURITY.md §1): the audience a provider's
+	 * {@code BearerTokenScheme} names. A token minted for the broker must
+	 * not travel to a provider — whoever holds it could replay it there —
+	 * so a provider call asks for a token of the provider's own audience.
+	 *
+	 * <p>The default answers {@link #token()}, which is right for a
+	 * supplier that only ever has one token to give, such as one mounted
+	 * into a container. The client-credentials supplier asks its identity
+	 * provider for the scope of that name, which maps to the audience.
+	 */
+	default String token(String audience) {
+		return token();
+	}
 }

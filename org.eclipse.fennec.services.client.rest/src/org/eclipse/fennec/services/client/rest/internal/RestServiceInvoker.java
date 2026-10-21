@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
@@ -31,6 +32,8 @@ import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.SecurityRequirements;
+import org.eclipse.fennec.services.common.TokenSupplier;
 import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -46,6 +49,7 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
@@ -83,6 +87,15 @@ public final class RestServiceInvoker implements ServiceInvoker {
 	 */
 	@Reference(policy = ReferencePolicy.DYNAMIC, cardinality = ReferenceCardinality.OPTIONAL)
 	private volatile CallTracer tracer;
+
+	/**
+	 * Where this node's tokens come from, if it has any (SECURITY.md §6).
+	 * Asked per call, for the audience the target's flavor names — never
+	 * for the broker's: a provider must not receive a token it could
+	 * replay against the broker.
+	 */
+	@Reference(policy = ReferencePolicy.DYNAMIC, cardinality = ReferenceCardinality.OPTIONAL)
+	private volatile TokenSupplier tokens;
 
 	private CallTracer tracer() {
 		CallTracer bound = tracer;
@@ -136,6 +149,10 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		// `traceparent` rather than a ce- attribute: over HTTP that is
 		// the header every instrumented server already extracts.
 		Map<String, String> headers = new LinkedHashMap<>(CloudEventCodec.toHeaders(envelope));
+		String bearer = bearerFor(rf, op, operationName);
+		if (bearer != null) {
+			headers.put(HttpHeaders.AUTHORIZATION, "Bearer " + bearer);
+		}
 		Response response;
 		try (CallSpan span = tracer().calling(subject, TraceCarrier.over(headers))) {
 			span.attribute("rpc.system", "fennec.services")
@@ -211,6 +228,29 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		return response.getMediaType() != null
 				&& !MediaType.TEXT_PLAIN_TYPE.isCompatible(mediaType)
 				&& !MediaType.APPLICATION_JSON_TYPE.isCompatible(mediaType);
+	}
+
+	/**
+	 * The token a call to this target carries: one of the audience its
+	 * flavor's bearer scheme names, or none when the flavor names no
+	 * scheme. A guarded operation on a node without a token supplier
+	 * fails here, saying why, rather than as a bare 401 from the provider.
+	 */
+	String bearerFor(RestFlavor flavor, RestOperationFlavor op, String operationName) {
+		BearerTokenScheme scheme = SecurityRequirements.bearerScheme(flavor);
+		if (scheme == null) {
+			return null;
+		}
+		TokenSupplier supplier = tokens;
+		if (supplier == null) {
+			if (SecurityRequirements.demandsAuthentication(op.getOperation())) {
+				throw new DdsrException("'" + operationName + "' needs a bearer token of " + scheme.getIssuer()
+						+ ", and this node has no token supplier — configure its client credentials");
+			}
+			return null;
+		}
+		String audience = scheme.getAudiences().isEmpty() ? null : scheme.getAudiences().get(0);
+		return supplier.token(audience);
 	}
 
 	private static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept,

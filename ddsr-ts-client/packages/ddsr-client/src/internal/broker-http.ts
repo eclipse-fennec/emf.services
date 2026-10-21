@@ -21,6 +21,7 @@ import { asRoots, eClassName, firstOfClass, toArray } from './emf-util.js';
 import { clientOrigin, withOrigin, type ClientOrigin } from './client-origin.js';
 import { NO_TRACER, type CallTracer } from '@ddsr/telemetry';
 import { withTracing } from './broker-tracing.js';
+import { withBearer, type TokenSupplier } from './bearer-token.js';
 
 export interface BrokerHttpOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -38,6 +39,12 @@ export interface BrokerHttpOptions {
   /** Overrides the per-process runtime id; for tests. */
   originRuntimeId?: string;
   fetchFn?: typeof fetch;
+  /**
+   * Where the bearer token for the broker comes from, when the broker
+   * runs in mode bearer (SECURITY.md §4) — e.g. `clientCredentials(...)`.
+   * It goes on broker calls only, never on service invocations.
+   */
+  tokenSupplier?: TokenSupplier;
   /**
    * Whoever is watching calls, if anyone is (#146). Without one the
    * client is exactly what it was.
@@ -89,7 +96,8 @@ export class BrokerHttp {
     // both have to be on EVERY call, and this is the only place where
     // that is true by construction.
     this.fetchFn = withTracing(
-      withOrigin(options.fetchFn ?? globalThis.fetch.bind(globalThis), this.origin),
+      withOrigin(withBearer(options.fetchFn ?? globalThis.fetch.bind(globalThis), options.tokenSupplier),
+        this.origin),
       options.tracer ?? NO_TRACER,
       this.base,
       this.origin.token);

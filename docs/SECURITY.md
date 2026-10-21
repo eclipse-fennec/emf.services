@@ -168,6 +168,18 @@ topic — is the second version, and `ServiceRegistration.domain` /
 never goes into a contract: contracts are domain-neutral, registrations
 and sessions are domain-bound.
 
+The first version is built. Which tokens belong to the broker's domain
+is what its verifier already checks — the issuer exactly, and one of the
+audiences (`DDSR_JWT_ISSUER`, `DDSR_JWT_AUDIENCES`; a verifier with an
+issuer but no audience refuses to start) — so a token of another domain
+is `401` before any resource sees it, even one of the same identity
+provider with the broker's admin role. The broker names its domain
+(`DDSR_DOMAIN`, empty for the single default domain), says it when it
+starts, and writes it onto every registration and session it creates or
+rebuilds from a snapshot. Both stay transient: nothing on the wire
+carries a domain, in either direction. Both harnesses run the secured
+broker as domain `fennec` and check the refusal from outside.
+
 ## 4. At the peers: the contract describes the wire, the peer enforces
 
 The serving side needs three things from the registry, or every
@@ -183,8 +195,20 @@ provider builds its own:
    is not deployed without a verifier, rather than served open. Over
    MQTT a call carries no credential of its own (§2, `ConnectionScheme`),
    so a guarded contract is served only under a flavor that names a
-   scheme. Still open: the m2t resource template emitting
-   `@RolesAllowed` for hand-written resources.
+   scheme. A JAX-RS resource — generated or written by hand — states
+   who may call in the Jakarta annotations, and
+   `RolesAllowedFeature` (`…security.jwt`) holds it to them on every
+   application of a bearer mode, read as the model means them:
+   `@RolesAllowed({...})` needs **all** of the names (Jakarta itself
+   reads them as alternatives), `@RolesAllowed("**")` any verified
+   caller, `@PermitAll` lets the call through, a method's annotation
+   overrides its class's; `401` without a principal, `403` naming the
+   missing scopes, like the dispatcher. The m2t resource template
+   writes each operation's effective requirement in exactly these
+   annotations, and a generated resource whose contract says anything
+   about callers selects a `fennec-auth-*` filter, so an application
+   that states no mode does not serve it. `JavaContracts` reads `"**"`
+   back as a requirement without scopes.
 3. **Both SDKs get a credential seam.** For the broker this is built
    (slice 4): `TokenSupplier` in the api bundle, put on calls under the
    broker URL by `RestTransport`; `tokenSupplier` in the TypeScript
@@ -530,6 +554,7 @@ Open, in the order they will come up:
 | RSA: `@RolesAllowed` → requirement, node identity in the role configuration, `fennec.bearer` on export and import, the proxy calls with the node's token | implemented — slice 3, see §7b and [RSA](RSA.md#who-may-call) |
 | role matrix on the broker's own contracts (`service-provider` / `service-consumer` / `service-admin`) | implemented — see §3 and §7c |
 | TypeScript provider verifying tokens (`createJwtVerifier`, `restDispatcher` holding operations to their roles) | implemented — see [Client framework](CLIENT_FRAMEWORK_GUIDE.md#serving-a-contract-in-typescript) |
-| `@RolesAllowed` emitted by the m2t resource template | not yet |
-| domain enforcement from issuer/audience | not yet |
+| `@RolesAllowed` emitted by the m2t resource template, enforced on JAX-RS resources by `RolesAllowedFeature` | implemented — see §4 |
+| one domain per broker from issuer/audience, written onto registrations and sessions (`DDSR_DOMAIN`) | implemented — first version, see §3 |
+| several domains in one broker (partitioned catalog, events per domain) | second version |
 | mutual TLS verifier | after bearer |

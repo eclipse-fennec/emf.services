@@ -129,16 +129,22 @@ mkdir -p "$WORK"
 # export always re-runs against fresh workspace bundles.
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
-      "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client.jar
+      "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client.jar \
+      "$ROOT"/org.eclipse.fennec.services.examples.rsa/generated/distributions/executable/rsa-example.jar \
+      "$ROOT"/org.eclipse.fennec.services.examples.rsa.consumer/generated/distributions/executable/rsa-consumer.jar
 (cd "$ROOT" && ./gradlew build \
   :org.eclipse.fennec.services.broker.rest:export.broker \
   :org.eclipse.fennec.services.examples.payment:export.payment-provider \
-  :org.eclipse.fennec.services.client.java:export.client) >"$WORK/gradle.log" 2>&1 \
+  :org.eclipse.fennec.services.client.java:export.client \
+  :org.eclipse.fennec.services.examples.rsa:export.rsa-example \
+  :org.eclipse.fennec.services.examples.rsa.consumer:export.rsa-consumer) >"$WORK/gradle.log" 2>&1 \
   || { tail -30 "$WORK/gradle.log"; exit 1; }
 BROKER_JAR="$ROOT/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar"
 PROVIDER_JAR="$ROOT/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar"
 CLIENT_JAR="$ROOT/org.eclipse.fennec.services.client.java/generated/distributions/executable/client.jar"
-ls "$BROKER_JAR" "$PROVIDER_JAR" "$CLIENT_JAR" >/dev/null
+RSA_EXPORT_JAR="$ROOT/org.eclipse.fennec.services.examples.rsa/generated/distributions/executable/rsa-example.jar"
+RSA_IMPORT_JAR="$ROOT/org.eclipse.fennec.services.examples.rsa.consumer/generated/distributions/executable/rsa-consumer.jar"
+ls "$BROKER_JAR" "$PROVIDER_JAR" "$CLIENT_JAR" "$RSA_EXPORT_JAR" "$RSA_IMPORT_JAR" >/dev/null
 
 (cd "$TS" && corepack pnpm install --frozen-lockfile && corepack pnpm -r build) >"$WORK/pnpm.log" 2>&1 \
   || { tail -30 "$WORK/pnpm.log"; exit 1; }
@@ -502,7 +508,7 @@ log "Scenario M: client certificates, mode mtls"
 # where a gateway hands the certificate on in a header. Roles come from
 # the broker's own mapping of the certificates' CNs.
 TLS_DIR="$WORK/tls"
-"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness payment-java
+"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness payment-java rsa-example rsa-example-consumer
 MTLS_URL="https://localhost:8898/ddsr/rest"
 GATEWAY_URL="http://127.0.0.1:8899/ddsr/rest"
 require_port_free 8898
@@ -513,7 +519,7 @@ require_port_free 8899
        DDSR_HTTPS_KEYSTORE="$TLS_DIR/server.p12" DDSR_HTTPS_KEYSTORE_PASSWORD=changeit \
        DDSR_HTTPS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_HTTPS_TRUSTSTORE_PASSWORD=changeit \
        DDSR_HTTPS_CLIENT_CERTIFICATE=needs DDSR_MTLS_TRUSTED_ISSUERS="CN=Fennec Harness CA,O=Fennec" \
-       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|payment-java=service-provider,service-consumer|harness=service-admin" \
+       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|payment-java=service-provider,service-consumer|rsa-example=service-provider,service-consumer|rsa-example-consumer=service-consumer|harness=service-admin" \
        DDSR_MTLS_GATEWAY_HEADER=X-Client-Cert DDSR_MTLS_GATEWAY_ADDRESSES=127.0.0.1 \
        java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-mtls.log" 2>&1 &
 MTLS_PID=$!
@@ -611,6 +617,43 @@ if secured; then
   echo "  ✓ java-client: found PersonStore by certificate, called it with a token for person-store"
   kill "$MTLS_OAUTH_PID" "$MTLS_PROVIDER_PID" 2>/dev/null || true
   wait "$MTLS_OAUTH_PID" "$MTLS_PROVIDER_PID" 2>/dev/null || true
+
+  # The same split through Remote Service Admin: the Ledger of scenario K,
+  # exported and imported by nodes whose role configuration names their
+  # certificate (rsa.config derives it into the client). They find each
+  # other through the mtls broker by certificate, the import calls with a
+  # token for rsa-example, and the interface's roles still decide.
+  require_port_free 9096
+  (cd "$WORK" && mkdir -p rsa-export-m && cd rsa-export-m \
+    && exec env DDSR_BROKER_URL="$MTLS_URL" DDSR_BROKER_AUTHENTICATION=certificate \
+         DDSR_TLS_KEYSTORE="$TLS_DIR/rsa-example.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit \
+         DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_TLS_TRUSTSTORE_PASSWORD=changeit \
+         DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID=rsa-example \
+         DDSR_OAUTH_CLIENT_SECRET=rsa-example-secret DDSR_OAUTH_SCOPE= \
+         DDSR_JWT_ISSUER="$KEYCLOAK_REALM_URL" DDSR_JWT_JWKS_URI="$KEYCLOAK_REALM_URL/protocol/openid-connect/certs" \
+         DDSR_JWT_AUDIENCES=rsa-example DDSR_JWT_SCOPE_CLAIM=realm_access.roles DDSR_JWT_SUBJECT_CLAIM=azp \
+         RSA_HTTP_PORT=9096 java -Dgosh.args=--nointeractive -jar "$RSA_EXPORT_JAR") >"$WORK/rsa-export-m.log" 2>&1 &
+  RSA_EXPORT_PID=$!
+  PIDS+=("$RSA_EXPORT_PID")
+  wait_for_line "$WORK/rsa-export-m.log" "exported Ledger over REST" 150
+  (cd "$WORK" && mkdir -p rsa-import-m && cd rsa-import-m \
+    && exec env DDSR_BROKER_URL="$MTLS_URL" DDSR_BROKER_AUTHENTICATION=certificate \
+         DDSR_TLS_KEYSTORE="$TLS_DIR/rsa-example-consumer.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit \
+         DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_TLS_TRUSTSTORE_PASSWORD=changeit \
+         DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID=rsa-example-consumer \
+         DDSR_OAUTH_CLIENT_SECRET=rsa-example-consumer-secret DDSR_OAUTH_SCOPE= \
+         java -Dgosh.args=--nointeractive -jar "$RSA_IMPORT_JAR") >"$WORK/rsa-import-m.log" 2>&1 &
+  RSA_IMPORT_PID=$!
+  PIDS+=("$RSA_IMPORT_PID")
+  wait_for_line "$WORK/rsa-import-m.log" "ledger record" 150
+  for expected in "ledger says ledger 1.0" "ledger balance of demo: 100.0" \
+                  "ledger record refused, as it should be: HTTP 403"; do
+    grep -aq "$expected" "$WORK/rsa-import-m.log" \
+      || { echo "SCENARIO M FAILED: no '$expected' from the RSA import"; tail -30 "$WORK/rsa-import-m.log"; exit 1; }
+  done
+  echo "  ✓ rsa: Ledger exported and imported over the mtls broker by certificate, called by token, roles held"
+  kill "$RSA_IMPORT_PID" "$RSA_EXPORT_PID" 2>/dev/null || true
+  wait "$RSA_IMPORT_PID" "$RSA_EXPORT_PID" 2>/dev/null || true
 fi
 kill "$MTLS_PID" 2>/dev/null || true
 wait "$MTLS_PID" 2>/dev/null || true

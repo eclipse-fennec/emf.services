@@ -28,7 +28,7 @@ import type { MqttFlavor, RestFlavor } from '@ddsr/model';
 import { MqttOperationServer, operationHandlers } from '@ddsr/transport-mqtt';
 import { restDispatcher } from '@ddsr/flavor-rest';
 import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, loadPaymentProvider } from './payment-api';
-import { brokerTokens, consumerId } from './broker-auth';
+import { brokerTokens, consumerId, nodeFetch } from './broker-auth';
 
 const log = (m: string) => console.log(`[ts-provider] ${m}`);
 
@@ -111,6 +111,7 @@ async function main(): Promise<void> {
     // Against a broker in mode bearer: the token, and a session under
     // the name it carries.
     tokenSupplier: brokerTokens(),
+    fetchFn: nodeFetch(),
     consumerId: consumerId(),
   });
 

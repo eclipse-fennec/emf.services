@@ -28,7 +28,7 @@ import { DdsrClientImpl, attachShutdownHooks, createJwtVerifier } from '@ddsr/cl
 import { DDSRFactory } from '@ddsr/model';
 import type { SecurityRequirement } from '@ddsr/model';
 import { restDispatcher } from '@ddsr/flavor-rest';
-import { brokerTokens, consumerId } from './broker-auth';
+import { brokerTokens, consumerId, nodeFetch } from './broker-auth';
 
 const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 const SERVICE_URL = process.env.SERVICE_URL ?? 'http://localhost:9094/ts-ledger';
@@ -145,6 +145,7 @@ async function main(): Promise<void> {
     brokerUrl: BROKER_URL,
     originLabel: 'ts-ledger-harness',
     tokenSupplier: brokerTokens(),
+    fetchFn: nodeFetch(),
     consumerId: consumerId(),
     sessionIntervalSeconds: 0,
   });

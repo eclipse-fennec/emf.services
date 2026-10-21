@@ -43,7 +43,7 @@
 import { RestFlavorPlugin } from '@ddsr/flavor-rest';
 import { BrokerHttp, DdsrClientImpl } from '@ddsr/client';
 import type { TrackedServiceLocator } from '@ddsr/client';
-import { brokerTokens, consumerId } from './broker-auth';
+import { brokerTokens, consumerId, nodeFetch } from './broker-auth';
 
 const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 const SCENARIO = process.env.SCENARIO ?? 'F';
@@ -110,10 +110,11 @@ async function main(): Promise<void> {
     flavorPlugins: [new RestFlavorPlugin({ timeoutMillis: 5000 })],
     consumerId: CONSUMER_ID,
     tokenSupplier: brokerTokens(),
+    fetchFn: nodeFetch(),
     reconnectSeconds: 1,
     sessionIntervalSeconds: 0, // the lease is renewed and released explicitly below
   });
-  const brokerHttp = new BrokerHttp({ brokerUrl: BROKER_URL, tokenSupplier: brokerTokens() });
+  const brokerHttp = new BrokerHttp({ brokerUrl: BROKER_URL, tokenSupplier: brokerTokens(), fetchFn: nodeFetch() });
 
   client.consumer.addServiceListener('Payment', undefined, event => {
     const seen: Seen = { type: String(event.type), reason: event.reasonCode ?? undefined, id: event.reference?.id };

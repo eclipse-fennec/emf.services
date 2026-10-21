@@ -610,8 +610,13 @@ provider announces `PersonStore` over its certificate and serves it in
 and the client finds the store by certificate and calls it with a token
 of that audience.
 
-Not yet: mTLS over MQTT (Paho and the messaging broker's TLS), in the
-TypeScript SDK, and in the RSA role configuration.
+RSA nodes take the same through their role configuration
+(`broker.authentication`, `tls.keystore`, `tls.truststore`, see
+[Remote Service Admin](RSA.md)); the harness runs scenario K's Ledger
+over the mtls broker that way.
+
+Not yet: mTLS over MQTT (Paho and the messaging broker's TLS) and in the
+TypeScript SDK.
 
 ## 8. Decisions taken, decisions open
 
@@ -660,4 +665,5 @@ Open, in the order they will come up:
 | several domains in one broker (partitioned catalog, events per domain) | second version |
 | mutual TLS for REST: mode `mtls`, certificate from TLS or a trusted gateway, roles from the node's mapping, broker announces a `MutualTlsScheme`, Java client with key and trust store | implemented — see §7d |
 | discovery by certificate, calls by token: `broker.authentication=certificate`, configured contracts announce their scheme, CN = client id | implemented — see §7d |
-| mutual TLS over MQTT, in the TypeScript SDK, in the RSA role configuration | not yet |
+| RSA role configuration: the node's certificate and `broker.authentication`, derived into the client | implemented — see §7d and [RSA](RSA.md) |
+| mutual TLS over MQTT and in the TypeScript SDK | not yet |

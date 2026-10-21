@@ -615,8 +615,15 @@ RSA nodes take the same through their role configuration
 [Remote Service Admin](RSA.md)); the harness runs scenario K's Ledger
 over the mtls broker that way.
 
-Not yet: mTLS over MQTT (Paho and the messaging broker's TLS) and in the
-TypeScript SDK.
+The TypeScript SDK takes the same through its `fetchFn` seams:
+`tlsFetch` shows the node's certificate, and a client without a
+`tokenSupplier` proves itself to the broker by certificate alone (see
+[Client framework](CLIENT_FRAMEWORK_GUIDE.md)); scenario M runs the
+TypeScript Payment provider against the mtls broker that way.
+
+Not yet: mTLS over MQTT (Paho and the messaging broker's TLS), and a
+TypeScript provider *serving* in mode `mtls` (its `restDispatcher`
+verifies tokens, not certificates).
 
 ## 8. Decisions taken, decisions open
 
@@ -666,4 +673,5 @@ Open, in the order they will come up:
 | mutual TLS for REST: mode `mtls`, certificate from TLS or a trusted gateway, roles from the node's mapping, broker announces a `MutualTlsScheme`, Java client with key and trust store | implemented — see §7d |
 | discovery by certificate, calls by token: `broker.authentication=certificate`, configured contracts announce their scheme, CN = client id | implemented — see §7d |
 | RSA role configuration: the node's certificate and `broker.authentication`, derived into the client | implemented — see §7d and [RSA](RSA.md) |
-| mutual TLS over MQTT and in the TypeScript SDK | not yet |
+| TypeScript SDK as a client of an mtls broker: `tlsFetch`, the examples' `DDSR_TLS_*` | implemented — see §7d |
+| mutual TLS over MQTT, a TypeScript provider serving in mode `mtls` | not yet |

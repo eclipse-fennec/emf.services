@@ -61,8 +61,38 @@ past steps 1 and 2 if all you want is a broker to develop against:
 
 ```bash
 docker run -d -p 8887:8887 -v ddsr-broker-data:/opt/services/data \
+  -e DDSR_AUTH_MODE=none \
   docker.io/eclipsefennec/emf.services:broker-snapshot
 ```
+
+`DDSR_AUTH_MODE=none` is the one line to notice: the image is a
+deployment artifact and runs secured unless told otherwise, the launch
+from step 2 is a development launch and runs open.
+
+### Open or secured
+
+The broker has one switch for authentication, `DDSR_AUTH_MODE`:
+
+| Mode | Who it is for | What it takes |
+| --- | --- | --- |
+| `none` | development — any client may call | nothing; the default of `broker.bndrun` |
+| `bearer` | anything shared, and the integration tests | a token issuer the broker trusts: `DDSR_JWT_ISSUER`, `DDSR_JWT_JWKS_URI`, `DDSR_JWT_AUDIENCES` |
+
+```bash
+# the development launch, secured against a local Keycloak realm
+DDSR_AUTH_MODE=bearer \
+DDSR_JWT_ISSUER=http://localhost:8080/realms/fennec \
+DDSR_JWT_JWKS_URI=http://localhost:8080/realms/fennec/protocol/openid-connect/certs \
+  java -Dgosh.args=--nointeractive \
+  -jar org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar
+```
+
+In bearer mode every call needs `Authorization: Bearer <token>`, and a
+provider can only withdraw or change what it published itself. A broker
+in bearer mode without an issuer serves nothing — it fails closed, so a
+forgotten variable never leaves it open. What a client needs to obtain
+a token, and why the switch exists at all, is in
+[Security](SECURITY.md) §7a.
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for the image's full configuration
 surface, its state volume and the CI that builds it.

@@ -57,14 +57,13 @@ ARG BROKER_JAR
 # deployment carries the bundles and notices nothing. Setting the URL is
 # the whole difference between the two — there is no second image.
 #
-# DDSR_AUTH_MODE is none here, and on purpose out loud: the broker's own
-# default is bearer (SECURITY.md §7a), but bearer needs a configured
-# token verifier, and this image cannot be given one through the
-# environment yet. A broker in bearer mode without a verifier serves
-# nothing at all — it fails closed — so the image says none rather than
-# shipping a broker that never answers. Changing this is part of the
-# Keycloak slice; until then a deployment that needs authentication puts
-# a gateway in front.
+# DDSR_AUTH_MODE is bearer, and it has to be said here: the jar is
+# exported from the development launch, which says none, and without this
+# line the image would inherit that. Bearer needs a token verifier —
+# DDSR_JWT_ISSUER, DDSR_JWT_JWKS_URI and DDSR_JWT_AUDIENCES. Left empty,
+# the broker has no verifier and, in bearer mode, serves nothing at all:
+# it fails closed rather than open. A deployment that really wants an
+# open broker says DDSR_AUTH_MODE=none (SECURITY.md §7a).
 ENV APP_HOME=${APP_HOME} \
     DATA_DIR=${DATA_DIR} \
     TMPDIR=${TMPDIR} \
@@ -77,12 +76,18 @@ ENV APP_HOME=${APP_HOME} \
     DDSR_MQTT_CLIENT_ID=ddsr-broker \
     DDSR_MQTT_EVENT_SOURCE=/fennec/services/broker \
     DDSR_MQTT_QOS=0 \
-    DDSR_AUTH_MODE=none
+    DDSR_AUTH_MODE=bearer \
+    DDSR_JWT_ISSUER= \
+    DDSR_JWT_JWKS_URI= \
+    DDSR_JWT_AUDIENCES=ddsr-broker \
+    DDSR_JWT_SCOPE_CLAIM=scope
 
 COPY --from=builder --chown=65532:65532 ${APP_HOME} ${APP_HOME}
 COPY --from=builder --chown=65532:65532 ${TMPDIR} ${TMPDIR}
 
-# REST + SSE. Readiness is GET /ddsr/rest/catalog — there is no HEALTHCHECK
+# REST + SSE. Readiness is GET /ddsr/rest/catalog answering at all — 200
+# in mode none, 401 without a token in mode bearer; 404 means the
+# applications are not deployed (bearer without a verifier). There is no HEALTHCHECK
 # because the distroless base ships no shell and no curl.
 EXPOSE 8887
 

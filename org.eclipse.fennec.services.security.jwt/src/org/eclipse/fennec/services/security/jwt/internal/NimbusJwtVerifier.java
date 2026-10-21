@@ -15,7 +15,6 @@ package org.eclipse.fennec.services.security.jwt.internal;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.text.ParseException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,9 +24,12 @@ import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.security.jwt.JwtVerifier;
 import org.eclipse.fennec.services.security.jwt.VerifiedPrincipal;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -54,10 +56,20 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
  *
  * <p>Configured the way a {@code BearerTokenScheme} of the model is
  * written, and only by configuration ({@code ConfigurationPolicy.REQUIRE}):
- * a node without one has no verifier, and the resources that select the
- * bearer filter stay unregistered — the fail-closed half of the design.
+ * a node without one has no verifier, and an application of mode bearer,
+ * which requires the bearer filter, is not deployed — the fail-closed half
+ * of the design.
+ *
+ * <p><strong>A configuration without an issuer is no verifier
+ * either.</strong> The component registers its service itself, and only
+ * when an issuer is configured. That lets a deployment carry the verifier's
+ * configuration unconditionally, filled from the environment
+ * ({@code DDSR_JWT_ISSUER} and friends): where the variables are empty —
+ * a broker in mode none — there is simply no verifier, said once at INFO,
+ * instead of a component failing to activate on every start.
  */
-@Component(name = NimbusJwtVerifier.PID, configurationPolicy = ConfigurationPolicy.REQUIRE)
+@Component(name = NimbusJwtVerifier.PID, configurationPolicy = ConfigurationPolicy.REQUIRE, service = {},
+		immediate = true)
 @Designate(ocd = NimbusJwtVerifier.Config.class)
 public class NimbusJwtVerifier implements JwtVerifier {
 
@@ -67,17 +79,18 @@ public class NimbusJwtVerifier implements JwtVerifier {
 			description = "Verifies bearer tokens of one issuer — the shape of a BearerTokenScheme in the model.")
 	public @interface Config {
 		@AttributeDefinition(name = "Issuer",
-				description = "The expected iss claim, e.g. http://localhost:9080/auth/realms/dim.")
-		String issuer();
+				description = "The expected iss claim, e.g. http://localhost:9080/auth/realms/dim. "
+						+ "Empty means no verifier on this node.")
+		String issuer() default "";
 
 		@AttributeDefinition(name = "JWKS URI",
 				description = "Where the signing keys are fetched; may be an internal address, e.g. "
 						+ "http://keycloak:8080/auth/realms/dim/protocol/openid-connect/certs.")
-		String jwks_uri();
+		String jwks_uri() default "";
 
 		@AttributeDefinition(name = "Audiences",
 				description = "Accepted aud values; a token must carry at least one of them.")
-		String[] audiences();
+		String[] audiences() default {};
 
 		@AttributeDefinition(name = "Scope claim",
 				description = "Dot path of the claim that carries the scopes: 'scope' (OAuth, one "
@@ -95,12 +108,45 @@ public class NimbusJwtVerifier implements JwtVerifier {
 	private String issuer;
 	private String[] scopePath;
 
+	private ServiceRegistration<JwtVerifier> registration;
+
 	@Activate
-	void activate(Config config) throws MalformedURLException {
+	void activate(BundleContext context, Config config) throws MalformedURLException {
+		if (config.issuer().isBlank()) {
+			LOG.info("[DDSR] no issuer configured — no bearer verifier on this node");
+			return;
+		}
+		if (config.jwks_uri().isBlank() || audiencesOf(config).isEmpty()) {
+			// An issuer without keys or audiences is a half-done
+			// configuration. Refusing to start says so; a verifier that
+			// accepted every audience would not.
+			throw new IllegalArgumentException("issuer " + config.issuer()
+					+ " is configured, but jwks.uri and audiences are needed as well");
+		}
 		JWKSource<SecurityContext> keys = JWKSourceBuilder.create(URI.create(config.jwks_uri()).toURL()).build();
-		init(keys, config.issuer(), Set.of(config.audiences()), config.scope_claim(), config.clock_skew_seconds());
+		init(keys, config.issuer(), audiencesOf(config), config.scope_claim(), config.clock_skew_seconds());
+		registration = context.registerService(JwtVerifier.class, this, null);
 		LOG.info("[DDSR] bearer verifier ready: issuer=" + config.issuer()
-				+ " audiences=" + Arrays.toString(config.audiences()) + " jwks=" + config.jwks_uri());
+				+ " audiences=" + audiencesOf(config) + " jwks=" + config.jwks_uri());
+	}
+
+	@Deactivate
+	void deactivate() {
+		if (registration != null) {
+			registration.unregister();
+			registration = null;
+		}
+	}
+
+	/** Blank entries dropped: an empty environment variable yields one empty audience. */
+	private static Set<String> audiencesOf(Config config) {
+		Set<String> audiences = new LinkedHashSet<>();
+		for (String audience : config.audiences()) {
+			if (audience != null && !audience.isBlank()) {
+				audiences.add(audience.trim());
+			}
+		}
+		return audiences;
 	}
 
 	/** Package-visible so a test can hand in keys without a JWKS endpoint. */

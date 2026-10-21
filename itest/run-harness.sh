@@ -19,8 +19,9 @@
 # runs in mode bearer against a Keycloak realm in a podman container, and
 # every process calls it with a client identity of its own — so podman is
 # needed for that one container. HARNESS_AUTH=none runs the broker open,
-# without Keycloak and without podman. Either way the last scenario, N,
-# starts a second, open broker: the developer's path stays proven too.
+# without Keycloak and without podman. Either way scenario N starts a
+# second, open broker — the developer's path stays proven too — and
+# scenario M a third one in mode mtls, with a CA issued for the run.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -493,4 +494,78 @@ kill "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 wait "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 echo "Scenario N OK: no token anywhere — published, and listed to a caller without one"
 
-log "HARNESS PASSED (A + B + F + G + H + T + N, auth: $HARNESS_AUTH)"
+# ============================================================ Scenario M
+log "Scenario M: client certificates, mode mtls"
+# The other authentication mode (SECURITY.md §7d), independent of
+# Keycloak: a CA issued for this run, a broker that ends TLS itself and
+# demands a client certificate on HTTPS, and next to it a plain listener
+# where a gateway hands the certificate on in a header. Roles come from
+# the broker's own mapping of the certificates' CNs.
+TLS_DIR="$WORK/tls"
+"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness
+MTLS_URL="https://localhost:8898/ddsr/rest"
+GATEWAY_URL="http://127.0.0.1:8899/ddsr/rest"
+require_port_free 8898
+require_port_free 8899
+(cd "$WORK" && mkdir -p broker-mtls && cd broker-mtls \
+  && exec env -u DDSR_JWT_ISSUER DDSR_AUTH_MODE=mtls DDSR_PUBLIC_URL="$MTLS_URL" \
+       DDSR_HTTP_PORT=8899 DDSR_HTTPS_ENABLE=true DDSR_HTTPS_PORT=8898 \
+       DDSR_HTTPS_KEYSTORE="$TLS_DIR/server.p12" DDSR_HTTPS_KEYSTORE_PASSWORD=changeit \
+       DDSR_HTTPS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_HTTPS_TRUSTSTORE_PASSWORD=changeit \
+       DDSR_HTTPS_CLIENT_CERTIFICATE=needs DDSR_MTLS_TRUSTED_ISSUERS="CN=Fennec Harness CA,O=Fennec" \
+       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|harness=service-admin" \
+       DDSR_MTLS_GATEWAY_HEADER=X-Client-Cert DDSR_MTLS_GATEWAY_ADDRESSES=127.0.0.1 \
+       java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-mtls.log" 2>&1 &
+MTLS_PID=$!
+PIDS+=("$MTLS_PID")
+as_certificate() { # holder curl-args...
+  local holder="$1"; shift
+  curl -s -o /dev/null -w '%{http_code}' --cacert "$TLS_DIR/ca.crt" \
+    --cert "$TLS_DIR/$holder.crt" --key "$TLS_DIR/$holder.key" "$@"
+}
+expect_status() { # expected actual what
+  [ "$2" = "$1" ] || { echo "SCENARIO M FAILED: $3 answered $2, expected $1"; exit 1; }
+}
+waited=0
+until [ "$(as_certificate harness "$MTLS_URL/catalog")" = 200 ]; do
+  sleep 1
+  waited=$((waited + 1))
+  [ "$waited" -lt 60 ] || { echo "TIMEOUT waiting for the mtls broker"; tail -30 "$WORK/broker-mtls.log"; exit 1; }
+done
+# No certificate, or one of another authority: no TLS connection at all.
+expect_status 000 "$(curl -s -o /dev/null -w '%{http_code}' --cacert "$TLS_DIR/ca.crt" "$MTLS_URL/catalog" || true)" \
+  "a call without a certificate"
+expect_status 000 "$(as_certificate stranger "$MTLS_URL/catalog" || true)" "a certificate of another authority"
+echo "  ✓ tls: without a certificate of the harness CA there is no connection"
+expect_status 200 "$(as_certificate java-client "$MTLS_URL/catalog")" "java-client reading the catalog"
+expect_status 403 "$(as_certificate java-client "$MTLS_URL/registry")" "java-client reading the registry"
+expect_status 200 "$(as_certificate harness "$MTLS_URL/registry")" "harness (service-admin) reading the registry"
+echo "  ✓ roles: the CN's mapped roles decide — a consumer may not read the registry, the admin may"
+expect_status 401 "$(curl -s -o /dev/null -w '%{http_code}' "$GATEWAY_URL/catalog")" \
+  "a call on the gateway listener without a certificate header"
+HARNESS_DER=$(openssl x509 -in "$TLS_DIR/harness.crt" -outform DER | base64 -w0)
+expect_status 200 "$(curl -s -o /dev/null -w '%{http_code}' -H "X-Client-Cert: $HARNESS_DER" "$GATEWAY_URL/registry")" \
+  "the admin's certificate handed on by the gateway"
+echo "  ✓ gateway: the certificate in the header counts from the gateway's address, nothing without it"
+# The Java client, with its certificate in a key store: it subscribes, and
+# the imported catalog proxy lists what the broker holds.
+(cd "$WORK" && mkdir -p client-mtls && cd client-mtls \
+  && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_BROKER_URL="$MTLS_URL" DDSR_CONSUMER_ID=java-client \
+       DDSR_TLS_KEYSTORE="$TLS_DIR/java-client.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit \
+       DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_TLS_TRUSTSTORE_PASSWORD=changeit \
+       java -Dgosh.args=--nointeractive -jar "$CLIENT_JAR") >"$WORK/client-mtls.log" 2>&1 &
+MTLS_CLIENT_PID=$!
+PIDS+=("$MTLS_CLIENT_PID")
+wait_for_line "$WORK/client-mtls.log" "RemoteServiceRegistry, [0-9]* catalog entries" 60
+grep -aq "subscribed to $MTLS_URL/events" "$WORK/client-mtls.log" \
+  || { echo "SCENARIO M FAILED: the Java client did not subscribe over TLS"; exit 1; }
+if grep -aq "SSLHandshakeException\|event stream dropped" "$WORK/client-mtls.log"; then
+  echo "SCENARIO M FAILED: the Java client's TLS failed"; grep -a "SSLHandshakeException\|dropped" "$WORK/client-mtls.log" | head -3
+  exit 1
+fi
+echo "  ✓ java-client: subscribed and listed the catalog with its certificate"
+kill "$MTLS_CLIENT_PID" "$MTLS_PID" 2>/dev/null || true
+wait "$MTLS_CLIENT_PID" "$MTLS_PID" 2>/dev/null || true
+echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client"
+
+log "HARNESS PASSED (A + B + F + G + H + T + N + M, auth: $HARNESS_AUTH)"

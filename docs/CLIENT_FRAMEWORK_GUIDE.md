@@ -327,6 +327,42 @@ Keep ALL HTTP and XMI handling here. Implementations of `DdsrProvider` / `DdsrCo
 
 Recommended Java HTTP client: `java.net.http.HttpClient` (JDK built-in, no extra dependency). For XMI use `XMIResource` from EMF, exactly as the broker's `XmiSupport` does.
 
+### 5.4a Talking to a secured broker
+
+A broker in mode `bearer` ([Security](SECURITY.md) §7a) answers `401`
+to a call without a valid token. The SDK's seam for that is one
+service, `org.eclipse.fennec.services.common.TokenSupplier`:
+`RestTransport` binds it optionally and puts `Authorization: Bearer …`
+on every call **under the broker URL** — catalog, publish, lookup,
+sessions and the SSE stream — and on nothing else. The same HTTP client
+invokes providers, and a token minted for the broker's audience must
+not reach a provider, where it could be replayed.
+
+The bundle `org.eclipse.fennec.services.security.oauth` supplies the
+token with the OAuth 2.0 client-credentials grant. It is configured by
+PID `org.eclipse.fennec.services.security.oauth`, conventionally from
+the environment:
+
+```json
+"org.eclipse.fennec.services.security.oauth": {
+  "token.uri": "$[env:DDSR_OAUTH_TOKEN_URI;default=]",
+  "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
+  "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
+  "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
+}
+```
+
+With an empty `token.uri` there is no supplier and no header — the same
+configuration serves an open broker. The token is cached and renewed
+30 s before it expires; a token endpoint that refuses or cannot be
+reached fails the call with its reason instead of a bare `401` from the
+broker.
+
+On a bearer broker a session belongs to the name the token carries (the
+broker's `subject.claim` — with Keycloak client credentials, `azp`, the
+client id), so the client's `consumer.id` has to be that name:
+configure it to the node's client id.
+
 ### 5.5 Module layout & buildpath
 
 `bnd.bnd`:
@@ -382,6 +418,28 @@ not answer into that error via `AbortSignal.timeout` (default 10 s).
 Use `ecore.ts` for the EMF POJOs (they should be generated from the same `ddsr.ecore` we already use in Java). HTTP: `fetch` (Node 18+ / browser). XMI parsing: piggy-back on `ecore.ts` if it exposes a resource loader, otherwise a small DOM parser + factory dispatch.
 
 For the TSM integration: register the `DdsrClient` as a TSM service so consumer modules can `@inject` it.
+
+**A secured broker.** `DdsrClientOptions.tokenSupplier` is the twin of
+the Java `TokenSupplier`; `clientCredentials(...)` implements it with
+the same grant, cache and renewal as the Java bundle. It goes on broker
+calls and the event stream, never on the fetch a flavor plugin invokes
+providers with. As in Java, `consumerId` has to be the client id on a
+bearer broker:
+
+```ts
+const client = DdsrClientImpl.create({
+  brokerUrl: process.env.DDSR_BROKER_URL!,
+  consumerId: process.env.DDSR_OAUTH_CLIENT_ID,
+  tokenSupplier: process.env.DDSR_OAUTH_TOKEN_URI
+    ? clientCredentials({
+        tokenUri: process.env.DDSR_OAUTH_TOKEN_URI,
+        clientId: process.env.DDSR_OAUTH_CLIENT_ID!,
+        clientSecret: process.env.DDSR_OAUTH_CLIENT_SECRET!,
+      })
+    : undefined,
+  flavorPlugins: [new RestFlavorPlugin()],
+});
+```
 
 ### Serving a contract in TypeScript
 
@@ -503,7 +561,7 @@ These are not in scope for the Day-1 SDK but the SDK must not lock us out of the
 | **Service ranking** | Lookup order is registration order. | Document; do not bake order-sensitive logic into tests. |
 | **`getServiceReference` (singular)** | Broker exposes only the list form via REST. | SDK can offer a `findOne` that calls `find` and returns first or null. |
 | **Reference-id discovery on publish** | Broker's publish response is a Diagnostic without the reference id. | SDK does a follow-up lookup. **TODO**: ask broker to include the reference id in the OK diagnostic. |
-| **Authentication / PDP** | No auth on the broker yet. | SDK has no auth surface. Add a request-interceptor hook on `BrokerHttpClient` so we can plug in headers later. |
+| **Authentication / PDP** | Closed for the broker: `TokenSupplier` (Java) and `tokenSupplier` (TS), §5.4a. | Tokens for calls to *providers* follow the contract's own requirement — slice 3 of [Security](SECURITY.md). |
 | **Broker reads single-root XMI on POST /implementations** | Java SDK sends multi-root XMI (provider + interface stubs). `ImplementationsResource.readProviderWithImpl` currently throws on multi-root. | **First task tomorrow**: change `XmiSupport.fromXmi` / `fromXmiResource` so the implementations resource picks the first `ServiceProvider` root from the parsed resource, regardless of how many sibling roots are present. |
 | **Example provider/consumer modules** | `org.eclipse.fennec.services.client.java.example` not yet created. | Stub with `PaymentProvider` + `PaymentConsumer` DS components — needed for the §8 smoke-test sequence. |
 | **`launch.bndrun` does not include `org.eclipse.fennec.services.client.java` yet** | Bundle compiles but isn't part of any run. | Add `bnd.identity;id='org.eclipse.fennec.services.client.java'` to the rest module's `-runrequires` once the example consumer/provider lives somewhere that requires it (or, until then, install it manually via gogo `install file:...`). |

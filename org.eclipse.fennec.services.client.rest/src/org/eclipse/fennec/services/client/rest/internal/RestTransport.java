@@ -109,6 +109,13 @@ public final class RestTransport {
 				required = false)
 		String origin_label() default "";
 
+		@AttributeDefinition(name = "Broker authentication", required = false,
+				description = "How this node proves itself to the broker: token (the bearer token of the "
+						+ "token supplier) or certificate (the TLS key store below, for a broker in mode mtls). "
+						+ "With certificate no token goes to the broker; tokens for providers are asked for "
+						+ "per audience either way.")
+		String broker_authentication() default TOKEN;
+
 		@AttributeDefinition(name = "TLS key store", required = false,
 				description = "The certificate and key this node shows to a server that asks for one (mode "
 						+ "mtls, SECURITY.md §7d). Empty: it shows none.")
@@ -158,7 +165,16 @@ public final class RestTransport {
 
 	private static final Logger LOG = Logger.getLogger(RestTransport.class.getName());
 
+	/** {@link Config#broker_authentication()}: the broker gets the token supplier's token. */
+	static final String TOKEN = "token";
+
+	/** {@link Config#broker_authentication()}: the broker gets the node's certificate, and no token. */
+	static final String CERTIFICATE = "certificate";
+
 	private URI baseUrl;
+
+	/** Whether calls to the broker carry the token; not when the node proves itself by certificate. */
+	private volatile boolean tokenToBroker = true;
 	private Client client;
 	private Config config;
 
@@ -174,6 +190,7 @@ public final class RestTransport {
 	void activate(BundleContext context, Config config) {
 		this.config = config;
 		this.baseUrl = URI.create(config.broker_url());
+		this.tokenToBroker = tokenToBroker(config);
 		this.origin = ClientOrigin.of(config.origin_label(),
 				context.getProperty(ClientOrigin.FRAMEWORK_UUID));
 		this.client = build(config);
@@ -197,6 +214,7 @@ public final class RestTransport {
 	@Modified
 	void modified(Config config) {
 		this.baseUrl = URI.create(config.broker_url());
+		this.tokenToBroker = tokenToBroker(config);
 		boolean timeoutsChanged = config.connect_timeout_millis() != this.config.connect_timeout_millis()
 				|| config.read_timeout_millis() != this.config.read_timeout_millis()
 				|| !tlsOf(config).equals(tlsOf(this.config));
@@ -255,6 +273,28 @@ public final class RestTransport {
 				.build();
 	}
 
+	/**
+	 * Whether the broker is shown the token. A node that proves itself by
+	 * certificate shows none: the broker in mode mtls would ignore it, and
+	 * a credential sent where it is not needed is one more place it can
+	 * leak from.
+	 */
+	private static boolean tokenToBroker(Config config) {
+		String how = config.broker_authentication() == null ? TOKEN : config.broker_authentication().strip();
+		if (CERTIFICATE.equals(how)) {
+			if (config.tls_keystore() == null || config.tls_keystore().isBlank()) {
+				LOG.warning("[DDSR-Client] broker.authentication=certificate, but no tls.keystore — this node "
+						+ "shows the broker neither a token nor a certificate");
+			}
+			return false;
+		}
+		if (!TOKEN.equals(how)) {
+			LOG.warning("[DDSR-Client] broker.authentication=" + how + " is neither " + TOKEN + " nor "
+					+ CERTIFICATE + " — taken as " + TOKEN);
+		}
+		return true;
+	}
+
 	/** What decides the TLS context, for telling a changed configuration from a repeated one. */
 	private static List<String> tlsOf(Config config) {
 		return List.of(config.tls_keystore(), config.tls_keystore_password(), config.tls_keystore_type(),
@@ -274,7 +314,7 @@ public final class RestTransport {
 	void authorize(ClientRequestContext request) {
 		TokenSupplier supplier = tokens;
 		URI broker = baseUrl;
-		if (supplier == null || broker == null || !isUnder(request.getUri(), broker)) {
+		if (!tokenToBroker || supplier == null || broker == null || !isUnder(request.getUri(), broker)) {
 			return;
 		}
 		request.getHeaders().putSingle(HttpHeaders.AUTHORIZATION, "Bearer " + supplier.token());

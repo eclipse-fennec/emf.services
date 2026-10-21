@@ -163,6 +163,29 @@ public class GenericRestDistribution extends Application {
 				description = "Where the Jakarta REST whiteboard mounts this application. Leave empty to take "
 						+ "the flavor's basePath, which is the usual case.")
 		String osgi_jakartars_application_base() default "";
+
+		@AttributeDefinition(name = "Token issuer", required = false,
+				description = "Mode bearer: the issuer this node's verifier trusts, announced in the "
+						+ "published flavor's bearer scheme when the document names none — so a caller "
+						+ "knows which token to bring.")
+		String issuer() default "";
+
+		@AttributeDefinition(name = "Token audiences", required = false,
+				description = "Mode bearer: the audiences a token for this endpoint carries; a caller asks "
+						+ "for a token of the first.")
+		String[] audiences() default {};
+
+		@AttributeDefinition(name = "JWKS URI", required = false, description = "Mode bearer: where the keys are.")
+		String jwks_uri() default "";
+
+		@AttributeDefinition(name = "Scope claim", required = false,
+				description = "Mode bearer: where the verifier reads roles from.")
+		String scope_claim() default "";
+
+		@AttributeDefinition(name = "Trusted certificate issuers", required = false,
+				description = "Mode mtls: the DNs of the authorities this node accepts, announced in the "
+						+ "flavor's client-certificate scheme.")
+		String[] trusted_issuers() default {};
 	}
 
 	/**
@@ -194,6 +217,9 @@ public class GenericRestDistribution extends Application {
 	private Config config;
 
 	private ServiceImplementation implementation;
+
+	/** The authentication mode this application states, for the scheme it announces. */
+	private Object mode;
 
 	/**
 	 * Optional on purpose: serving and announcing are separate jobs, and
@@ -274,6 +300,7 @@ public class GenericRestDistribution extends Application {
 		synchronized (this) {
 			this.config = config;
 			this.implementation = implementation;
+			this.mode = componentContext.getProperties().get(ServedSecurity.AUTH);
 		}
 		announceIfReady();
 	}
@@ -330,6 +357,8 @@ public class GenericRestDistribution extends Application {
 			String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
 			flavor.setHost(url.getScheme() + "://" + url.getAuthority());
 			flavor.setBasePath((url.getPath() != null ? url.getPath() : "") + mountPath);
+			ServedSecurity.announceScheme(contract.getName(), flavor, mode, config.issuer(), config.audiences(),
+					config.jwks_uri(), config.scope_claim(), config.trusted_issuers());
 
 			this.registration = broker.provider().publish(
 					(ServiceProvider) implementation.eContainer(), implementation);

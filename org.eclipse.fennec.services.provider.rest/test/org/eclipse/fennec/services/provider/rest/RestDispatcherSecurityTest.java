@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.HttpMethod;
+import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.Principal;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
@@ -168,6 +170,55 @@ class RestDispatcherSecurityTest {
 				.as("a certificate belongs to the connection: there is no optional variant, even with ping open")
 				.containsEntry("fennec.auth", "mtls")
 				.containsEntry("osgi.jakartars.extension.select", "(osgi.jakartars.name=fennec-auth-mtls)");
+	}
+
+	@Test
+	void aBearerNodeAnnouncesTheIssuerItTrusts() {
+		RestFlavor flavor = flavor();
+
+		ServedSecurity.announceScheme("Payment", flavor, "bearer", "http://idp.test/realms/fennec",
+				new String[] { "person-store", " " }, "http://idp.test/certs", "realm_access.roles", null);
+
+		assertThat(flavor.getSecuritySchemes()).singleElement().isInstanceOfSatisfying(BearerTokenScheme.class,
+				scheme -> {
+					assertThat(scheme.getIssuer()).isEqualTo("http://idp.test/realms/fennec");
+					assertThat(scheme.getAudiences()).as("the audience a caller asks a token for")
+							.containsExactly("person-store");
+					assertThat(scheme.getScopeClaim()).isEqualTo("realm_access.roles");
+				});
+	}
+
+	@Test
+	void aSchemeTheDocumentNamesIsLeftAsWritten() {
+		RestFlavor flavor = flavor();
+		BearerTokenScheme written = F.createBearerTokenScheme();
+		written.setIssuer("http://author.test");
+		flavor.getSecuritySchemes().add(written);
+
+		ServedSecurity.announceScheme("Payment", flavor, "bearer", "http://idp.test/realms/fennec",
+				new String[0], "", "", null);
+
+		assertThat(flavor.getSecuritySchemes()).containsExactly(written);
+	}
+
+	@Test
+	void anMtlsNodeAnnouncesTheAuthoritiesItAccepts() {
+		RestFlavor flavor = flavor();
+
+		ServedSecurity.announceScheme("Payment", flavor, "mtls", "", null, "", "",
+				new String[] { "CN=Fennec Harness CA,O=Fennec" });
+
+		assertThat(flavor.getSecuritySchemes()).singleElement().isInstanceOfSatisfying(MutualTlsScheme.class,
+				scheme -> assertThat(scheme.getTrustedIssuers()).containsExactly("CN=Fennec Harness CA,O=Fennec"));
+	}
+
+	@Test
+	void anOpenNodeAnnouncesNothing() {
+		RestFlavor flavor = flavor();
+
+		ServedSecurity.announceScheme("Payment", flavor, "none", "http://idp.test", new String[0], "", "", null);
+
+		assertThat(flavor.getSecuritySchemes()).isEmpty();
 	}
 
 	@Test

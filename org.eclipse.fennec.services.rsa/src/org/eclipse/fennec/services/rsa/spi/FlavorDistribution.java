@@ -43,6 +43,17 @@ public interface FlavorDistribution {
 	FlavorKind flavor();
 
 	/**
+	 * The intent of a call that needs a verified caller: a bearer token
+	 * the serving node checks against the contract's requirements
+	 * (SECURITY.md §6). A distribution promises it when it has a token
+	 * issuer to name; an endpoint carries it when its contract demands
+	 * authentication; a service that asks for it in
+	 * {@code service.exported.intents} without stating roles gets a
+	 * contract that demands a principal and nothing more.
+	 */
+	String BEARER_INTENT = "fennec.bearer";
+
+	/**
 	 * The intents this provider can promise — {@code osgi.basic} for a
 	 * synchronous call with arguments and results carried across and
 	 * exceptions coming back. A service that asks for an intent nobody

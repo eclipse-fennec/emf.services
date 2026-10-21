@@ -135,8 +135,26 @@ class RestDispatcherSecurityTest {
 
 		assertThat(ServedSecurity.enforcedByFlavor("Payment", flavor, properties)).isTrue();
 		assertThat(properties)
-				.containsEntry("fennec.auth", "bearer")
-				.containsEntry("osgi.jakartars.extension.select", "(osgi.jakartars.name=fennec-auth-bearer)");
+				.as("ping permits all, so anonymous callers must reach the dispatcher")
+				.containsEntry("fennec.auth", "bearer-optional")
+				.containsEntry("osgi.jakartars.extension.select", "(osgi.jakartars.name=fennec-auth-bearer-optional)");
+	}
+
+	@Test
+	void whenEveryOperationIsGuardedTheStrictModeIsUsed() {
+		RestFlavor flavor = flavor();
+		flavor.getOperationFlavors().get(2).getOperation().setSecurity(null);
+		flavor.getSecuritySchemes().add(F.createBearerTokenScheme());
+		Hashtable<String, Object> properties = new Hashtable<>();
+
+		ServedSecurity.enforcedByFlavor("Payment", flavor, properties);
+
+		assertThat(properties).containsEntry("fennec.auth", "bearer");
+	}
+
+	@Test
+	void theOptionalModeIsEnforcedFromConfigurationToo() {
+		assertThat(ServedSecurity.enforcedByConfiguration("Payment", flavor(), "bearer-optional")).isTrue();
 	}
 
 	@Test

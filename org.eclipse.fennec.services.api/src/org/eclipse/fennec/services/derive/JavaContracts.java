@@ -13,6 +13,8 @@
 
 package org.eclipse.fennec.services.derive;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
@@ -32,6 +34,7 @@ import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -110,6 +113,7 @@ public final class JavaContracts {
         ServiceInterface contract = ServicesFactory.eINSTANCE.createServiceInterface();
         contract.setName(service.getSimpleName());
         contract.setVersion(version);
+        contract.setSecurity(requirementOf(service));
 
         Map<String, ServiceException> errors = new LinkedHashMap<>();
         for (Method method : operations(service)) {
@@ -165,6 +169,7 @@ public final class JavaContracts {
             Map<String, ServiceException> errors) {
         ServiceOperation operation = ServicesFactory.eINSTANCE.createServiceOperation();
         operation.setName(method.getName());
+        operation.setSecurity(requirementOf(method));
 
         java.lang.reflect.Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
@@ -185,6 +190,72 @@ public final class JavaContracts {
             }));
         }
         return operation;
+    }
+
+    /**
+     * Who may call, as the interface or the method says it with the
+     * Jakarta security annotations (SECURITY.md §6) — the same ones a
+     * hand-written resource carries, so a service written for JAX-RS and
+     * one exported through RSA are annotated alike:
+     *
+     * <ul>
+     * <li>{@code @RolesAllowed({...})} — a principal carrying all of the
+     *     names; they land in {@code scopes}, which the verifier reads from
+     *     the token's scope claim, roles included;</li>
+     * <li>{@code @PermitAll} — explicitly open, which on a method lifts
+     *     the interface's default;</li>
+     * <li>{@code @DenyAll} — not expressible: a contract describes what a
+     *     caller may do, not an operation nobody may call. Leave it out of
+     *     the interface instead.</li>
+     * </ul>
+     *
+     * <p>Read by name, not by type, so that this bundle does not depend on
+     * jakarta.annotation: an interface whose annotation classes are not
+     * visible carries no annotations Java could report anyway.
+     *
+     * @return the requirement, or {@code null} when the element states none
+     */
+    static SecurityRequirement requirementOf(AnnotatedElement element) {
+        for (Annotation annotation : element.getAnnotations()) {
+            String name = annotation.annotationType().getName();
+            switch (simpleSecurityName(name)) {
+            case "RolesAllowed" -> {
+                SecurityRequirement requirement = ServicesFactory.eINSTANCE.createSecurityRequirement();
+                requirement.setAuthenticated(true);
+                requirement.getScopes().addAll(Arrays.asList(rolesOf(annotation)));
+                return requirement;
+            }
+            case "PermitAll" -> {
+                SecurityRequirement requirement = ServicesFactory.eINSTANCE.createSecurityRequirement();
+                requirement.setAuthenticated(false);
+                return requirement;
+            }
+            case "DenyAll" -> throw new IllegalArgumentException(element
+                    + " is @DenyAll: a contract cannot state an operation nobody may call — leave it out of the interface");
+            default -> {
+                // not a security annotation
+            }
+            }
+        }
+        return null;
+    }
+
+    /** The simple name of a Jakarta (or older javax) security annotation, or "". */
+    private static String simpleSecurityName(String annotationType) {
+        for (String prefix : List.of("jakarta.annotation.security.", "javax.annotation.security.")) {
+            if (annotationType.startsWith(prefix)) {
+                return annotationType.substring(prefix.length());
+            }
+        }
+        return "";
+    }
+
+    private static String[] rolesOf(Annotation rolesAllowed) {
+        try {
+            return (String[]) rolesAllowed.annotationType().getMethod("value").invoke(rolesAllowed);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            throw new IllegalArgumentException("cannot read the roles of " + rolesAllowed, e);
+        }
     }
 
     private static List<Class<?>> sorted(Class<?>[] types) {

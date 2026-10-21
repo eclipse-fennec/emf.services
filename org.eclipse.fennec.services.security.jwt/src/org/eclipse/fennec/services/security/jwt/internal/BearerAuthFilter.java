@@ -70,12 +70,30 @@ public class BearerAuthFilter implements ContainerRequestFilter, ContainerRespon
 
 	@Override
 	public void filter(ContainerRequestContext request) {
+		authenticate(request, verifier, true);
+	}
+
+	/**
+	 * The one verification both bearer modes share.
+	 *
+	 * @param required whether a request without a token is turned away
+	 *        here ({@code bearer}), or passed on without a principal for
+	 *        the dispatcher to decide per operation ({@code bearer-optional}).
+	 *        A token that is there and does not verify is turned away
+	 *        either way: a bad credential is never the same as none.
+	 */
+	static void authenticate(ContainerRequestContext request, JwtVerifier verifier, boolean required) {
 		// Unconditionally first: whatever the previous request left on
 		// this thread must not survive into this one.
 		CallPrincipal.clear();
 		String header = request.getHeaderString(HttpHeaders.AUTHORIZATION);
-		if (header == null || !header.regionMatches(true, 0, BEARER, 0, BEARER.length())
-				|| header.length() <= BEARER.length()) {
+		if (header == null) {
+			if (required) {
+				reject(request, "no bearer token");
+			}
+			return;
+		}
+		if (!header.regionMatches(true, 0, BEARER, 0, BEARER.length()) || header.length() <= BEARER.length()) {
 			reject(request, "no bearer token");
 			return;
 		}

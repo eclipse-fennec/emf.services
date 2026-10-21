@@ -38,11 +38,21 @@ package org.eclipse.fennec.services.security.jwt;
  */
 public final class SecurityNames {
 
-	/** The application property naming its authentication mode: {@value #BEARER} or {@value #NONE}. */
+	/** The application property naming its authentication mode: {@value #BEARER}, {@value #BEARER_OPTIONAL} or {@value #NONE}. */
 	public static final String AUTH = "fennec.auth";
 
 	/** Mode: every request carries a bearer token the verifier accepts. */
 	public static final String BEARER = "bearer";
+
+	/**
+	 * Mode: a token, when there is one, must verify; without one the call
+	 * goes on with no principal, and the contract's requirements decide
+	 * per operation. For applications in which every request is answered
+	 * by the generic dispatcher, which holds each operation to its
+	 * requirement — the mode that lets a {@code @PermitAll} operation sit
+	 * next to guarded ones.
+	 */
+	public static final String BEARER_OPTIONAL = "bearer-optional";
 
 	/** Mode: no authentication, chosen explicitly by the deployment. */
 	public static final String NONE = "none";
@@ -52,6 +62,9 @@ public final class SecurityNames {
 
 	/** The whiteboard name of the bearer filter. */
 	public static final String BEARER_FILTER = FILTER_PREFIX + BEARER;
+
+	/** The whiteboard name of the filter for {@value #BEARER_OPTIONAL}. */
+	public static final String OPTIONAL_BEARER_FILTER = FILTER_PREFIX + BEARER_OPTIONAL;
 
 	/** The whiteboard name of the filter for {@value #NONE}. */
 	public static final String NO_AUTH_FILTER = FILTER_PREFIX + NONE;

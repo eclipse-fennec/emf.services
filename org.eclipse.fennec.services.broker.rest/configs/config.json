@@ -19,6 +19,13 @@
 	{
 		"public.url": "$[env:DDSR_PUBLIC_URL;default=http://localhost:8887/ddsr/rest]"
 	},
+	"org.eclipse.fennec.services.security.jwt":
+	{
+		"issuer": "$[env:DDSR_JWT_ISSUER;default=]",
+		"jwks.uri": "$[env:DDSR_JWT_JWKS_URI;default=]",
+		"audiences": "$[env:DDSR_JWT_AUDIENCES;default=ddsr-broker;type=String[];delimiter=,]",
+		"scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]"
+	},
 	"org.eclipse.fennec.services.broker.rest.application":
 	{
 		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",

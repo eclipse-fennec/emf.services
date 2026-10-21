@@ -319,9 +319,26 @@ $[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]
 
 The environment wins, then the launch's framework property, then
 **bearer**. `broker.bndrun` sets `fennec.auth.mode=none` — it is the
-development broker and the one the harness runs — and so does the
-container image, out loud, until it can be given a verifier through the
-environment (slice 4).
+development broker. The container image says `bearer` out loud: the
+jar inside it is exported from that development launch, and without the
+line the image would inherit `none`.
+
+The verifier is configured the same way, from the environment, in the
+same `config.json`:
+
+| Variable | Verifier attribute |
+| --- | --- |
+| `DDSR_JWT_ISSUER` | `issuer` — empty means **no verifier** |
+| `DDSR_JWT_JWKS_URI` | `jwks.uri` |
+| `DDSR_JWT_AUDIENCES` | `audiences`, comma-separated, default `ddsr-broker` |
+| `DDSR_JWT_SCOPE_CLAIM` | `scope.claim`, default `scope` |
+
+The configuration is always there; whether it amounts to a verifier
+depends on the issuer. `NimbusJwtVerifier` registers its service itself,
+and only with an issuer: in mode none the variables stay empty and the
+log says once that there is no verifier, instead of a component failing
+on every start. An issuer without keys or audiences is refused at
+activation — half a configuration is not a verifier.
 
 - The three contracts the generic distribution serves (`/catalog`,
   `/implementations`, `/references`) get the two properties through
@@ -376,8 +393,7 @@ Taken, and written into the model's documentation annotations:
   the schemes' extension rule (a line only where something is
   declared), so the tags stayed — see [Fingerprints](FINGERPRINTS.md);
 - the broker's default mode is `bearer`; `none` is stated explicitly
-  where it applies — the development launch, the harness, the container
-  image until slice 4 (§7a).
+  where it applies — the development launch (§7a).
 
 Open, in the order they will come up:
 
@@ -397,7 +413,8 @@ Open, in the order they will come up:
 | requirement in sd1, schemes in im1, cross-language goldens | implemented |
 | bearer verifier and filter (`…services.security.jwt`), `CallPrincipal` | implemented |
 | the broker's applications state a mode (`DDSR_AUTH_MODE`, default bearer), ownership rule on registration, heartbeat and session | implemented — slice 2, see §7a |
-| verifier configuration for the container image, Keycloak in the harness | not yet — slice 4 |
+| verifier configured from the environment (`DDSR_JWT_*`), image secured by default | implemented — slice 4 |
+| token supplier in the SDKs, Keycloak in the harness, harness secured by default | not yet — slice 4 |
 | role filter on the broker's contracts | not yet — slice 3 |
 | token supplier in the Java and TypeScript SDKs | not yet |
 | domain enforcement from issuer/audience | not yet |

@@ -14,17 +14,26 @@ package org.eclipse.fennec.services.security.jwt.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
 import org.eclipse.fennec.services.Principal;
+import org.eclipse.fennec.services.security.jwt.JwtVerifier;
 import org.eclipse.fennec.services.security.jwt.JwtVerifier.TokenRejectedException;
 import org.eclipse.fennec.services.security.jwt.TestTokens;
 import org.eclipse.fennec.services.security.jwt.VerifiedPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.osgi.framework.BundleContext;
 
 import com.nimbusds.jose.JOSEException;
 
@@ -122,5 +131,52 @@ class NimbusJwtVerifierTest {
 	void garbageAndAlgNoneAreRejectedNotThrown() {
 		assertThatThrownBy(() -> verifier.verify("not.a.jwt")).isInstanceOf(TokenRejectedException.class);
 		assertThatThrownBy(() -> verifier.verify("eyJhbGciOiJub25lIn0.e30.")).isInstanceOf(TokenRejectedException.class);
+	}
+
+	// ------------------------------------------------------------------
+	// configuration from the environment: empty means no verifier
+	// ------------------------------------------------------------------
+
+	@Test
+	void withoutAnIssuerThereIsNoVerifier() throws Exception {
+		BundleContext context = mock(BundleContext.class);
+		NimbusJwtVerifier component = new NimbusJwtVerifier();
+
+		component.activate(context, config("", "", ""));
+
+		verify(context, never()).registerService(eq(JwtVerifier.class), any(JwtVerifier.class), any());
+	}
+
+	@Test
+	void anIssuerWithoutKeysOrAudiencesIsRefusedNotHalfStarted() {
+		BundleContext context = mock(BundleContext.class);
+
+		assertThatThrownBy(() -> new NimbusJwtVerifier().activate(context, config(TestTokens.ISSUER, "", "")))
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> new NimbusJwtVerifier()
+				.activate(context, config(TestTokens.ISSUER, "http://idp.example/certs", "")))
+				.as("an empty environment variable is one blank audience, which is none")
+				.isInstanceOf(IllegalArgumentException.class);
+		verify(context, never()).registerService(eq(JwtVerifier.class), any(JwtVerifier.class), any());
+	}
+
+	@Test
+	void aCompleteConfigurationRegistersTheVerifier() throws Exception {
+		BundleContext context = mock(BundleContext.class);
+		NimbusJwtVerifier component = new NimbusJwtVerifier();
+
+		component.activate(context, config(TestTokens.ISSUER, "http://idp.example/certs", TestTokens.AUDIENCE));
+
+		verify(context).registerService(eq(JwtVerifier.class), same(component), any());
+	}
+
+	private static NimbusJwtVerifier.Config config(String issuer, String jwks, String audience) {
+		NimbusJwtVerifier.Config config = mock(NimbusJwtVerifier.Config.class);
+		when(config.issuer()).thenReturn(issuer);
+		when(config.jwks_uri()).thenReturn(jwks);
+		when(config.audiences()).thenReturn(new String[] { audience });
+		when(config.scope_claim()).thenReturn("scope");
+		when(config.clock_skew_seconds()).thenReturn(5);
+		return config;
 	}
 }

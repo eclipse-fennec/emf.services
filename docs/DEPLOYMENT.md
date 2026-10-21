@@ -29,16 +29,27 @@ docker run -d --name ddsr-broker \
   -p 8887:8887 \
   -v ddsr-broker-data:/opt/services/data \
   -e DDSR_PUBLIC_URL=http://broker.example.com:8887/ddsr/rest \
+  -e DDSR_JWT_ISSUER=https://idp.example.com/realms/fennec \
+  -e DDSR_JWT_JWKS_URI=https://idp.example.com/realms/fennec/protocol/openid-connect/certs \
   docker.io/eclipsefennec/emf.services:broker-snapshot
 
-curl http://localhost:8887/ddsr/rest/catalog     # readiness
+curl -i http://localhost:8887/ddsr/rest/catalog  # readiness: 401 without a token
 ```
 
-The broker is up as soon as `GET /ddsr/rest/catalog` answers 200 —
-about two seconds. There is no `HEALTHCHECK` in the image because the
+The image runs the broker **secured** (`DDSR_AUTH_MODE=bearer`): every
+call needs a bearer token of the configured issuer, see
+[Security](SECURITY.md) §7a. The three `DDSR_JWT_*` variables tell it
+whom to trust. Without them there is no verifier, and a bearer broker
+without a verifier serves nothing at all — it fails closed, never open.
+For a broker to develop against, say `-e DDSR_AUTH_MODE=none` instead.
+
+The broker is up as soon as `GET /ddsr/rest/catalog` answers — about
+two seconds; `401` in bearer mode, `200` in mode none. A `404` that does
+not go away means the applications were never deployed: bearer without
+a verifier. There is no `HEALTHCHECK` in the image because the
 distroless base ships neither a shell nor curl; wire that probe up in
 your orchestrator instead (Kubernetes: an `httpGet` readiness probe on
-`/ddsr/rest/catalog`).
+`/ddsr/rest/catalog` that accepts 401, or a TCP probe on the port).
 
 ### Configuration
 
@@ -53,7 +64,11 @@ interpolation plugin. The defaults are the ones
 | `DDSR_PUBLIC_URL` | `http://localhost:8887/ddsr/rest` | The address the broker **advertises for itself** in the catalog. Consumers dial exactly this URL, so in any deployment other than `--network=host` it must be the externally reachable one. |
 | `DDSR_HTTP_PORT` | `8887` | Port the broker listens on (inside the container). |
 | `DDSR_HTTP_HOST` | `0.0.0.0` | Interface the broker binds. |
-| `DDSR_AUTH_MODE` | `none` (image) | `bearer` or `none`. The broker's own default is `bearer`; the image says `none` because it cannot be given a token verifier through the environment yet, and a bearer broker without one serves nothing. See [Security](SECURITY.md) §7a. |
+| `DDSR_AUTH_MODE` | `bearer` | `bearer` or `none`. Bearer needs the verifier below; `none` is an open broker, meant for development. See [Security](SECURITY.md) §7a. |
+| `DDSR_JWT_ISSUER` | *(empty)* | The token issuer the broker trusts (`iss`), e.g. a Keycloak realm URL. Empty means no verifier — and in bearer mode a broker that serves nothing. |
+| `DDSR_JWT_JWKS_URI` | *(empty)* | Where the issuer's signing keys are fetched. May be an internal address the broker reaches the identity provider by. Required with an issuer. |
+| `DDSR_JWT_AUDIENCES` | `ddsr-broker` | Comma-separated `aud` values a token must carry one of. One audience for the broker keeps a token minted for somebody else from being replayed here. |
+| `DDSR_JWT_SCOPE_CLAIM` | `scope` | Dot path of the claim carrying the scopes: `scope` (OAuth, space-separated) or e.g. `realm_access.roles` (Keycloak realm roles). |
 
 The context path (`/ddsr/rest`) is a frozen wire contract, not a
 configuration — see the wire-name note in [CLAUDE.md](https://github.com/eclipse-fennec/emf.services/blob/snapshot/CLAUDE.md).

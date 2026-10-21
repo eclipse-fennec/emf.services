@@ -621,9 +621,13 @@ The TypeScript SDK takes the same through its `fetchFn` seams:
 [Client framework](CLIENT_FRAMEWORK_GUIDE.md)); scenario M runs the
 TypeScript Payment provider against the mtls broker that way.
 
-Not yet: mTLS over MQTT (Paho and the messaging broker's TLS), and a
-TypeScript provider *serving* in mode `mtls` (its `restDispatcher`
-verifies tokens, not certificates).
+A TypeScript provider serves in mode `mtls` too:
+`createCertificateVerifier` names the holder the way the Java node does,
+and `restDispatcher` takes it with the peer certificate the host's
+HTTPS server hands on (see [Client framework](CLIENT_FRAMEWORK_GUIDE.md));
+scenario M serves the TypeScript ledger that way.
+
+Not yet: mTLS over MQTT (Paho and the messaging broker's TLS).
 
 ## 8. Decisions taken, decisions open
 
@@ -674,4 +678,5 @@ Open, in the order they will come up:
 | discovery by certificate, calls by token: `broker.authentication=certificate`, configured contracts announce their scheme, CN = client id | implemented — see §7d |
 | RSA role configuration: the node's certificate and `broker.authentication`, derived into the client | implemented — see §7d and [RSA](RSA.md) |
 | TypeScript SDK as a client of an mtls broker: `tlsFetch`, the examples' `DDSR_TLS_*` | implemented — see §7d |
-| mutual TLS over MQTT, a TypeScript provider serving in mode `mtls` | not yet |
+| a TypeScript provider serving in mode `mtls` (`createCertificateVerifier`, `restDispatcher` with `certificates`) | implemented — see §7d |
+| mutual TLS over MQTT | not yet |

@@ -508,7 +508,7 @@ log "Scenario M: client certificates, mode mtls"
 # where a gateway hands the certificate on in a header. Roles come from
 # the broker's own mapping of the certificates' CNs.
 TLS_DIR="$WORK/tls"
-"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness payment-java rsa-example rsa-example-consumer ts-provider
+"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" java-client harness payment-java rsa-example rsa-example-consumer ts-provider ts-ledger
 MTLS_URL="https://localhost:8898/ddsr/rest"
 GATEWAY_URL="http://127.0.0.1:8899/ddsr/rest"
 require_port_free 8898
@@ -519,7 +519,7 @@ require_port_free 8899
        DDSR_HTTPS_KEYSTORE="$TLS_DIR/server.p12" DDSR_HTTPS_KEYSTORE_PASSWORD=changeit \
        DDSR_HTTPS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_HTTPS_TRUSTSTORE_PASSWORD=changeit \
        DDSR_HTTPS_CLIENT_CERTIFICATE=needs DDSR_MTLS_TRUSTED_ISSUERS="CN=Fennec Harness CA,O=Fennec" \
-       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|payment-java=service-provider,service-consumer|rsa-example=service-provider,service-consumer|rsa-example-consumer=service-consumer|ts-provider=service-provider,service-consumer|harness=service-admin" \
+       DDSR_MTLS_ROLES="java-client=service-consumer,service-provider|payment-java=service-provider,service-consumer|rsa-example=service-provider,service-consumer|rsa-example-consumer=service-consumer|ts-provider=service-provider,service-consumer|ts-ledger=service-provider,service-consumer|harness=service-admin" \
        DDSR_MTLS_GATEWAY_HEADER=X-Client-Cert DDSR_MTLS_GATEWAY_ADDRESSES=127.0.0.1 \
        java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-mtls.log" 2>&1 &
 MTLS_PID=$!
@@ -591,6 +591,37 @@ curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS
 kill "$MTLS_TS_PID" 2>/dev/null || true
 wait "$MTLS_TS_PID" 2>/dev/null || true
 echo "  ✓ ts-provider: published Payment over its certificate, listed to a consumer of the CA"
+
+# And a TypeScript provider serving by certificate: the ledger of
+# scenario T over HTTPS, demanding a client certificate of the CA and
+# mapping roles to its CN — the twin of the broker's own mode mtls.
+LEDGER_URL="https://localhost:9098/ts-ledger"
+require_port_free 9098
+(cd "$TS/examples/payment" \
+  && exec env -u DDSR_OAUTH_TOKEN_URI -u DDSR_JWT_ISSUER LEDGER_AUTH=mtls BROKER_URL="$MTLS_URL" SERVICE_URL="$LEDGER_URL" \
+       DDSR_CONSUMER_ID=ts-ledger DDSR_BROKER_AUTHENTICATION=certificate \
+       DDSR_TLS_KEYSTORE="$TLS_DIR/ts-ledger.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit DDSR_TLS_CA="$TLS_DIR/ca.crt" \
+       DDSR_HTTPS_KEYSTORE="$TLS_DIR/server.p12" DDSR_HTTPS_KEYSTORE_PASSWORD=changeit \
+       DDSR_MTLS_TRUSTED_ISSUERS="CN=Fennec Harness CA,O=Fennec" \
+       DDSR_MTLS_ROLES="java-client=ledger-reader|harness=ledger-reader,ledger-writer" \
+       node --import tsx ledger-ts.ts) >"$WORK/ledger-ts-mtls.log" 2>&1 &
+MTLS_LEDGER_PID=$!
+PIDS+=("$MTLS_LEDGER_PID")
+wait_for_line "$WORK/ledger-ts-mtls.log" "published as reference" 60
+expect_status 000 "$(curl -s -o /dev/null -w '%{http_code}' --cacert "$TLS_DIR/ca.crt" "$LEDGER_URL/version" || true)" \
+  "the TypeScript ledger without a certificate"
+expect_status 000 "$(as_certificate stranger "$LEDGER_URL/version" || true)" \
+  "the TypeScript ledger with a certificate of another authority"
+expect_status 200 "$(as_certificate java-client "$LEDGER_URL/version")" "the ledger's version for java-client"
+expect_status 200 "$(as_certificate java-client "$LEDGER_URL/balance")" "the ledger's balance for java-client (ledger-reader)"
+expect_status 403 "$(as_certificate java-client "$LEDGER_URL/record")" "recording as java-client (no ledger-writer)"
+expect_status 200 "$(as_certificate harness "$LEDGER_URL/record")" "recording as harness (ledger-writer)"
+curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \
+    "$MTLS_URL/references?interface=TsLedger" | grep -q 'MutualTlsScheme' \
+  || { echo "SCENARIO M FAILED: the TypeScript ledger is announced without its client-certificate scheme"; exit 1; }
+kill "$MTLS_LEDGER_PID" 2>/dev/null || true
+wait "$MTLS_LEDGER_PID" 2>/dev/null || true
+echo "  ✓ ts-ledger: served by certificate — none or a foreign one is no connection, roles per CN decide, the scheme is announced"
 
 if secured; then
   # Discovery by certificate, calls by token (SECURITY.md §7d): the Java

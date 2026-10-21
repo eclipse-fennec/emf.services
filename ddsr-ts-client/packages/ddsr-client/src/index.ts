@@ -33,7 +33,7 @@ export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http
 // this function's answer rather than something to reassemble by hand.
 export { clientOrigin, ORIGIN_HEADER } from './internal/client-origin.js';
 export { clientCredentials, withBearer, RENEW_BEFORE_SECONDS } from './internal/bearer-token.js';
-export { effectiveRequirement, demandsAuthentication, bearerScheme } from './internal/security-requirements.js';
+export { effectiveRequirement, demandsAuthentication, bearerScheme, mutualTlsScheme } from './internal/security-requirements.js';
 export { createJwtVerifier, TokenRejectedError } from './internal/jwt-verifier.js';
 export type { JwtVerifier, JwtVerifierOptions, VerifiedPrincipal } from './internal/jwt-verifier.js';
 export type { TokenSupplier, ClientCredentialsOptions } from './internal/bearer-token.js';
@@ -67,3 +67,5 @@ export type { PropertyValue } from './properties.js';
 export { eClassName, toArray, asRoots, firstOfClass } from './internal/emf-util.js';
 export { tlsFetch } from './tls/tls-fetch.js';
 export type { TlsOptions } from './tls/tls-fetch.js';
+export { createCertificateVerifier, CertificateRejectedError } from './tls/certificate-verifier.js';
+export type { CertificateVerifier, CertificateVerifierOptions, ClientCertificate } from './tls/certificate-verifier.js';

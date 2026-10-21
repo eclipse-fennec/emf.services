@@ -20,8 +20,8 @@ import type {
   ServiceOperation,
 } from '@ddsr/model';
 import { HttpMethod, ParameterBinding } from '@ddsr/model';
-import { bearerScheme, demandsAuthentication, effectiveRequirement } from '@ddsr/client';
-import type { JwtVerifier } from '@ddsr/client';
+import { bearerScheme, demandsAuthentication, effectiveRequirement, mutualTlsScheme } from '@ddsr/client';
+import type { CertificateVerifier, ClientCertificate, JwtVerifier } from '@ddsr/client';
 
 /**
  * The provider side of a REST flavor, in TypeScript (#154).
@@ -46,6 +46,12 @@ export interface DispatchRequest {
   headers?: Record<string, string | string[] | undefined>;
   /** The body, already read. */
   body?: string;
+  /**
+   * The certificate the caller showed on the TLS connection, where the
+   * host ended TLS and asked for one — in Node,
+   * `request.socket.getPeerCertificate()`. Read in mode `mtls` only.
+   */
+  clientCertificate?: ClientCertificate;
 }
 
 export interface DispatchResult {
@@ -80,15 +86,24 @@ export interface DispatchOptions {
    */
   verifier?: JwtVerifier;
   /**
+   * Names the holder of a client certificate (SECURITY.md §7d), e.g.
+   * `createCertificateVerifier(...)`. Needed when the flavor names a
+   * client-certificate scheme, or `auth` says `mtls`.
+   */
+  certificates?: CertificateVerifier;
+  /**
    * The mode, when it is not what the flavor implies. `bearer` turns
    * every call without a token away, `bearer-optional` lets one through
    * without a principal for the contract to decide per operation (what a
    * `@PermitAll` operation needs), `none` serves a guarded contract open
    * — the explicit choice of a node for development, said once in the
-   * log. By default: `bearer` when every operation is guarded,
+   * log. `mtls` takes the caller from its client certificate instead,
+   * and like a certificate itself it has no optional variant. By
+   * default: `mtls` when the flavor offers only a client-certificate
+   * scheme, else `bearer` when every operation is guarded,
    * `bearer-optional` otherwise.
    */
-  auth?: 'bearer' | 'bearer-optional' | 'none';
+  auth?: 'bearer' | 'bearer-optional' | 'mtls' | 'none';
 }
 
 /**
@@ -124,7 +139,12 @@ export function restDispatcher(
 
     // Before the arguments are read: a caller who may not call the
     // operation learns nothing about what it would have accepted.
-    if (mode !== 'none') {
+    if (mode === 'mtls') {
+      const refused = certificateRefusal(operation, request.clientCertificate, options.certificates!, log);
+      if (refused) {
+        return refused;
+      }
+    } else if (mode !== 'none') {
       const refused = await refusal(operation, request.headers ?? {}, mode, options.verifier!, log);
       if (refused) {
         return refused;
@@ -166,7 +186,7 @@ export function restDispatcher(
   };
 }
 
-type Mode = 'bearer' | 'bearer-optional' | 'none';
+type Mode = 'bearer' | 'bearer-optional' | 'mtls' | 'none';
 
 /**
  * How this flavor is guarded, decided once — the twin of the Java
@@ -181,6 +201,13 @@ function modeOf(flavor: RestFlavor, options: DispatchOptions, log: (m: string) =
       log(`${flavor.name} demands authentication but is served in mode none — its requirements are passed over`);
     }
     return 'none';
+  }
+  if (options.auth === 'mtls' || (!options.auth && mutualTlsScheme(flavor) && !bearerScheme(flavor))) {
+    if (!options.certificates) {
+      throw new Error(`${flavor.name} is served by client certificate, and the dispatcher has no certificate`
+        + ' verifier — not served');
+    }
+    return 'mtls';
   }
   if (bearerScheme(flavor) || options.auth) {
     if (!options.verifier) {
@@ -228,8 +255,36 @@ async function refusal(operation: ServiceOperation, headers: Record<string, stri
   if (scopes === undefined) {
     return unauthorized;
   }
+  return forbidden(operation, scopes);
+}
+
+/**
+ * The same, for a caller that proves itself by certificate: none, or one
+ * this node does not accept, is 401 for every operation — a certificate
+ * belongs to the connection, so there is no optional variant — and the
+ * roles the node maps to its CN are held against the requirement.
+ */
+function certificateRefusal(operation: ServiceOperation, certificate: ClientCertificate | undefined,
+  verifier: CertificateVerifier, log: (m: string) => void): DispatchResult | undefined {
+  const unauthorized: DispatchResult = { status: 401, contentType: 'text/plain' };
+  if (!certificate) {
+    log(`401 ${operation.name}: no client certificate`);
+    return unauthorized;
+  }
+  let scopes: readonly string[];
+  try {
+    scopes = verifier.verify(certificate).scopes;
+  } catch (rejected) {
+    log(`401 ${operation.name}: ${String((rejected as Error)?.message ?? rejected)}`);
+    return unauthorized;
+  }
+  return demandsAuthentication(operation) ? forbidden(operation, scopes) : undefined;
+}
+
+/** 403 naming the scopes (roles) the operation needs and the caller lacks, or nothing. */
+function forbidden(operation: ServiceOperation, scopes: readonly string[]): DispatchResult | undefined {
   const required = toArray<string>(effectiveRequirement(operation)?.scopes);
-  const missing = required.filter(scope => !scopes!.includes(scope));
+  const missing = required.filter(scope => !scopes.includes(scope));
   return missing.length > 0
     ? { status: 403, body: `${operation.name} needs ${missing.join(', ')}`, contentType: 'text/plain' }
     : undefined;

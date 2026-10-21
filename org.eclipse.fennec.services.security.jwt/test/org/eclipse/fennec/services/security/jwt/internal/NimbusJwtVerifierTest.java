@@ -133,6 +133,17 @@ class NimbusJwtVerifierTest {
 		assertThatThrownBy(() -> verifier.verify("eyJhbGciOiJub25lIn0.e30.")).isInstanceOf(TokenRejectedException.class);
 	}
 
+	@Test
+	void theSubjectCanBeTakenFromAnotherClaim() throws Exception {
+		// A Keycloak client-credentials token: sub is the service account's
+		// generated id, azp the client — the name a node is configured by.
+		verifier.init(tokens.keys(), TestTokens.ISSUER, Set.of(TestTokens.AUDIENCE), "scope", "azp", 5);
+
+		VerifiedPrincipal principal = verifier.verify(tokens.token("4f1c-service-account-id", "provider", null));
+
+		assertThat(principal.subject()).isEqualTo("payments-node");
+	}
+
 	// ------------------------------------------------------------------
 	// configuration from the environment: empty means no verifier
 	// ------------------------------------------------------------------
@@ -176,6 +187,7 @@ class NimbusJwtVerifierTest {
 		when(config.jwks_uri()).thenReturn(jwks);
 		when(config.audiences()).thenReturn(new String[] { audience });
 		when(config.scope_claim()).thenReturn("scope");
+		when(config.subject_claim()).thenReturn("sub");
 		when(config.clock_skew_seconds()).thenReturn(5);
 		return config;
 	}

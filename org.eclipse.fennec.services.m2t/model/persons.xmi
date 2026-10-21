@@ -6,7 +6,8 @@
     xmlns:services="http://eclipse.org/fennec/services/1.0"
     name="PersonDirectory"
     version="1.0.0"
-    description="Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result and a declared exception.">
+    description="Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result, a declared exception and who may call.">
+  <security authenticated="true"/>
   <operations name="get" description="One person by identifier." exceptions="//@exceptions.0">
     <parameters name="id" type="string" description="Identifier of the person.">
       <constraints xsi:type="services:StringPatternConstraint" pattern="[A-Za-z0-9-]+" minLength="3"/>
@@ -14,6 +15,7 @@
     <returnValue name="result" description="The person with that identifier.">
       <eType xsi:type="ecore:EClass" href="http://geckoprojects.org/ddsr/example#//Person"/>
     </returnValue>
+    <security authenticated="true" scopes="person-reader"/>
   </operations>
   <operations name="list" description="A page of the directory, in directory order.">
     <parameters name="offset" type="int" optional="true" defaultValue="0" description="Index of the first person to return.">

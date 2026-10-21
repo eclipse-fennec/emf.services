@@ -14,7 +14,7 @@ import org.eclipse.fennec.services.examples.model.ddsrexample.Person;
 import org.osgi.annotation.versioning.ProviderType;
 
 /**
- * Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result and a declared exception.
+ * Reads persons from the example directory. Exercises the parts of a contract the Payment example does not have: EClass-typed slots, a list result, a declared exception and who may call.
  *
  * <p>Generated from the {@code PersonDirectory} contract, version
  * 1.0.0. Do not edit — change the contract instead.

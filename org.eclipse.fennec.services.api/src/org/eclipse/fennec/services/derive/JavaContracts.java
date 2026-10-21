@@ -201,7 +201,10 @@ public final class JavaContracts {
      * <ul>
      * <li>{@code @RolesAllowed({...})} — a principal carrying all of the
      *     names; they land in {@code scopes}, which the verifier reads from
-     *     the token's scope claim, roles included;</li>
+     *     the token's scope claim, roles included. {@code "**"} is the
+     *     Jakarta spelling of "any authenticated caller" and names no
+     *     scope, so {@code @RolesAllowed("**")} is a requirement without
+     *     scopes — what the m2t resource template writes for one;</li>
      * <li>{@code @PermitAll} — explicitly open, which on a method lifts
      *     the interface's default;</li>
      * <li>{@code @DenyAll} — not expressible: a contract describes what a
@@ -215,6 +218,9 @@ public final class JavaContracts {
      *
      * @return the requirement, or {@code null} when the element states none
      */
+    /** The role Jakarta Security reserves for "any authenticated caller". */
+    static final String ANY_AUTHENTICATED = "**";
+
     static SecurityRequirement requirementOf(AnnotatedElement element) {
         for (Annotation annotation : element.getAnnotations()) {
             String name = annotation.annotationType().getName();
@@ -222,7 +228,9 @@ public final class JavaContracts {
             case "RolesAllowed" -> {
                 SecurityRequirement requirement = ServicesFactory.eINSTANCE.createSecurityRequirement();
                 requirement.setAuthenticated(true);
-                requirement.getScopes().addAll(Arrays.asList(rolesOf(annotation)));
+                Arrays.stream(rolesOf(annotation))
+                        .filter(role -> !ANY_AUTHENTICATED.equals(role))
+                        .forEach(requirement.getScopes()::add);
                 return requirement;
             }
             case "PermitAll" -> {

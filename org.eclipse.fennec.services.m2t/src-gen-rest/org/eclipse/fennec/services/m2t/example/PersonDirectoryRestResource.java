@@ -10,6 +10,7 @@
 package org.eclipse.fennec.services.m2t.example;
 
 import jakarta.ws.rs.Path;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PathParam;
@@ -21,6 +22,7 @@ import jakarta.ws.rs.core.Response;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ServiceScope;
+import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsExtensionSelect;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsName;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsResource;
 
@@ -34,6 +36,7 @@ import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsResource;
  */
 @JakartarsResource
 @JakartarsName("directory-rest")
+@JakartarsExtensionSelect("(osgi.jakartars.name=fennec-auth-*)")
 @Component(service = PersonDirectoryRestResource.class, scope = ServiceScope.PROTOTYPE)
 @Path("/directory")
 public class PersonDirectoryRestResource {
@@ -44,6 +47,7 @@ public class PersonDirectoryRestResource {
 	@GET
 	@Path("/persons/{id}")
 	@Produces("application/json")
+	@RolesAllowed("person-reader")
 	public Response get(@PathParam("id") String id) {
 		if (id == null) {
 			return Response.status(400).entity("id is required").build();
@@ -69,6 +73,7 @@ public class PersonDirectoryRestResource {
 	@GET
 	@Path("/persons")
 	@Produces({"application/json", "application/xml"})
+	@RolesAllowed("**")
 	public Response list(@QueryParam("offset") @DefaultValue("0") Integer offset, @QueryParam("max") @DefaultValue("50") Integer limit) {
 		if (offset != null && offset < 0) {
 			return Response.status(400).entity("offset is below 0").build();

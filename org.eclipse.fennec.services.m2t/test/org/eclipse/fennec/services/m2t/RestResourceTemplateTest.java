@@ -178,4 +178,33 @@ class RestResourceTemplateTest {
 				.doesNotContain("catch (PersonNotFoundException")
 				.contains("catch (RuntimeException failure)");
 	}
+
+	@Test
+	void anOperationsOwnRequirementIsItsAnnotation() throws Exception {
+		// get states person-reader itself: the annotation sits on the method,
+		// right above it, as a hand-written resource would carry it.
+		assertThat(resource())
+				.contains("@Produces(\"application/json\")\n\t@RolesAllowed(\"person-reader\")\n\tpublic Response get(")
+				.contains("import jakarta.annotation.security.RolesAllowed;");
+	}
+
+	@Test
+	void anOperationWithoutOneTakesTheContractsDefault() throws Exception {
+		// list states nothing; the contract asks for a verified caller with
+		// no particular role, which Jakarta spells "**".
+		String list = resource().substring(resource().indexOf("@Path(\"/persons\")"));
+
+		assertThat(list).startsWith("@Path(\"/persons\")\n\t@Produces({\"application/json\", \"application/xml\"})\n"
+				+ "\t@RolesAllowed(\"**\")\n\tpublic Response list(");
+	}
+
+	@Test
+	void aGuardedResourceIsNotServedByAnApplicationThatStatesNoMode() throws Exception {
+		// Fail closed: without one of the fennec-auth filters on its
+		// application the whiteboard keeps the resource down, rather than
+		// serving an annotation nobody enforces.
+		assertThat(resource())
+				.contains("@JakartarsExtensionSelect(\"(osgi.jakartars.name=fennec-auth-*)\")\n@Component(")
+				.contains("import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsExtensionSelect;");
+	}
 }

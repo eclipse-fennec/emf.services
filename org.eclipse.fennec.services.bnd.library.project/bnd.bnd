@@ -7,6 +7,8 @@ Bundle-Description: \
 	  enableFennecServicesClient    the SDK: publish, look up, invoke \
 	  enableFennecServicesRsa       Remote Service Admin on the registry \
 	  enableFennecServicesSecurity  bearer tokens: supply and verify \
+	  enableFennecServicesMqtt      the MQTT transport: call, hear, serve \
+	  enableFennecServicesRsaMqtt   Remote Service Admin over MQTT \
 	\
 	The run lists carry this project's bundles and what they need \
 	directly — never an HTTP stack or Jersey, which enableJakartaREST \
@@ -23,4 +25,6 @@ Bundle-Description: \
 Provide-Capability: \
 	bnd.library;bnd.library=enableFennecServicesClient;path=library/client,\
 	bnd.library;bnd.library=enableFennecServicesRsa;path=library/rsa,\
-	bnd.library;bnd.library=enableFennecServicesSecurity;path=library/security
+	bnd.library;bnd.library=enableFennecServicesSecurity;path=library/security,\
+	bnd.library;bnd.library=enableFennecServicesMqtt;path=library/mqtt,\
+	bnd.library;bnd.library=enableFennecServicesRsaMqtt;path=library/rsaMqtt

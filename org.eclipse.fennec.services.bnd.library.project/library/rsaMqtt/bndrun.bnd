@@ -1,0 +1,9 @@
+# enableFennecServicesRsaMqtt — Remote Service Admin over MQTT: the
+# distribution and the discovery for the flavor fennec.mqtt, on top of
+# enableFennecServicesRsa and enableFennecServicesMqtt. Chosen per node
+# through the role's flavor and discovery.flavor.
+fennec.services.range: [0.1.0,0.2.0)
+
+-runbundles.fennec.services.rsa.mqtt: \
+	org.eclipse.fennec.services.rsa.distribution.mqtt;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.rsa.discovery.mqtt;version='${fennec.services.range}'

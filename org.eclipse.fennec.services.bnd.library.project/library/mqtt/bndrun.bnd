@@ -1,0 +1,12 @@
+# enableFennecServicesMqtt — the MQTT transport in a launch, on top of the
+# client (enableFennecServicesClient): calling services announced over
+# MQTT, hearing the broker's events over it, and serving a contract on
+# topics. Every part is dormant until configured (mqtt.broker), so the
+# bundles are safe in a launch that speaks only REST.
+fennec.services.range: [0.1.0,0.2.0)
+
+-runbundles.fennec.services.mqtt: \
+	org.eclipse.fennec.services.client.mqtt;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.flavor.mqtt;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.provider.mqtt;version='${fennec.services.range}',\
+	org.eclipse.paho.client.mqttv3;version='[1.2.5,1.2.6)'

@@ -92,6 +92,30 @@ Two values are worth knowing about:
   either to `manual` to do it yourself through the `RemoteServiceAdmin`
   service.
 
+A node's **identity** is said in the same place — its client
+credentials, and for a serving node the issuer it accepts:
+
+```json
+"org.eclipse.fennec.services.rsa.provider": {
+  "...": "as above",
+  "token.uri": "https://idp.example.com/realms/fennec/protocol/openid-connect/token",
+  "client.id": "my-node",
+  "client.secret": "…",
+  "scope": "ddsr-broker",
+  "issuer": "https://idp.example.com/realms/fennec",
+  "jwks.uri": "https://idp.example.com/realms/fennec/protocol/openid-connect/certs",
+  "audiences": ["my-node"],
+  "scope.claim": "realm_access.roles",
+  "subject.claim": "azp"
+}
+```
+
+From it the role derives the token supplier, the verifier and the
+scheme the REST distribution names — the same issuer in all three — and
+uses the client id as the consumer id unless one is said. The consumer
+role takes the four client attributes only. Without them a node is what
+it was: open, and calling without a token. See [Who may call](#who-may-call).
+
 Everything both roles accept is in the metatype, visible in any OSGi
 console, on `RsaProvider.Config` and `RsaConsumer.Config`.
 
@@ -210,11 +234,64 @@ of 122.6, the Event Admin topics of 122.7, and the capabilities that
 declare which configuration types and policies this implementation
 speaks.
 
+## Who may call
+
+A service says who may call it the way a JAX-RS resource does, with the
+Jakarta security annotations on its interface ([Security](SECURITY.md)
+§6):
+
+```java
+@RolesAllowed("ledger-reader")              // the contract's default
+public interface Ledger {
+
+    double balance(String account);         // ledger-reader
+
+    @RolesAllowed("ledger-writer")          // this operation's own
+    double record(String account, double amount);
+
+    @PermitAll                              // anybody
+    String version();
+}
+```
+
+Nothing else changes in the service: it is exported and imported like
+any other.
+
+- **Export.** The derived contract carries the annotations as its
+  requirements — `@RolesAllowed` as `scopes`, `@PermitAll` as an
+  explicit open operation; `@DenyAll` is refused, since a contract
+  cannot state an operation nobody may call. The REST distribution puts
+  the node's bearer scheme (issuer, audience, JWKS) into the flavor and
+  serves the endpoint behind the bearer filter; every operation is then
+  held to its requirement — `401` without a token, `403` naming the
+  missing role. A node without an issuer does not export a guarded
+  contract at all, and neither does MQTT, where a call carries no
+  credential of its own: refused, never served open.
+- **Import.** The proxy is a plain `@Reference`. Every call carries the
+  importing node's token — one of the provider's audience, asked for
+  from the identity provider per target, so a token minted for the
+  broker never reaches a provider. A guarded operation on a node without
+  credentials fails with that reason rather than a bare `401`.
+- **Intents.** A node with an issuer promises `fennec.bearer`; an
+  endpoint carries it where its contract demands a caller, on both
+  sides, so a consumer can filter for it. A service that asks for
+  `fennec.bearer` in `service.exported.intents` without annotating gets
+  a contract that demands an authenticated caller and nothing more.
+
+Roles are whatever the verifier reads from the token: with
+`scope.claim=realm_access.roles` they are Keycloak realm roles, so
+`@RolesAllowed("ledger-writer")` and a realm role `ledger-writer` meet
+without a mapping in between.
+
 ## Limits worth knowing
 
 - **Two flavors ship**, `fennec.rest` and `fennec.mqtt`, and a node may
   use one for serving and the other for announcing — see
   [Two transports](#two-transports-and-splitting-them).
+- **Calls carry the node's identity, not a user's.** An imported proxy
+  calls with the importing node's own client credentials. Acting on
+  behalf of a user — token exchange — is not built; see
+  [Security](SECURITY.md) §6.
 - **Intents are checked at export, not verified in flight.** A service
   asking for an intent the transport does not promise is not exported,
   which is the safe direction: a consumer relying on that intent would

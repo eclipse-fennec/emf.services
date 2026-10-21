@@ -3,3 +3,14 @@ Bundle-Description: \
 	The interface, and nothing else — the one bundle a provider and a \
 	consumer of the example share. That is the ordinary OSGi shape, and \
 	the reason an import can load the class at all.
+
+# The interface says who may call it with the Jakarta security
+# annotations (Ledger). They are read from the class at export, so the
+# package has to be there at runtime — from 2.1, which is what the
+# Jersey 3.1 launches carry; the buildpath brings 3.0.
+-buildpath: \
+	jakarta.annotation-api;version=latest
+
+Import-Package: \
+	jakarta.annotation.security;version="[2.1,4)",\
+	*

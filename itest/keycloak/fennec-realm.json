@@ -3,6 +3,114 @@
   "enabled": true,
   "sslRequired": "none",
   "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      {
+        "name": "ledger-reader",
+        "description": "may read the RSA example's ledger"
+      },
+      {
+        "name": "ledger-writer",
+        "description": "may write it \u2014 held by nobody in the harness, so the refusal is proven"
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "basic",
+      "description": "sub and auth_time, as Keycloak's own basic scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "roles",
+      "description": "realm roles as realm_access.roles, as Keycloak's own roles scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "claim.name": "realm_access.roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ddsr-broker",
+      "description": "a token for the broker \u2014 asked for explicitly, so no other token carries it",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "ddsr-broker-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "ddsr-broker",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rsa-example",
+      "description": "a token for what the RSA example serves",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "rsa-example-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "rsa-example",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "basic",
+    "roles"
+  ],
+  "defaultOptionalClientScopes": [],
   "clients": [
     {
       "clientId": "harness",
@@ -17,18 +125,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
@@ -44,18 +146,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
@@ -71,18 +167,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
@@ -98,18 +188,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
@@ -125,18 +209,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
@@ -152,18 +230,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
@@ -179,18 +251,12 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
@@ -206,24 +272,18 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
       "clientId": "rsa-example",
       "name": "rsa-example",
-      "description": "the RSA exporting framework (I)",
+      "description": "the RSA exporting framework (I, K) \u2014 and the audience of what it serves",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -233,24 +293,18 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
       ]
     },
     {
       "clientId": "rsa-example-consumer",
       "name": "rsa-example-consumer",
-      "description": "the RSA importing framework (I)",
+      "description": "the RSA importing framework (I, K); holds ledger-reader, not ledger-writer",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -260,18 +314,23 @@
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "protocolMappers": [
-        {
-          "name": "ddsr-broker-audience",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-audience-mapper",
-          "config": {
-            "included.custom.audience": "ddsr-broker",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "introspection.token.claim": "true"
-          }
-        }
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker",
+        "rsa-example"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-rsa-example-consumer",
+      "enabled": true,
+      "serviceAccountClientId": "rsa-example-consumer",
+      "realmRoles": [
+        "ledger-reader"
       ]
     }
   ]

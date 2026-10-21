@@ -168,13 +168,15 @@ provider builds its own:
 1. **The flavor says what the wire requires** — section 2. Belongs to
    the implementation, not the interface: a provider that starts to
    demand a token is a different deployment of the same contract.
-2. **The generic distributions enforce it generically.** The REST
-   dispatcher and the MQTT distribution read the requirement and the
-   scheme from the document the way they read paths and topics today.
-   *Fail closed*: a served contract whose effective requirement demands
-   authentication is not registered without a configured verifier,
-   rather than served open. The m2t resource template emits
-   `@RolesAllowed` from the same requirement for hand-written resources.
+2. **The generic distributions enforce it generically.** Built for
+   REST (slice 3, §7b): the dispatcher holds every operation to its
+   effective requirement — `401` without a principal, `403` naming the
+   missing scopes — and a served contract that demands authentication
+   is not deployed without a verifier, rather than served open. Over
+   MQTT a call carries no credential of its own (§2, `ConnectionScheme`),
+   so a guarded contract is served only under a flavor that names a
+   scheme. Still open: the m2t resource template emitting
+   `@RolesAllowed` for hand-written resources.
 3. **Both SDKs get a credential seam.** For the broker this is built
    (slice 4): `TokenSupplier` in the api bundle, put on calls under the
    broker URL by `RestTransport`; `tokenSupplier` in the TypeScript
@@ -390,6 +392,64 @@ operation (slice 3). The token supplier in the SDKs came with slice 4
 (§4), and with it a harness that runs against the secured broker by
 default ([Harness](HARNESS.md#secured-by-default)).
 
+## 7b. Roles per operation, and RSA (slice 3)
+
+Who may call an operation is the contract's `SecurityRequirement` —
+the operation's own, else the interface's. The model keeps the name
+`scopes`: they are the names a caller's token must carry, read from the
+verifier's `scope.claim`. With `realm_access.roles` they are Keycloak
+realm roles, so roles and requirement names meet without a mapping.
+`SecurityRequirements` (api) is the one place in Java that knows the
+rule; `effectiveRequirement` / `demandsAuthentication` / `bearerScheme`
+in `@ddsr/client` are its twin.
+
+**Serving.** `RestDispatcher` checks right after routing, before the
+body is read, and only in an application of a bearer mode — mode none
+passes requirements over, as the deployment's explicit choice of an
+open node, and says so once. How a served contract gets its mode:
+
+| Served from | Mode |
+| --- | --- |
+| a document (`GenericRestDistribution`) | the configuration's `fennec.auth`; a guarded contract under no stated mode is not served — open has to be said |
+| a flavor (`RestDistributionComponent`, the RSA path) | a bearer scheme on the flavor: `bearer` when every operation is guarded, `bearer-optional` when some are open; a guarded contract on a flavor without a scheme is refused, behind a `ConnectionScheme` it is served open |
+
+`bearer-optional` (`OptionalBearerAuthFilter`) verifies a token when
+there is one and rejects a bad one, but lets a request without one
+through with no principal: it is what lets a `@PermitAll` operation sit
+next to guarded ones, because the dispatcher answers every route. The
+strict `bearer` stays for the broker's hand-written resources.
+
+**Calling.** `TokenSupplier.token(audience)` asks for a token of one
+target: the client-credentials supplier requests the scope of that
+name, which the identity provider maps to the audience (Keycloak: an
+optional client scope with an audience mapper), and keeps one token per
+scope. The broker's token is asked for the same way (`scope=ddsr-broker`),
+so no token carries another target's audience. `RestServiceInvoker` and
+the TypeScript `RestFlavorPlugin` read the target flavor's bearer scheme
+and send a token of its audience; a guarded operation without a supplier
+fails saying why.
+
+**RSA** (§6, now built). `JavaContracts` turns `@RolesAllowed` /
+`@PermitAll` on the interface and its methods into the contract's
+requirements (`@DenyAll` is refused). The role configuration takes the
+node's identity — client credentials, and for a serving node the issuer
+it accepts — and derives the token supplier, the verifier and the
+distribution's scheme from it, first in the plan; the client id becomes
+the consumer id. The REST distribution promises `fennec.bearer` with an
+issuer, puts the scheme into a guarded contract's flavor, and the
+endpoint carries the intent where the contract demands a caller — on
+export and on the endpoints the topology manager builds from the broker.
+An imported proxy calls with the node's own credentials. See
+[Remote Service Admin](RSA.md#who-may-call).
+
+Proven in the podman harness, scenario K: a `Ledger` interface with
+`@RolesAllowed("ledger-reader")`, `@RolesAllowed("ledger-writer")` on
+`record` and `@PermitAll` on `version`, exported by one framework and
+bound by `@Reference` in another whose client holds `ledger-reader`
+only — version and balance go through, `record` is `403`, and a token
+minted for the broker is `401` at the provider. Scenario I shows the
+same interface refused over MQTT.
+
 ## 8. Decisions taken, decisions open
 
 Taken, and written into the model's documentation annotations:
@@ -427,8 +487,11 @@ Open, in the order they will come up:
 | verifier configured from the environment (`DDSR_JWT_*`), image secured by default | implemented — slice 4 |
 | token supplier for the broker in both SDKs (`TokenSupplier`, `…security.oauth`, `clientCredentials`) | implemented — slice 4 |
 | Keycloak in both harnesses, harness secured by default, scenario N for the open path | implemented — slice 4, see [Harness](HARNESS.md#secured-by-default) |
-| role filter on the broker's contracts | not yet — slice 3 |
-| token supplier in the Java and TypeScript SDKs | not yet |
+| roles per operation enforced by the generic REST dispatcher, `bearer-optional`, fail-closed serving (REST and MQTT) | implemented — slice 3, see §7b |
+| token per target audience in both SDKs | implemented — slice 3 |
+| RSA: `@RolesAllowed` → requirement, node identity in the role configuration, `fennec.bearer` on export and import, the proxy calls with the node's token | implemented — slice 3, see §7b and [RSA](RSA.md#who-may-call) |
+| role matrix on the broker's own contracts (provider / consumer / admin) | not yet — next slice |
+| TypeScript provider verifying tokens | not yet |
+| `@RolesAllowed` emitted by the m2t resource template | not yet |
 | domain enforcement from issuer/audience | not yet |
-| RSA: annotation-derived requirement, intents reflected on import, node credentials on the proxy | not yet |
 | mutual TLS verifier | after bearer |

@@ -5,13 +5,21 @@
     "service.exported.configs": "$[env:RSA_EXPORT_CONFIGS;default=fennec.rest]",
     "ddsr.provider.name": "rsa-example"
   },
-  "org.eclipse.fennec.services.security.oauth": {
+  "org.eclipse.fennec.services.examples.rsa.ledger": {
+    "service.exported.interfaces": "*",
+    "service.exported.configs": "$[env:RSA_EXPORT_CONFIGS;default=fennec.rest]",
+    "ddsr.provider.name": "rsa-example"
+  },
+  "org.eclipse.fennec.services.rsa.provider": {
     "token.uri": "$[env:DDSR_OAUTH_TOKEN_URI;default=]",
     "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
     "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
-    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
-  },
-  "org.eclipse.fennec.services.rsa.provider": {
+    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]",
+    "issuer": "$[env:DDSR_JWT_ISSUER;default=]",
+    "jwks.uri": "$[env:DDSR_JWT_JWKS_URI;default=]",
+    "audiences": "$[env:DDSR_JWT_AUDIENCES;default=;type=String[];delimiter=,]",
+    "scope.claim": "$[env:DDSR_JWT_SCOPE_CLAIM;default=scope]",
+    "subject.claim": "$[env:DDSR_JWT_SUBJECT_CLAIM;default=sub]",
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
     "http.port": "$[env:RSA_HTTP_PORT;default=9095]",
     "http.id": "rsaHttp",

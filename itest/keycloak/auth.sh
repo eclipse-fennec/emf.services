@@ -11,9 +11,12 @@
 #                                  path, and what the harness ran before
 #
 # The realm (fennec-realm.json) has one confidential client per role in the
-# harness; its secret is "<client>-secret". Each client puts the audience
-# ddsr-broker into its tokens, and the broker takes the caller's name from
-# azp — the client id — so a consumer's session id is its client id.
+# harness; its secret is "<client>-secret". Audiences are optional client
+# scopes of the same name: a token for the broker is asked for with
+# scope=ddsr-broker, one for the RSA example with scope=rsa-example, and
+# neither carries the other's audience (SECURITY.md §1). The broker takes
+# the caller's name from azp — the client id — so a consumer's session id
+# is its client id. Roles are realm roles, read from realm_access.roles.
 
 HARNESS_AUTH="${HARNESS_AUTH:-bearer}"
 KEYCLOAK_IMAGE="${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak:26.4}"
@@ -91,7 +94,7 @@ as_client() { # client command...
   local client="$1"; shift
   if secured; then
     DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID="$client" \
-      DDSR_OAUTH_CLIENT_SECRET="$client-secret" "$@"
+      DDSR_OAUTH_CLIENT_SECRET="$client-secret" DDSR_OAUTH_SCOPE=ddsr-broker "$@"
   else
     "$@"
   fi
@@ -100,18 +103,29 @@ as_client() { # client command...
 # The same inside a subshell that ends in exec.
 export_client() { # client
   secured || return 0
-  export DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID="$1" DDSR_OAUTH_CLIENT_SECRET="$1-secret"
+  export DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID="$1" DDSR_OAUTH_CLIENT_SECRET="$1-secret" \
+    DDSR_OAUTH_SCOPE=ddsr-broker
 }
 
 # The same as podman -e arguments, one per line (use with mapfile).
 client_args() { # client
   secured || return 0
   printf -- '-e\n%s\n' "DDSR_OAUTH_TOKEN_URI=$KEYCLOAK_TOKEN_URI" \
-    "DDSR_OAUTH_CLIENT_ID=$1" "DDSR_OAUTH_CLIENT_SECRET=$1-secret"
+    "DDSR_OAUTH_CLIENT_ID=$1" "DDSR_OAUTH_CLIENT_SECRET=$1-secret" "DDSR_OAUTH_SCOPE=ddsr-broker"
 }
 
-token_for() { # client
-  curl -sf -u "$1:$1-secret" -d grant_type=client_credentials "$KEYCLOAK_TOKEN_URI" \
+# What a node that serves guarded contracts verifies, as podman -e
+# arguments: tokens of this realm for its own audience, roles from
+# realm_access.roles, the caller named by azp.
+provider_args() { # audience
+  secured || return 0
+  printf -- '-e\n%s\n' "DDSR_JWT_ISSUER=$KEYCLOAK_REALM_URL" \
+    "DDSR_JWT_JWKS_URI=$KEYCLOAK_REALM_URL/protocol/openid-connect/certs" \
+    "DDSR_JWT_AUDIENCES=$1" "DDSR_JWT_SCOPE_CLAIM=realm_access.roles" "DDSR_JWT_SUBJECT_CLAIM=azp"
+}
+
+token_for() { # client [scope] — the broker's audience unless another is asked for
+  curl -sf -u "$1:$1-secret" -d grant_type=client_credentials -d "scope=${2:-ddsr-broker}" "$KEYCLOAK_TOKEN_URI" \
     | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p'
 }
 

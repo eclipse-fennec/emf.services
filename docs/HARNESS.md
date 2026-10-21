@@ -44,8 +44,12 @@ runs as a container for the length of the run
 is up is that a call **without** a token is turned away with `401`.
 
 Every process calls the broker as a client of its own — one
-confidential client per role, secret `<client>-secret`, each putting the
-audience `ddsr-broker` into its tokens:
+confidential client per role, secret `<client>-secret`. Audiences are
+optional client scopes of the same name: a process asks for
+`scope=ddsr-broker` to get a token for the broker, the RSA consumer
+asks for `scope=rsa-example` to get one for what the RSA example
+serves, and no token carries another target's audience
+([Security](SECURITY.md) §1, §7b):
 
 | Client | Who |
 | --- | --- |
@@ -55,14 +59,26 @@ audience `ddsr-broker` into its tokens:
 | `java-client` | `client.jar`, `client-mqtt.jar` (P, B, D) |
 | `harness-probe-ts` | the TypeScript probe (A, E, J) |
 | `harness-lifecycle-f/-g/-h` | the lifecycle probes |
-| `rsa-example`, `rsa-example-consumer` | the RSA frameworks (I) |
+| `rsa-example` | the RSA exporting framework (I, K) — and the audience of what it serves |
+| `rsa-example-consumer` | the RSA importing framework (I, K); holds the realm role `ledger-reader`, not `ledger-writer` |
 
 The broker names a caller by `azp` — the client id — so a consumer's
 session id is its client id, and a provider can only withdraw what it
 published itself. The processes get their identity from the same
 environment variables in both languages (`DDSR_OAUTH_TOKEN_URI`,
-`DDSR_OAUTH_CLIENT_ID`, `DDSR_OAUTH_CLIENT_SECRET`; the consumer id
-falls back to the client id); `itest/keycloak/auth.sh` hands them out.
+`DDSR_OAUTH_CLIENT_ID`, `DDSR_OAUTH_CLIENT_SECRET`, `DDSR_OAUTH_SCOPE`;
+the consumer id falls back to the client id); `itest/keycloak/auth.sh`
+hands them out, and `provider_args` the verifier side of a node that
+serves guarded contracts (`DDSR_JWT_*`, roles from `realm_access.roles`).
+
+**Scenario K** (podman) is where roles per operation are proven: the
+RSA example's `Ledger` interface says `@RolesAllowed("ledger-reader")`,
+`@RolesAllowed("ledger-writer")` on `record`, `@PermitAll` on
+`version`. One framework exports it over REST with the node's verifier,
+another binds it with a plain `@Reference` and calls as
+`rsa-example-consumer` — version and balance answer, `record` is `403`,
+and a broker token is `401` at the provider. Scenario I exports the same
+interface over MQTT and checks that it is refused there.
 
 `HARNESS_AUTH=none` runs either harness open, without Keycloak — and
 without podman for the host variant. Independently of that, the host

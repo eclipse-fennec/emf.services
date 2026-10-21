@@ -1,12 +1,10 @@
 {
   ":configurator:resource-version": 1,
-  "org.eclipse.fennec.services.security.oauth": {
+  "org.eclipse.fennec.services.rsa.consumer": {
     "token.uri": "$[env:DDSR_OAUTH_TOKEN_URI;default=]",
     "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
     "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
-    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
-  },
-  "org.eclipse.fennec.services.rsa.consumer": {
+    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]",
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
     "registry.name": "rsa-example-consumer",
     "flavor": "$[env:RSA_FLAVOR;default=fennec.rest]",

@@ -489,6 +489,33 @@ const client = DdsrClientImpl.create({
 });
 ```
 
+**A broker in mode mtls** ([Security](SECURITY.md) §7d) wants a client
+certificate. `tlsFetch({ pfx, passphrase, ca })` (`@ddsr/client`) is a
+fetch over `node:https` that shows it — the PKCS12 file a Java node uses
+— and believes the authorities in `ca` (PEM; Node reads no PKCS12 trust
+store). Hand it to every seam that takes a `fetchFn`: the client (broker
+calls and the event stream) and the flavor plugin (calls to providers).
+To prove itself to the broker by certificate and to providers by token,
+give the client no `tokenSupplier` and the plugin one:
+
+```ts
+const fetchFn = tlsFetch({
+  pfx: readFileSync(process.env.DDSR_TLS_KEYSTORE!),
+  passphrase: process.env.DDSR_TLS_KEYSTORE_PASSWORD,
+  ca: readFileSync(process.env.DDSR_TLS_CA!),
+});
+const client = DdsrClientImpl.create({
+  brokerUrl: 'https://registry.example.com:8443/ddsr/rest',
+  consumerId: 'my-node',                      // the certificate's CN
+  fetchFn,
+  flavorPlugins: [new RestFlavorPlugin({ fetchFn, tokenSupplier: providerTokens })],
+});
+```
+
+The payment example's `broker-auth.ts` does exactly this from the same
+variables a Java node reads (`DDSR_TLS_KEYSTORE`, `DDSR_TLS_CA`,
+`DDSR_BROKER_AUTHENTICATION`).
+
 ### Serving a contract in TypeScript
 
 A provider is an object and a flavor — no routing code, and no handler

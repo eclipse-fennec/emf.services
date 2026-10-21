@@ -77,6 +77,7 @@ The broker has one switch for authentication, `DDSR_AUTH_MODE`:
 | --- | --- | --- |
 | `none` | development — any client may call | nothing; the default of `broker.bndrun` |
 | `bearer` | anything shared, and the integration tests | a token issuer the broker trusts: `DDSR_JWT_ISSUER`, `DDSR_JWT_JWKS_URI`, `DDSR_JWT_AUDIENCES` |
+| `mtls` | few peers with certificates, no identity provider | HTTPS with client certificates (`DDSR_HTTPS_*`) and the roles per certificate CN (`DDSR_MTLS_ROLES`) — see [Security](SECURITY.md) §7d |
 
 ```bash
 # the development launch, secured against a local Keycloak realm

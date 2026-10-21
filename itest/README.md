@@ -28,6 +28,13 @@ broker. Requirements and decisions:
   the development launch with no security variable, a TypeScript
   provider without credentials publishing to it, and a lookup without a
   token finding it.
+- **M (host only) — client certificates:** a CA issued per run
+  (`tls/make-certs.sh`), a broker in mode `mtls` with HTTPS demanding a
+  certificate and a plain listener for a gateway's header; no
+  connection without a certificate of the CA, roles per CN (consumer
+  `403` on the registry, admin `200`), the header counts from the
+  gateway's address, and the Java client subscribes and lists the
+  catalog with its key store. Runs whatever `HARNESS_AUTH` says.
 - **C (podman only) — the MQTT wire proof:** a Mosquitto container; the
   TS `MqttEventSource` receives and decodes the broker-shaped message
   over real MQTT/TCP (topics `<prefix>/<interface>` and

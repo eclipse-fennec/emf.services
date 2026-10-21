@@ -110,6 +110,21 @@ launch with no security variable at all, a provider without credentials
 publishing to it, and a lookup without a token finding it. The path a
 developer takes stays proven whatever the rest of the run did.
 
+After it, **scenario M** proves the other authentication mode
+([Security](SECURITY.md) §7d), again independent of Keycloak.
+`itest/tls/make-certs.sh` issues a CA for the run, a server certificate
+for `localhost` and client certificates for `java-client` and
+`harness` — plus one of another authority that must not get in. A third
+broker runs in mode `mtls`: HTTPS on 8898 demanding a client
+certificate, roles mapped per CN, and a plain listener on 8899 for a
+gateway's header. Checked from outside: no TLS connection without a
+certificate of the CA; `java-client` reads the catalog but not the
+registry (`403`), `harness` reads the registry; on the plain listener a
+call without the header is `401` and the admin's certificate in the
+header from `127.0.0.1` gets in. Finally the Java client runs against
+it with its key store and must subscribe to the event stream and list
+the catalog without a single TLS failure.
+
 ## Scenarios
 
 | | What runs | What is asserted |

@@ -28,6 +28,7 @@ import type { MqttFlavor, RestFlavor } from '@ddsr/model';
 import { MqttOperationServer, operationHandlers } from '@ddsr/transport-mqtt';
 import { restDispatcher } from '@ddsr/flavor-rest';
 import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, buildPaymentInterface, buildPaymentProvider } from './payment-api';
+import { brokerTokens, consumerId } from './broker-auth';
 
 const log = (m: string) => console.log(`[ts-provider] ${m}`);
 
@@ -105,6 +106,10 @@ async function main(): Promise<void> {
     // it back off the registration, which is how the cross-language
     // half of the origin is demonstrated rather than assumed.
     originLabel: process.env.DDSR_ORIGIN_LABEL ?? 'payments-ts-harness',
+    // Against a broker in mode bearer: the token, and a session under
+    // the name it carries.
+    tokenSupplier: brokerTokens(),
+    consumerId: consumerId(),
   });
 
   const payment = paymentInterface;

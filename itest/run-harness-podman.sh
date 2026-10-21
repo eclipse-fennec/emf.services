@@ -7,12 +7,19 @@
 # --network=host, so the localhost defaults of all configs apply
 # unchanged. Podman is the vehicle, not a requirement — the host-process
 # variant covers the same assertions.
+#
+# Secured by default, like the host variant (SECURITY.md §7a): Keycloak in
+# a container, the broker in mode bearer, and every container calls it as
+# a client of its own (itest/keycloak/auth.sh). HARNESS_AUTH=none runs it
+# open.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="$ROOT/itest/work-podman"
 BROKER_URL="http://localhost:8887/ddsr/rest"
 CONTAINERS=()
+# shellcheck source=keycloak/auth.sh
+. "$ROOT/itest/keycloak/auth.sh"
 
 log() { printf '\n=== %s ===\n' "$*"; }
 now_ms() { date +%s%3N; }
@@ -21,12 +28,13 @@ cleanup() {
   for c in "${CONTAINERS[@]:-}"; do
     podman rm -f "$c" >/dev/null 2>&1 || true
   done
+  stop_keycloak
 }
 trap cleanup EXIT
 
 wait_for_url() { # url timeout_s
   local url="$1" timeout="${2:-60}" waited=0
-  until curl -sf -o /dev/null "$url"; do
+  until curl_broker -sf -o /dev/null "$url"; do
     sleep 0.5
     waited=$((waited + 1))
     # if/then, NOT `[ ] && { }`: the failing guard list would become the
@@ -122,16 +130,31 @@ podman build -q --network=host -f "$ROOT/itest/containers/Containerfile.ts" -t d
 
 # --------------------------------------------------------------- broker
 log "starting broker container"
-run_container ddsr-broker ddsr/broker
+if secured; then
+  log "starting keycloak"
+  start_keycloak
+fi
+# Unquoted $(…) on purpose here and below: the helpers print one -e and
+# one NAME=value per line, none of them with a space.
+# shellcheck disable=SC2046
+run_container ddsr-broker ddsr/broker $(broker_auth_args)
 wait_for_url "$BROKER_URL/catalog" 60
+if secured; then
+  ANON_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BROKER_URL/catalog")
+  [ "$ANON_STATUS" = 401 ] \
+    || { echo "BROKER NOT SECURED: a call without a token answered $ANON_STATUS, expected 401"; exit 1; }
+  echo "  ✓ broker-secured: a call without a token is 401"
+fi
 echo "broker up"
 
 # ============================================================ Scenario A
 log "Scenario A: Java provider (container) -> TS consumer (container)"
-run_container ddsr-payment-java ddsr/payment-java
+# shellcheck disable=SC2046
+run_container ddsr-payment-java ddsr/payment-java $(client_args payment-java)
 wait_for_log ddsr-payment-java "published payments-java" 150
 
-podman run -d --replace --name ddsr-probe --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe --network=host $(client_args harness-probe-ts) \
   -e BROKER_URL="$BROKER_URL" -e EXPECT_LANG=java ddsr/ts harness-probe.ts >/dev/null
 CONTAINERS+=(ddsr-probe)
 
@@ -165,12 +188,14 @@ grep -E '  [✓✗]' "$WORK/probe-a.log" || true
 
 # ============================================================ Scenario B
 log "Scenario B: TS provider (container) -> Java consumer (container)"
-podman run -d --replace --name ddsr-provider-ts --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-provider-ts --network=host $(client_args ts-provider) \
   -e BROKER_URL="$BROKER_URL" -e SERVICE_URL="http://localhost:9090/payments" ddsr/ts >/dev/null
 CONTAINERS+=(ddsr-provider-ts)
 wait_for_log ddsr-provider-ts "published as reference" 120
 
-run_container ddsr-client-java ddsr/client-java
+# shellcheck disable=SC2046
+run_container ddsr-client-java ddsr/client-java $(client_args java-client)
 wait_for_log ddsr-client-java 'ts.charge(10.0, "EUR") =' 150
 echo "Java consumer called the TS provider:"
 podman logs ddsr-client-java 2>&1 | grep -E 'ts\.(getBalance|charge)'
@@ -178,7 +203,7 @@ podman logs ddsr-client-java 2>&1 | grep -E 'ts\.(getBalance|charge)'
 # Cross-language origin (#132), checked here too: this run is the one
 # that crosses real container boundaries, so it is the one where "the
 # broker can say which system published this" actually means something.
-TS_ORIGIN=$(curl -sf "$BROKER_URL/references?interface=Payment" \
+TS_ORIGIN=$(curl_broker -sf "$BROKER_URL/references?interface=Payment" \
   | grep -o 'name="ddsr.origin" value="[^"]*"' | head -1)
 if ! grep -q 'payments-ts-harness/' <<<"$TS_ORIGIN"; then
   echo "SCENARIO B FAILED: the TS provider's registration carries no origin of its own"
@@ -196,7 +221,7 @@ if [ "$ts_rc" != "0" ]; then
 fi
 grep -q 'unregistration confirmed by broker' "$WORK/provider-ts.log" \
   || { echo "SCENARIO B FAILED: no broker confirmation before endpoint stop"; cat "$WORK/provider-ts.log"; exit 1; }
-if curl -sf "$BROKER_URL/references?interface=Payment" | grep -q 'payments-ts'; then
+if curl_broker -sf "$BROKER_URL/references?interface=Payment" | grep -q 'payments-ts'; then
   echo "SCENARIO B FAILED: broker still lists payments-ts after withdraw"; exit 1
 fi
 echo "Scenario B OK: withdraw confirmed before endpoint stop; broker no longer lists payments-ts"
@@ -231,14 +256,17 @@ log "Scenario D: Java MQTT wire proof (broker sink + client source over mosquitt
 # JSON"), and JAVA_TOOL_OPTIONS strips the double quotes inline JSON
 # would need.
 podman rm -f ddsr-client-java ddsr-broker >/dev/null 2>&1 || true
-run_container ddsr-broker-mqtt ddsr/broker -e DDSR_MQTT_URL=tcp://localhost:1883
+# shellcheck disable=SC2046
+run_container ddsr-broker-mqtt ddsr/broker $(broker_auth_args) -e DDSR_MQTT_URL=tcp://localhost:1883
 wait_for_url "$BROKER_URL/catalog" 60
 wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883" 60
 
-run_container ddsr-client-mqtt ddsr/client-mqtt
+# shellcheck disable=SC2046
+run_container ddsr-client-mqtt ddsr/client-mqtt $(client_args java-client)
 wait_for_log ddsr-client-mqtt "client transport connected to tcp://localhost:1883" 90
 
-run_container ddsr-payment-mqtt ddsr/payment-java
+# shellcheck disable=SC2046
+run_container ddsr-payment-mqtt ddsr/payment-java $(client_args payment-java)
 wait_for_log ddsr-payment-mqtt "published payments-java" 150
 wait_for_log ddsr-client-mqtt "EVENT REGISTERED" 60
 
@@ -275,14 +303,16 @@ log "Scenario E: MQTT service flavor (A2 Etappe 2) — TS provider serves Paymen
 # mosquitto container; the probe reads the broker address from the
 # ANNOUNCED MqttFlavor and calls getBalance over topics.
 podman rm -f ddsr-payment-mqtt >/dev/null 2>&1 || true
-podman run -d --replace --name ddsr-provider-ts-mqtt --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-provider-ts-mqtt --network=host $(client_args ts-provider) \
   -e BROKER_URL="$BROKER_URL" -e SERVICE_URL="http://localhost:9090/payments" \
   -e MQTT_URL="mqtt://localhost:1883" ddsr/ts >/dev/null
 CONTAINERS+=(ddsr-provider-ts-mqtt)
 wait_for_log ddsr-provider-ts-mqtt "published as reference" 120
 wait_for_log ddsr-provider-ts-mqtt "serving Payment over MQTT" 30
 
-podman run -d --replace --name ddsr-probe-mqtt --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe-mqtt --network=host $(client_args harness-probe-ts) \
   -e BROKER_URL="$BROKER_URL" -e EXPECT_LANG=typescript -e EXPECT_MQTT=1 \
   ddsr/ts harness-probe.ts >/dev/null
 CONTAINERS+=(ddsr-probe-mqtt)
@@ -310,14 +340,16 @@ log "Scenario I: RSA over MQTT — one framework exports, another binds it with 
 # Deliberately MQTT distribution with REST discovery — the pairing that
 # shows the two halves are separate. The announcement is a publish to
 # the DDSR broker as always; only the calls travel over mosquitto.
-run_container ddsr-rsa-export ddsr/rsa-example \
+# shellcheck disable=SC2046
+run_container ddsr-rsa-export ddsr/rsa-example $(client_args rsa-example) \
   -e DDSR_BROKER_URL="$BROKER_URL" \
   -e RSA_DISTRIBUTION_FLAVOR=fennec.mqtt \
   -e RSA_EXPORT_CONFIGS=fennec.mqtt \
   -e RSA_MQTT_URL="tcp://localhost:1883"
 wait_for_log ddsr-rsa-export "exported .* over MQTT" 150
 
-run_container ddsr-rsa-import ddsr/rsa-consumer \
+# shellcheck disable=SC2046
+run_container ddsr-rsa-import ddsr/rsa-consumer $(client_args rsa-example-consumer) \
   -e DDSR_BROKER_URL="$BROKER_URL" \
   -e RSA_FLAVOR=fennec.mqtt \
   -e RSA_MQTT_URL="tcp://localhost:1883"
@@ -344,7 +376,8 @@ log "Scenario J: MQTT with no provider code — a factory configuration serves B
 # The probe reads the announced MqttFlavor and calls echo over
 # mosquitto: the three arguments come back in the contract's order, so
 # both ends read one document the same way.
-run_container ddsr-probe-mqtt-config ddsr/payment-java-mqtt \
+# shellcheck disable=SC2046
+run_container ddsr-probe-mqtt-config ddsr/payment-java-mqtt $(client_args payment-java) \
   -e DDSR_BROKER_URL="$BROKER_URL" \
   -e PAYMENTS_PUBLIC_URL="http://localhost:9091/payments" \
   -e PAYMENTS_PUBLISH_BINDING_PROBE_MQTT=true \
@@ -352,7 +385,8 @@ run_container ddsr-probe-mqtt-config ddsr/payment-java-mqtt \
 wait_for_log ddsr-probe-mqtt-config "serving BindingProbe generically on" 150
 wait_for_log ddsr-probe-mqtt-config "published BindingProbe" 60
 
-podman run -d --replace --name ddsr-probe-j --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe-j --network=host $(client_args harness-probe-ts) \
   -e BROKER_URL="$BROKER_URL" -e EXPECT_LANG=java -e EXPECT_MQTT_PROBE=1 \
   ddsr/ts harness-probe.ts >/dev/null
 CONTAINERS+=(ddsr-probe-j)
@@ -373,13 +407,16 @@ grep -E "RSA-Consumer" "$WORK/rsa-import.log" | tail -2
 
 # ============================================================ Scenario F
 log "Scenario F: same identity restarts on a new port -> MODIFIED in place, consumer follows"
-run_container ddsr-payment-f1 ddsr/payment-java
+# shellcheck disable=SC2046
+run_container ddsr-payment-f1 ddsr/payment-java $(client_args payment-java)
 wait_for_log ddsr-payment-f1 "published payments-java" 150
-podman run -d --replace --name ddsr-probe-f --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe-f --network=host $(client_args harness-lifecycle-f) \
   -e BROKER_URL="$BROKER_URL" -e SCENARIO=F -e NEW_PORT=9092 ddsr/ts harness-probe-lifecycle.ts >/dev/null
 CONTAINERS+=(ddsr-probe-f)
 wait_for_log ddsr-probe-f "PROBE_READY" 150
-run_container ddsr-payment-f2 ddsr/payment-java \
+# shellcheck disable=SC2046
+run_container ddsr-payment-f2 ddsr/payment-java $(client_args payment-java) \
   -e PAYMENTS_HTTP_PORT=9092 -e PAYMENTS_PUBLIC_URL="http://localhost:9092/payments"
 wait_for_log ddsr-payment-f2 "published payments-java" 150
 probe_f_rc=$(podman wait ddsr-probe-f)
@@ -395,13 +432,16 @@ podman stop -t 20 ddsr-payment-f1 >/dev/null
 
 # ============================================================ Scenario G
 log "Scenario G: DEPRECATE_AND_DRAIN with two provider versions"
-run_container ddsr-payment-g1 ddsr/payment-java
+# shellcheck disable=SC2046
+run_container ddsr-payment-g1 ddsr/payment-java $(client_args payment-java)
 wait_for_log ddsr-payment-g1 "published payments-java" 150
-podman run -d --replace --name ddsr-probe-g --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe-g --network=host $(client_args harness-lifecycle-g) \
   -e BROKER_URL="$BROKER_URL" -e SCENARIO=G ddsr/ts harness-probe-lifecycle.ts >/dev/null
 CONTAINERS+=(ddsr-probe-g)
 wait_for_log ddsr-probe-g "PROBE_READY" 150
-run_container ddsr-payment-g2 ddsr/payment-java \
+# shellcheck disable=SC2046
+run_container ddsr-payment-g2 ddsr/payment-java $(client_args payment-java) \
   -e PAYMENTS_HTTP_PORT=9092 -e PAYMENTS_PUBLIC_URL="http://localhost:9092/payments" \
   -e PAYMENTS_IMPL_VERSION=2.0.0 -e PAYMENTS_REPLACES_VERSION=1.0.0 -e PAYMENTS_UPDATE_POLICY=DEPRECATE_AND_DRAIN
 wait_for_log ddsr-payment-g2 "published payments-java" 150
@@ -419,9 +459,11 @@ podman stop -t 20 ddsr-payment-g1 >/dev/null
 # Provider liveness (#52): SIGKILL, no withdraw — see run-harness.sh.
 log "Scenario H: provider dies without withdraw (SIGKILL) -> PROVIDER_LOST via heartbeat"
 ARMED_BEFORE=$(podman logs ddsr-broker 2>&1 | grep -c "provider liveness armed" || true)
-run_container ddsr-payment-h ddsr/payment-java -e DDSR_PROVIDER_HEARTBEAT_SECONDS=2
+# shellcheck disable=SC2046
+run_container ddsr-payment-h ddsr/payment-java $(client_args payment-java) -e DDSR_PROVIDER_HEARTBEAT_SECONDS=2
 wait_for_log ddsr-payment-h "published payments-java" 150
-podman run -d --replace --name ddsr-probe-h --network=host \
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe-h --network=host $(client_args harness-lifecycle-h) \
   -e BROKER_URL="$BROKER_URL" -e SCENARIO=H ddsr/ts harness-probe-lifecycle.ts >/dev/null
 CONTAINERS+=(ddsr-probe-h)
 wait_for_log ddsr-probe-h "PROBE_READY" 150

@@ -5,6 +5,12 @@
     "service.exported.configs": "$[env:RSA_EXPORT_CONFIGS;default=fennec.rest]",
     "ddsr.provider.name": "rsa-example"
   },
+  "org.eclipse.fennec.services.security.oauth": {
+    "token.uri": "$[env:DDSR_OAUTH_TOKEN_URI;default=]",
+    "client.id": "$[env:DDSR_OAUTH_CLIENT_ID;default=]",
+    "client.secret": "$[env:DDSR_OAUTH_CLIENT_SECRET;default=]",
+    "scope": "$[env:DDSR_OAUTH_SCOPE;default=]"
+  },
   "org.eclipse.fennec.services.rsa.provider": {
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]",
     "http.port": "$[env:RSA_HTTP_PORT;default=9095]",

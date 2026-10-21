@@ -69,6 +69,13 @@ public final class SecurityNames {
 	/** The whiteboard name of the filter for {@value #NONE}. */
 	public static final String NO_AUTH_FILTER = FILTER_PREFIX + NONE;
 
+	/**
+	 * The whiteboard name of the feature that holds annotated resource
+	 * methods to their {@code @RolesAllowed} / {@code @PermitAll}, on
+	 * every application of a bearer mode.
+	 */
+	public static final String ROLES_FILTER = "fennec-roles";
+
 	/** The request property the bearer filter sets: the {@link VerifiedPrincipal}. */
 	public static final String REQUEST_PRINCIPAL = "fennec.principal";
 

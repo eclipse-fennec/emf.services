@@ -13,12 +13,13 @@ Bundle-Description: \
 
 -library: enableEMF
 
-# @Priority is all this bundle uses from jakarta.annotation, and it has
-# not changed between 2.1 and 3.0. The buildpath brings 3.0, but the
+# @Priority and the security annotations are all this bundle uses from
+# jakarta.annotation, and they have not changed between 2.1 and 3.0. The buildpath brings 3.0, but the
 # Jersey 3.1 launches this runs in carry 2.1.1 — with bnd's default
 # range the bundle would not resolve next to the broker.
 Import-Package: \
 	jakarta.annotation;version="[2.1,4)",\
+	jakarta.annotation.security;version="[2.1,4)",\
 	*
 
 -buildpath: \

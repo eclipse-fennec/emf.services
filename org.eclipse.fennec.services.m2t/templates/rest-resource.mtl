@@ -35,13 +35,16 @@ document says what is served where.
 [/for]
 
 import jakarta.ws.rs.Path;
-[for (imported : String | restImports(binding, flavor))]
+[for (imported : String | restImports(binding, implementation, flavor))]
 import [imported/];
 [/for]
 import jakarta.ws.rs.core.Response;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ServiceScope;
+[for (line : String | guardImport(implementation, flavor))]
+[line/]
+[/for]
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsName;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsResource;
 
@@ -55,6 +58,9 @@ import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsResource;
  */
 @JakartarsResource
 @JakartarsName("[flavor.name/]")
+[for (line : String | guardAnnotation(implementation, flavor))]
+[line/]
+[/for]
 @Component(service = [resourceName(implementation)/].class, scope = ServiceScope.PROTOTYPE)
 @Path("[resourcePath(flavor)/]")
 public class [resourceName(implementation)/] {
@@ -64,7 +70,7 @@ public class [resourceName(implementation)/] {
 [for (operationFlavor : RestOperationFlavor | flavor.operationFlavors->select(o | o.oclIsKindOf(RestOperationFlavor)))]
 
 	@[httpMethod(operationFlavor)/]
-[for (line : String | methodAnnotations(operationFlavor))]
+[for (line : String | methodAnnotations(implementation, operationFlavor))]
 	[line/]
 [/for]
 	public Response [operationFlavor.operation.name/]([for (parameter : Parameter | operationFlavor.operation.parameters->sortedBy(p | p.index)) separator(', ')][parameterAnnotation(operationFlavor, parameter)/][nullableSlotType(binding, parameter)/] [parameter.name/][/for]) {
@@ -195,11 +201,12 @@ finished lines: a multi-line block that takes no branch still contributes the
 newline after its tail, and an operation served at the base path would get a
 blank line where its @Path would have been.
 [/comment]
-[query public methodAnnotations(operationFlavor : RestOperationFlavor) : Sequence(String) =
+[query public methodAnnotations(implementation : ServiceImplementation, operationFlavor : RestOperationFlavor) : Sequence(String) =
 	(if operationFlavor.path.oclIsUndefined() then Sequence{}
 	else Sequence{'@Path("'.concat(operationFlavor.path).concat('")')} endif)
 	->union(mediaAnnotation('Consumes', operationFlavor.consumes))
-	->union(mediaAnnotation('Produces', operationFlavor.produces)) /]
+	->union(mediaAnnotation('Produces', operationFlavor.produces))
+	->union(securityAnnotation(implementation, operationFlavor.operation)) /]
 
 [query public mediaAnnotation(annotation : String, mediaTypes : Sequence(String)) : Sequence(String) =
 	if mediaTypes->isEmpty() then Sequence{}
@@ -210,6 +217,66 @@ blank line where its @Path would have been.
 			if joined.size() = 0 then '"'.concat(mediaType).concat('"')
 			else joined.concat(', "').concat(mediaType).concat('"') endif))
 		.concat('})')} endif endif /]
+
+[comment]===================== who may call =====================[/comment]
+
+[comment]
+The operation's effective requirement (SECURITY.md §2): its own where it
+states one, the contract's otherwise. Written in the Jakarta annotations a
+hand-written resource carries, read the way JavaContracts reads them, so the
+two directions agree:
+
+  authenticated, with scopes      @RolesAllowed({...}) — all of them, as the model means it
+  authenticated, without scopes   @RolesAllowed("**") — any verified caller
+  not authenticated               @PermitAll
+  nothing stated                  no annotation
+
+The annotations are enforced by the roles filter of …services.security.jwt
+on every application that states a bearer mode.
+[/comment]
+[query public securityAnnotation(implementation : ServiceImplementation, operation : ServiceOperation) : Sequence(String) =
+	if not operation.security.oclIsUndefined() then requirementAnnotation(operation.security)
+	else if not contractOf(implementation).security.oclIsUndefined()
+	then requirementAnnotation(contractOf(implementation).security)
+	else Sequence{} endif endif /]
+
+[comment]The contract served — reached from the implementation, the way contractName reaches it.[/comment]
+[query public contractOf(implementation : ServiceImplementation) : ServiceInterface =
+	implementation.serviceInterfaces->first() /]
+
+[query public requirementAnnotation(requirement : SecurityRequirement) : Sequence(String) =
+	if not requirement.authenticated then Sequence{'@PermitAll'}
+	else if requirement.scopes->isEmpty() then Sequence{'@RolesAllowed("**")'}
+	else if requirement.scopes->size() = 1
+	then Sequence{'@RolesAllowed("'.concat(requirement.scopes->first()).concat('")')}
+	else Sequence{'@RolesAllowed({'
+		.concat(requirement.scopes->iterate(scope : String; joined : String = '' |
+			if joined.size() = 0 then '"'.concat(scope).concat('"')
+			else joined.concat(', "').concat(scope).concat('"') endif))
+		.concat('})')} endif endif endif /]
+
+[comment]
+A resource whose contract says anything about callers is not served by an
+application that says nothing about authentication: it requires one of the
+fennec-auth filters, which a filter only satisfies on an application of its
+own mode. Mode none serves it open — the deployment's explicit choice.
+[/comment]
+[query public guardedByCallers(implementation : ServiceImplementation, flavor : RestFlavor) : Boolean =
+	restOperations(flavor)->exists(o | securityAnnotation(implementation, o.operation)->notEmpty()) /]
+
+[query public guardAnnotation(implementation : ServiceImplementation, flavor : RestFlavor) : Sequence(String) =
+	if guardedByCallers(implementation, flavor) then Sequence{'@JakartarsExtensionSelect("(osgi.jakartars.name=fennec-auth-*)")'}
+	else Sequence{} endif /]
+
+[query public guardImport(implementation : ServiceImplementation, flavor : RestFlavor) : Sequence(String) =
+	if guardedByCallers(implementation, flavor)
+	then Sequence{'import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsExtensionSelect;'}
+	else Sequence{} endif /]
+
+[query public securityImports(implementation : ServiceImplementation, flavor : RestFlavor) : Sequence(String) =
+	restOperations(flavor)->collect(o | securityAnnotation(implementation, o.operation))->flatten()
+		->collect(a | if a = '@PermitAll' then 'jakarta.annotation.security.PermitAll'
+			else 'jakarta.annotation.security.RolesAllowed' endif) /]
 
 [comment]===================== argument validity =====================[/comment]
 
@@ -315,7 +382,7 @@ error is still the error it is, it just has no status of its own.
 
 [comment]===================== imports =====================[/comment]
 
-[query public restImports(binding : JavaBinding, flavor : RestFlavor) : Sequence(String) =
+[query public restImports(binding : JavaBinding, implementation : ServiceImplementation, flavor : RestFlavor) : Sequence(String) =
 	restOperations(flavor)->collect(o | 'jakarta.ws.rs.'.concat(httpMethod(o)))
 		->union(restOperations(flavor)->collect(o | o.parameterBindings)->flatten()
 			->collect(b | bindingImport(b)))
@@ -326,6 +393,7 @@ error is still the error it is, it just has no status of its own.
 		->union(if restOperations(flavor)->exists(o | o.operation.parameters
 				->exists(p | not p.defaultValue.oclIsUndefined()))
 			then Sequence{'jakarta.ws.rs.DefaultValue'} else Sequence{} endif)
+		->union(securityImports(implementation, flavor))
 		->union(flavorSlots(flavor)->collect(slot | qualifiedType(binding, slot)))
 		->union(if flavorSlots(flavor)->exists(slot | slot.upperBound <> 1)
 			then Sequence{'java.util.List'} else Sequence{} endif)

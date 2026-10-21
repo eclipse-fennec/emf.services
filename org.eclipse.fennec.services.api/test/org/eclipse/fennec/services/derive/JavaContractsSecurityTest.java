@@ -51,6 +51,12 @@ class JavaContractsSecurityTest {
 		String hello();
 	}
 
+	@RolesAllowed("**")
+	interface AnyCaller {
+
+		String whoAmI();
+	}
+
 	interface Forbidding {
 
 		@DenyAll
@@ -90,6 +96,16 @@ class JavaContractsSecurityTest {
 
 		assertThat(contract.getSecurity()).isNull();
 		assertThat(operation(contract, "hello").getSecurity()).isNull();
+	}
+
+	@Test
+	void anyAuthenticatedIsARequirementWithoutScopes() {
+		// "**" is Jakarta's "any verified caller", not a role called "**" —
+		// and what the m2t template writes back for such a requirement.
+		ServiceInterface contract = JavaContracts.contractOf(AnyCaller.class, "1.0.0");
+
+		assertThat(contract.getSecurity().isAuthenticated()).isTrue();
+		assertThat(contract.getSecurity().getScopes()).isEmpty();
 	}
 
 	@Test

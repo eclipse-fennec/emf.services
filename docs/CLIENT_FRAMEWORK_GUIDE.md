@@ -516,6 +516,26 @@ The payment example's `broker-auth.ts` does exactly this from the same
 variables a Java node reads (`DDSR_TLS_KEYSTORE`, `DDSR_TLS_CA`,
 `DDSR_BROKER_AUTHENTICATION`).
 
+**Over MQTT** the certificate goes on the connection, to a messaging
+broker that demands one and holds the topics to an ACL
+([Security](SECURITY.md) §7d). A Java node gives each Paho connection
+the same four `tls.*` attributes as the REST transport — on
+`…client.mqtt` (the event source), `…client.mqtt.invoker` (calls),
+`…provider.mqtt.connection` (the generic distribution) and
+`…broker.mqtt` (the broker's sink) — and they apply to `ssl://` URLs
+only. With a key store the invoker answers under the CN of its key, so
+the reply topics carry the name the ACL knows. In TypeScript the
+transports take `tls` (the same `pfx`, `passphrase` and `ca`), and the
+plugin's `consumer` is the name on the reply topics:
+
+```ts
+const tls = { pfx: readFileSync(process.env.DDSR_TLS_KEYSTORE!),
+              passphrase: process.env.DDSR_TLS_KEYSTORE_PASSWORD,
+              ca: readFileSync(process.env.DDSR_TLS_CA!) };
+new MqttFlavorPlugin({ tls, consumer: 'my-node' });        // the certificate's CN
+new MqttOperationServer({ tls });
+```
+
 ### Serving a contract in TypeScript
 
 A provider is an object and a flavor — no routing code, and no handler

@@ -136,7 +136,10 @@ The role derives them into the client's REST transport. Give the
 certificate the CN of the client id, so the node is one name for the
 broker and for the providers it calls; `broker.authentication` is
 `token` unless said, and `certificate` without a key store is refused
-before anything is written.
+before anything is written. Over MQTT the same key and trust store also
+reach the node's MQTT connections — the invoker, the distribution's
+connection and the event source — for a messaging broker that demands
+a certificate; a REST-only node writes none of them.
 
 Everything both roles accept is in the metatype, visible in any OSGi
 console, on `RsaProvider.Config` and `RsaConsumer.Config`.

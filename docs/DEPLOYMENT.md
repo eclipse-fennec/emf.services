@@ -114,6 +114,8 @@ docker run -d --name ddsr-broker \
 | `DDSR_MQTT_CLIENT_ID` | `ddsr-broker` | MQTT client identifier. Two brokers on one MQTT broker need two, or they disconnect each other. |
 | `DDSR_MQTT_EVENT_SOURCE` | `/fennec/services/broker` | The CloudEvents `source` of every event this broker sends — what a reader uses to tell two brokers apart. |
 | `DDSR_MQTT_QOS` | `0` | Fits a stream whose consumers re-snapshot on reconnect anyway; raise it if your consumers do not. |
+| `DDSR_MQTT_TLS_KEYSTORE` / `_PASSWORD` | *(empty)* | PKCS12 key store with the certificate the broker shows the MQTT broker — for a messaging broker that demands client certificates ([Security](SECURITY.md) §7d). Used only with an `ssl://` URL. |
+| `DDSR_MQTT_TLS_TRUSTSTORE` / `_PASSWORD` | *(empty)* | PKCS12 trust store with the authorities the broker believes for the MQTT broker's certificate; empty means the JVM's. |
 
 Both transports run side by side: a consumer that subscribes over SSE
 and one that subscribes over MQTT see the same events, and

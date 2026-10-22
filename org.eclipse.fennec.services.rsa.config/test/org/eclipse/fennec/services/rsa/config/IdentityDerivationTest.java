@@ -123,6 +123,31 @@ class IdentityDerivationTest {
 	}
 
 	@Test
+	void overMqttTheCertificateGoesToTheInvokerTheDistributionAndTheEvents() {
+		NodeIdentity certified = new NodeIdentity("", "", "", "", "", "", List.of(), "", "", "/tls/node.p12",
+				"changeit", "/tls/truststore.p12", "changeit", false);
+		RsaSettings mqtt = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095, "0.0.0.0", "services",
+				true, "ddsrHttp", "node-a", "1.0.0", "fennec.mqtt", "promiscuous", "promiscuous", 30, 0, "",
+				"ssl://localhost:8883", "ddsr/rpc", "fennec.mqtt", "fennec.mqtt", certified);
+		List<DerivedConfiguration> plan = Derivation.forProvider(mqtt);
+
+		for (String pid : List.of(Derivation.INVOKER_MQTT_PID, Derivation.CONNECTION_MQTT_PID, Derivation.CLIENT_MQTT_PID)) {
+			assertThat(byLabel(plan, pid).properties()).as(pid)
+					.containsEntry("tls.keystore", "/tls/node.p12")
+					.containsEntry("tls.truststore", "/tls/truststore.p12");
+		}
+	}
+
+	@Test
+	void aRestNodeWritesNoMqttConnections() {
+		NodeIdentity certified = new NodeIdentity("", "", "", "", "", "", List.of(), "", "", "/tls/node.p12",
+				"changeit", "", "", true);
+
+		assertThat(Derivation.forProvider(provider(certified, ""))).noneMatch(entry ->
+				entry.label().equals(Derivation.INVOKER_MQTT_PID) || entry.label().equals(Derivation.CONNECTION_MQTT_PID));
+	}
+
+	@Test
 	void aTokenOnlyNodeWritesNothingAboutTls() {
 		assertThat(byLabel(Derivation.forProvider(provider(IDENTITY, "")), Derivation.CLIENT_REST_PID).properties())
 				.containsOnlyKeys("broker.url");

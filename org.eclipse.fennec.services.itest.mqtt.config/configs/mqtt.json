@@ -1,6 +1,16 @@
 {
   "org.eclipse.fennec.services.client.mqtt": {
-    "broker.url": "tcp://localhost:1883"
+    "broker.url": "$[env:DDSR_MQTT_URL;default=tcp://localhost:1883]",
+    "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
+    "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
+    "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",
+    "tls.truststore.password": "$[env:DDSR_TLS_TRUSTSTORE_PASSWORD;default=]"
+  },
+  "org.eclipse.fennec.services.client.mqtt.invoker": {
+    "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
+    "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
+    "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",
+    "tls.truststore.password": "$[env:DDSR_TLS_TRUSTSTORE_PASSWORD;default=]"
   },
   "org.eclipse.fennec.services.client": {
     "eventSource.target": "(ddsr.event.transport=mqtt)",

@@ -48,6 +48,7 @@
  *                   state (same argument as for lifecycle events)
  */
 
+import type { TlsOptions } from '@ddsr/client';
 import type { ServiceOperation } from '@ddsr/model';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO, CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
@@ -282,8 +283,20 @@ export interface MqttRpcClientLike {
   endAsync(force?: boolean): Promise<void>;
 }
 
-/** Default factory — a live mqtt.js connection. */
-export async function connectMqtt(brokerUrl: string, clientId: string): Promise<MqttRpcClientLike> {
+/**
+ * Default factory — a live mqtt.js connection. Connects with mqtt.js. With `tls` on an mqtts:// (or ssl://) URL the
+ * node shows its certificate and believes the given authorities
+ * (SECURITY.md §7d) — the same `TlsOptions` a node hands `tlsFetch`.
+ */
+export async function connectMqtt(brokerUrl: string, clientId: string, tls?: TlsOptions): Promise<MqttRpcClientLike> {
   const { connectAsync } = await import('mqtt');
-  return await connectAsync(brokerUrl, { clientId }) as unknown as MqttRpcClientLike;
+  return await connectAsync(brokerUrl, { clientId, ...tlsConnectOptions(tls) }) as unknown as MqttRpcClientLike;
+}
+
+/** What mqtt.js hands Node's tls.connect: the certificate, its password, the authorities. */
+export function tlsConnectOptions(tls?: TlsOptions): Record<string, unknown> {
+  if (!tls) return {};
+  return Object.fromEntries(Object.entries({
+    pfx: tls.pfx, passphrase: tls.passphrase, cert: tls.cert, key: tls.key, ca: tls.ca, rejectUnauthorized: true,
+  }).filter(([, value]) => value !== undefined));
 }

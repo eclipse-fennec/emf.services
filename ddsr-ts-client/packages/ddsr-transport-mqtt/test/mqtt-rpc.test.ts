@@ -18,7 +18,13 @@ import type { MqttFlavor, MqttOperationFlavor, ServiceOperation } from '@ddsr/mo
 import { MqttFlavorPlugin } from '../src/mqtt-flavor-plugin';
 import { MqttOperationServer } from '../src/mqtt-operation-server';
 import type { MqttRpcClientLike } from '../src/mqtt-rpc';
-import { qosFor, replyBaseFor, requestTopicFor, topicSegment } from '../src/mqtt-rpc';
+import {
+  qosFor,
+  replyBaseFor,
+  requestTopicFor,
+  topicSegment,
+  tlsConnectOptions,
+} from '../src/mqtt-rpc';
 
 function firstOpFlavor(flavor: MqttFlavor): MqttOperationFlavor {
   const list = flavor.operationFlavors as unknown as
@@ -227,6 +233,33 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     expect(document)
       .toContain('xsi:type="services:IntProperty" name="amount" value="12"');
     await plugin.close();
+  });
+
+  it('answers under the node\'s name and connects with its certificate (SECURITY.md §7d)', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const { broker, clientFactory } = testHarness();
+    const published: Array<{ topic: string; payload: Uint8Array }> = [];
+    broker.onPublish((topic, payload) => published.push({ topic, payload }));
+    const handed: unknown[] = [];
+    const tls = { pfx: Buffer.from('not a real store'), passphrase: 'changeit' };
+
+    const plugin = new MqttFlavorPlugin({
+      clientFactory: (url, clientId, given) => { handed.push(given); return clientFactory(); },
+      log: () => undefined, timeoutMs: 40, originLabel: 'probe', consumer: 'java-client', tls,
+    });
+    await plugin.invoke(charge, {}, flavor, firstOpFlavor(flavor)).catch(() => undefined);
+
+    expect(handed).toEqual([tls]);
+    const request = published.find(p => p.topic === 'ddsr/rpc/payments/charge');
+    expect(readStructured(request!.payload).attributes.extensions.replyto)
+      .toMatch(/^ddsr\/rpc\/payments\/charge\/reply\/java-client\//);
+    await plugin.close();
+  });
+
+  it('hands mqtt.js the certificate, its password and the authorities, and nothing unset', () => {
+    expect(tlsConnectOptions(undefined)).toEqual({});
+    expect(tlsConnectOptions({ pfx: Buffer.from('p12'), passphrase: 'pw', ca: 'PEM' }))
+      .toEqual({ pfx: Buffer.from('p12'), passphrase: 'pw', ca: 'PEM', rejectUnauthorized: true });
   });
 
   it('round-trips an invocation: consumer plugin -> provider server -> answer', async () => {

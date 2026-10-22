@@ -11,6 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
+import type { TlsOptions } from '@ddsr/client';
 import { randomUUID } from 'node:crypto';
 import { toArray } from '@ddsr/client';
 import type { MqttFlavor, MqttOperationFlavor, ServiceOperationFlavor } from '@ddsr/model';
@@ -30,7 +31,9 @@ export interface MqttOperationServerOptions {
   /** Broker to listen on; defaults to the flavor's first brokers entry. */
   brokerUrl?: string;
   clientId?: string;
-  clientFactory?: (url: string, clientId: string) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  clientFactory?: (url: string, clientId: string, tls?: TlsOptions) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  /** The node's certificate and the authorities it believes, for mqtts:// brokers. */
+  tls?: TlsOptions;
   /** Which system this is, for the CloudEvents `source` of every answer (#101). */
   originLabel?: string;
   log?: (message: string) => void;
@@ -66,7 +69,8 @@ export class MqttOperationServer {
     const url = this.options.brokerUrl ?? brokers[0];
     if (!url) throw new Error('MqttFlavor announces no brokers and the server has no brokerUrl override');
     const factory = this.options.clientFactory ?? connectMqtt;
-    this.client = await factory(url, this.options.clientId ?? `ddsr-provider-${randomUUID().slice(0, 8)}`);
+    this.client = await factory(url, this.options.clientId ?? `ddsr-provider-${randomUUID().slice(0, 8)}`,
+      this.options.tls);
     this.client.on('message', (topic, payload) => void this.dispatch(topic, payload));
 
     for (const opFlavor of toArray<ServiceOperationFlavor>(this.flavor.operationFlavors)) {

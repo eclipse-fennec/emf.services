@@ -66,7 +66,11 @@
 		"topic.prefix": "$[env:DDSR_MQTT_TOPIC_PREFIX;default=ddsr/events]",
 		"client.id": "$[env:DDSR_MQTT_CLIENT_ID;default=ddsr-broker]",
 		"event.source": "$[env:DDSR_MQTT_EVENT_SOURCE;default=/fennec/services/broker]",
-		"qos": "$[env:DDSR_MQTT_QOS;default=0]"
+		"qos": "$[env:DDSR_MQTT_QOS;default=0]",
+		"tls.keystore": "$[env:DDSR_MQTT_TLS_KEYSTORE;default=]",
+		"tls.keystore.password": "$[env:DDSR_MQTT_TLS_KEYSTORE_PASSWORD;default=]",
+		"tls.truststore": "$[env:DDSR_MQTT_TLS_TRUSTSTORE;default=]",
+		"tls.truststore.password": "$[env:DDSR_MQTT_TLS_TRUSTSTORE_PASSWORD;default=]"
 	},
 	"org.eclipse.fennec.services.provider.rest~brokerCatalog":
 	{

@@ -82,6 +82,13 @@
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",
     "broker.url": "$[env:DDSR_BROKER_URL;default=http://localhost:8887/ddsr/rest]"
   },
+  "org.eclipse.fennec.services.provider.mqtt.connection":
+  {
+    "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
+    "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
+    "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",
+    "tls.truststore.password": "$[env:DDSR_TLS_TRUSTSTORE_PASSWORD;default=]"
+  },
   "org.eclipse.fennec.services.examples.payment":
   {
     "public.url": "$[env:PAYMENTS_PUBLIC_URL;default=http://localhost:9091/payments]",

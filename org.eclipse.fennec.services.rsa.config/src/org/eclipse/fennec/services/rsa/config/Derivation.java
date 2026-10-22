@@ -60,6 +60,12 @@ public final class Derivation {
 	/** The transport that carries the broker's events to an MQTT-hearing node. */
 	static final String CLIENT_MQTT_PID = "org.eclipse.fennec.services.client.mqtt";
 
+	/** How this node calls services announced over MQTT. */
+	static final String INVOKER_MQTT_PID = "org.eclipse.fennec.services.client.mqtt.invoker";
+
+	/** How the MQTT distribution connects to the brokers it serves on. */
+	static final String CONNECTION_MQTT_PID = "org.eclipse.fennec.services.provider.mqtt.connection";
+
 	static final String ADMIN_FACTORY = "org.eclipse.fennec.services.rsa";
 
 	static final String TOPOLOGY_PID = "org.eclipse.fennec.services.rsa.topology";
@@ -99,6 +105,7 @@ public final class Derivation {
 		}
 		contracts(plan, settings);
 		client(plan, settings);
+		mqttConnections(plan, settings, true);
 		distribution(plan, settings);
 		discovery(plan, settings);
 		plan.add(admin(settings, "(ddsr.rsa.flavor=" + settings.effectiveDistributionFlavor() + ")"));
@@ -119,6 +126,7 @@ public final class Derivation {
 		identity(plan, settings, false);
 		contracts(plan, settings);
 		client(plan, settings);
+		mqttConnections(plan, settings, false);
 		discovery(plan, settings);
 		plan.add(admin(settings, NO_DISTRIBUTION));
 		plan.add(topology(settings));
@@ -249,11 +257,44 @@ public final class Derivation {
 					"broker.url", settings.brokerUrl())));
 			return;
 		}
-		plan.add(DerivedConfiguration.of(CLIENT_MQTT_PID, Map.of(
-				"broker.url", settings.mqttUrl(),
-				"topic.prefix", "ddsr/events")));
+		Map<String, Object> events = new LinkedHashMap<>();
+		events.put("broker.url", settings.mqttUrl());
+		events.put("topic.prefix", "ddsr/events");
+		events.putAll(mqttTls(settings.identity()));
+		plan.add(DerivedConfiguration.of(CLIENT_MQTT_PID, Map.copyOf(events)));
 		plan.add(DerivedConfiguration.of(DISCOVERY_MQTT_PID, Map.of(
 				"broker.url", settings.brokerUrl())));
+	}
+
+	/**
+	 * The node's certificate on its MQTT connections (SECURITY.md §7d):
+	 * calls it makes over an announced MQTT flavor, and — where it serves
+	 * over MQTT — the distribution's connection. Only where MQTT is in
+	 * play at all and the node has a certificate; its CN is then its name
+	 * on the reply topics, the user an MQTT broker's ACL names.
+	 */
+	private static void mqttConnections(List<DerivedConfiguration> plan, RsaSettings settings, boolean serves) {
+		NodeIdentity identity = settings.identity();
+		boolean mqtt = RsaSettings.MQTT.equals(settings.flavor()) || settings.hearsOverMqtt()
+				|| (serves && RsaSettings.MQTT.equals(settings.effectiveDistributionFlavor()));
+		if (!mqtt || !identity.hasTls()) {
+			return;
+		}
+		plan.add(DerivedConfiguration.of(INVOKER_MQTT_PID, mqttTls(identity)));
+		if (serves && RsaSettings.MQTT.equals(settings.effectiveDistributionFlavor())) {
+			plan.add(DerivedConfiguration.of(CONNECTION_MQTT_PID, mqttTls(identity)));
+		}
+	}
+
+	private static Map<String, Object> mqttTls(NodeIdentity identity) {
+		if (!identity.hasTls()) {
+			return Map.of();
+		}
+		return Map.of(
+				"tls.keystore", identity.keyStore(),
+				"tls.keystore.password", identity.keyStorePassword(),
+				"tls.truststore", identity.trustStore(),
+				"tls.truststore.password", identity.trustStorePassword());
 	}
 
 	/**

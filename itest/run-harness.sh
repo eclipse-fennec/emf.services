@@ -541,6 +541,14 @@ until [ "$(as_certificate harness "$MTLS_URL/catalog")" = 200 ]; do
   [ "$waited" -lt 60 ] || { echo "TIMEOUT waiting for the mtls broker"; tail -30 "$WORK/broker-mtls.log"; exit 1; }
 done
 wait_for_broker_contracts "$MTLS_URL" --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/harness.crt" --key "$TLS_DIR/harness.key"
+# The broker announces its own contracts at its public URL — not at the
+# default address, where the main broker of this harness answers. A
+# self-publication that ran before its configuration arrived did exactly
+# that once (CI), and the Java client then called the wrong broker.
+grep -q 'https://localhost:8898' <<<"$(curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" \
+    --key "$TLS_DIR/java-client.key" "$MTLS_URL/references?interface=BrokerCatalog")" \
+  || { echo "SCENARIO M FAILED: the mtls broker announced its catalog somewhere other than $MTLS_URL"
+       grep -a "seeded and served" "$WORK/broker-mtls.log"; exit 1; }
 # No certificate, or one of another authority: no TLS connection at all.
 expect_status 000 "$(curl -s -o /dev/null -w '%{http_code}' --cacert "$TLS_DIR/ca.crt" "$MTLS_URL/catalog" || true)" \
   "a call without a certificate"

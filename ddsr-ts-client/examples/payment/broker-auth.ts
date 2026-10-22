@@ -21,7 +21,7 @@
  * consumer id each example chooses itself.
  */
 import { readFileSync } from 'node:fs';
-import { clientCredentials, tlsFetch, type TokenSupplier } from '@ddsr/client';
+import { clientCredentials, tlsFetch, type TlsOptions, type TokenSupplier } from '@ddsr/client';
 
 /**
  * The token the broker is shown, or undefined against an open broker —
@@ -58,16 +58,25 @@ export function providerTokens(): TokenSupplier | undefined {
  * undefined, and so the platform's fetch, otherwise.
  */
 export function nodeFetch(): typeof fetch | undefined {
+  const tls = nodeTls();
+  return tls ? tlsFetch(tls) : undefined;
+}
+
+/**
+ * The same certificate and authorities as TLS options, for the MQTT
+ * transports (mqtts:// brokers); undefined without DDSR_TLS_*.
+ */
+export function nodeTls(): TlsOptions | undefined {
   const keyStore = process.env.DDSR_TLS_KEYSTORE;
   const ca = process.env.DDSR_TLS_CA;
   if (!keyStore && !ca) {
     return undefined;
   }
-  return tlsFetch({
+  return {
     pfx: keyStore ? readFileSync(keyStore) : undefined,
     passphrase: process.env.DDSR_TLS_KEYSTORE_PASSWORD,
     ca: ca ? readFileSync(ca) : undefined,
-  });
+  };
 }
 
 /**

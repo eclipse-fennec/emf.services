@@ -11,6 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
+import type { TlsOptions } from '@ddsr/client';
 import { randomUUID } from 'node:crypto';
 import type { FlavorPlugin } from '@ddsr/client';
 import { toArray } from '@ddsr/client';
@@ -44,9 +45,18 @@ export interface MqttFlavorPluginOptions {
   /** Reply wait in milliseconds; default 10s. */
   timeoutMs?: number;
   /** Injectable client factory (tests). Defaults to mqtt.js. */
-  clientFactory?: (url: string, clientId: string) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  clientFactory?: (url: string, clientId: string, tls?: TlsOptions) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
   /** Which system this is, for the CloudEvents `source` of every call (#101). */
   originLabel?: string;
+  /**
+   * This node's name on the reply topics — its consumer id, and with a
+   * certificate its CN: an MQTT broker that takes the CN as the user can
+   * then let only this node read its answers (SECURITY.md §7d, §8).
+   * Default: the origin label.
+   */
+  consumer?: string;
+  /** The node's certificate and the authorities it believes, for mqtts:// brokers. */
+  tls?: TlsOptions;
   log?: (message: string) => void;
 }
 
@@ -98,7 +108,7 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     // subtree, so a broker can be told who may read what. An id alone
     // separates by obscurity, which is not a separation a deployment
     // can enforce.
-    const consumer = topicSegment(this.options.originLabel ?? 'ts');
+    const consumer = topicSegment(this.options.consumer ?? this.options.originLabel ?? 'ts');
     const subtree = replySubtreeFor(mqttFlavor, mqttOp, consumer);
     const source = `/consumer/${this.options.originLabel ?? 'ts'}`;
     const provisional = randomUUID();
@@ -165,7 +175,7 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     if (!clientPromise) {
       const factory = this.options.clientFactory ?? connectMqtt;
       clientPromise = Promise.resolve(
-        factory(url, this.options.clientId ?? `ddsr-rpc-${randomUUID().slice(0, 8)}`)
+        factory(url, this.options.clientId ?? `ddsr-rpc-${randomUUID().slice(0, 8)}`, this.options.tls)
       ).then(client => {
         client.on('message', (topic, payload) => this.onMessage(topic, payload));
         return client;

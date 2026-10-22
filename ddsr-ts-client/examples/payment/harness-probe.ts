@@ -40,7 +40,7 @@ import {
   propertiesOf,
   propertyOf,
 } from '@ddsr/client';
-import { brokerTokens, consumerId, nodeFetch } from './broker-auth';
+import { brokerTokens, consumerId, nodeFetch, nodeTls } from './broker-auth';
 
 const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 const EXPECTED_LANG = process.env.EXPECT_LANG ?? 'java';
@@ -75,7 +75,7 @@ async function main(): Promise<void> {
   // lookup by: an implementation announced over MQTT alone is invisible
   // to a REST-only consumer, and rightly so. Scenario J is the case
   // where that matters, so the plugin joins only there.
-  const mqttPlugin = EXPECT_MQTT_PROBE ? new MqttFlavorPlugin({ timeoutMs: 15000 }) : undefined;
+  const mqttPlugin = EXPECT_MQTT_PROBE ? new MqttFlavorPlugin({ timeoutMs: 15000, tls: nodeTls(), consumer: consumerId('harness-probe-ts') }) : undefined;
   const client = DdsrClientImpl.create({
     brokerUrl: BROKER_URL,
     flavorPlugins: mqttPlugin ? [new RestFlavorPlugin(), mqttPlugin] : [new RestFlavorPlugin()],
@@ -159,7 +159,7 @@ async function main(): Promise<void> {
     check('mqtt-flavor-announced', mqttFlavor !== undefined,
       `${flavors.map(f => f.eClass?.()?.name).join(',')}`);
     if (mqttFlavor) {
-      const plugin = new MqttFlavorPlugin({ timeoutMs: 15000 });
+      const plugin = new MqttFlavorPlugin({ timeoutMs: 15000, tls: nodeTls(), consumer: consumerId('harness-probe-ts') });
       const operations = [...locator.serviceInterface.operations] as ServiceOperation[];
       const getBalanceOp = operations.find(o => o.name === 'getBalance')!;
       const opFlavors = [...mqttFlavor.operationFlavors] as MqttOperationFlavor[];

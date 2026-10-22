@@ -11,6 +11,8 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
+import { tlsConnectOptions } from './mqtt-rpc.js';
+import type { TlsOptions } from '@ddsr/client';
 import type { ServiceEvent } from '@ddsr/model';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from '@ddsr/client';
 import {
@@ -38,7 +40,9 @@ export interface MqttEventSourceOptions {
   clientId?: string;
   qos?: 0 | 1 | 2;
   /** Injectable client factory (tests). Defaults to mqtt.js connect(). */
-  clientFactory?: (url: string, clientId: string) => Promise<MqttClientLike> | MqttClientLike;
+  clientFactory?: (url: string, clientId: string, tls?: TlsOptions) => Promise<MqttClientLike> | MqttClientLike;
+  /** The node's certificate and the authorities it believes, for mqtts:// brokers. */
+  tls?: TlsOptions;
   log?: (message: string) => void;
 }
 
@@ -102,7 +106,7 @@ export class MqttEventSource implements DdsrEventSource {
 
     const connect = async (): Promise<void> => {
       const factory = this.options.clientFactory ?? defaultFactory;
-      client = await factory(this.options.brokerUrl, this.options.clientId ?? 'ddsr-consumer-ts');
+      client = await factory(this.options.brokerUrl, this.options.clientId ?? 'ddsr-consumer-ts', this.options.tls);
       client.on('error', (error) => {
         if (!closed) this.log(`mqtt error: ${String(error)}`);
       });
@@ -191,7 +195,7 @@ export class MqttEventSource implements DdsrEventSource {
   }
 }
 
-async function defaultFactory(url: string, clientId: string): Promise<MqttClientLike> {
+async function defaultFactory(url: string, clientId: string, tls?: TlsOptions): Promise<MqttClientLike> {
   const { connect } = await import('mqtt');
-  return connect(url, { clientId, clean: true }) as unknown as MqttClientLike;
+  return connect(url, { clientId, clean: true, ...tlsConnectOptions(tls) }) as unknown as MqttClientLike;
 }

@@ -28,7 +28,7 @@ import type { MqttFlavor, RestFlavor } from '@ddsr/model';
 import { MqttOperationServer, operationHandlers } from '@ddsr/transport-mqtt';
 import { restDispatcher } from '@ddsr/flavor-rest';
 import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, loadPaymentProvider } from './payment-api';
-import { brokerTokens, consumerId, nodeFetch } from './broker-auth';
+import { brokerTokens, consumerId, nodeFetch, nodeTls } from './broker-auth';
 
 const log = (m: string) => console.log(`[ts-provider] ${m}`);
 
@@ -132,7 +132,7 @@ async function main(): Promise<void> {
     // operation: the contract says what they are called and in which
     // order their arguments come (#154).
     mqttServer = new MqttOperationServer(mqttFlavor, operationHandlers(payment, payments),
-      { log: (m) => log(`mqtt: ${m}`) });
+      { log: (m) => log(`mqtt: ${m}`), tls: nodeTls() });
     await mqttServer.start();
     log(`serving Payment over MQTT at ${MQTT_URL}`);
   }

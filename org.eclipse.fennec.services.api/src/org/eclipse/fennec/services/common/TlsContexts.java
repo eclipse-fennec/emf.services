@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.services.client.rest.internal;
+package org.eclipse.fennec.services.common;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,6 +28,9 @@ import javax.net.ssl.TrustManagerFactory;
 /**
  * The TLS side of a node's client (SECURITY.md §7d): the certificate it
  * shows (a key store) and the authorities it believes (a trust store).
+ * One place for every transport that opens a connection — the REST
+ * client and the MQTT connections alike — so a node is configured with
+ * one identity, read the same way everywhere.
  *
  * <p>Both are optional and independent. Without a trust store the JVM's
  * own authorities decide, which is right for a broker with a public
@@ -35,7 +38,7 @@ import javax.net.ssl.TrustManagerFactory;
  * against a broker that only needs server TLS. Neither set means no
  * context at all, and the client stays exactly what it was.
  */
-final class TlsContexts {
+public final class TlsContexts {
 
 	private TlsContexts() {
 		// no instances
@@ -48,7 +51,7 @@ final class TlsContexts {
 	 *         a node configured to prove itself must not quietly call
 	 *         without its certificate
 	 */
-	static SSLContext of(String keyStore, String keyStorePassword, String keyStoreType, String trustStore,
+	public static SSLContext of(String keyStore, String keyStorePassword, String keyStoreType, String trustStore,
 			String trustStorePassword, String trustStoreType) {
 		boolean keys = present(keyStore);
 		boolean trust = present(trustStore);

@@ -26,6 +26,7 @@ import javax.net.ssl.SSLContext;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.TlsContexts;
 import org.eclipse.fennec.services.common.TokenSupplier;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;

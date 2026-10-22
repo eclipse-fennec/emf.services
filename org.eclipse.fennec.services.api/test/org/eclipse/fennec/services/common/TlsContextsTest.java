@@ -10,7 +10,7 @@
  * Contributors:
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
-package org.eclipse.fennec.services.client.rest.internal;
+package org.eclipse.fennec.services.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

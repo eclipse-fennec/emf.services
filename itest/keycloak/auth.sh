@@ -146,6 +146,27 @@ curl_broker() { # curl args...
   fi
 }
 
+# The broker serves its three contracts as three applications, and the
+# whiteboard deploys each on its own time: /catalog answering says nothing
+# about /implementations or /references. A path that is not deployed yet
+# answers 404, which a check would read as a wrong answer — so wait until
+# none of them does (any other status, 401 included, means it is served).
+wait_for_broker_contracts() { # [base-url [curl-args...]] — the main broker by default
+  local base="${1:-$BROKER_URL}" path status waited=0
+  [ $# -gt 0 ] && shift
+  for path in catalog implementations/ references; do
+    until status=$(curl -s -o /dev/null -w '%{http_code}' "$@" "$base/$path") \
+        && [ "$status" != 404 ] && [ "$status" != 000 ]; do
+      sleep 0.5
+      waited=$((waited + 1))
+      if [ "$waited" -ge 120 ]; then
+        echo "TIMEOUT: the broker does not serve /$path (last answer $status)" >&2
+        return 1
+      fi
+    done
+  done
+}
+
 # The role matrix, checked from outside right after the broker is up: a
 # consumer may not announce, and only an admin reads the whole registry.
 check_role_matrix() {

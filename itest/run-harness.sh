@@ -162,6 +162,7 @@ require_port_free 9090
 as_broker start_jar broker "$BROKER_JAR" "$WORK/broker"
 BROKER_PID=$LAST_PID
 wait_for_url "$BROKER_URL/catalog" 60
+wait_for_broker_contracts
 echo "broker up (pid $BROKER_PID)"
 if secured; then
   # The other half of the proof: secured means a caller without a token is
@@ -488,6 +489,7 @@ require_port_free 9093
 OPEN_PID=$!
 PIDS+=("$OPEN_PID")
 wait_for_url "$OPEN_URL/catalog" 60
+wait_for_broker_contracts "$OPEN_URL"
 (cd "$TS/examples/payment" \
   && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$OPEN_URL" SERVICE_URL="http://localhost:9093/payments" \
        node --import tsx provider.ts) >"$WORK/provider-open.log" 2>&1 &
@@ -538,6 +540,7 @@ until [ "$(as_certificate harness "$MTLS_URL/catalog")" = 200 ]; do
   waited=$((waited + 1))
   [ "$waited" -lt 60 ] || { echo "TIMEOUT waiting for the mtls broker"; tail -30 "$WORK/broker-mtls.log"; exit 1; }
 done
+wait_for_broker_contracts "$MTLS_URL" --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/harness.crt" --key "$TLS_DIR/harness.key"
 # No certificate, or one of another authority: no TLS connection at all.
 expect_status 000 "$(curl -s -o /dev/null -w '%{http_code}' --cacert "$TLS_DIR/ca.crt" "$MTLS_URL/catalog" || true)" \
   "a call without a certificate"

@@ -83,6 +83,15 @@ broker. Requirements and decisions:
   arguments come back in the contract's order — both ends read one
   document the same way (#25). The twin of #84 on this transport: what
   the deployment states is the broker, nothing else.
+- **Q (podman only) — MQTT over mutual TLS:** J's call again, over a
+  second mosquitto on 8883 that demands a certificate of the run's CA
+  (`itest/tls/make-certs.sh`), takes the CN as the user and holds the
+  topics to an ACL: callers write requests, the provider reads its tree
+  and answers into any reply subtree, each node reads only the replies
+  under its own name. Checked: no connection without a certificate, the
+  Java provider serves over `ssl://` and the TypeScript probe calls it
+  with its own, and a third certificate subscribed to every reply
+  receives none.
 - **H — provider liveness:** the Java provider heartbeats every 2 s
   (`DDSR_PROVIDER_HEARTBEAT_SECONDS=2`) and is killed with SIGKILL — no
   withdraw, no shutdown hook. Expected: the broker retires the
@@ -105,7 +114,7 @@ drain in scenario G.
 
 ```bash
 ./itest/run-harness.sh          # host processes: A + B + F + G + H + T + N (podman only for Keycloak)
-./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + K + J + F + G + H
+./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + K + J + Q + F + G + H
 HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 ```
 

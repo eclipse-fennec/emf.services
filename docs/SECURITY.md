@@ -627,7 +627,40 @@ and `restDispatcher` takes it with the peer certificate the host's
 HTTPS server hands on (see [Client framework](CLIENT_FRAMEWORK_GUIDE.md));
 scenario M serves the TypeScript ledger that way.
 
-Not yet: mTLS over MQTT (Paho and the messaging broker's TLS).
+**Over MQTT** the certificate goes on the connection, and the messaging
+broker does what §4 gives it to do: it demands a certificate of its CA,
+takes the CN as the user and holds every topic to its ACL. Every Paho
+connection of a node can show the node's certificate — the broker's
+event sink, the client's event source and invoker, and the generic MQTT
+distribution — through the same key and trust store attributes
+(`tls.keystore`, `tls.truststore`, PKCS12, read by `TlsContexts` in the
+api bundle) and only on an `ssl://` URL. The TypeScript transports take
+the same as `tls` options (`pfx`, `ca`) on an `mqtts://` or `ssl://`
+URL. `consumerId` (§8) becomes the certificate's name: a Java invoker
+with a key store answers under the CN of its key, and a TypeScript
+plugin under its `consumer` option. That is what makes the ACL
+writable — request and response live in separate trees (#98):
+
+```
+user payment-java
+topic read ddsr/rpc/binding-probe/+
+topic write ddsr/rpc/binding-probe/+/reply/#
+
+pattern write ddsr/rpc/+/+
+pattern read ddsr/rpc/+/+/reply/%u/#
+```
+
+The provider reads the calls on its tree and answers into any reply
+subtree; every certified node may call and reads only the answers
+under its own name. RSA nodes get the same from their role
+configuration: over MQTT, `tls.keystore` and `tls.truststore` reach the
+invoker, the distribution's connection and the event source.
+
+The podman harness proves it in scenario Q: a second mosquitto with
+`require_certificate` and `use_identity_as_username`, the Java provider
+serving `BindingProbe` over `ssl://`, the TypeScript probe calling it
+with its certificate, no connection without one, and a third
+certificate that subscribes to every reply receiving none.
 
 ## 8. Decisions taken, decisions open
 
@@ -679,4 +712,4 @@ Open, in the order they will come up:
 | RSA role configuration: the node's certificate and `broker.authentication`, derived into the client | implemented — see §7d and [RSA](RSA.md) |
 | TypeScript SDK as a client of an mtls broker: `tlsFetch`, the examples' `DDSR_TLS_*` | implemented — see §7d |
 | a TypeScript provider serving in mode `mtls` (`createCertificateVerifier`, `restDispatcher` with `certificates`) | implemented — see §7d |
-| mutual TLS over MQTT | not yet |
+| mutual TLS over MQTT: the node's certificate on every Paho and mqtt.js connection, the CN as consumer segment, the messaging broker's ACL on the topic trees | implemented — see §7d |

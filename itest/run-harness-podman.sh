@@ -139,6 +139,7 @@ fi
 # shellcheck disable=SC2046
 run_container ddsr-broker ddsr/broker $(broker_auth_args)
 wait_for_url "$BROKER_URL/catalog" 60
+wait_for_broker_contracts
 if secured; then
   ANON_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BROKER_URL/catalog")
   [ "$ANON_STATUS" = 401 ] \
@@ -261,6 +262,7 @@ podman rm -f ddsr-client-java ddsr-broker >/dev/null 2>&1 || true
 # shellcheck disable=SC2046
 run_container ddsr-broker-mqtt ddsr/broker $(broker_auth_args) -e DDSR_MQTT_URL=tcp://localhost:1883
 wait_for_url "$BROKER_URL/catalog" 60
+wait_for_broker_contracts
 wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883" 60
 
 # shellcheck disable=SC2046

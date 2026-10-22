@@ -41,6 +41,7 @@ import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
@@ -75,9 +76,17 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * </pre>
  * and discover the broker's own REST surface.
  */
+// REQUIRE: what is announced is where the broker is reachable, and the
+// defaults name http://localhost:8887. Under OPTIONAL a slow start
+// activated this before the configuration arrived and announced the
+// broker's own contracts at the default address — on a node configured
+// elsewhere, a consumer then called a different broker (seen in CI with
+// the harness's mtls broker on 8898). Every launch carries this PID in
+// the broker's config.json.
 @Component(
 		service = BrokerSelfPublisher.class,
 		configurationPid = "org.eclipse.fennec.services.broker.rest",
+		configurationPolicy = ConfigurationPolicy.REQUIRE,
 		immediate = true)
 @Designate(ocd = BrokerSelfPublisher.Config.class)
 public final class BrokerSelfPublisher {

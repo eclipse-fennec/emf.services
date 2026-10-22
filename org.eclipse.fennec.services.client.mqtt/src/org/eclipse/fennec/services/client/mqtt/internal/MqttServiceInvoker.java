@@ -22,6 +22,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import javax.net.ssl.SSLContext;
+
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MqttFlavor;
@@ -38,6 +40,7 @@ import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.TlsContexts;
 import org.eclipse.fennec.services.flavor.mqtt.MqttFlavors;
 import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 import org.eclipse.fennec.services.invocation.Invocations;
@@ -61,6 +64,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
@@ -102,6 +106,25 @@ public class MqttServiceInvoker implements ServiceInvoker {
 						+ "so the proxy rebinds and retries once — the same treatment a REST call gets "
 						+ "when a provider stops answering.")
 		int reply_timeout_seconds() default 10;
+
+		@AttributeDefinition(name = "TLS key store", required = false,
+				description = "The certificate and key this node shows MQTT brokers announced with ssl:// "
+						+ "(PKCS12). Its CN becomes the consumer segment of the reply topics — the name an "
+						+ "MQTT broker's ACL lets read them.")
+		String tls_keystore() default "";
+
+		@AttributeDefinition(name = "TLS key store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the key store and of its key.")
+		String tls_keystore_password() default "";
+
+		@AttributeDefinition(name = "TLS trust store", required = false,
+				description = "The authorities whose MQTT broker certificates this node believes (PKCS12). "
+						+ "Empty: the JVM's.")
+		String tls_truststore() default "";
+
+		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the trust store.")
+		String tls_truststore_password() default "";
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -132,12 +155,23 @@ public class MqttServiceInvoker implements ServiceInvoker {
 	/** This runtime, as a topic level — the segment its answers arrive under. */
 	private String consumerSegment;
 
+	/** The certificate this node shows on ssl:// connections, if it has one. */
+	private SSLContext tls;
+
 	@Activate
 	void activate(BundleContext context, Config config) {
 		this.config = config;
 		String uuid = context.getProperty(Constants.FRAMEWORK_UUID);
 		this.source = "/consumer/" + (uuid == null ? ClientOrigin.ANONYMOUS : uuid);
-		this.consumerSegment = MqttFlavors.topicSegment(uuid == null ? ClientOrigin.ANONYMOUS : uuid);
+		this.tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(), "PKCS12",
+				config.tls_truststore(), config.tls_truststore_password(), "PKCS12");
+		// A node with a certificate is that certificate's CN: its answers
+		// arrive under that name, and an MQTT broker that takes the CN as
+		// the user can let only it read them (SECURITY.md §7d, §8). Without
+		// one, the runtime's own id keeps two runtimes' answers apart.
+		String name = TlsContexts.commonName(config.tls_keystore(), config.tls_keystore_password(), "PKCS12");
+		this.consumerSegment = MqttFlavors.topicSegment(name != null ? name
+				: uuid == null ? ClientOrigin.ANONYMOUS : uuid);
 	}
 
 	@Deactivate
@@ -347,6 +381,9 @@ public class MqttServiceInvoker implements ServiceInvoker {
 				MqttConnectOptions options = new MqttConnectOptions();
 				options.setCleanSession(true);
 				options.setAutomaticReconnect(true);
+				if (tls != null && url.startsWith("ssl://")) {
+					options.setSocketFactory(tls.getSocketFactory());
+				}
 				fresh.connect(options).waitForCompletion();
 				clientsByUrl.put(url, fresh);
 				return fresh;

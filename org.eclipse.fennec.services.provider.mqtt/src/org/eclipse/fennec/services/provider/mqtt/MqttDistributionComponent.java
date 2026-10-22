@@ -22,9 +22,12 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
+import javax.net.ssl.SSLContext;
+
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.common.SecurityRequirements;
+import org.eclipse.fennec.services.common.TlsContexts;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
@@ -32,11 +35,16 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.osgi.service.component.ComponentServiceObjects;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
+import org.osgi.service.metatype.annotations.Designate;
+import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 /**
  * The connection behind {@link MqttDistribution}: one Paho client per
@@ -53,10 +61,47 @@ import org.osgi.service.component.annotations.ReferencePolicy;
  * brokers a contract announces are the brokers it listens on, the same
  * way a REST export answers where its host says.
  */
-@Component(service = MqttDistribution.class)
+@Designate(ocd = MqttDistributionComponent.Config.class)
+@Component(service = MqttDistribution.class, configurationPid = MqttDistributionComponent.PID)
 public class MqttDistributionComponent implements MqttDistribution {
 
 	private static final Logger LOG = Logger.getLogger(MqttDistributionComponent.class.getName());
+
+	/** Optional: only a node that shows an MQTT broker a certificate needs it. */
+	public static final String PID = "org.eclipse.fennec.services.provider.mqtt.connection";
+
+	@ObjectClassDefinition(name = "Fennec Services MQTT Distribution Connection",
+			description = "How the MQTT distribution connects to the brokers its flavors announce.")
+	public @interface Config {
+
+		@AttributeDefinition(name = "TLS key store", required = false,
+				description = "The certificate and key this node shows MQTT brokers announced with ssl:// "
+						+ "(PKCS12). Its CN is the provider's name there — the user an ACL lets read requests "
+						+ "and write replies.")
+		String tls_keystore() default "";
+
+		@AttributeDefinition(name = "TLS key store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the key store and of its key.")
+		String tls_keystore_password() default "";
+
+		@AttributeDefinition(name = "TLS trust store", required = false,
+				description = "The authorities whose MQTT broker certificates this node believes (PKCS12). "
+						+ "Empty: the JVM's.")
+		String tls_truststore() default "";
+
+		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the trust store.")
+		String tls_truststore_password() default "";
+	}
+
+	/** The certificate this node shows on ssl:// connections, if it has one. */
+	private volatile SSLContext tls;
+
+	@Activate
+	void activate(Config config) {
+		this.tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(), "PKCS12",
+				config.tls_truststore(), config.tls_truststore_password(), "PKCS12");
+	}
 
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> resourceSets;
@@ -134,7 +179,7 @@ public class MqttDistributionComponent implements MqttDistribution {
 		synchronized (connections) {
 			Connection connection = connections.get(url);
 			if (connection == null) {
-				connection = new Connection(url);
+				connection = new Connection(url, tls);
 				connections.put(url, connection);
 			}
 			connection.holders++;
@@ -159,13 +204,16 @@ public class MqttDistributionComponent implements MqttDistribution {
 
 		private int holders;
 
-		Connection(String url) {
+		Connection(String url, SSLContext tls) {
 			try {
 				client = new MqttAsyncClient(url, "ddsr-provider-" + UUID.randomUUID().toString().substring(0, 8),
 						new MemoryPersistence());
 				MqttConnectOptions options = new MqttConnectOptions();
 				options.setCleanSession(true);
 				options.setAutomaticReconnect(true);
+				if (tls != null && url.startsWith("ssl://")) {
+					options.setSocketFactory(tls.getSocketFactory());
+				}
 				client.connect(options).waitForCompletion();
 			} catch (Exception unreachable) {
 				throw new IllegalStateException("cannot reach the MQTT broker at " + url, unreachable);

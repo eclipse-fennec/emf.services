@@ -18,7 +18,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.cert.X509Certificate;
+import java.util.Enumeration;
 
+import javax.naming.InvalidNameException;
+import javax.naming.ldap.LdapName;
+import javax.naming.ldap.Rdn;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -79,6 +84,40 @@ public final class TlsContexts {
 			throw new IllegalStateException("cannot build the TLS context from "
 					+ (keys ? "key store " + keyStore : "") + (keys && trust ? " and " : "")
 					+ (trust ? "trust store " + trustStore : "") + ": " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * The CN of the certificate in a key store — the node's name wherever
+	 * it shows that certificate: the consumer segment of its MQTT reply
+	 * topics and the user an MQTT broker's ACL names, which SECURITY.md §8
+	 * holds to be one and the same name as its consumer id.
+	 *
+	 * @return the CN, or {@code null} when no key store is named or its
+	 *         first key carries none
+	 * @throws IllegalStateException when a named store cannot be read
+	 */
+	public static String commonName(String keyStore, String keyStorePassword, String keyStoreType) {
+		if (!present(keyStore)) {
+			return null;
+		}
+		try {
+			KeyStore store = load(keyStore, keyStorePassword, keyStoreType);
+			for (Enumeration<String> aliases = store.aliases(); aliases.hasMoreElements();) {
+				String alias = aliases.nextElement();
+				if (store.isKeyEntry(alias) && store.getCertificate(alias) instanceof X509Certificate certificate) {
+					for (Rdn rdn : new LdapName(certificate.getSubjectX500Principal().getName()).getRdns()) {
+						if ("CN".equalsIgnoreCase(rdn.getType())) {
+							return String.valueOf(rdn.getValue());
+						}
+					}
+					return null;
+				}
+			}
+			return null;
+		} catch (GeneralSecurityException | IOException | InvalidNameException e) {
+			throw new IllegalStateException("cannot read the certificate in key store " + keyStore + ": "
+					+ e.getMessage(), e);
 		}
 	}
 

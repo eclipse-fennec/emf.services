@@ -15,8 +15,11 @@ package org.eclipse.fennec.services.client.mqtt.internal;
 
 import java.util.logging.Logger;
 
+import javax.net.ssl.SSLContext;
+
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.client.EventSource;
+import org.eclipse.fennec.services.common.TlsContexts;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -28,6 +31,7 @@ import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
+import org.osgi.service.metatype.annotations.AttributeType;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
@@ -72,6 +76,24 @@ public final class MqttEventTransport implements EventSource {
 
 		@AttributeDefinition(name = "QoS", description = "Subscription quality of service.")
 		int qos() default 0;
+
+		@AttributeDefinition(name = "TLS key store", required = false,
+				description = "The certificate and key this node shows the MQTT broker (PKCS12), with an "
+						+ "ssl:// broker URL. Its CN is the node's name there — the user an ACL is written for.")
+		String tls_keystore() default "";
+
+		@AttributeDefinition(name = "TLS key store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the key store and of its key.")
+		String tls_keystore_password() default "";
+
+		@AttributeDefinition(name = "TLS trust store", required = false,
+				description = "The authorities whose MQTT broker certificate this node believes (PKCS12). "
+						+ "Empty: the JVM's.")
+		String tls_truststore() default "";
+
+		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of the trust store.")
+		String tls_truststore_password() default "";
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -90,6 +112,13 @@ public final class MqttEventTransport implements EventSource {
 		MqttConnectOptions options = new MqttConnectOptions();
 		options.setCleanSession(true);
 		options.setAutomaticReconnect(true);
+		SSLContext tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(), "PKCS12",
+				config.tls_truststore(), config.tls_truststore_password(), "PKCS12");
+		if (tls != null && config.broker_url().startsWith("ssl://")) {
+			// The node's certificate on an ssl:// connection: its CN is the
+			// user the MQTT broker's ACL names (SECURITY.md §7d).
+			options.setSocketFactory(tls.getSocketFactory());
+		}
 		client.connect(options).waitForCompletion();
 		this.source = new MqttEventSource(this::subscribe, rsObjects, config.topic_prefix());
 		LOG.info("[DDSR-MQTT] client transport connected to " + config.broker_url());

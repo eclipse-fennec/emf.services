@@ -64,6 +64,12 @@ class TlsContextsTest {
 	}
 
 	@Test
+	void theCommonNameIsTheNodesName() {
+		assertThat(TlsContexts.commonName(store.toString(), "changeit", "PKCS12")).isEqualTo("java-client");
+		assertThat(TlsContexts.commonName("", "", "PKCS12")).as("no store, no name").isNull();
+	}
+
+	@Test
 	void aStoreThatCannotBeReadFailsLoudly() {
 		assertThatThrownBy(() -> TlsContexts.of(dir.resolve("missing.p12").toString(), "changeit", "PKCS12", "", "",
 				""))

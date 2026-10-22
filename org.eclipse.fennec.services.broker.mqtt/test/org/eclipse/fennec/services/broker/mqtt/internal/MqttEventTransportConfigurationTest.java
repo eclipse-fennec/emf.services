@@ -106,6 +106,26 @@ class MqttEventTransportConfigurationTest {
 			public long publish_timeout_millis() {
 				return 5000;
 			}
+
+			@Override
+			public String tls_keystore() {
+				return "";
+			}
+
+			@Override
+			public String tls_keystore_password() {
+				return "";
+			}
+
+			@Override
+			public String tls_truststore() {
+				return "";
+			}
+
+			@Override
+			public String tls_truststore_password() {
+				return "";
+			}
 		};
 	}
 }

@@ -465,6 +465,104 @@ echo "Scenario J OK: a contract served and announced over MQTT by configuration 
 grep -E '  [✓✗] mqtt-probe' "$WORK/probe-j.log" || true
 grep -E "RSA-Consumer" "$WORK/rsa-import.log" | tail -2
 
+# ============================================================ Scenario Q
+log "Scenario Q: MQTT over mutual TLS — the CN is the user, the ACL keeps answers apart"
+# The same call as J, over a second mosquitto that demands a client
+# certificate of a CA issued for this run and takes its CN as the user
+# (SECURITY.md §7d). Its ACL is what the separate request and reply trees
+# of #98 were made for: every certified node may call, the provider reads
+# its requests and answers into any reply subtree, and a node reads only
+# the answers under its own name. A node with a certificate is its CN on
+# the reply topics — on both sides of the language border.
+TLS_DIR="$WORK/tls"
+"$ROOT/itest/tls/make-certs.sh" "$TLS_DIR" payment-java harness-probe-ts eavesdropper
+MQ="$WORK/mosquitto-tls"
+mkdir -p "$MQ"
+cp "$TLS_DIR/ca.crt" "$TLS_DIR/server.crt" "$TLS_DIR/server.key" \
+   "$TLS_DIR/eavesdropper.crt" "$TLS_DIR/eavesdropper.key" "$MQ/"
+# Test keys of this run only: mosquitto runs as its own user in the
+# container and has to read them.
+chmod 0644 "$MQ"/*
+cat >"$MQ/mosquitto.conf" <<'CONF'
+listener 8883
+cafile /mosquitto/config/tls/ca.crt
+certfile /mosquitto/config/tls/server.crt
+keyfile /mosquitto/config/tls/server.key
+require_certificate true
+use_identity_as_username true
+acl_file /mosquitto/config/tls/acl
+CONF
+cat >"$MQ/acl" <<'ACL'
+# the provider reads the calls on its tree and answers into any reply subtree
+user payment-java
+topic read ddsr/rpc/binding-probe/+
+topic write ddsr/rpc/binding-probe/+/reply/#
+
+# every certified node may call, and reads only the answers under its own name
+pattern write ddsr/rpc/+/+
+pattern read ddsr/rpc/+/+/reply/%u/#
+ACL
+podman run -d --replace --name ddsr-mosquitto-tls --network=host -v "$MQ:/mosquitto/config/tls:ro,Z" \
+  docker.io/library/eclipse-mosquitto:2 mosquitto -c /mosquitto/config/tls/mosquitto.conf >/dev/null
+CONTAINERS+=(ddsr-mosquitto-tls)
+wait_for_log ddsr-mosquitto-tls "mosquitto version 2" 60
+wait_for_log ddsr-mosquitto-tls "Opening ipv4 listen socket on port 8883" 30
+
+# Without a certificate there is no connection at all.
+if podman exec ddsr-mosquitto-tls mosquitto_sub -h localhost -p 8883 --cafile /mosquitto/config/tls/ca.crt \
+     -t 'ddsr/#' -C 1 -W 5 >/dev/null 2>&1; then
+  echo "SCENARIO Q FAILED: mosquitto let a client in without a certificate"; exit 1
+fi
+echo "  ✓ tls: no connection without a certificate of the harness CA"
+
+# A certified node that is neither caller nor provider listens to every
+# answer; the ACL must leave it with nothing.
+podman exec -d ddsr-mosquitto-tls sh -c 'mosquitto_sub -h localhost -p 8883 \
+  --cafile /mosquitto/config/tls/ca.crt --cert /mosquitto/config/tls/eavesdropper.crt \
+  --key /mosquitto/config/tls/eavesdropper.key -t "ddsr/rpc/+/+/reply/#" -v -W 90 \
+  >/tmp/eavesdropper.out 2>&1'
+
+# shellcheck disable=SC2046
+run_container ddsr-probe-mqtt-tls ddsr/payment-java-mqtt $(client_args payment-java) \
+  -v "$TLS_DIR:/tls:ro,Z" \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e PAYMENTS_PUBLIC_URL="http://localhost:9091/payments" \
+  -e PAYMENTS_PUBLISH_BINDING_PROBE_MQTT=true \
+  -e PAYMENTS_MQTT_URL="ssl://localhost:8883" \
+  -e DDSR_TLS_KEYSTORE=/tls/payment-java.p12 -e DDSR_TLS_KEYSTORE_PASSWORD=changeit \
+  -e DDSR_TLS_TRUSTSTORE=/tls/truststore.p12 -e DDSR_TLS_TRUSTSTORE_PASSWORD=changeit
+wait_for_log ddsr-probe-mqtt-tls "serving BindingProbe generically on" 150
+wait_for_log ddsr-probe-mqtt-tls "published BindingProbe" 60
+
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe-q --network=host $(client_args harness-probe-ts) \
+  -v "$TLS_DIR:/tls:ro,Z" \
+  -e BROKER_URL="$BROKER_URL" -e EXPECT_LANG=java -e EXPECT_MQTT_PROBE=1 \
+  -e DDSR_CONSUMER_ID=harness-probe-ts \
+  -e DDSR_TLS_KEYSTORE=/tls/harness-probe-ts.p12 -e DDSR_TLS_KEYSTORE_PASSWORD=changeit \
+  -e DDSR_TLS_CA=/tls/ca.crt \
+  ddsr/ts harness-probe.ts >/dev/null
+CONTAINERS+=(ddsr-probe-q)
+wait_for_log ddsr-probe-q "PROBE_READY" 150
+podman stop -t 20 ddsr-probe-mqtt-tls >/dev/null 2>&1 || true
+probe_q_rc=$(podman wait ddsr-probe-q)
+podman logs ddsr-probe-q >"$WORK/probe-q.log" 2>&1
+if [ "$probe_q_rc" != "0" ]; then
+  echo "SCENARIO Q FAILED"; cat "$WORK/probe-q.log"; exit 1
+fi
+grep -q "ssl://localhost:8883" "$WORK/probe-q.log" \
+  || { echo "SCENARIO Q FAILED: BindingProbe was not announced on the TLS broker"; cat "$WORK/probe-q.log"; exit 1; }
+grep -q "✓ mqtt-probe-echo" "$WORK/probe-q.log" \
+  || { echo "SCENARIO Q FAILED: the call over mutual TLS did not come back"; cat "$WORK/probe-q.log"; exit 1; }
+echo "  ✓ call: the Java provider served, the TypeScript consumer called and read its answer, both by certificate"
+EAVESDROPPED=$(podman exec ddsr-mosquitto-tls sh -c 'cat /tmp/eavesdropper.out 2>/dev/null' | grep -c "/reply/" || true)
+[ "$EAVESDROPPED" = 0 ] \
+  || { echo "SCENARIO Q FAILED: a third certificate read $EAVESDROPPED answers addressed to somebody else"
+       podman exec ddsr-mosquitto-tls cat /tmp/eavesdropper.out; exit 1; }
+echo "  ✓ acl: a third certificate subscribed to every reply and received none"
+podman stop -t 5 ddsr-mosquitto-tls >/dev/null 2>&1 || true
+echo "Scenario Q OK: MQTT over mutual TLS — no connection without a certificate, the call by CN, answers kept apart"
+
 # ============================================================ Scenario F
 log "Scenario F: same identity restarts on a new port -> MODIFIED in place, consumer follows"
 # shellcheck disable=SC2046
@@ -549,4 +647,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + I + K + J + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + K + J + Q + F + G + H)"

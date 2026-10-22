@@ -39,6 +39,7 @@ import {
   fingerprint,
   propertiesOf,
   propertyOf,
+  toArray,
 } from '@ddsr/client';
 import { brokerTokens, consumerId, nodeFetch, nodeTls } from './broker-auth';
 
@@ -190,7 +191,7 @@ async function main(): Promise<void> {
     const probeFlavors = probeLocator.flavors() as Array<{ eClass?: () => { name?: string } }>;
     const probeMqtt = probeFlavors.find(f => f.eClass?.()?.name === 'MqttFlavor') as MqttFlavor | undefined;
     check('mqtt-probe-flavor-announced', probeMqtt !== undefined,
-      `${probeFlavors.map(f => f.eClass?.()?.name).join(',')}`);
+      `${probeFlavors.map(f => f.eClass?.()?.name).join(',')} on ${probeMqtt ? toArray<string>(probeMqtt.brokers).join(',') : '-'}`);
     if (probeMqtt) {
       try {
         // Through the locator, not through a plugin held here: the

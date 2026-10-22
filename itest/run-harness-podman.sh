@@ -521,6 +521,8 @@ podman exec -d ddsr-mosquitto-tls sh -c 'mosquitto_sub -h localhost -p 8883 \
   --cafile /mosquitto/config/tls/ca.crt --cert /mosquitto/config/tls/eavesdropper.crt \
   --key /mosquitto/config/tls/eavesdropper.key -t "ddsr/rpc/+/+/reply/#" -v -W 90 \
   >/tmp/eavesdropper.out 2>&1'
+# It must really be in: an empty output of a refused subscriber proves nothing.
+wait_for_log ddsr-mosquitto-tls "u'eavesdropper'" 30
 
 # shellcheck disable=SC2046
 run_container ddsr-probe-mqtt-tls ddsr/payment-java-mqtt $(client_args payment-java) \

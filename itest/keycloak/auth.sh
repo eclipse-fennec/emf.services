@@ -150,17 +150,27 @@ curl_broker() { # curl args...
 # whiteboard deploys each on its own time: /catalog answering says nothing
 # about /implementations or /references. A path that is not deployed yet
 # answers 404, which a check would read as a wrong answer — so wait until
-# none of them does (any other status, 401 included, means it is served).
+# none of them does. Each is asked with a method its contract serves: a
+# deployed application answers a route it does not know with 404 as well
+# (an open broker has no filter in front to answer first), and that must
+# not look like "not deployed". The POST carries an empty document, which
+# a served endpoint refuses (400, or 401/403 before reading it) and never
+# publishes.
 wait_for_broker_contracts() { # [base-url [curl-args...]] — the main broker by default
-  local base="${1:-$BROKER_URL}" path status waited=0
+  local base="${1:-$BROKER_URL}" probe method path status waited=0
+  local -a body
   [ $# -gt 0 ] && shift
-  for path in catalog implementations/ references; do
-    until status=$(curl -s -o /dev/null -w '%{http_code}' "$@" "$base/$path") \
+  for probe in "GET catalog" "POST implementations/" "GET references"; do
+    method="${probe%% *}"
+    path="${probe#* }"
+    body=()
+    [ "$method" = POST ] && body=(-H 'Content-Type: application/xml' --data-binary '<x/>')
+    until status=$(curl -s -o /dev/null -w '%{http_code}' -X "$method" "$@" "${body[@]}" "$base/$path") \
         && [ "$status" != 404 ] && [ "$status" != 000 ]; do
       sleep 0.5
       waited=$((waited + 1))
       if [ "$waited" -ge 120 ]; then
-        echo "TIMEOUT: the broker does not serve /$path (last answer $status)" >&2
+        echo "TIMEOUT: the broker does not serve $method /$path (last answer $status)" >&2
         return 1
       fi
     done

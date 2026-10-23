@@ -34,7 +34,7 @@
 	fennecJacoco,\
 	fennecEMF,\
 	fennecM2X,\
-	fennecEMFModels,\
+	fennecEMFCommonModels,\
 	fennecCodec,\
 	fennecPersistence,\
 	fennecPersistenceTest,\

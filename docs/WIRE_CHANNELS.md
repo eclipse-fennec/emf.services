@@ -108,7 +108,7 @@ The strategy is a property of `OperationChannel` (more precisely of the response
 `TOPIC_BASED` variant is implemented in the v1 model — on the TypeScript
 side as `MqttFlavorPlugin` (the consumer, a pending map over the
 correlation plus a per-request reply topic) and `MqttOperationServer`
-(the provider dispatch). Since Paho v3 speaks only MQTT 3.1.1 (no
+(the provider dispatch). Since the connection speaks MQTT 3.1.1 (no
 `response-topic`/`correlation-data` properties), both travel in the
 envelope; the frozen convention lives in
 `ddsr-ts-client/packages/ddsr-transport-mqtt/src/mqtt-rpc.ts` and is

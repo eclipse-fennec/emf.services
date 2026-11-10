@@ -518,7 +518,7 @@ variables a Java node reads (`DDSR_TLS_KEYSTORE`, `DDSR_TLS_CA`,
 
 **Over MQTT** the certificate goes on the connection, to a messaging
 broker that demands one and holds the topics to an ACL
-([Security](SECURITY.md) §7d). A Java node gives each Paho connection
+([Security](SECURITY.md) §7d). A Java node gives each MQTT connection
 the same four `tls.*` attributes as the REST transport — on
 `…client.mqtt` (the event source), `…client.mqtt.invoker` (calls),
 `…provider.mqtt.connection` (the generic distribution) and

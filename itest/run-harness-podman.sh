@@ -277,7 +277,10 @@ wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883
 
 # shellcheck disable=SC2046
 run_container ddsr-client-mqtt ddsr/client-mqtt $(client_args java-client)
-wait_for_log ddsr-client-mqtt "client transport connected to tcp://localhost:1883" 90
+# The subscription in place on mosquitto, not the transport activated:
+# the connection comes up on its own time, and an event published
+# before the subscription exists reaches nobody.
+wait_for_log ddsr-client-mqtt "subscribed to ddsr/events/#" 90
 
 # shellcheck disable=SC2046
 run_container ddsr-payment-mqtt ddsr/payment-java $(client_args payment-java)

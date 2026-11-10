@@ -3,10 +3,20 @@
 # MQTT, hearing the broker's events over it, and serving a contract on
 # topics. Every part is dormant until configured (mqtt.broker), so the
 # bundles are safe in a launch that speaks only REST.
+#
+# The connection is a Gecko Messaging instance (mqtt3), which each part
+# configures for itself from its own broker URL — so this list needs the
+# Configuration Admin service the launch chooses anyway, and brings the
+# messaging bundles and the Paho build they drive.
 fennec.services.range: [0.1.0,0.2.0)
 
 -runbundles.fennec.services.mqtt: \
 	org.eclipse.fennec.services.client.mqtt;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.flavor.mqtt;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.provider.mqtt;version='${fennec.services.range}',\
-	org.eclipse.paho.client.mqttv3;version='[1.2.5,1.2.6)'
+	org.eclipse.fennec.services.messaging;version='${fennec.services.range}',\
+	org.gecko.messaging.api;version='[2.0.0,2.1.0)',\
+	org.gecko.messaging.core;version='[2.0.0,2.1.0)',\
+	org.gecko.messaging.mqtt3;version='[2.0.0,2.1.0)',\
+	org.eclipse.paho.client.mqttv3;version='[1.3.0,1.3.1)',\
+	org.osgi.util.pushstream;version='[1.1.0,1.1.1)'

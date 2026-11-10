@@ -13,6 +13,7 @@
 
 package org.eclipse.fennec.services.rsa.distribution.mqtt;
 
+import java.util.Hashtable;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -30,9 +31,11 @@ import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
@@ -58,11 +61,20 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 // ddsr.rsa.flavor is how an admin's configuration points at this one:
 // distribution.target. A deployment says which transport it exports
 // over; it is not decided by whoever happens to be registered.
-@Component(service = FlavorDistribution.class,
+//
+// Registers itself rather than letting DS do it, and only once the
+// broker it was configured with is connected. An admin whose
+// configuration points here is satisfied by this service, and exports
+// as soon as it is — so offering the service is saying "an export made
+// now is listening when it returns". A connection comes up on its own
+// time; presence is how the rest of the node learns that it has.
+@Component(service = {},
 		configurationPid = "org.eclipse.fennec.services.rsa.distribution.mqtt",
-		property = "ddsr.rsa.flavor=fennec.mqtt",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 public class MqttDistributionProvider implements FlavorDistribution {
+
+	/** What an admin's {@code distribution.target} selects this provider by. */
+	static final String FLAVOR_PROPERTY = "ddsr.rsa.flavor";
 
 	/** The RSA configuration type a service asks for to be exported this way. */
 	public static final String CONFIG_TYPE = "fennec.mqtt";
@@ -105,13 +117,59 @@ public class MqttDistributionProvider implements FlavorDistribution {
 	/** This framework's short name in identities nobody named themselves. */
 	private String frameworkTag;
 
+	/** The connection to the configured broker, held from activation on. */
+	private AutoCloseable connection;
+
+	private ServiceRegistration<FlavorDistribution> registration;
+
+	private boolean active;
+
 	@Activate
 	void activate(BundleContext context, Config config) {
 		this.config = config;
 		String uuid = context.getProperty(Constants.FRAMEWORK_UUID);
 		this.frameworkTag = uuid == null || uuid.length() < 8 ? "local" : uuid.substring(0, 8);
-		LOG.info("[DDSR] MQTT distribution ready — exports answer on " + config.broker_url()
-				+ " under " + config.topic_prefix());
+		synchronized (this) {
+			active = true;
+		}
+		String broker = config.broker_url();
+		this.connection = distribution.hold(broker, () -> offer(context, broker));
+	}
+
+	private synchronized void offer(BundleContext context, String broker) {
+		if (!active || registration != null) {
+			return;
+		}
+		Hashtable<String, Object> properties = new Hashtable<>();
+		properties.put(FLAVOR_PROPERTY, CONFIG_TYPE);
+		registration = context.registerService(FlavorDistribution.class, this, properties);
+		LOG.info("[DDSR] MQTT distribution ready — exports answer on " + broker
+				+ " under " + topicPrefix());
+	}
+
+	@Deactivate
+	void deactivate() {
+		ServiceRegistration<FlavorDistribution> offered;
+		synchronized (this) {
+			active = false;
+			offered = registration;
+			registration = null;
+		}
+		if (offered != null) {
+			try {
+				offered.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// The framework got there first.
+			}
+		}
+		if (connection != null) {
+			try {
+				connection.close();
+			} catch (Exception alreadyGone) {
+				// Going down anyway.
+			}
+			connection = null;
+		}
 	}
 
 	/**

@@ -78,7 +78,7 @@ launch that takes minutes to start.
 | `enableFennecServicesClient` | the SDK and the REST transport, the wire codec, CloudEvents, EMF, protobuf |
 | `enableFennecServicesRsa` | the RSA core, its role configuration, REST distribution and discovery, the topology manager, the generic REST distribution, the EObject registry, the RSA and Event Admin APIs — on top of the client |
 | `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, the client-certificate filter of mode `mtls`, Nimbus JOSE+JWT |
-| `enableFennecServicesMqtt` | the MQTT client transport, the MQTT flavor rules, the MQTT distribution, Paho — on top of the client |
+| `enableFennecServicesMqtt` | the MQTT client transport, the MQTT flavor rules, the MQTT distribution, the messaging link with Gecko Messaging (`api`, `core`, `mqtt3`) and the Paho build it drives — on top of the client |
 | `enableFennecServicesRsaMqtt` | the RSA distribution and discovery for `fennec.mqtt` — on top of `…Rsa` and `…Mqtt` |
 
 The security components act only where configured or where an
@@ -93,7 +93,13 @@ pull Remote Service Admin: `enableFennecServicesMqtt` for the transport,
 and `enableFennecServicesRsaMqtt` next to it and `…Rsa` for a node that
 exports or imports over `fennec.mqtt`. Every MQTT part is dormant until
 it is given a broker (`mqtt.broker`, or the RSA role's `mqtt.url`), so
-the transport list is safe in a launch that speaks only REST. Which
+the transport list is safe in a launch that speaks only REST. A part
+that is given a broker creates its connection as a messaging instance
+by configuration, so such a launch needs the Configuration Admin
+service — the one piece of the configuration stack the MQTT list does
+count on. Gecko Messaging 2.0 is a snapshot for now, which the
+`fennecServices` index resolves from the Central snapshot repository.
+Which
 flavor a node speaks is in [Remote Service Admin](RSA.md) and
 [Transports](TRANSPORTS.md).
 

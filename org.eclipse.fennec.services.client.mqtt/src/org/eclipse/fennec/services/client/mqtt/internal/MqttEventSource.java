@@ -49,18 +49,22 @@ public final class MqttEventSource implements EventSource {
 	private static final Logger LOG = Logger.getLogger(MqttEventSource.class.getName());
 
 	/**
-	 * The bit of Paho this source needs, named separately so tests can
-	 * stand in for it.
+	 * The bit of the connection this source needs, named separately so
+	 * tests can stand in for it.
 	 */
 	public interface Subscriber {
 
 		/**
-		 * @param topicFilter MQTT topic filter, wildcards allowed
-		 * @param onMessage   called for each message on that filter
+		 * @param topicFilter   MQTT topic filter, wildcards allowed
+		 * @param onMessage     called for each message on that filter
+		 * @param onEstablished called each time the subscription is in
+		 *                      place on the broker: the first time, and
+		 *                      again after every connection loss
 		 * @return handle that cancels the subscription
 		 * @throws Exception if subscribing fails
 		 */
-		AutoCloseable subscribe(String topicFilter, MessageListener onMessage) throws Exception;
+		AutoCloseable subscribe(String topicFilter, MessageListener onMessage, Runnable onEstablished)
+				throws Exception;
 	}
 
 	/** One received MQTT message. */
@@ -84,14 +88,18 @@ public final class MqttEventSource implements EventSource {
 	@Override
 	public AutoCloseable open(Handler handler) {
 		try {
+			// The subscription being live on the broker is what
+			// "established" means here, and it is not this call that makes
+			// it so: the connection may still be coming up, and it may go
+			// and come back any number of times. Each time the
+			// subscription is in place again, what was published meanwhile
+			// is gone — so each time the consumer re-snapshots
+			// (FR-Sync-Reconnect).
 			AutoCloseable subscription = subscriber.subscribe(topicPrefix + "/#",
-					(topic, payload) -> deliver(handler, topic, payload));
-			LOG.info("[DDSR-MQTT] subscribed to " + topicPrefix + "/#");
-			// The subscription being live is what "established" means here.
-			// Paho reconnects on its own and re-subscribes, and each time it
-			// does the consumer has to re-snapshot (FR-Sync-Reconnect) — the
-			// component signals that through the same handler.
-			handler.onStreamEstablished();
+					(topic, payload) -> deliver(handler, topic, payload), () -> {
+						LOG.info("[DDSR-MQTT] subscribed to " + topicPrefix + "/#");
+						handler.onStreamEstablished();
+					});
 			return subscription;
 		} catch (Exception failure) {
 			// Returning null tells the SDK there is no subscription, so a

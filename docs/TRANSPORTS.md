@@ -65,6 +65,47 @@ framework and a `ResourceSet` with `emf.name=services`.
 Note that `broker.url` is only the broker. The address of an actual
 service call comes from the flavor, never from this setting.
 
+## The MQTT connection
+
+Every MQTT part of a node — the client's event source and invoker, the
+generic distribution, the broker's event sink — connects through
+[Gecko Messaging](https://github.com/geckoprojects-org/org.gecko.messaging)
+(`…services.messaging`). None of them is configured differently for it:
+each derives a messaging instance (binding `mqtt3`, factory PID
+`org.gecko.messaging.mqtt3`) from the broker URL, client id and `tls.*`
+attributes it already has, and takes it away again when it stops. What a
+launch has to bring is the Configuration Admin service, which is how an
+instance comes to be.
+
+What the instance gives each of them:
+
+- **The connection is its own.** It reconnects with a backoff of 1 s
+  doubling to 30 s, and restores every subscription before it reports
+  being connected again. A broker restart costs what was published
+  meanwhile, and nothing after.
+- **Nothing waits at start.** A part that is configured before its
+  broker is up is not a failed component; it becomes useful when the
+  connection is there. The broker's sink is registered with the first
+  connection, a contract served from configuration is announced once
+  its topics are subscribed, and the RSA distribution offers itself
+  only then — an export made after that is listening when it returns.
+- **The wire is what it was.** The instance carries bytes; the
+  CloudEvents envelope is still written by this project, so a
+  TypeScript node reads what it always read.
+
+The instances are named `fennec.services.broker.events`,
+`fennec.services.client.events`, `fennec.services.invoker.<id>` and
+`fennec.services.provider.<id>`, and show up under those names in
+`MessageServiceRuntime`. A message is limited to 1 MiB, sent and
+received.
+
+One thing follows for a caller: the invoker opens its connection with
+the first call to a broker and waits for it, up to the reply timeout.
+A first call made while a component is being activated by a
+configuration can run into that timeout — the instance is activated on
+the thread that delivers configurations, and that thread is the one
+waiting. Calls from a thread of the application's own are not affected.
+
 ## `client.mqtt` — events and calls over MQTT
 
 Registers one `EventSource` with `ddsr.event.transport=mqtt`, and is

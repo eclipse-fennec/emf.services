@@ -125,7 +125,12 @@ jersey.deps:
 	org.eclipse.fennec.services.security.jwt;version=snapshot,\
 	org.eclipse.fennec.services.security.mtls;version=snapshot,\
 	com.nimbusds.nimbus-jose-jwt;version='[10.3.0,10.3.1)',\
-	org.eclipse.paho.client.mqttv3;version='[1.2.5,1.2.6)',\
+	org.eclipse.paho.client.mqttv3;version='[1.3.0,1.3.1)',\
+	org.eclipse.fennec.services.messaging;version=snapshot,\
+	org.gecko.messaging.api;version='[2.0.0,2.1.0)',\
+	org.gecko.messaging.core;version='[2.0.0,2.1.0)',\
+	org.gecko.messaging.mqtt3;version='[2.0.0,2.1.0)',\
+	org.osgi.util.pushstream;version='[1.1.0,1.1.1)',\
 	org.antlr.antlr4-runtime;version='[4.13.2,4.13.3)',\
 	org.apache.aries.spifly.dynamic.bundle;version='[1.3.7,1.3.8)',\
 	org.eclipse.fennec.m2x.ocl.api;version='[0.1.1,0.1.2)',\

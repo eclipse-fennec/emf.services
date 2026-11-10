@@ -1,0 +1,35 @@
+Bundle-Name: Fennec Services Messaging Link
+Bundle-Description: \
+	The connection to a messaging broker, for every part of this \
+	workspace that has one: the broker's event transport, the client's, \
+	the invoker and the distribution. A link is a Gecko Messaging \
+	instance derived from what its owner already knows — a broker URL, a \
+	client id, the node's certificate — written as a factory \
+	configuration and taken away again when the owner goes. The instance \
+	owns the connection, the reconnect and the restored subscriptions; \
+	what travels stays what the owner hands over, byte for byte.
+
+-buildpath: \
+	osgi.annotation;version=latest,\
+	osgi.core;version=latest,\
+	org.osgi.service.cm;version=latest,\
+	org.osgi.util.tracker;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
+	org.osgi.util.function;version=latest,\
+	org.gecko.messaging.api;version=latest
+
+# A link is a messaging instance, and an instance needs a binding to be
+# one: said here, so a launch that is resolved gets the binding with the
+# bundle that cannot do without it. As a header rather than with the
+# API's @RequireMessaging, which bnd refuses ("invalid filter
+# information") — the annotation's filter is built from macros.
+Require-Capability: \
+	osgi.implementation;\
+		filter:="(&(osgi.implementation=osgi.messaging)(version>=1.0.0)(!(version>=2.0.0))(osgi.messaging.protocol=mqtt3))"
+
+# Plain JUnit 5: what a link asks of the messaging instance is a
+# dictionary, and that is decided without a framework.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

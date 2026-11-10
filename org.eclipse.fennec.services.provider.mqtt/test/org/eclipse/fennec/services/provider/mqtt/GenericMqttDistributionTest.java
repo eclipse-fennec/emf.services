@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -25,6 +27,8 @@ import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.broker.core.BrokerCatalog;
+import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -115,7 +119,27 @@ class GenericMqttDistributionTest {
 	}
 
 	@Test
-	@DisplayName("a deployment that only serves has nothing to withdraw")
+	@DisplayName("nothing is announced before the topics are subscribed")
+	void noAnnouncementBeforeListening() throws Exception {
+		GenericMqttDistribution distribution = new GenericMqttDistribution();
+		GenericMqttDistribution.Config config = mock(GenericMqttDistribution.Config.class);
+		when(config.publish()).thenReturn(true);
+		set(distribution, "config", config);
+		set(distribution, "implementation", F.createServiceImplementation());
+		DdsrClient client = mock(DdsrClient.class);
+		BrokerCatalog catalog = mock(BrokerCatalog.class);
+
+		// Both announcing services arrive, and each asks whether the pair
+		// is complete — it is, and still nothing may go out: the
+		// connection comes up on its own time, and a consumer told about
+		// a service calls a topic nobody listens on yet.
+		distribution.setClient(client);
+		distribution.setCatalog(catalog);
+
+		verifyNoInteractions(client, catalog);
+	}
+
+
 	void servingOnly() {
 		GenericMqttDistribution distribution = new GenericMqttDistribution();
 

@@ -130,8 +130,9 @@ default, and the model's.
 	else '' endif endif endif /]
 
 [query public wireName(binding : RestParameterBinding, parameter : Parameter) : String =
-	if binding.wireName.oclIsUndefined() or binding.wireName.size() = 0 then parameter.name
-	else binding.wireName endif /]
+	if binding.wireName.oclIsUndefined() then parameter.name
+	else if binding.wireName.size() = 0 then parameter.name
+	else binding.wireName endif endif /]
 
 [comment]
 The body as finished lines. Every method carries the same HTTP behaviour,
@@ -159,7 +160,7 @@ so the delegation is the only line that differs between operations.
 [query public catchBlock(binding : JavaBinding, operationFlavor : RestOperationFlavor, raised : ServiceException) : Sequence(String) =
 	Sequence{
 		'		} catch ('.concat(simpleName(exceptionType(binding, raised))).concat(' failure) {'),
-		'			return Response.status('.concat(statusFor(operationFlavor, raised)).concat(').entity(failure.getMessage()).build();')
+		'			return Response.status('.concat(statusFor(operationFlavor, raised).toString()).concat(').entity(failure.getMessage()).build();')
 	} /]
 
 [comment]
@@ -193,7 +194,7 @@ none. A primitive result cannot be absent, so it is answered directly.
 [query public success(operationFlavor : RestOperationFlavor) : String =
 	if operationFlavor.returnCodes->isEmpty() or operationFlavor.returnCodes->first() = 200
 	then 'Response.ok'
-	else 'Response.status('.concat(operationFlavor.returnCodes->first()).concat(').entity') endif /]
+	else 'Response.status('.concat(operationFlavor.returnCodes->first().toString()).concat(').entity') endif /]
 
 [comment]
 Path and media types, each only where the flavor states one. One loop over
@@ -307,11 +308,11 @@ runtime, not a generated if.
 	reject(parameter, parameter.name.concat(' does not match ').concat(constraint.pattern),
 			guarded(parameter, '!'.concat(parameter.name).concat('.matches("').concat(constraint.pattern).concat('")')))
 	->union(if constraint.minLength.oclIsUndefined() then Sequence{}
-		else reject(parameter, parameter.name.concat(' is shorter than ').concat(constraint.minLength),
-			guarded(parameter, parameter.name.concat('.length() < ').concat(constraint.minLength))) endif)
+		else reject(parameter, parameter.name.concat(' is shorter than ').concat(constraint.minLength.toString()),
+			guarded(parameter, parameter.name.concat('.length() < ').concat(constraint.minLength.toString()))) endif)
 	->union(if constraint.maxLength.oclIsUndefined() then Sequence{}
-		else reject(parameter, parameter.name.concat(' is longer than ').concat(constraint.maxLength),
-			guarded(parameter, parameter.name.concat('.length() > ').concat(constraint.maxLength))) endif) /]
+		else reject(parameter, parameter.name.concat(' is longer than ').concat(constraint.maxLength.toString()),
+			guarded(parameter, parameter.name.concat('.length() > ').concat(constraint.maxLength.toString()))) endif) /]
 
 [query public rangeCheck(parameter : Parameter, constraint : NumericRangeConstraint) : Sequence(String) =
 	(if constraint.min.oclIsUndefined() then Sequence{}
@@ -343,11 +344,11 @@ integral argument reads as 200, not as 200.0.
 
 [query public sizeCheck(parameter : Parameter, constraint : CollectionSizeConstraint) : Sequence(String) =
 	(if constraint.minSize.oclIsUndefined() then Sequence{}
-	else reject(parameter, parameter.name.concat(' has fewer than ').concat(constraint.minSize).concat(' entries'),
-		guarded(parameter, parameter.name.concat('.size() < ').concat(constraint.minSize))) endif)
+	else reject(parameter, parameter.name.concat(' has fewer than ').concat(constraint.minSize.toString()).concat(' entries'),
+		guarded(parameter, parameter.name.concat('.size() < ').concat(constraint.minSize.toString()))) endif)
 	->union(if constraint.maxSize.oclIsUndefined() then Sequence{}
-	else reject(parameter, parameter.name.concat(' has more than ').concat(constraint.maxSize).concat(' entries'),
-		guarded(parameter, parameter.name.concat('.size() > ').concat(constraint.maxSize))) endif) /]
+	else reject(parameter, parameter.name.concat(' has more than ').concat(constraint.maxSize.toString()).concat(' entries'),
+		guarded(parameter, parameter.name.concat('.size() > ').concat(constraint.maxSize.toString()))) endif) /]
 
 [comment]
 A check on a value that may be absent has to survive its absence: an optional

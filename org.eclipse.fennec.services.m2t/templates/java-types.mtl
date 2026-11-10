@@ -42,7 +42,7 @@ header. One loop that always has something to write cannot.
 [comment]===================== paths and names =====================[/comment]
 
 [query public sourcePath(binding : JavaBinding, name : String) : String =
-	binding.targetPackage.substitute('.', '/').concat('/').concat(name).concat('.java') /]
+	binding.targetPackage.substituteAll('.', '/').concat('/').concat(name).concat('.java') /]
 
 [comment]
 The Java simple name of a fully qualified one. tokenize() over '.' and the

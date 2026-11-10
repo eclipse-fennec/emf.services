@@ -19,6 +19,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.messaging.LinkSettings;
 import org.eclipse.fennec.services.messaging.MessagingLink;
+import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -51,6 +52,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 		property = "ddsr.event.transport=mqtt",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 @Designate(ocd = MqttEventTransport.Config.class)
+@RequireMessaging(protocol = "mqtt3")
 public final class MqttEventTransport implements EventSource {
 
 	private static final Logger LOG = Logger.getLogger(MqttEventTransport.class.getName());

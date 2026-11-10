@@ -21,6 +21,7 @@ import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.messaging.LinkSettings;
 import org.eclipse.fennec.services.messaging.MessagingLink;
+import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -54,6 +55,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 		configurationPid = "org.eclipse.fennec.services.broker.mqtt",
 		configurationPolicy = org.osgi.service.component.annotations.ConfigurationPolicy.REQUIRE)
 @Designate(ocd = MqttEventTransport.Config.class)
+@RequireMessaging(protocol = "mqtt3")
 public final class MqttEventTransport implements EventSink {
 
 	private static final Logger LOG = Logger.getLogger(MqttEventTransport.class.getName());

@@ -28,6 +28,7 @@ import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.messaging.LinkSettings;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -58,6 +59,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  */
 @Designate(ocd = MqttDistributionComponent.Config.class)
 @Component(service = MqttDistribution.class, configurationPid = MqttDistributionComponent.PID)
+@RequireMessaging(protocol = "mqtt3")
 public class MqttDistributionComponent implements MqttDistribution {
 
 	private static final Logger LOG = Logger.getLogger(MqttDistributionComponent.class.getName());

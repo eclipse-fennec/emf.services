@@ -44,6 +44,7 @@ import java.util.Set;
  * @param sessionIntervalSeconds the consumer session interval, 0 to switch it off
  * @param consumerId how this node names itself to the broker
  * @param identity who this node is to its identity provider (SECURITY.md §6)
+ * @param amqpUrl the AMQP broker a node that serves over {@code fennec.amqp} listens on
  */
 public record RsaSettings(
 		String brokerUrl,
@@ -66,10 +67,34 @@ public record RsaSettings(
 		String topicPrefix,
 		String distributionFlavor,
 		String discoveryFlavor,
-		NodeIdentity identity) {
+		NodeIdentity identity,
+		String amqpUrl) {
+
+	/** Where RabbitMQ listens when nobody says otherwise. */
+	public static final String DEFAULT_AMQP_URL = "amqp://localhost:5672";
 
 	public RsaSettings {
 		identity = identity == null ? NodeIdentity.NONE : identity;
+		amqpUrl = amqpUrl == null || amqpUrl.isBlank() ? DEFAULT_AMQP_URL : amqpUrl.strip();
+	}
+
+	/** A node that does not say where its AMQP broker is — every node before #138. */
+	public RsaSettings(String brokerUrl, String publicUrl, String publicHost, int httpPort, String httpHost,
+			String contextPath, boolean manageHttp, String httpId, String registryName, String defaultVersion,
+			String flavor, String exportPolicy, String importPolicy, long heartbeatSeconds,
+			long sessionIntervalSeconds, String consumerId, String mqttUrl, String topicPrefix,
+			String distributionFlavor, String discoveryFlavor, NodeIdentity identity) {
+		this(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp, httpId, registryName,
+				defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds, sessionIntervalSeconds,
+				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null);
+	}
+
+	/** The same node, with its AMQP broker named. */
+	public RsaSettings withAmqpUrl(String url) {
+		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
+				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
+				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
+				identity, url);
 	}
 
 	/** A node without an identity — what every node was before SECURITY.md §6. */
@@ -98,6 +123,9 @@ public record RsaSettings(
 	/** And the second one (#98). */
 	public static final String MQTT = "fennec.mqtt";
 
+	/** And the third (#138). */
+	public static final String AMQP = "fennec.amqp";
+
 	/**
 	 * Which transport this node <em>serves</em> over, and which it
 	 * <em>announces</em> over. Two questions, because they are two
@@ -110,9 +138,18 @@ public record RsaSettings(
 		return distributionFlavor == null || distributionFlavor.isBlank() ? flavor : distributionFlavor.strip();
 	}
 
-	/** @see #effectiveDistributionFlavor() */
+	/**
+	 * @see #effectiveDistributionFlavor()
+	 *
+	 *      <p>AMQP is the exception to the fallback. It carries calls;
+	 *      the broker's events have no AMQP transport, so a node whose
+	 *      one flavor is AMQP announces and hears over REST — said here
+	 *      once, rather than by every deployment that would otherwise
+	 *      point its admin at a discovery that does not exist.
+	 */
 	public String effectiveDiscoveryFlavor() {
-		return discoveryFlavor == null || discoveryFlavor.isBlank() ? flavor : discoveryFlavor.strip();
+		String chosen = discoveryFlavor == null || discoveryFlavor.isBlank() ? flavor : discoveryFlavor.strip();
+		return AMQP.equals(chosen) ? REST : chosen;
 	}
 
 	/** Whether this node serves over HTTP and therefore needs one. */
@@ -148,6 +185,9 @@ public record RsaSettings(
 	private static String kindOf(String configType) {
 		if (REST.equals(configType)) {
 			return "REST";
+		}
+		if (AMQP.equals(configType)) {
+			return "AMQP";
 		}
 		return MQTT.equals(configType) ? "MQTT" : null;
 	}

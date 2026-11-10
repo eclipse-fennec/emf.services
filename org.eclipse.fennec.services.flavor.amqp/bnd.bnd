@@ -1,0 +1,23 @@
+Bundle-Name: Fennec Services AMQP Flavor Rules
+Bundle-Description: \
+	Where a call travels on an AMQP 0-9-1 broker and what its message \
+	looks like. Shared by the consumer, which publishes a request, and \
+	by the provider side, which answers it. The routing key is the \
+	frozen convention; the message is a CloudEvent carrying a \
+	ServiceInvocation, the same one the MQTT flavor sends — without a \
+	reply address, because AMQP has one of its own. No client: this \
+	bundle decides, it does not connect.
+
+-library: enableEMF
+
+-buildpath: \
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	io.cloudevents.model;version=latest
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	jakarta.json-api;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest

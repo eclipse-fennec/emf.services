@@ -80,6 +80,7 @@
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//FlavorKind">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//FlavorKind/REST"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//FlavorKind/MQTT"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//FlavorKind/AMQP"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//HttpMethod">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//HttpMethod/GET"/>
@@ -304,6 +305,11 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttFlavor/defaultQos"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttFlavor/defaultRetained"/>
     </genClasses>
+    <genClasses ecoreClass="services.ecore#//AmqpFlavor">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpFlavor/brokers"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpFlavor/exchange"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpFlavor/requestRoutingKey"/>
+    </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//ServiceOperationFlavor">
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperationFlavor/operation"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceOperationFlavor/consumes"/>
@@ -332,6 +338,9 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/retained"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/correlation"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/returnPath"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//AmqpOperationFlavor">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpOperationFlavor/routingKey"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//SecurityRequirement">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//SecurityRequirement/authenticated"/>

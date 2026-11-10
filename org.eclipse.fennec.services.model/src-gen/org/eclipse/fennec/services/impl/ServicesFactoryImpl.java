@@ -85,10 +85,12 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.SERVICE_IMPLEMENTATION: return createServiceImplementation();
 			case ServicesPackage.REST_FLAVOR: return createRestFlavor();
 			case ServicesPackage.MQTT_FLAVOR: return createMqttFlavor();
+			case ServicesPackage.AMQP_FLAVOR: return createAmqpFlavor();
 			case ServicesPackage.REST_OPERATION_FLAVOR: return createRestOperationFlavor();
 			case ServicesPackage.REST_PARAMETER_BINDING: return createRestParameterBinding();
 			case ServicesPackage.REST_EXCEPTION_BINDING: return createRestExceptionBinding();
 			case ServicesPackage.MQTT_OPERATION_FLAVOR: return createMqttOperationFlavor();
+			case ServicesPackage.AMQP_OPERATION_FLAVOR: return createAmqpOperationFlavor();
 			case ServicesPackage.SECURITY_REQUIREMENT: return createSecurityRequirement();
 			case ServicesPackage.BEARER_TOKEN_SCHEME: return createBearerTokenScheme();
 			case ServicesPackage.MUTUAL_TLS_SCHEME: return createMutualTlsScheme();
@@ -552,6 +554,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	@Override
+	public AmqpFlavor createAmqpFlavor() {
+		AmqpFlavorImpl amqpFlavor = new AmqpFlavorImpl();
+		return amqpFlavor;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public RestOperationFlavor createRestOperationFlavor() {
 		RestOperationFlavorImpl restOperationFlavor = new RestOperationFlavorImpl();
 		return restOperationFlavor;
@@ -588,6 +601,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public MqttOperationFlavor createMqttOperationFlavor() {
 		MqttOperationFlavorImpl mqttOperationFlavor = new MqttOperationFlavorImpl();
 		return mqttOperationFlavor;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public AmqpOperationFlavor createAmqpOperationFlavor() {
+		AmqpOperationFlavorImpl amqpOperationFlavor = new AmqpOperationFlavorImpl();
+		return amqpOperationFlavor;
 	}
 
 	/**

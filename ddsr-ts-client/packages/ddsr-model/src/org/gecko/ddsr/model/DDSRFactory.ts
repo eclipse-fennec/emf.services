@@ -64,6 +64,8 @@ import type { RestFlavor } from './RestFlavor.js';
 import { RestFlavorImpl } from './RestFlavorImpl.js';
 import type { MqttFlavor } from './MqttFlavor.js';
 import { MqttFlavorImpl } from './MqttFlavorImpl.js';
+import type { AmqpFlavor } from './AmqpFlavor.js';
+import { AmqpFlavorImpl } from './AmqpFlavorImpl.js';
 import type { RestOperationFlavor } from './RestOperationFlavor.js';
 import { RestOperationFlavorImpl } from './RestOperationFlavorImpl.js';
 import type { RestParameterBinding } from './RestParameterBinding.js';
@@ -72,6 +74,8 @@ import type { RestExceptionBinding } from './RestExceptionBinding.js';
 import { RestExceptionBindingImpl } from './RestExceptionBindingImpl.js';
 import type { MqttOperationFlavor } from './MqttOperationFlavor.js';
 import { MqttOperationFlavorImpl } from './MqttOperationFlavorImpl.js';
+import type { AmqpOperationFlavor } from './AmqpOperationFlavor.js';
+import { AmqpOperationFlavorImpl } from './AmqpOperationFlavorImpl.js';
 import type { SecurityRequirement } from './SecurityRequirement.js';
 import { SecurityRequirementImpl } from './SecurityRequirementImpl.js';
 import type { BearerTokenScheme } from './BearerTokenScheme.js';
@@ -342,6 +346,13 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new AmqpFlavor instance
+   */
+  createAmqpFlavor(): AmqpFlavor {
+    return new AmqpFlavorImpl();
+  }
+
+  /**
    * Create a new RestOperationFlavor instance
    */
   createRestOperationFlavor(): RestOperationFlavor {
@@ -367,6 +378,13 @@ export class DDSRFactory extends BasicEFactory {
    */
   createMqttOperationFlavor(): MqttOperationFlavor {
     return new MqttOperationFlavorImpl();
+  }
+
+  /**
+   * Create a new AmqpOperationFlavor instance
+   */
+  createAmqpOperationFlavor(): AmqpOperationFlavor {
+    return new AmqpOperationFlavorImpl();
   }
 
   /**
@@ -612,6 +630,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createRestFlavor();
       case 'MqttFlavor':
         return this.createMqttFlavor();
+      case 'AmqpFlavor':
+        return this.createAmqpFlavor();
       case 'RestOperationFlavor':
         return this.createRestOperationFlavor();
       case 'RestParameterBinding':
@@ -620,6 +640,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createRestExceptionBinding();
       case 'MqttOperationFlavor':
         return this.createMqttOperationFlavor();
+      case 'AmqpOperationFlavor':
+        return this.createAmqpOperationFlavor();
       case 'SecurityRequirement':
         return this.createSecurityRequirement();
       case 'BearerTokenScheme':

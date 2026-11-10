@@ -151,6 +151,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateRestFlavor((RestFlavor)value, diagnostics, context);
 			case ServicesPackage.MQTT_FLAVOR:
 				return validateMqttFlavor((MqttFlavor)value, diagnostics, context);
+			case ServicesPackage.AMQP_FLAVOR:
+				return validateAmqpFlavor((AmqpFlavor)value, diagnostics, context);
 			case ServicesPackage.SERVICE_OPERATION_FLAVOR:
 				return validateServiceOperationFlavor((ServiceOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.REST_OPERATION_FLAVOR:
@@ -161,6 +163,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateRestExceptionBinding((RestExceptionBinding)value, diagnostics, context);
 			case ServicesPackage.MQTT_OPERATION_FLAVOR:
 				return validateMqttOperationFlavor((MqttOperationFlavor)value, diagnostics, context);
+			case ServicesPackage.AMQP_OPERATION_FLAVOR:
+				return validateAmqpOperationFlavor((AmqpOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.SECURITY_REQUIREMENT:
 				return validateSecurityRequirement((SecurityRequirement)value, diagnostics, context);
 			case ServicesPackage.SECURITY_SCHEME:
@@ -1175,6 +1179,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	public boolean validateAmqpFlavor(AmqpFlavor amqpFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(amqpFlavor, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public boolean validateServiceOperationFlavor(ServiceOperationFlavor serviceOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(serviceOperationFlavor, diagnostics, context);
 	}
@@ -1372,6 +1385,15 @@ public class ServicesValidator extends EObjectValidator {
 	 */
 	public boolean validateMqttOperationFlavor(MqttOperationFlavor mqttOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(mqttOperationFlavor, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateAmqpOperationFlavor(AmqpOperationFlavor amqpOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(amqpOperationFlavor, diagnostics, context);
 	}
 
 	/**

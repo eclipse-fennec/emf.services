@@ -200,6 +200,10 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createMqttFlavorAdapter();
 			}
 			@Override
+			public Adapter caseAmqpFlavor(AmqpFlavor object) {
+				return createAmqpFlavorAdapter();
+			}
+			@Override
 			public Adapter caseServiceOperationFlavor(ServiceOperationFlavor object) {
 				return createServiceOperationFlavorAdapter();
 			}
@@ -218,6 +222,10 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 			@Override
 			public Adapter caseMqttOperationFlavor(MqttOperationFlavor object) {
 				return createMqttOperationFlavorAdapter();
+			}
+			@Override
+			public Adapter caseAmqpOperationFlavor(AmqpOperationFlavor object) {
+				return createAmqpOperationFlavorAdapter();
 			}
 			@Override
 			public Adapter caseSecurityRequirement(SecurityRequirement object) {
@@ -834,6 +842,20 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	}
 
 	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.AmqpFlavor <em>Amqp Flavor</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.AmqpFlavor
+	 * @generated
+	 */
+	public Adapter createAmqpFlavorAdapter() {
+		return null;
+	}
+
+	/**
 	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.ServiceOperationFlavor <em>Service Operation Flavor</em>}'.
 	 * <!-- begin-user-doc -->
 	 * This default implementation returns null so that we can easily ignore cases;
@@ -900,6 +922,20 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createMqttOperationFlavorAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.AmqpOperationFlavor <em>Amqp Operation Flavor</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.AmqpOperationFlavor
+	 * @generated
+	 */
+	public Adapter createAmqpOperationFlavorAdapter() {
 		return null;
 	}
 

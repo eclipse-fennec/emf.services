@@ -67,9 +67,9 @@ public final class MqttEventSource implements EventSource {
 				throws Exception;
 	}
 
-	/** One received MQTT message. */
+	/** One received event: the topic it came on, its envelope and the document it carries. */
 	public interface MessageListener {
-		void onMessage(String topic, byte[] payload);
+		void onMessage(String topic, CloudEventCodec.Message message);
 	}
 
 	private final Subscriber subscriber;
@@ -118,7 +118,7 @@ public final class MqttEventSource implements EventSource {
 	 */
 	static final String RESYNC_TOPIC_SEGMENT = "_resync";
 
-	private void deliver(Handler handler, String topic, byte[] payload) {
+	private void deliver(Handler handler, String topic, CloudEventCodec.Message message) {
 		if (topic != null && topic.endsWith("/" + RESYNC_TOPIC_SEGMENT)) {
 			// Something was lost between the broker and here, and there is
 			// no way to find out what: the broker keeps no per-client
@@ -129,14 +129,13 @@ public final class MqttEventSource implements EventSource {
 			handler.onStreamEstablished();
 			return;
 		}
-		if (payload == null || payload.length == 0) {
+		if (message == null) {
 			return;
 		}
 		try {
-			// Structured mode: the envelope and the document in one JSON
-			// message, which is what a transport that carries nothing but
-			// messages gets (#101).
-			CloudEventCodec.Message message = CloudEventCodec.readStructured(payload);
+			// The connection read the envelope off the wire — structured
+			// mode, the whole event in one JSON document (#101) — and
+			// hands over what it said and what it carried.
 			if (CloudEvents.eventTypeOf(message.attributes().getType()) == null) {
 				LOG.fine(() -> "[DDSR-MQTT] ignoring a '" + message.attributes().getType()
 						+ "' message on " + topic + " — this subscription is for lifecycle events");

@@ -200,12 +200,14 @@ public final class Derivation {
 		if (RsaSettings.MQTT.equals(settings.effectiveDistributionFlavor())) {
 			plan.add(DerivedConfiguration.of(DISTRIBUTION_MQTT_PID, Map.of(
 					"broker.url", settings.mqttUrl(),
-					"topic.prefix", settings.topicPrefix())));
+					"topic.prefix", settings.topicPrefix(),
+					"content.type", settings.encoding())));
 			return;
 		}
 		if (RsaSettings.AMQP.equals(settings.effectiveDistributionFlavor())) {
 			plan.add(DerivedConfiguration.of(DISTRIBUTION_AMQP_PID, Map.of(
-					"broker.url", settings.amqpUrl())));
+					"broker.url", settings.amqpUrl(),
+					"content.type", settings.encoding())));
 			return;
 		}
 		Map<String, Object> rest = new LinkedHashMap<>();

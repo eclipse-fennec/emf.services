@@ -252,6 +252,9 @@ class RestDispatcherBodyTest {
 
 		assertThat(response.getStatus()).isEqualTo(404);
 		assertThat(response.getEntity()).isSameAs(failure);
+		assertThat(response.getHeaderString("ce-dataschema"))
+			.as("a body that is a model object says what schema it adheres to: its package")
+			.isEqualTo(ServicesPackage.eNS_URI);
 	}
 
 	@Test

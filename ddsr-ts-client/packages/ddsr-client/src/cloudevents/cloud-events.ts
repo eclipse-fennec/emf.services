@@ -145,6 +145,23 @@ export function isJson(contentType?: string): boolean {
   return type.endsWith('/json') || type.endsWith('+json');
 }
 
+/**
+ * Say which schema the payload adheres to: the namespace URI of the
+ * package its root belongs to, as the envelope's `dataschema`. The
+ * package and not the class — the attribute is an absolute URI, which
+ * has no fragment, and it is the package whose URI changes when the
+ * schema changes incompatibly. An object without a package leaves the
+ * envelope as it is. The twin of Java's `CloudEvents.describing`.
+ */
+export function describing(envelope: CloudEventEnvelope, root: unknown): CloudEventEnvelope {
+  const modelled = root as {
+    eClass?: () => { getEPackage?: () => { getNsURI?: () => string | undefined | null } | undefined | null };
+  } | undefined | null;
+  const namespace = modelled?.eClass?.()?.getEPackage?.()?.getNsURI?.();
+  if (namespace && namespace.trim()) envelope.dataschema = namespace;
+  return envelope;
+}
+
 export function isTextual(contentType?: string): boolean {
   if (!contentType || !contentType.trim()) return true;
   const type = contentType.toLowerCase().split(';')[0].trim();

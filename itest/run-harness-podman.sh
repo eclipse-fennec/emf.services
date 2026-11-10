@@ -89,6 +89,7 @@ rm -rf "$WORK"; mkdir -p "$WORK"
 podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java \
   ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
   ddsr-rsa-export ddsr-rsa-import ddsr-rsa-export-amqp ddsr-rsa-import-amqp ddsr-rabbitmq \
+  ddsr-rsa-export-json ddsr-rsa-import-json \
   ddsr-payment-h ddsr-probe-h ddsr-probe-mqtt-config ddsr-probe-j \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
@@ -441,8 +442,47 @@ grep -q "cannot check it" "$WORK/rsa-export-amqp.log" \
 echo "  ✓ guarded-contract-refused-over-amqp: the Ledger is not served where no caller can be checked"
 podman stop -t 20 ddsr-rsa-import-amqp >/dev/null 2>&1 || true
 podman stop -t 20 ddsr-rsa-export-amqp >/dev/null 2>&1 || true
-podman stop -t 20 ddsr-rabbitmq >/dev/null 2>&1 || true
 echo "Scenario R OK: an OSGi service exported over AMQP and bound by @Reference in another framework"
+
+# ============================================================ Scenario S
+log "Scenario S: the same call, encoded as JSON — the content type picks the resource"
+# What a call is encoded in is not the transport's business: the payload
+# is whatever Resource.save writes for the content type the flavor
+# names, and the envelope says which (datacontenttype) and of what
+# (dataschema). Here the exporting node says application/json, and the
+# resource factory registered for it is emf.codec's. The consumer is
+# told nothing — it reads the encoding off the announced flavor.
+#
+# The proof is that the call is answered at all: a node without a
+# factory for the content type refuses to write or read the document,
+# so an answer means both ends encoded and decoded JSON. And inside the
+# envelope a JSON payload is a JSON value, not a string (#226).
+# shellcheck disable=SC2046
+run_container ddsr-rsa-export-json ddsr/rsa-example $(client_args rsa-example) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e RSA_DISTRIBUTION_FLAVOR=fennec.amqp \
+  -e RSA_EXPORT_CONFIGS=fennec.amqp \
+  -e RSA_AMQP_URL="amqp://localhost:5672" \
+  -e RSA_ENCODING=application/json
+wait_for_log ddsr-rsa-export-json "exported .* over AMQP .* encoded as application/json" 150
+
+# shellcheck disable=SC2046
+run_container ddsr-rsa-import-json ddsr/rsa-consumer $(client_args rsa-example-consumer) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e RSA_FLAVOR=fennec.amqp
+wait_for_log ddsr-rsa-import-json "RSA-Consumer" 150
+
+podman logs ddsr-rsa-export-json >"$WORK/rsa-export-json.log" 2>&1
+podman logs ddsr-rsa-import-json >"$WORK/rsa-import-json.log" 2>&1
+grep -q "greetings so far, none of them local" "$WORK/rsa-import-json.log" \
+  || { echo "SCENARIO S FAILED: the consumer never got an answer to a JSON call"; cat "$WORK/rsa-import-json.log"; exit 1; }
+if grep -q "no encoding is registered" "$WORK/rsa-export-json.log" "$WORK/rsa-import-json.log"; then
+  echo "SCENARIO S FAILED: a node had no resource factory for application/json"; exit 1
+fi
+podman stop -t 20 ddsr-rsa-import-json >/dev/null 2>&1 || true
+podman stop -t 20 ddsr-rsa-export-json >/dev/null 2>&1 || true
+podman stop -t 20 ddsr-rabbitmq >/dev/null 2>&1 || true
+echo "Scenario S OK: a call encoded as JSON by emf.codec, chosen by content type on both ends"
 
 # ============================================================ Scenario K
 log "Scenario K: RSA over REST, secured — the interface says who may call"
@@ -710,4 +750,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + I + R + K + J + Q + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + R + S + K + J + Q + F + G + H)"

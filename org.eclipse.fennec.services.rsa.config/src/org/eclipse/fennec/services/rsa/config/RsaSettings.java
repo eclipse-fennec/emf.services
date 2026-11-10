@@ -45,6 +45,7 @@ import java.util.Set;
  * @param consumerId how this node names itself to the broker
  * @param identity who this node is to its identity provider (SECURITY.md §6)
  * @param amqpUrl the AMQP broker a node that serves over {@code fennec.amqp} listens on
+ * @param encoding the content type calls served over a messaging broker are encoded in; empty is XMI
  */
 public record RsaSettings(
 		String brokerUrl,
@@ -68,7 +69,8 @@ public record RsaSettings(
 		String distributionFlavor,
 		String discoveryFlavor,
 		NodeIdentity identity,
-		String amqpUrl) {
+		String amqpUrl,
+		String encoding) {
 
 	/** Where RabbitMQ listens when nobody says otherwise. */
 	public static final String DEFAULT_AMQP_URL = "amqp://localhost:5672";
@@ -76,6 +78,7 @@ public record RsaSettings(
 	public RsaSettings {
 		identity = identity == null ? NodeIdentity.NONE : identity;
 		amqpUrl = amqpUrl == null || amqpUrl.isBlank() ? DEFAULT_AMQP_URL : amqpUrl.strip();
+		encoding = encoding == null ? "" : encoding.strip();
 	}
 
 	/** A node that does not say where its AMQP broker is — every node before #138. */
@@ -86,7 +89,7 @@ public record RsaSettings(
 			String distributionFlavor, String discoveryFlavor, NodeIdentity identity) {
 		this(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp, httpId, registryName,
 				defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds, sessionIntervalSeconds,
-				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null);
+				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null, null);
 	}
 
 	/** The same node, with its AMQP broker named. */
@@ -94,7 +97,19 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, url);
+				identity, url, encoding);
+	}
+
+	/**
+	 * The same node, with the encoding of what it serves over a
+	 * messaging broker named. An exported interface has no contract
+	 * document to say it, so the role may.
+	 */
+	public RsaSettings withEncoding(String contentType) {
+		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
+				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
+				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
+				identity, amqpUrl, contentType);
 	}
 
 	/** A node without an identity — what every node was before SECURITY.md §6. */

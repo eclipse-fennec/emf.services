@@ -107,6 +107,14 @@ public class MqttDistributionProvider implements FlavorDistribution {
 						+ "ACL can say who may ask and who may hear: a provider subscribes req and publishes "
 						+ "res, a consumer does the opposite and only under its own name.")
 		String topic_prefix() default "ddsr/rpc";
+
+		@AttributeDefinition(name = "Content type", required = false,
+				description = "What calls and answers of exported services are encoded in, e.g. "
+						+ "application/json or application/x-protobuf. An exported interface has no contract "
+						+ "document to say it, so the deployment may; empty is XMI. The launch needs a resource "
+						+ "factory registered for that content type — emf.codec for JSON — and so does every "
+						+ "consumer, which reads the encoding off the announced flavor.")
+		String content_type() default "";
 	}
 
 	@Reference
@@ -219,7 +227,8 @@ public class MqttDistributionProvider implements FlavorDistribution {
 		// answers under the request topic would make those one rule.
 		String requestTopic = topicPrefix() + "/req/" + where;
 		String responseTopic = topicPrefix() + "/res/" + where;
-		MqttFlavor flavor = flavorFor(contract, requestTopic, responseTopic, brokerFor(properties));
+		MqttFlavor flavor = flavorFor(contract, requestTopic, responseTopic, brokerFor(properties),
+				config.content_type());
 
 		MessagingDistribution.Served served = distribution.serve(flavor, service,
 				provider + ":" + contract.getName());
@@ -232,7 +241,7 @@ public class MqttDistributionProvider implements FlavorDistribution {
 
 	/** A flavor whose topics say where each operation answers. */
 	private static MqttFlavor flavorFor(ServiceInterface contract, String requestTopic,
-			String responseTopic, String broker) {
+			String responseTopic, String broker, String contentType) {
 		MqttFlavor flavor = ServicesFactory.eINSTANCE.createMqttFlavor();
 		flavor.setName(contract.getName() + "-mqtt");
 		flavor.setKind(FlavorKind.MQTT);
@@ -243,11 +252,15 @@ public class MqttDistributionProvider implements FlavorDistribution {
 			MqttOperationFlavor operationFlavor = ServicesFactory.eINSTANCE.createMqttOperationFlavor();
 			operationFlavor.setName(operation.getName());
 			operationFlavor.setOperation(operation);
-			// Nothing about encodings here on purpose. On this wire the
-			// whole call is one document, and what it is written in is the
-			// flavor's default (XMI) unless a contract says otherwise —
-			// saying it again per operation would be a second place for
-			// the same fact to be wrong in.
+			// The encoding only where the deployment named one. On this
+			// wire the whole call is one document, and what it is written
+			// in is the flavor's default (XMI) unless somebody says
+			// otherwise — an exported interface has no contract document
+			// to say it, so here it is the configuration's to say.
+			if (contentType != null && !contentType.isBlank()) {
+				operationFlavor.getConsumes().add(contentType.strip());
+				operationFlavor.getProduces().add(contentType.strip());
+			}
 			flavor.getOperationFlavors().add(operationFlavor);
 		}
 		return flavor;

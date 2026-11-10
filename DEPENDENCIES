@@ -64,6 +64,7 @@ maven/mavencentral/org.eclipse.emf/org.eclipse.emf.ecore.xmi/2.39.0, EPL-2.0, ap
 maven/mavencentral/org.eclipse.emf/org.eclipse.emf.ecore/2.41.0, EPL-2.0, approved, modeling.emf
 maven/mavencentral/org.eclipse.fennec.codec/org.eclipse.fennec.codec.api/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.codec/org.eclipse.fennec.codec.metadata/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.codec/org.eclipse.fennec.codec/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.api/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.component.minimal/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.emf/org.eclipse.fennec.emf.osgi.eobject.registry/1.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec

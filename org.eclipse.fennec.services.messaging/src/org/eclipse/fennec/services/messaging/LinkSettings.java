@@ -123,6 +123,12 @@ public record LinkSettings(String name, String url, String clientId, String keys
 		} else {
 			put(configuration, "exchange", exchange);
 		}
+		// The instance writes and reads the envelope: every message of
+		// this project is a CloudEvent, and in structured mode it is one
+		// JSON document on every protocol — which is also what gives a
+		// protocol without message properties (MQTT 3.1.1) a reply
+		// address and a correlation.
+		configuration.put("cloudEvents", "structured");
 		put(configuration, "username", username);
 		put(configuration, ".password", password);
 		if (secured()) {

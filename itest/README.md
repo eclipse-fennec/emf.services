@@ -76,6 +76,12 @@ broker. Requirements and decisions:
   the answer comes back on the protocol's own reply-to. AMQP
   distribution with REST discovery, and the guarded `Ledger` is refused
   here as it is over MQTT.
+- **S (podman only) — a call encoded as JSON:** scenario R again, with
+  the exporting node told `encoding=application/json`. The payload is
+  written and read by the resource factory registered for that content
+  type — emf.codec — on both ends; the consumer learns the encoding
+  from the announced flavor. Proven by the call being answered: a node
+  without a factory for the content type refuses the document.
 - **K (podman only, secured) — roles per operation over RSA:** the
   `Ledger` interface carries `@RolesAllowed` and `@PermitAll`; exported
   over REST with the node's verifier, imported by a framework whose
@@ -121,7 +127,7 @@ drain in scenario G.
 
 ```bash
 ./itest/run-harness.sh          # host processes: A + B + F + G + H + T + N (podman only for Keycloak)
-./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + R + K + J + Q + F + G + H
+./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + R + S + K + J + Q + F + G + H
 HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 ```
 

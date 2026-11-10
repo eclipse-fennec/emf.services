@@ -265,10 +265,10 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 					// source carries, which is where it travels on messaging.
 					.attribute(ClientOrigin.ATTRIBUTE, source);
 			try {
-				byte[] answer = route.repliesNatively()
-						? link.request(placed.channel(), MessagingRoute.write(request, document), placed.qos(),
-								timeout)
-						: viaInbox(link, route, placed, request, document, replyTopic, timeout);
+				CloudEventCodec.Message call = new CloudEventCodec.Message(request, document);
+				CloudEventCodec.Message answer = route.repliesNatively()
+						? link.request(placed.channel(), call, placed.qos(), timeout)
+						: viaInbox(link, route, placed, call, replyTopic, timeout);
 				return valueOf(answer, request, operationName);
 			} catch (InterruptedException interrupted) {
 				Thread.currentThread().interrupt();
@@ -294,14 +294,16 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 	}
 
 	/** The way back in the envelope: wait in this consumer's inbox for the answer that correlates. */
-	private byte[] viaInbox(MessagingLink link, MessagingRoute route, MessagingRoute.Operation placed,
-			CloudEvent request, byte[] document, String replyTopic, long timeout) throws Exception {
+	private CloudEventCodec.Message viaInbox(MessagingLink link, MessagingRoute route,
+			MessagingRoute.Operation placed, CloudEventCodec.Message call, String replyTopic, long timeout)
+			throws Exception {
+		CloudEvent request = call.attributes();
 		ReplyInbox inbox = inboxFor(link, route.replySubtree(placed, consumer), placed.qos());
 		inbox.expect(request.getEventId());
 		try {
 			// Never retained: a call is a transition.
-			link.publish(placed.channel(), MessagingRoute.write(request, document), placed.qos(), timeout);
-			byte[] answer = inbox.await(request.getEventId(), timeout, TimeUnit.MILLISECONDS);
+			link.publish(placed.channel(), call, placed.qos(), timeout);
+			CloudEventCodec.Message answer = inbox.await(request.getEventId(), timeout, TimeUnit.MILLISECONDS);
 			if (answer == null) {
 				throw new TimeoutException("nothing arrived on " + replyTopic);
 			}
@@ -360,8 +362,15 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 	}
 
 	/** What the answer says, or why there is none. */
-	private Object valueOf(byte[] answer, CloudEvent request, String operationName) throws Exception {
-		CloudEventCodec.Message message = MessagingRoute.read(answer, CloudEvents.TYPE_INVOKE_REPLY);
+	private Object valueOf(CloudEventCodec.Message message, CloudEvent request, String operationName)
+			throws Exception {
+		if (!CloudEvents.TYPE_INVOKE_REPLY.equals(message.attributes().getType())) {
+			throw new DdsrException("the answer to " + operationName + " is a '" + message.attributes().getType()
+					+ "' and not an answer");
+		}
+		if (message.data() == null) {
+			throw new DdsrException("the answer to " + operationName + " carried no document");
+		}
 		String correlation = MessagingRoute.correlationOf(message.attributes());
 		if (correlation != null && !correlation.equals(request.getEventId())) {
 			// Matched by the inbox or by the protocol, so this should not

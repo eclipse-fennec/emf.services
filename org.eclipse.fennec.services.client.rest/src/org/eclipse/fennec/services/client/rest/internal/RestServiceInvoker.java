@@ -144,6 +144,15 @@ public final class RestServiceInvoker implements ServiceInvoker {
 				tx.originReference(), null);
 		String subject = subjectOf(op, operationName);
 		envelope.setSubject(subject);
+		// Where the arguments travel, decided before the headers are
+		// written: a call whose body is a model object says what schema
+		// that body adheres to (dataschema), the way a call over a
+		// messaging broker does. One without a body says nothing — query
+		// parameters have no schema to name.
+		RestPlacement placement = RestPlacement.of(op, safeArgs);
+		if (placement.body().orElse(null) instanceof EObject body) {
+			CloudEvents.describing(envelope, body);
+		}
 
 		// The envelope's headers and the trace context share one map, and
 		// the trace context is written into it by the span — after the
@@ -163,8 +172,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 					.attribute("fennec.flavor", "REST")
 					.attribute(ClientOrigin.ATTRIBUTE, tx.originToken());
 			try {
-				response = send(target, method, RestPlacement.of(op, safeArgs), accept, contentType,
-						headers);
+				response = send(target, method, placement, accept, contentType, headers);
 			} catch (ProcessingException unreachable) {
 				// Connect refused, connect/read timeout, reset: the provider is
 				// registered but not answering. Marked as a transport failure so

@@ -151,6 +151,12 @@ public class RsaProvider extends NodeConfiguration {
 						+ "password — it is announced with every export.")
 		String amqp_url() default "amqp://localhost:5672";
 
+		@AttributeDefinition(name = "Encoding",
+				description = "The content type calls and answers are encoded in where this node serves over "
+						+ "a messaging broker (fennec.mqtt, fennec.amqp), e.g. application/json. Empty is "
+						+ "XMI. The launch needs a resource factory registered for it — emf.codec for JSON.")
+		String encoding() default "";
+
 		@AttributeDefinition(name = "MQTT topic prefix",
 				description = "Calls served over MQTT arrive under <prefix>/req/… and are answered under "
 						+ "<prefix>/res/…. One prefix per deployment keeps two of them on one broker apart.")
@@ -266,6 +272,6 @@ public class RsaProvider extends NodeConfiguration {
 						config.subject_claim(), config.tls_keystore(), config.tls_keystore_password(),
 						config.tls_truststore(), config.tls_truststore_password(),
 						"certificate".equals(config.broker_authentication().strip())))
-				.withAmqpUrl(config.amqp_url());
+				.withAmqpUrl(config.amqp_url()).withEncoding(config.encoding());
 	}
 }

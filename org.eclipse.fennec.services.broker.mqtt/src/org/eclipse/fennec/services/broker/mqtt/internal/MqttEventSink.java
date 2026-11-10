@@ -58,12 +58,13 @@ public final class MqttEventSink implements EventSink {
 
 		/**
 		 * @param topic   where to publish
-		 * @param payload the message body
+		 * @param message the event: its envelope, and the document it
+		 *                carries or none
 		 * @throws Exception any transport failure; the sink swallows it,
 		 *                   because a distribution problem may not affect
 		 *                   the broker's own consistency
 		 */
-		void publish(String topic, byte[] payload) throws Exception;
+		void publish(String topic, CloudEventCodec.Message message) throws Exception;
 	}
 
 	private final Publisher publisher;
@@ -122,10 +123,10 @@ public final class MqttEventSink implements EventSink {
 
 	@Override
 	public void publish(ServiceEvent event) {
-		byte[] payload;
+		CloudEventCodec.Message payload;
 		List<String> topics;
 		try {
-			payload = toStructuredMessage(event);
+			payload = toMessage(event);
 			topics = topicsFor(topicPrefix, EventDocument.interfaceNamesOf(event, lookup));
 		} catch (Exception renderFailure) {
 			// Nothing was put on the wire, and a consumer cannot tell the
@@ -179,7 +180,7 @@ public final class MqttEventSink implements EventSink {
 			// the topic is what subscribers act on, but a message that
 			// says what it is can be read by anything that reads
 			// CloudEvents — including a transport that has no topics.
-			publisher.publish(topic, CloudEventCodec.writeStructured(
+			publisher.publish(topic, new CloudEventCodec.Message(
 					CloudEvents.newEnvelope(CloudEvents.TYPE_RESYNC, eventSource, null), null));
 			pendingResync.set(false);
 			LOG.info("[DDSR-MQTT] told subscribers on " + topic + " to take a fresh snapshot");
@@ -195,20 +196,18 @@ public final class MqttEventSink implements EventSink {
 	}
 
 	/**
-	 * One event as a CloudEvents message in structured mode — the whole
-	 * event in one JSON document, which is the mode the specification
-	 * has for a transport that carries nothing but messages.
-	 *
-	 * <p>The payload inside is the same self-contained XMI document as
-	 * before, so what changes for a subscriber is the wrapper and not
-	 * what it finds when it opens it.
+	 * One event as a CloudEvent: the envelope that says what happened,
+	 * and beside it the self-contained XMI document it happened to. How
+	 * the two become one message on the wire is the connection's — the
+	 * messaging instance writes them in structured mode, the whole event
+	 * in one JSON document.
 	 */
-	private byte[] toStructuredMessage(ServiceEvent event) throws IOException {
+	private CloudEventCodec.Message toMessage(ServiceEvent event) throws IOException {
 		List<EObject> roots = EventDocument.roots(event, lookup);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		XmiCodec.write(out, rsObjects, roots);
-		return CloudEventCodec.writeStructured(
-				CloudEvents.envelopeFor(event, eventSource, XMI_CONTENT_TYPE), out.toByteArray());
+		return new CloudEventCodec.Message(CloudEvents.envelopeFor(event, eventSource, XMI_CONTENT_TYPE),
+				out.toByteArray());
 	}
 
 	/** What the payload of a lifecycle event is encoded in today. */

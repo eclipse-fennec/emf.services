@@ -107,6 +107,14 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 		@AttributeDefinition(name = "Routing key prefix",
 				description = "Calls arrive under <prefix>.<provider>.<contract>.<operation>.")
 		String routing_prefix() default "ddsr.rpc";
+
+		@AttributeDefinition(name = "Content type", required = false,
+				description = "What calls and answers of exported services are encoded in, e.g. "
+						+ "application/json or application/x-protobuf. An exported interface has no contract "
+						+ "document to say it, so the deployment may; empty is XMI. The launch needs a resource "
+						+ "factory registered for that content type — emf.codec for JSON — and so does every "
+						+ "consumer, which reads the encoding off the announced flavor.")
+		String content_type() default "";
 	}
 
 	@Reference
@@ -204,20 +212,22 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 		// answering every call.
 		String routingKey = routingPrefix() + "." + segment(provider) + "."
 				+ segment(contract.getName().toLowerCase(Locale.ROOT));
-		AmqpFlavor flavor = flavorFor(contract, routingKey, config.broker_url(), exchange());
+		AmqpFlavor flavor = flavorFor(contract, routingKey, config.broker_url(), exchange(),
+				config.content_type());
 
 		MessagingDistribution.Served served = distribution.serve(flavor, service,
 				provider + ":" + contract.getName());
 
 		ServiceImplementation implementation = implementationOf(contract, flavor, provider);
 		LOG.info("[DDSR] exported " + contract.getName() + " over AMQP on " + config.broker_url()
-				+ " under " + routingKey);
+				+ " under " + routingKey
+				+ (config.content_type().isBlank() ? "" : ", encoded as " + config.content_type().strip()));
 		return new AmqpEndpoint(contract, implementation, served, routingKey);
 	}
 
 	/** A flavor whose routing keys say where each operation answers. */
 	private static AmqpFlavor flavorFor(ServiceInterface contract, String routingKey, String broker,
-			String exchange) {
+			String exchange, String contentType) {
 		AmqpFlavor flavor = ServicesFactory.eINSTANCE.createAmqpFlavor();
 		flavor.setName(contract.getName() + "-amqp");
 		flavor.setKind(FlavorKind.AMQP);
@@ -228,6 +238,12 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 			AmqpOperationFlavor operationFlavor = ServicesFactory.eINSTANCE.createAmqpOperationFlavor();
 			operationFlavor.setName(operation.getName());
 			operationFlavor.setOperation(operation);
+			// The encoding only where the deployment named one; else the
+			// flavor's default (XMI).
+			if (contentType != null && !contentType.isBlank()) {
+				operationFlavor.getConsumes().add(contentType.strip());
+				operationFlavor.getProduces().add(contentType.strip());
+			}
 			flavor.getOperationFlavors().add(operationFlavor);
 		}
 		return flavor;

@@ -104,9 +104,16 @@ What the instance gives each of them:
   connection, a contract served from configuration is announced once
   its topics are subscribed, and the RSA distribution offers itself
   only then — an export made after that is listening when it returns.
-- **The wire is what it was.** The instance carries bytes; the
-  CloudEvents envelope is still written by this project, so a
-  TypeScript node reads what it always read.
+- **The envelope is its own too.** Every message is a CloudEvent, and
+  the instance writes and reads it (`cloudEvents=structured`): this
+  project hands it what the event says and the document it carries, and
+  how that looks in bytes is the same on every protocol the messaging
+  project binds. That is also what gives MQTT 3.1.1, which has no
+  message properties, a reply address and a correlation. One visible
+  difference to what this project wrote itself: an XMI document travels
+  as `data_base64` rather than as a string — both are the same
+  document, and the TypeScript track, which still writes the string,
+  reads either ([Wire format](WIRE_FORMAT.md#the-envelope-cloudevents-10)).
 
 The instances are named `fennec.services.broker.events`,
 `fennec.services.client.events`, `fennec.services.invoker.<id>` and

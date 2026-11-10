@@ -224,6 +224,16 @@ every export — but of the connection
 ([Transports](TRANSPORTS.md#providermessaging--serving-a-contract-over-a-messaging-broker)).
 The harness runs this as scenario R.
 
+**What a call is encoded in.** An exported interface has no contract
+document that could say it, so the role may: `"encoding":
+"application/json"` on the provider makes every call and answer of what
+it serves over a messaging broker JSON instead of XMI. The consumer is
+told nothing — it reads the encoding off the announced flavor. Both
+launches need a resource factory registered for that content type;
+for JSON that is emf.codec (`org.eclipse.fennec.codec`). A node that
+has none refuses to write or read the document rather than falling
+back to XMI. Scenario S of the harness is that call.
+
 Three things the role configuration keeps in step, each of which is a
 silent failure when done by hand:
 

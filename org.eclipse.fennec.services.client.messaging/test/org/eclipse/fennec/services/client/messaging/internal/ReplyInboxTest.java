@@ -37,15 +37,15 @@ import io.cloudevents.model.ce.CloudEvent;
  */
 class ReplyInboxTest {
 
-	private static byte[] answerTo(String requestId, String body) {
+	private static CloudEventCodec.Message answerTo(String requestId, String body) {
 		CloudEvent envelope = CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE_REPLY, "/provider/Payment",
 				"application/xml");
 		envelope.getExtensions().put(CloudEvents.EXTENSION_CORRELATION_ID, requestId);
-		return CloudEventCodec.writeStructured(envelope, body.getBytes(StandardCharsets.UTF_8));
+		return new CloudEventCodec.Message(envelope, body.getBytes(StandardCharsets.UTF_8));
 	}
 
-	private static String bodyOf(byte[] message) {
-		return new String(CloudEventCodec.readStructured(message).data(), StandardCharsets.UTF_8);
+	private static String bodyOf(CloudEventCodec.Message message) {
+		return new String(message.data(), StandardCharsets.UTF_8);
 	}
 
 	@Test
@@ -89,11 +89,13 @@ class ReplyInboxTest {
 		inbox.expect("call-1");
 
 		assertThatCode(() -> {
-			inbox.deliver("not even json".getBytes(StandardCharsets.UTF_8));
-			inbox.deliver(CloudEventCodec.writeStructured(CloudEvents.newEnvelope(
+			// What is no CloudEvent never gets this far: the connection
+			// does not deliver it. What does arrive may still be anything.
+			inbox.deliver(null);
+			inbox.deliver(new CloudEventCodec.Message(CloudEvents.newEnvelope(
 					"com.example.something.happened", "/elsewhere", "application/xml"),
 					"<x/>".getBytes(StandardCharsets.UTF_8)));
-			inbox.deliver(CloudEventCodec.writeStructured(CloudEvents.newEnvelope(
+			inbox.deliver(new CloudEventCodec.Message(CloudEvents.newEnvelope(
 					CloudEvents.TYPE_INVOKE_REPLY, "/provider/Payment", "application/xml"),
 					"<nameless/>".getBytes(StandardCharsets.UTF_8)));
 		}).doesNotThrowAnyException();

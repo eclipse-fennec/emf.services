@@ -28,6 +28,8 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.AmqpFlavor;
+import org.eclipse.fennec.services.AmqpOperationFlavor;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttOperationFlavor;
 import org.eclipse.fennec.services.Parameter;
@@ -40,7 +42,7 @@ import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
-import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
+import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -98,10 +100,8 @@ class MessagingOperationDispatcherTest {
 		}
 	}
 
-	private record Published(String topic, byte[] payload, int qos) {
-	}
-
-	private final List<Published> sent = new ArrayList<>();
+	/** What the dispatcher handed back, call by call. */
+	private final List<CloudEventCodec.Message> sent = new ArrayList<>();
 
 	private final ResourceSetObjects resourceSets = new ResourceSetObjects();
 
@@ -129,13 +129,12 @@ class MessagingOperationDispatcherTest {
 	}
 
 	private MessagingOperationDispatcher dispatcher(MqttFlavor flavor) {
-		return new MessagingOperationDispatcher(flavor, Payments::new, "/provider/Payment", resourceSets,
-				(topic, payload, qos) -> sent.add(new Published(topic, payload, qos)));
+		return new MessagingOperationDispatcher(flavor, Payments::new, "/provider/Payment", resourceSets);
 	}
 
 	private MessagingOperationDispatcher dispatcher(MqttFlavor flavor, CallTracer tracer) {
 		return new MessagingOperationDispatcher(flavor, Payments::new, "/provider/Payment", resourceSets,
-				(topic, payload, qos) -> sent.add(new Published(topic, payload, qos)), tracer);
+				tracer);
 	}
 
 	/**
@@ -183,16 +182,16 @@ class MessagingOperationDispatcherTest {
 	}
 
 	/** The same call, with a caller's trace context in the envelope. */
-	private byte[] tracedCall(MqttFlavor flavor, String replyTo, double amount, String traceparent)
+	private CloudEventCodec.Message tracedCall(MqttFlavor flavor, String replyTo, double amount, String traceparent)
 			throws Exception {
 		ServiceOperation operation = ((MqttOperationFlavor) flavor.getOperationFlavors().get(0))
 				.getOperation();
 		ServiceInvocation invocation = Invocations.invocation(operation, Map.of("amount", amount));
 		ByteArrayOutputStream document = new ByteArrayOutputStream();
 		XmiCodec.write(document, resourceSets, Invocations.roots(invocation));
-		CloudEvent envelope = MqttMessages.request("/consumer/probe", "charge", replyTo, "application/xml");
+		CloudEvent envelope = MessagingRoute.request("/consumer/probe", "charge", "application/xml", replyTo);
 		envelope.getExtensions().put("traceparent", traceparent);
-		return MqttMessages.write(envelope, document.toByteArray());
+		return new CloudEventCodec.Message(envelope, document.toByteArray());
 	}
 
 	@Test
@@ -200,9 +199,8 @@ class MessagingOperationDispatcherTest {
 		MqttFlavor flavor = payments();
 		Watching watching = new Watching();
 
-		dispatcher(flavor, watching).onMessage("ddsr/rpc/payments/charge",
-				tracedCall(flavor, "ddsr/rpc/payments/charge/reply/11", 12.5,
-						"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"));
+		dispatcher(flavor, watching).onRequest("ddsr/rpc/payments/charge", tracedCall(flavor, "ddsr/rpc/payments/charge/reply/11", 12.5,
+						"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"), sent::add);
 
 		assertThat(watching.served)
 			.as("named by contract and operation, which is what a reader groups by")
@@ -223,8 +221,7 @@ class MessagingOperationDispatcherTest {
 		MqttFlavor flavor = payments();
 		Watching watching = new Watching();
 
-		dispatcher(flavor, watching).onMessage("ddsr/rpc/payments/charge",
-				call(flavor, "ddsr/rpc/payments/charge/reply/12", 500));
+		dispatcher(flavor, watching).onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/12", 500), sent::add);
 
 		assertThat(watching.failure).contains("insufficient funds");
 		assertThat(answerIn(sent.get(0)).getDiagnostic())
@@ -233,17 +230,16 @@ class MessagingOperationDispatcherTest {
 	}
 
 	/** A call, as a consumer would put it on the wire. */
-	private byte[] call(MqttFlavor flavor, String replyTo, double amount) throws Exception {
+	private CloudEventCodec.Message call(MqttFlavor flavor, String replyTo, double amount) throws Exception {
 		ServiceOperation operation = ((MqttOperationFlavor) flavor.getOperationFlavors().get(0)).getOperation();
 		ServiceInvocation invocation = Invocations.invocation(operation, Map.of("amount", amount));
 		ByteArrayOutputStream document = new ByteArrayOutputStream();
 		XmiCodec.write(document, resourceSets, Invocations.roots(invocation));
-		CloudEvent envelope = MqttMessages.request("/consumer/probe", "charge", replyTo, "application/xml");
-		return MqttMessages.write(envelope, document.toByteArray());
+		CloudEvent envelope = MessagingRoute.request("/consumer/probe", "charge", "application/xml", replyTo);
+		return new CloudEventCodec.Message(envelope, document.toByteArray());
 	}
 
-	private ServiceInvocationResult answerIn(Published published) throws Exception {
-		CloudEventCodec.Message message = CloudEventCodec.readStructured(published.payload());
+	private ServiceInvocationResult answerIn(CloudEventCodec.Message message) throws Exception {
 		assertThat(message.attributes().getType()).isEqualTo(CloudEvents.TYPE_INVOKE_REPLY);
 		XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), resourceSets);
 		for (EObject root : bundle.roots()) {
@@ -255,30 +251,31 @@ class MessagingOperationDispatcherTest {
 	}
 
 	@Test
-	void a_call_is_answered_on_the_topic_it_named() throws Exception {
+	void a_call_is_answered_on_the_way_back_it_came_with() throws Exception {
 		MqttFlavor flavor = payments();
 		MessagingOperationDispatcher dispatcher = dispatcher(flavor);
 
 		assertThat(dispatcher.channels()).containsExactly("ddsr/rpc/payments/charge");
+		assertThat(dispatcher.qosFor("ddsr/rpc/payments/charge")).isEqualTo(1);
 
-		dispatcher.onMessage("ddsr/rpc/payments/charge",
-				call(flavor, "ddsr/rpc/payments/charge/reply/7", 12.5));
+		dispatcher.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/7", 12.5), sent::add);
 
-		assertThat(sent).hasSize(1);
-		assertThat(sent.get(0).topic()).isEqualTo("ddsr/rpc/payments/charge/reply/7");
+		assertThat(sent)
+			.as("handed to the way back the connection supplied — where that leads is the connection's")
+			.hasSize(1);
 		assertThat(Invocations.valueOf(answerIn(sent.get(0)))).isEqualTo(987.5);
 	}
 
 	@Test
 	void the_answer_names_the_call_it_answers() throws Exception {
 		MqttFlavor flavor = payments();
-		byte[] request = call(flavor, "ddsr/rpc/payments/charge/reply/9", 1);
-		String requestId = CloudEventCodec.readStructured(request).attributes().getEventId();
+		CloudEventCodec.Message request = call(flavor, "ddsr/rpc/payments/charge/reply/9", 1);
+		String requestId = request.attributes().getEventId();
 
-		dispatcher(flavor).onMessage("ddsr/rpc/payments/charge", request);
+		dispatcher(flavor).onRequest("ddsr/rpc/payments/charge", request, sent::add);
 
-		CloudEvent answer = CloudEventCodec.readStructured(sent.get(0).payload()).attributes();
-		assertThat(MqttMessages.correlationOf(answer)).isEqualTo(requestId);
+		CloudEvent answer = sent.get(0).attributes();
+		assertThat(MessagingRoute.correlationOf(answer)).isEqualTo(requestId);
 		assertThat(answer.getEventId())
 			.as("an event of its own, not the request handed back")
 			.isNotEqualTo(requestId);
@@ -288,8 +285,7 @@ class MessagingOperationDispatcherTest {
 	void a_failing_service_answers_with_a_diagnostic_rather_than_silence() throws Exception {
 		MqttFlavor flavor = payments();
 
-		dispatcher(flavor).onMessage("ddsr/rpc/payments/charge",
-				call(flavor, "ddsr/rpc/payments/charge/reply/3", 500));
+		dispatcher(flavor).onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/3", 500), sent::add);
 
 		ServiceInvocationResult answer = answerIn(sent.get(0));
 		assertThat(answer.getDiagnostic()).isNotNull();
@@ -302,12 +298,14 @@ class MessagingOperationDispatcherTest {
 	@Test
 	void a_message_that_is_not_a_call_is_dropped() {
 		MqttFlavor flavor = payments();
-		byte[] foreign = CloudEventCodec.writeStructured(
+		CloudEventCodec.Message foreign = new CloudEventCodec.Message(
 				CloudEvents.newEnvelope("com.example.something.happened", "/elsewhere", "application/xml"),
 				"<x/>".getBytes(StandardCharsets.UTF_8));
+		CloudEventCodec.Message empty = new CloudEventCodec.Message(
+				CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE, "/consumer/probe", "application/xml"), null);
 
-		dispatcher(flavor).onMessage("ddsr/rpc/payments/charge", foreign);
-		dispatcher(flavor).onMessage("ddsr/rpc/payments/charge", "not even json".getBytes(StandardCharsets.UTF_8));
+		dispatcher(flavor).onRequest("ddsr/rpc/payments/charge", foreign, sent::add);
+		dispatcher(flavor).onRequest("ddsr/rpc/payments/charge", empty, sent::add);
 
 		assertThat(sent)
 			.as("there is nothing to answer to, and a subscription must survive it")
@@ -315,27 +313,58 @@ class MessagingOperationDispatcherTest {
 	}
 
 	@Test
-	void a_call_that_names_no_reply_address_is_dropped() throws Exception {
+	void a_service_that_is_not_there_is_an_answer_too() throws Exception {
 		MqttFlavor flavor = payments();
-		ServiceOperation operation = ((MqttOperationFlavor) flavor.getOperationFlavors().get(0)).getOperation();
-		ByteArrayOutputStream document = new ByteArrayOutputStream();
-		XmiCodec.write(document, resourceSets,
-				Invocations.roots(Invocations.invocation(operation, Map.of("amount", 1.0))));
-		byte[] addressless = CloudEventCodec.writeStructured(
-				CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE, "/consumer/probe", "application/xml"),
-				document.toByteArray());
+		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(flavor, () -> null,
+				"/provider/Payment", resourceSets);
 
-		dispatcher(flavor).onMessage("ddsr/rpc/payments/charge", addressless);
+		dispatcher.onRequest("ddsr/rpc/payments/charge", call(flavor, "r/1", 1), sent::add);
 
-		assertThat(sent).isEmpty();
+		assertThat(answerIn(sent.get(0)).getDiagnostic().getMessage())
+			.contains("no service implements this contract");
+	}
+
+	@Test
+	void a_way_back_that_fails_does_not_escape() throws Exception {
+		MqttFlavor flavor = payments();
+
+		// The subscription is shared by every caller of the operation:
+		// one answer that cannot be sent must not end it.
+		dispatcher(flavor).onRequest("ddsr/rpc/payments/charge", call(flavor, "r/1", 1), answer -> {
+			throw new IllegalStateException("the request named no reply address");
+		});
+	}
+
+	@Test
+	void an_amqp_flavor_is_dispatched_by_its_routing_key_and_nothing_else_differs() throws Exception {
+		MqttFlavor mqtt = payments();
+		ServiceOperation charge = ((MqttOperationFlavor) mqtt.getOperationFlavors().get(0)).getOperation();
+		AmqpFlavor flavor = F.createAmqpFlavor();
+		flavor.setName("payments-amqp");
+		flavor.getBrokers().add("amqp://fake:5672");
+		flavor.setRequestRoutingKey("ddsr.rpc.payments");
+		AmqpOperationFlavor operationFlavor = F.createAmqpOperationFlavor();
+		operationFlavor.setName("charge");
+		operationFlavor.setOperation(charge);
+		flavor.getOperationFlavors().add(operationFlavor);
+		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(flavor, Payments::new,
+				"/provider/Payment", resourceSets);
+
+		assertThat(dispatcher.channels()).containsExactly("ddsr.rpc.payments.charge");
+
+		dispatcher.onRequest("ddsr.rpc.payments.charge", call(mqtt, null, 10.0), sent::add);
+
+		assertThat(Invocations.valueOf(answerIn(sent.get(0)))).isEqualTo(990.0);
+		assertThat(sent.get(0).attributes().getDataschema())
+			.as("the answer says what schema its document adheres to")
+			.isEqualTo(ServicesPackage.eNS_URI);
 	}
 
 	@Test
 	void a_topic_this_contract_does_not_answer_on_is_ignored() throws Exception {
 		MqttFlavor flavor = payments();
 
-		dispatcher(flavor).onMessage("ddsr/rpc/payments/refund",
-				call(flavor, "ddsr/rpc/payments/charge/reply/1", 1));
+		dispatcher(flavor).onRequest("ddsr/rpc/payments/refund", call(flavor, "ddsr/rpc/payments/charge/reply/1", 1), sent::add);
 
 		assertThat(sent).isEmpty();
 	}

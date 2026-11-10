@@ -29,6 +29,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.gecko.messaging.api.Message;
 import org.gecko.messaging.api.MessageContext;
 import org.gecko.messaging.api.MessageContextBuilder;
@@ -72,10 +73,12 @@ import org.osgi.util.tracker.ServiceTracker;
  * learns that it has. {@link #awaitConnected} is for callers on a thread
  * of their own.
  *
- * <p>What travels is the owner's business. The instance runs without a
- * content mode of its own, so a payload reaches the wire as the bytes it
- * was handed over as, and the envelope this workspace writes stays the
- * one its other language reads.
+ * <p>What travels is a CloudEvent, and the instance writes it. The link
+ * is handed an envelope — the CloudEvents model — and the payload
+ * beside it, and the instance, running in structured mode, puts both on
+ * the wire as one JSON document and reads them back from one. The
+ * owner decides what the event says; how an event looks on a wire is
+ * the messaging project's, the same on every protocol it binds.
  */
 public final class MessagingLink implements AutoCloseable {
 
@@ -87,9 +90,9 @@ public final class MessagingLink implements AutoCloseable {
 		/**
 		 * @param topic   the topic the message was published to — the
 		 *                concrete one, also under a wildcard filter
-		 * @param payload the message body
+		 * @param message the envelope and the payload it carried
 		 */
-		void received(String topic, byte[] payload);
+		void received(String topic, CloudEventCodec.Message message);
 	}
 
 	/** What a subscription that answers hands its requests to. */
@@ -97,11 +100,11 @@ public final class MessagingLink implements AutoCloseable {
 
 		/**
 		 * @param topic   the topic the request was published to
-		 * @param payload the request body
+		 * @param request the envelope and the payload it carried
 		 * @param reply   where the answer goes — the address the request
 		 *                itself named, with its correlation
 		 */
-		void received(String topic, byte[] payload, Reply reply);
+		void received(String topic, CloudEventCodec.Message request, Reply reply);
 	}
 
 	/** The way back to whoever sent a request. */
@@ -113,7 +116,7 @@ public final class MessagingLink implements AutoCloseable {
 		 * @throws Exception when the request named no reply address, or
 		 *                   the answer could not be handed over
 		 */
-		void send(byte[] payload) throws Exception;
+		void send(CloudEventCodec.Message answer) throws Exception;
 	}
 
 	/** How long an answer may take to reach the broker. */
@@ -239,33 +242,44 @@ public final class MessagingLink implements AutoCloseable {
 	 * @throws IllegalStateException when the broker refuses it
 	 */
 	public AutoCloseable subscribe(String topicFilter, int qos, Receiver receiver) {
-		return want(new Subscribed(topicFilter, qos,
-				(instance, message) -> receiver.received(message.getContext().getChannel(), bytes(message))));
+		return want(new Subscribed(topicFilter, qos, (instance, message) -> {
+			CloudEventCodec.Message carried = Envelopes.fromMessage(message);
+			if (carried != null) {
+				receiver.received(message.getContext().getChannel(), carried);
+			}
+		}));
 	}
 
 	/**
 	 * Subscribe to requests: messages that say where their answer goes.
 	 *
-	 * <p>For a protocol that carries a reply address and a correlation
-	 * of its own (AMQP). The receiver is handed a way back that already
-	 * knows both, so nothing about either travels in the payload.
+	 * <p>The receiver is handed a way back that already knows the reply
+	 * address and the correlation, wherever the request carried them —
+	 * in properties of the protocol where it has them, in the envelope
+	 * where it has not. That difference ends here.
 	 *
 	 * @return closing it ends the subscription. Idempotent.
 	 * @throws IllegalStateException when the broker refuses it
 	 */
 	public AutoCloseable serve(String topicFilter, int qos, RequestReceiver receiver) {
 		return want(new Subscribed(topicFilter, qos, (instance, message) -> {
+			CloudEventCodec.Message carried = Envelopes.fromMessage(message);
+			if (carried == null) {
+				return;
+			}
 			MessageContext request = message.getContext();
-			receiver.received(request.getChannel(), bytes(message), answer -> {
+			receiver.received(request.getChannel(), carried, answer -> {
 				if (request.getReplyToChannel() == null) {
 					throw new IllegalStateException("the request on " + request.getChannel()
 							+ " named no reply address");
 				}
-				await(instance.publisher.publish(builder -> builder.channel(request.getReplyToChannel())
-						.correlationId(request.getCorrelationId())
-						.extensionEntry(MessagingConstants.EXTENSION_QOS, qos)
-						.content(ByteBuffer.wrap(answer))
-						.buildMessage()), REPLY_PUBLISH_TIMEOUT_MILLIS, request.getReplyToChannel());
+				// The correlation the requester waits for: the one its
+				// request carried, when it carried one. A requester that
+				// correlates by the request's own id sent none, and then
+				// the answer's envelope — which names that id — says it.
+				await(instance.publisher.publish(builder -> Envelopes.toMessage(builder,
+						request.getReplyToChannel(), answer, qos, request.getCorrelationId())),
+						REPLY_PUBLISH_TIMEOUT_MILLIS, request.getReplyToChannel());
 			});
 		}));
 	}
@@ -273,35 +287,35 @@ public final class MessagingLink implements AutoCloseable {
 	/**
 	 * Publish a request and wait for its answer.
 	 *
-	 * <p>The reply address and the correlation are the protocol's: the
-	 * instance subscribes a queue only it can read before the request
-	 * goes out, and takes the one answer that correlates.
+	 * <p>For a call whose flavor names no place for answers. The
+	 * instance subscribes a reply channel of its own before the request
+	 * goes out, names it in the request and takes the one answer that
+	 * correlates — by the id of the request's envelope, which is what
+	 * this project correlates by on every wire.
 	 *
-	 * @return the answer's payload
+	 * @return the answer
 	 * @throws TimeoutException              when no answer came in time
-	 * @throws UnsupportedOperationException on a protocol without a
-	 *                                       reply address of its own
+	 * @throws UnsupportedOperationException when the instance offers no
+	 *                                       request/reply
 	 * @throws Exception                     when the link is not
 	 *                                       connected or the request
 	 *                                       could not be handed over
 	 */
-	public byte[] request(String topic, byte[] payload, int qos, long timeoutMillis) throws Exception {
+	public CloudEventCodec.Message request(String topic, CloudEventCodec.Message message, int qos,
+			long timeoutMillis) throws Exception {
 		Instance current = instance;
 		if (current == null) {
 			throw new IllegalStateException("no connection to " + settings.address() + " yet");
 		}
 		if (current.requests == null) {
 			throw new UnsupportedOperationException("the connection to " + settings.address()
-					+ " carries no reply address of its own");
+					+ " offers no request and reply");
 		}
 		MessageContextBuilder builder = current.builders.getService();
 		Message request;
 		try {
-			request = builder.channel(topic)
-					.extensionEntry(MessagingConstants.EXTENSION_QOS, qos)
-					.extensionEntry(MessagingConstants.EXTENSION_REPLY_TIMEOUT, timeoutMillis)
-					.content(ByteBuffer.wrap(payload))
-					.buildMessage();
+			builder.extensionEntry(MessagingConstants.EXTENSION_REPLY_TIMEOUT, timeoutMillis);
+			request = Envelopes.toMessage(builder, topic, message, qos, message.attributes().getEventId());
 		} finally {
 			current.builders.ungetService(builder);
 		}
@@ -309,7 +323,11 @@ public final class MessagingLink implements AutoCloseable {
 		// A little longer than the instance waits itself, so that its
 		// timeout — which names the reason — is the one that is reported.
 		await(answered, timeoutMillis + 1_000, topic);
-		return bytes(answered.getValue());
+		CloudEventCodec.Message answer = Envelopes.fromMessage(answered.getValue());
+		if (answer == null) {
+			throw new IllegalStateException("the answer on " + topic + " is no CloudEvent");
+		}
+		return answer;
 	}
 
 	private AutoCloseable want(Subscribed subscribed) {
@@ -332,21 +350,22 @@ public final class MessagingLink implements AutoCloseable {
 	/**
 	 * Publish, and wait for the broker to have it.
 	 *
+	 * @param message       the envelope and its payload; a payload of
+	 *                      null is an event that carries none
 	 * @param timeoutMillis how long to wait for the hand-over; zero or
 	 *                      less does not wait, and then only a failure
 	 *                      that is already known is reported
 	 * @throws Exception when the link is not connected, the hand-over
 	 *                   failed or did not happen in time
 	 */
-	public void publish(String topic, byte[] payload, int qos, long timeoutMillis) throws Exception {
+	public void publish(String topic, CloudEventCodec.Message message, int qos, long timeoutMillis)
+			throws Exception {
 		Instance current = instance;
 		if (current == null) {
 			throw new IllegalStateException("no connection to " + settings.address() + " yet");
 		}
-		Promise<Void> handedOver = current.publisher.publish(builder -> builder.channel(topic)
-				.extensionEntry(MessagingConstants.EXTENSION_QOS, qos)
-				.content(ByteBuffer.wrap(payload))
-				.buildMessage());
+		Promise<Void> handedOver = current.publisher
+				.publish(builder -> Envelopes.toMessage(builder, topic, message, qos, null));
 		if (timeoutMillis > 0) {
 			await(handedOver, timeoutMillis, topic);
 		} else if (handedOver.isDone()) {
@@ -363,13 +382,6 @@ public final class MessagingLink implements AutoCloseable {
 					+ " within " + timeoutMillis + " ms");
 		}
 		rethrow(settling.getFailure());
-	}
-
-	private static byte[] bytes(Message message) {
-		ByteBuffer content = message.payload();
-		byte[] payload = new byte[content.remaining()];
-		content.get(payload);
-		return payload;
 	}
 
 	/**

@@ -19,6 +19,8 @@ import { serializeToXmi } from './xmi-support.js';
 export interface RestRequest {
   url: string;
   init: RequestInit;
+  /** The model object that became the body, where one did — what the envelope's `dataschema` describes. */
+  body?: EObject;
 }
 
 /**
@@ -84,7 +86,7 @@ export function buildRequest(
     headers['Content-Type'] = 'application/xml';
     const body = serializeToXmi(bodyObj);
     const url = appendQueryParams(base + path, { ...placed.query, ...withoutEObjects(params) });
-    return { url, init: { method, headers, body } };
+    return { url, init: { method, headers, body }, body: bodyObj };
   }
 
   const url = appendQueryParams(base + path, { ...placed.query, ...params });

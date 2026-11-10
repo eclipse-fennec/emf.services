@@ -233,9 +233,14 @@ echo "Scenario B OK: withdraw confirmed before endpoint stop; broker no longer l
 
 # ============================================================ Scenario C
 log "Scenario C: MQTT wire proof (mosquitto container, TS transport over TCP)"
-podman run -d --replace --name ddsr-mosquitto --network=host \
-  -v "$ROOT/itest/containers/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro,Z" \
+# The configuration is copied into the container, not mounted: on the CI
+# runner mosquitto could not open a bind-mounted file ("Unable to open
+# config file"), and a copy belongs to the container's own root whoever
+# owns the checkout.
+podman create --replace --name ddsr-mosquitto --network=host \
   docker.io/library/eclipse-mosquitto:2 >/dev/null
+podman cp "$ROOT/itest/containers/mosquitto.conf" ddsr-mosquitto:/mosquitto/config/mosquitto.conf
+podman start ddsr-mosquitto >/dev/null
 CONTAINERS+=(ddsr-mosquitto)
 # "running", not just the version: the banner is printed before the
 # listener is open, and a broker that dies in between has printed it too.
@@ -512,8 +517,11 @@ topic write ddsr/rpc/binding-probe/+/reply/#
 pattern write ddsr/rpc/+/+
 pattern read ddsr/rpc/+/+/reply/%u/#
 ACL
-podman run -d --replace --name ddsr-mosquitto-tls --network=host -v "$MQ:/mosquitto/config/tls:ro,Z" \
+# Copied in for the reason scenario C gives.
+podman create --replace --name ddsr-mosquitto-tls --network=host \
   docker.io/library/eclipse-mosquitto:2 mosquitto -c /mosquitto/config/tls/mosquitto.conf >/dev/null
+podman cp "$MQ" ddsr-mosquitto-tls:/mosquitto/config/tls
+podman start ddsr-mosquitto-tls >/dev/null
 CONTAINERS+=(ddsr-mosquitto-tls)
 wait_for_log ddsr-mosquitto-tls "mosquitto version 2" 60
 wait_for_log ddsr-mosquitto-tls "Opening ipv4 listen socket on port 8883" 30

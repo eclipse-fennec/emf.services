@@ -134,6 +134,17 @@ export function newEnvelope(
  * base64. No content type means JSON by the specification's default,
  * which is textual too.
  */
+/**
+ * Whether a content type declares JSON-formatted data: a media subtype
+ * `json` or one ending in `+json`, parameters aside. No content type at
+ * all means JSON too — that is the format's own default.
+ */
+export function isJson(contentType?: string): boolean {
+  if (!contentType || !contentType.trim()) return true;
+  const type = contentType.toLowerCase().split(';')[0].trim();
+  return type.endsWith('/json') || type.endsWith('+json');
+}
+
 export function isTextual(contentType?: string): boolean {
   if (!contentType || !contentType.trim()) return true;
   const type = contentType.toLowerCase().split(';')[0].trim();
@@ -160,7 +171,15 @@ export function writeStructured(
   }
   if (data !== undefined) {
     const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
-    if (isTextual(envelope.datacontenttype)) {
+    if (isJson(envelope.datacontenttype)) {
+      // Directly as a JSON value (JSON event format §3.1.1): a document
+      // wrapped in a string is what the format forbids.
+      try {
+        message.data = JSON.parse(new TextDecoder().decode(bytes));
+      } catch (error) {
+        throw new Error(`the data is declared JSON and is not: ${String(error)}`);
+      }
+    } else if (isTextual(envelope.datacontenttype)) {
       message.data = new TextDecoder().decode(bytes);
     } else {
       message.data_base64 = toBase64(bytes);
@@ -208,7 +227,11 @@ export function readStructured(payload: Uint8Array | string): CloudEventMessage 
   if (typeof message.data_base64 === 'string') {
     data = fromBase64(message.data_base64);
   } else if (typeof message.data === 'string') {
-    data = new TextEncoder().encode(message.data);
+    data = new TextEncoder().encode(
+      isJson(attributes.datacontenttype) ? jsonString(message.data) : message.data);
+  } else if (message.data !== undefined && message.data !== null) {
+    // A JSON value stored directly: its text is the document.
+    data = new TextEncoder().encode(JSON.stringify(message.data));
   }
   return { attributes, data };
 }
@@ -218,6 +241,26 @@ export function readStructured(payload: Uint8Array | string): CloudEventMessage 
  * `datacontenttype`, which in binary mode IS the message's own
  * `Content-Type`.
  */
+/**
+ * A string under a JSON content type. By the format it is a JSON string
+ * value and nothing more. A peer that wrapped a whole document in it —
+ * which this codec did itself before it followed the format — is still
+ * read: a string that parses as an object or an array is taken as that
+ * document, anything else as the string it is.
+ */
+function jsonString(text: string): string {
+  const content = text.trim();
+  if (content.startsWith('{') || content.startsWith('[')) {
+    try {
+      JSON.parse(content);
+      return content;
+    } catch {
+      // It only looked like a document.
+    }
+  }
+  return JSON.stringify(text);
+}
+
 export function toHeaders(envelope: CloudEventEnvelope): Record<string, string> {
   const headers: Record<string, string> = {
     [`${CE_HEADER_PREFIX}specversion`]: required(envelope.specversion, 'specversion'),

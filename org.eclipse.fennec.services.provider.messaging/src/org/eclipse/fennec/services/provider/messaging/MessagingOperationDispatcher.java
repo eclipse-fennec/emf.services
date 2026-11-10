@@ -266,7 +266,9 @@ public final class MessagingOperationDispatcher {
 		String contentType = placed.produces();
 		try {
 			byte[] document = write(List.of(result), contentType);
-			reply.send(MessagingRoute.write(MessagingRoute.reply(request, source, contentType), document));
+			reply.send(MessagingRoute.write(
+					CloudEvents.describing(MessagingRoute.reply(request, source, contentType), result),
+					document));
 		} catch (Exception unanswerable) {
 			// The last resort: say so in the encoding this side always
 			// has. A Diagnostic is not the operation's declared result,

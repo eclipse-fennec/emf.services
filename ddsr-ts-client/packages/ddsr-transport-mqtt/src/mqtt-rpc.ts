@@ -49,6 +49,7 @@
  */
 
 import type { TlsOptions } from '@ddsr/client';
+import { DDSRPackage } from '@ddsr/model';
 import type { ServiceOperation } from '@ddsr/model';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO, CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
@@ -221,6 +222,9 @@ export function encodeRequest(
 ): { payload: Uint8Array; id: string } {
   const envelope = newEnvelope(CE_TYPE_INVOKE, source, declaredContentType(opFlavor, 'consumes'));
   envelope.subject = operation.name ?? undefined;
+  // The schema the document adheres to: the namespace of its package —
+  // an absolute URI, which is why it is the package and not a class.
+  envelope.dataschema = DDSRPackage.eNS_URI;
   envelope.extensions[CE_EXTENSION_REPLY_TO] = replyTo;
   return {
     payload: writeStructured(envelope, encodeInvocation(operation, args)),
@@ -255,6 +259,7 @@ export function encodeResponse(
 ): Uint8Array {
   const envelope = newEnvelope(CE_TYPE_INVOKE_REPLY, source,
       declaredContentType(opFlavor, 'produces'));
+  envelope.dataschema = DDSRPackage.eNS_URI;
   envelope.extensions[CE_EXTENSION_CORRELATION_ID] = requestId;
   const document = failure !== undefined ? encodeFailure(failure) : encodeResult(value);
   return writeStructured(envelope, document);

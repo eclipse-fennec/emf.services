@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.cloudevents;
 
 import java.io.ByteArrayInputStream;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -55,11 +56,19 @@ import jakarta.json.stream.JsonParsingException;
  * {@code datacontenttype}, which is exactly the attribute the
  * specification has for it.
  *
- * <p>Whether the JSON carries {@code data} or {@code data_base64} is
- * decided by that content type, as the JSON event format requires: a
- * textual encoding becomes a JSON string, anything else is base64. XMI
- * is text and stays readable in the message; protobuf is not and does
- * not pretend to be.
+ * <p>How the payload sits in the JSON document is decided by that
+ * content type, the way the JSON event format lays it down (§3.1):
+ * <ul>
+ * <li>a JSON encoding ({@code *}{@code /json}, {@code +json}) is stored
+ * <em>directly as a JSON value</em> in {@code data} — never as a string
+ * holding an encoded JSON document;</li>
+ * <li>any other text (XML, {@code text/}{@code *}) is a JSON string in
+ * {@code data}. XMI stays readable in the message;</li>
+ * <li>everything else is binary and travels as {@code data_base64}.
+ * Protobuf does not pretend to be text.</li>
+ * </ul>
+ * Reading takes all three, and one more for a peer that is not as
+ * strict: a JSON document that arrives wrapped in a string.
  */
 public final class CloudEventCodec {
 
@@ -123,7 +132,12 @@ public final class CloudEventCodec {
 			}
 		}
 		if (data != null) {
-			if (isTextual(envelope.getDatacontenttype())) {
+			if (isJson(envelope.getDatacontenttype())) {
+				// Directly as a JSON value: a document wrapped in a string
+				// is what the format forbids, and what a reader that
+				// follows it would hand on as a string literal.
+				json.add(DATA, jsonValue(data));
+			} else if (isTextual(envelope.getDatacontenttype())) {
 				json.add(DATA, new String(data, StandardCharsets.UTF_8));
 			} else {
 				json.add(DATA_BASE64, Base64.getEncoder().encodeToString(data));
@@ -170,16 +184,58 @@ public final class CloudEventCodec {
 			}
 		}
 		byte[] data = null;
+		JsonValue carried = json.get(DATA);
 		if (json.get(DATA_BASE64) instanceof JsonString encoded) {
 			try {
 				data = Base64.getDecoder().decode(encoded.getString());
 			} catch (IllegalArgumentException notBase64) {
 				throw new CloudEventException("data_base64 is not base64", notBase64);
 			}
-		} else if (json.get(DATA) instanceof JsonString text) {
-			data = text.getString().getBytes(StandardCharsets.UTF_8);
+		} else if (carried instanceof JsonString text) {
+			data = isJson(envelope.getDatacontenttype()) ? jsonString(text)
+					: text.getString().getBytes(StandardCharsets.UTF_8);
+		} else if (carried != null && carried.getValueType() != JsonValue.ValueType.NULL) {
+			// A JSON value stored directly: its text is the document.
+			data = carried.toString().getBytes(StandardCharsets.UTF_8);
 		}
 		return new Message(envelope, data);
+	}
+
+	/**
+	 * The payload of a JSON encoding, as the value it is.
+	 *
+	 * @throws CloudEventException when the bytes are not JSON — an event
+	 *                             that says its data is JSON and carries
+	 *                             something else must not be sent
+	 */
+	private static JsonValue jsonValue(byte[] data) {
+		try (JsonReader reader = Json.createReader(new ByteArrayInputStream(data))) {
+			return reader.readValue();
+		} catch (JsonParsingException | IllegalStateException notJson) {
+			throw new CloudEventException("the data is declared JSON and is not: " + notJson.getMessage(),
+					notJson);
+		}
+	}
+
+	/**
+	 * A string under a JSON content type. By the format it is a JSON
+	 * string value and nothing more. A peer that wrapped a whole
+	 * document in it — which this codec did itself before it followed
+	 * the format — is still read: a string that parses as an object or
+	 * an array is taken as that document, anything else as the string
+	 * it is.
+	 */
+	private static byte[] jsonString(JsonString text) {
+		String content = text.getString().strip();
+		if (content.startsWith("{") || content.startsWith("[")) {
+			try (JsonReader reader = Json.createReader(new StringReader(content))) {
+				reader.readValue();
+				return content.getBytes(StandardCharsets.UTF_8);
+			} catch (JsonParsingException | IllegalStateException justAString) {
+				// Falls through: it only looked like a document.
+			}
+		}
+		return text.toString().getBytes(StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -307,9 +363,27 @@ public final class CloudEventCodec {
 	}
 
 	/**
-	 * Whether a payload in this encoding can be a JSON string rather
-	 * than base64. Text is text: XML, JSON and anything under
-	 * {@code text/}; a structured suffix counts as its structure.
+	 * Whether a content type declares JSON-formatted data: a media
+	 * subtype {@code json} or one ending in {@code +json}, parameters
+	 * aside. No content type at all means JSON too — that is the
+	 * format's own default.
+	 */
+	static boolean isJson(String contentType) {
+		if (contentType == null || contentType.isBlank()) {
+			return true;
+		}
+		String type = contentType.toLowerCase(Locale.ROOT);
+		int parameters = type.indexOf(';');
+		if (parameters >= 0) {
+			type = type.substring(0, parameters).trim();
+		}
+		return type.endsWith("/json") || type.endsWith("+json");
+	}
+
+	/**
+	 * Whether a payload in this encoding is text rather than binary.
+	 * Text is text: XML, JSON and anything under {@code text/}; a
+	 * structured suffix counts as its structure.
 	 *
 	 * <p>No content type means the payload is JSON by the specification's
 	 * own default, which is textual too.

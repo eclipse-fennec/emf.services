@@ -209,7 +209,7 @@ the transport can carry:
 
 | Transport | Mode | Where the attributes are |
 |---|---|---|
-| SSE, MQTT (and AMQP when it comes) | **structured**, JSON event format | in the message, beside `data` |
+| SSE, MQTT, AMQP | **structured**, JSON event format | in the message, beside `data` |
 | HTTP | **binary** | `ce-*` headers, the body is the payload |
 
 The binary mode is why the REST wire did not change: the body is byte
@@ -217,9 +217,28 @@ for byte the payload its contract declares, and the envelope is a
 handful of headers around it. `datacontenttype` is the message's own
 `Content-Type` there and is never written as a `ce-` header.
 
-In structured mode the payload is a JSON string when its encoding is
-textual (XMI is) and `data_base64` when it is not (protobuf is not) —
-the JSON event format's own rule, not ours.
+In structured mode, how the payload sits in the message is decided by
+its content type — the JSON event format's own rule (§3.1), not ours:
+
+| `datacontenttype` | In the message | Example |
+|---|---|---|
+| JSON (`*/json`, `+json`) | **directly as a JSON value** in `data`, never as a string holding a JSON document | `"data": {"name": "Ada"}` |
+| other text (XML, `text/*`) | a JSON string in `data` | `"data": "<?xml …?>…"` — XMI stays readable |
+| anything else | base64 in `data_base64` | protobuf |
+
+A reader takes all three, and is lenient in two places where peers
+differ. XML may arrive as `data_base64` — that is what Gecko Messaging
+writes with `cloudEvents=structured`, treating everything that is not
+`text/*` as binary, and it is the same document. And a JSON document
+that arrives wrapped in a string is still read as that document, which
+is what this codec wrote itself before it followed the format.
+
+The payload itself is not the envelope's business: it is whatever
+`Resource.save` produced for that content type, and a reader hands it
+to `Resource.load` of the resource factory registered for the same
+content type — XMI by default, protobuf, or JSON where a codec such as
+emf.codec registers `application/json`. The envelope says which
+(`datacontenttype`) and of what (`dataschema`).
 
 ### The attributes this registry sets
 
@@ -230,6 +249,15 @@ the JSON event format's own rule, not ours.
 | `subject` | the reference id | the operation, with its contract where the caller knows it | the call's subject |
 | `time` | when the transition happened, not when it was sent | when the call was made | — |
 | `datacontenttype` | `application/xml` | what the contract declares (#100) | likewise |
+| `dataschema` | the namespace URI of the package the document's root belongs to — `http://eclipse.org/fennec/services/1.0` | likewise | likewise |
+
+`dataschema` names the package and not a class in it: the attribute is
+an absolute URI, which has no fragment, and it is the package whose URI
+changes when the schema changes incompatibly. It is set wherever the
+envelope carries the document — structured mode, on SSE, MQTT and
+AMQP. Over HTTP in binary mode it is not set yet: the body there may be
+of any model, or absent, and the header is written before the body is
+known.
 
 `<transition>` is the `ServiceEventType` literal in lower case with
 `_` as `.`: `registered`, `modified`, `unregistering`,

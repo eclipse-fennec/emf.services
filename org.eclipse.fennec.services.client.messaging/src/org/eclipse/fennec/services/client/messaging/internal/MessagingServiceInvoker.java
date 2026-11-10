@@ -229,7 +229,12 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 			ServiceInvocation invocation = Invocations.invocation(operation,
 					args == null ? Map.of() : args);
 			document = write(Invocations.roots(invocation), placed.consumes());
-			request = MessagingRoute.request(source, operation.getName(), placed.consumes(), null);
+			// The envelope says what it carries twice over: the encoding
+			// (datacontenttype) and the schema the document adheres to
+			// (dataschema) — what a reader needs to pick the resource for
+			// it before it has opened it.
+			request = CloudEvents.describing(
+					MessagingRoute.request(source, operation.getName(), placed.consumes(), null), invocation);
 			if (!route.repliesNatively()) {
 				// The reply topic has to be known before the call exists,
 				// because the call carries it — so the envelope is built

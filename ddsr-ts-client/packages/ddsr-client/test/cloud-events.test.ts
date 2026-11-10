@@ -59,6 +59,53 @@ describe('cloud events', () => {
     expect(readStructured(message).data).toEqual(protobuf);
   });
 
+  it('stores a JSON payload directly as a JSON value', () => {
+    const document = '{"name": "Zürich", "values": [1, true, null]}';
+
+    const message = writeStructured(envelope('application/json'), document);
+
+    // The format forbids a JSON document wrapped in a string (§3.1.1).
+    expect(new TextDecoder().decode(message))
+      .toContain('"data":{"name":"Zürich","values":[1,true,null]}');
+    expect(new TextDecoder().decode(message)).not.toContain('data_base64');
+    // The same text the Java codec reads back, character for character.
+    expect(dataAsText(readStructured(message))).toBe('{"name":"Zürich","values":[1,true,null]}');
+  });
+
+  it('counts a structured suffix as JSON too', () => {
+    const message = writeStructured(envelope('application/vnd.acme+json; charset=utf-8'), '[1,2]');
+
+    expect(new TextDecoder().decode(message)).toContain('"data":[1,2]');
+  });
+
+  it('does not send data declared JSON that is not JSON', () => {
+    expect(() => writeStructured(envelope('application/json'), '<not json/>'))
+      .toThrow(/declared JSON/);
+  });
+
+  it('still reads a JSON document a peer wrapped in a string', () => {
+    const wrapped = '{"specversion":"1.0","id":"1","source":"/s","type":"t",'
+      + '"datacontenttype":"application/json","data":"{\\"a\\": 1}"}';
+
+    expect(dataAsText(readStructured(wrapped))).toBe('{"a": 1}');
+  });
+
+  it('keeps a plain string under a JSON content type a JSON string', () => {
+    const plain = '{"specversion":"1.0","id":"1","source":"/s","type":"t",'
+      + '"datacontenttype":"application/json","data":"just a string"}';
+
+    // A string is a JSON string value; it is not parsed as a document (§3.1.2).
+    expect(dataAsText(readStructured(plain))).toBe('"just a string"');
+  });
+
+  it('reads XML another implementation sent as base64 as the same document', () => {
+    const base64 = Buffer.from(XMI, 'utf8').toString('base64');
+    const message = '{"specversion":"1.0","id":"1","source":"/s","type":"t",'
+      + `"datacontenttype":"application/xml","data_base64":"${base64}"}`;
+
+    expect(dataAsText(readStructured(message))).toBe(XMI);
+  });
+
   it('writes neither data member for an event that has no payload', () => {
     const message = new TextDecoder().decode(writeStructured(envelope(), undefined));
 

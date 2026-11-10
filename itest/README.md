@@ -143,6 +143,20 @@ shot into the saved container log.
   through a command override (`podman run … ddsr/ts provider.ts`).
 - `mosquitto.conf` — an anonymous listener on 1883 for scenario C.
 
+**"Unable to open config file" from the mosquitto container** is the
+host, not the image. Ubuntu 26.04 ships an AppArmor profile for
+`/usr/sbin/mosquitto`; a profile is attached by path, so it confines
+the binary inside the container as well, and it allows neither
+`/mosquitto/config` nor a signal from the container runtime.
+`journalctl -k | grep 'profile="mosquitto"'` shows the denials. On a
+machine that runs no mosquitto of its own the profile can be disabled,
+which is what the CI workflow does:
+
+```bash
+sudo ln -sf /etc/apparmor.d/mosquitto /etc/apparmor.d/disable/
+sudo apparmor_parser -R /etc/apparmor.d/mosquitto
+```
+
 ## Fixtures (`fixtures/`)
 
 `fingerprint/` — the golden files of the sd1 schema (XMI, the canonical

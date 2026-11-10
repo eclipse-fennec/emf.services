@@ -107,6 +107,19 @@ jobs:
       - name: Host harness (scenarios A + B)
         run: ./itest/run-harness.sh
 
+      # Ubuntu 26.04 ships an AppArmor profile for /usr/sbin/mosquitto. A
+      # profile is attached by path at exec, so it also confines the binary
+      # inside the eclipse-mosquitto container, where it permits neither
+      # /mosquitto/config nor a signal from the container runtime: the
+      # broker ends with "Unable to open config file". The profile is for a
+      # mosquitto installed on the host, and this runner has none.
+      - name: Take the host's mosquitto AppArmor profile off the container
+        run: |
+          if [ -f /etc/apparmor.d/mosquitto ]; then
+            sudo ln -sf /etc/apparmor.d/mosquitto /etc/apparmor.d/disable/
+            sudo apparmor_parser -R /etc/apparmor.d/mosquitto
+          fi
+
       - name: Podman harness (scenarios A + B + C incl. MQTT wire proof)
         run: ./itest/run-harness-podman.sh
 

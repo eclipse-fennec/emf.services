@@ -22,8 +22,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-import javax.net.ssl.SSLContext;
-
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MqttFlavor;
@@ -44,16 +42,13 @@ import org.eclipse.fennec.services.common.TlsContexts;
 import org.eclipse.fennec.services.flavor.mqtt.MqttFlavors;
 import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
-import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -143,10 +138,16 @@ public class MqttServiceInvoker implements ServiceInvoker {
 		return bound == null ? CallTracer.NONE : bound;
 	}
 
-	private final Map<String, MqttAsyncClient> clientsByUrl = new LinkedHashMap<>();
+	/** One link per broker, opened by the first call that goes there. */
+	private final Map<String, MessagingLink> linksByUrl = new LinkedHashMap<>();
 
-	/** One inbox per reply subtree, shared by every call that uses it. */
+	/**
+	 * One inbox per broker and reply subtree, shared by every call that
+	 * uses it.
+	 */
 	private final Map<String, ReplyInbox> inboxes = new LinkedHashMap<>();
+
+	private BundleContext context;
 
 	private Config config;
 
@@ -155,16 +156,12 @@ public class MqttServiceInvoker implements ServiceInvoker {
 	/** This runtime, as a topic level — the segment its answers arrive under. */
 	private String consumerSegment;
 
-	/** The certificate this node shows on ssl:// connections, if it has one. */
-	private SSLContext tls;
-
 	@Activate
 	void activate(BundleContext context, Config config) {
+		this.context = context;
 		this.config = config;
 		String uuid = context.getProperty(Constants.FRAMEWORK_UUID);
 		this.source = "/consumer/" + (uuid == null ? ClientOrigin.ANONYMOUS : uuid);
-		this.tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(), "PKCS12",
-				config.tls_truststore(), config.tls_truststore_password(), "PKCS12");
 		// A node with a certificate is that certificate's CN: its answers
 		// arrive under that name, and an MQTT broker that takes the CN as
 		// the user can let only it read them (SECURITY.md §7d, §8). Without
@@ -179,11 +176,11 @@ public class MqttServiceInvoker implements ServiceInvoker {
 		synchronized (inboxes) {
 			inboxes.clear();
 		}
-		synchronized (clientsByUrl) {
-			for (MqttAsyncClient client : clientsByUrl.values()) {
-				close(client);
+		synchronized (linksByUrl) {
+			for (MessagingLink link : linksByUrl.values()) {
+				link.close();
 			}
-			clientsByUrl.clear();
+			linksByUrl.clear();
 		}
 	}
 
@@ -229,9 +226,9 @@ public class MqttServiceInvoker implements ServiceInvoker {
 					+ unwritable.getMessage(), unwritable);
 		}
 
-		MqttAsyncClient client = clientFor(flavor);
+		MessagingLink link = linkFor(flavor);
 		String subtree = MqttFlavors.replySubtree(flavor, operationFlavor, consumerSegment);
-		ReplyInbox inbox = inboxFor(client, subtree, qos);
+		ReplyInbox inbox = inboxFor(link, subtree, qos);
 		inbox.expect(request.getEventId());
 		// The trace context travels in the envelope's extensions, which is
 		// where CloudEvents puts it and the only place it can go here:
@@ -250,10 +247,10 @@ public class MqttServiceInvoker implements ServiceInvoker {
 					// travels.
 					.attribute(ClientOrigin.ATTRIBUTE, source);
 			try {
-				MqttMessage published = new MqttMessage(MqttMessages.write(request, document));
-				published.setQos(qos);
-				published.setRetained(MqttFlavors.retained());
-				client.publish(requestTopic, published).waitForCompletion();
+				// Never retained (MqttFlavors.retained): a call is a
+				// transition, and the link publishes nothing else.
+				link.publish(requestTopic, MqttMessages.write(request, document), qos,
+						TimeUnit.SECONDS.toMillis(config.reply_timeout_seconds()));
 
 				byte[] answer = inbox.await(request.getEventId(), config.reply_timeout_seconds(),
 						TimeUnit.SECONDS);
@@ -307,22 +304,26 @@ public class MqttServiceInvoker implements ServiceInvoker {
 	 * an answer that arrives while a caller is still setting up is
 	 * waited for rather than missed.
 	 */
-	private ReplyInbox inboxFor(MqttAsyncClient client, String subtree, int qos) {
+	private ReplyInbox inboxFor(MessagingLink link, String subtree, int qos) {
 		synchronized (inboxes) {
-			ReplyInbox inbox = inboxes.get(subtree);
+			// Per broker, because a subtree of the same name on another
+			// broker is another subscription.
+			String key = link.url() + " " + subtree;
+			ReplyInbox inbox = inboxes.get(key);
 			if (inbox != null) {
 				return inbox;
 			}
 			ReplyInbox fresh = new ReplyInbox(subtree);
 			try {
-				client.subscribe(fresh.filter(), qos,
-						(IMqttMessageListener) (topic, received) -> fresh.deliver(received.getPayload()))
-						.waitForCompletion();
-			} catch (Exception unsubscribable) {
+				// In place when this returns, because the link is connected
+				// — and restored by the link after every loss, so the inbox
+				// outlives the connection it was opened on.
+				link.subscribe(fresh.filter(), qos, (topic, received) -> fresh.deliver(received));
+			} catch (RuntimeException unsubscribable) {
 				throw DdsrException.transport("could not listen for answers on " + fresh.filter()
 						+ ": " + unsubscribable.getMessage(), unsubscribable);
 			}
-			inboxes.put(subtree, fresh);
+			inboxes.put(key, fresh);
 			LOG.info("[DDSR-MQTT] listening for answers on " + fresh.filter());
 			return fresh;
 		}
@@ -364,33 +365,48 @@ public class MqttServiceInvoker implements ServiceInvoker {
 		throw new DdsrException("this service does not expose an MQTT flavor");
 	}
 
-	private MqttAsyncClient clientFor(MqttFlavor flavor) {
+	/**
+	 * The link to the broker this service announces, connected.
+	 *
+	 * <p>Opened by the first call and kept: the link reconnects on its
+	 * own, so a broker that is away for a moment costs the calls made
+	 * meanwhile and nothing after. A broker that was never there is a
+	 * different matter — its link is taken away again, because an
+	 * announcement naming a dead address must not leave a connection
+	 * attempt behind for every such address a registry ever listed.
+	 */
+	private MessagingLink linkFor(MqttFlavor flavor) {
 		if (flavor.getBrokers().isEmpty()) {
 			throw new DdsrException("the MQTT flavor of this service announces no broker to call it on");
 		}
 		String url = flavor.getBrokers().get(0);
-		synchronized (clientsByUrl) {
-			MqttAsyncClient client = clientsByUrl.get(url);
-			if (client != null && client.isConnected()) {
-				return client;
-			}
+		synchronized (linksByUrl) {
+			MessagingLink link = linksByUrl.get(url);
 			try {
-				MqttAsyncClient fresh = new MqttAsyncClient(url,
-						"ddsr-consumer-" + UUID.randomUUID().toString().substring(0, 8),
-						new MemoryPersistence());
-				MqttConnectOptions options = new MqttConnectOptions();
-				options.setCleanSession(true);
-				options.setAutomaticReconnect(true);
-				if (tls != null && url.startsWith("ssl://")) {
-					options.setSocketFactory(tls.getSocketFactory());
+				if (link == null) {
+					String id = UUID.randomUUID().toString().substring(0, 8);
+					link = MessagingLink.open(context, new LinkSettings("fennec.services.invoker." + id, url,
+							"ddsr-consumer-" + id, config.tls_keystore(), config.tls_keystore_password(),
+							config.tls_truststore(), config.tls_truststore_password()));
+					linksByUrl.put(url, link);
 				}
-				fresh.connect(options).waitForCompletion();
-				clientsByUrl.put(url, fresh);
-				return fresh;
-			} catch (Exception unreachable) {
+				if (link.awaitConnected(config.reply_timeout_seconds(), TimeUnit.SECONDS)) {
+					return link;
+				}
+			} catch (InterruptedException interrupted) {
+				Thread.currentThread().interrupt();
+				throw DdsrException.transport("connecting to the MQTT broker at " + url + " was interrupted",
+						interrupted);
+			} catch (RuntimeException unreachable) {
 				throw DdsrException.transport("cannot reach the MQTT broker at " + url + ": "
 						+ unreachable.getMessage(), unreachable);
 			}
+			if (!link.hasBeenConnected()) {
+				linksByUrl.remove(url);
+				link.close();
+			}
+			throw DdsrException.transport("cannot reach the MQTT broker at " + url + " within "
+					+ config.reply_timeout_seconds() + "s", null);
 		}
 	}
 
@@ -398,18 +414,5 @@ public class MqttServiceInvoker implements ServiceInvoker {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		XmiCodec.write(out, resourceSets, contentType, roots);
 		return out.toByteArray();
-	}
-
-	private static void close(MqttAsyncClient client) {
-		try {
-			client.disconnectForcibly(500L, 500L);
-		} catch (Exception shuttingDown) {
-			// Nothing to do about it.
-		}
-		try {
-			client.close();
-		} catch (Exception shuttingDown) {
-			// Same.
-		}
 	}
 }

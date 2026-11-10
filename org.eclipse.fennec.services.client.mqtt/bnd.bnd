@@ -10,7 +10,7 @@ Bundle-Description: \
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\
 	org.osgi.service.metatype.annotations;version=latest,\
-	org.eclipse.paho.client.mqttv3;version=latest,\
+	org.eclipse.fennec.services.messaging;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.eclipse.fennec.services.api;version=snapshot,\

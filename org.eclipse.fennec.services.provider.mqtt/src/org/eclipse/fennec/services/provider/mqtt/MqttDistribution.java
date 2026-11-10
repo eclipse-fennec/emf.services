@@ -25,8 +25,8 @@ import org.eclipse.fennec.services.MqttFlavor;
  * <p>The mirror of {@code RestDistribution}, and deliberately the same
  * shape: a caller hands over a flavor and the service behind it, and
  * gets something it can close. Remote Service Admin uses this to export
- * over MQTT without knowing anything about Paho, topics or the
- * envelope.
+ * over MQTT without knowing anything about the connection, topics or
+ * the envelope.
  *
  * <p>Where it connects is the flavor's own statement — the brokers it
  * announces are the brokers it listens on, the same way
@@ -56,11 +56,36 @@ public interface MqttDistribution {
 	 */
 	Served serve(MqttFlavor flavor, Supplier<Object> service, String name);
 
+	/**
+	 * Hold the connection to a broker, and be told once it is there.
+	 *
+	 * <p>For whoever knows its broker before it has anything to serve.
+	 * A connection comes up on its own time — {@link #serve} does not
+	 * wait for it, because it is called on threads that must not wait —
+	 * so a caller that wants its first export to be listening the moment
+	 * it is announced opens the connection early and offers itself only
+	 * when it is told.
+	 *
+	 * @param brokerUrl     where the broker is
+	 * @param whenConnected called once, with the first connection
+	 * @return closing it lets the connection go when nothing else
+	 *         holds it. Idempotent.
+	 */
+	AutoCloseable hold(String brokerUrl, Runnable whenConnected);
+
 	/** A contract being served. */
 	interface Served extends AutoCloseable {
 
 		/** The topics it listens on, one per operation. */
 		List<String> topics();
+
+		/**
+		 * Be told once the topics are subscribed on the broker — at
+		 * once when they already are. Announcing belongs here: a
+		 * consumer that is told about a service calls it, and a call to
+		 * a topic nobody listens on yet is answered by nobody.
+		 */
+		void whenListening(Runnable listening);
 
 		/** Stop answering. Idempotent. */
 		@Override

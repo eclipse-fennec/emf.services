@@ -629,12 +629,15 @@ scenario M serves the TypeScript ledger that way.
 
 **Over MQTT** the certificate goes on the connection, and the messaging
 broker does what §4 gives it to do: it demands a certificate of its CA,
-takes the CN as the user and holds every topic to its ACL. Every Paho
+takes the CN as the user and holds every topic to its ACL. Every MQTT
 connection of a node can show the node's certificate — the broker's
 event sink, the client's event source and invoker, and the generic MQTT
 distribution — through the same key and trust store attributes
-(`tls.keystore`, `tls.truststore`, PKCS12, read by `TlsContexts` in the
-api bundle) and only on an `ssl://` URL. The TypeScript transports take
+(`tls.keystore`, `tls.truststore`, PKCS12) and only on an `ssl://` URL.
+They are handed to the messaging instance behind the connection, which
+reads the stores when it is created and always checks the broker's host
+name against its certificate; a store it cannot read fails that
+instance, and the connection never comes up. The TypeScript transports take
 the same as `tls` options (`pfx`, `ca`) on an `mqtts://` or `ssl://`
 URL. `consumerId` (§8) becomes the certificate's name: a Java invoker
 with a key store answers under the CN of its key, and a TypeScript
@@ -712,4 +715,4 @@ Open, in the order they will come up:
 | RSA role configuration: the node's certificate and `broker.authentication`, derived into the client | implemented — see §7d and [RSA](RSA.md) |
 | TypeScript SDK as a client of an mtls broker: `tlsFetch`, the examples' `DDSR_TLS_*` | implemented — see §7d |
 | a TypeScript provider serving in mode `mtls` (`createCertificateVerifier`, `restDispatcher` with `certificates`) | implemented — see §7d |
-| mutual TLS over MQTT: the node's certificate on every Paho and mqtt.js connection, the CN as consumer segment, the messaging broker's ACL on the topic trees | implemented — see §7d |
+| mutual TLS over MQTT: the node's certificate on every Java and mqtt.js MQTT connection, the CN as consumer segment, the messaging broker's ACL on the topic trees | implemented — see §7d |

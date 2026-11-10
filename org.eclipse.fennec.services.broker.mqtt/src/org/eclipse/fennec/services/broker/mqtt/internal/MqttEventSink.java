@@ -50,7 +50,7 @@ public final class MqttEventSink implements EventSink {
 	private static final Logger LOG = Logger.getLogger(MqttEventSink.class.getName());
 
 	/**
-	 * The bit of Paho this sink needs, named separately so tests can
+	 * The bit of the connection this sink needs, named separately so tests can
 	 * stand in for it. Publishing is all we do — subscribing is the
 	 * consumer's side, in {@code client.mqtt}.
 	 */

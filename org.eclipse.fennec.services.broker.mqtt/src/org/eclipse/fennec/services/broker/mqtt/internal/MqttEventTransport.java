@@ -15,18 +15,12 @@ package org.eclipse.fennec.services.broker.mqtt.internal;
 
 import java.util.logging.Logger;
 
-import javax.net.ssl.SSLContext;
-
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventSink;
-import org.eclipse.fennec.services.common.TlsContexts;
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -127,7 +121,7 @@ public final class MqttEventTransport implements EventSink {
 
 	private final BundleContext context;
 
-	private MqttAsyncClient client;
+	private MessagingLink link;
 
 	private MqttEventSink sink;
 
@@ -153,45 +147,50 @@ public final class MqttEventTransport implements EventSink {
 		}
 		this.qos = config.qos();
 		this.publishTimeoutMillis = config.publish_timeout_millis();
-		this.client = new MqttAsyncClient(config.broker_url(), config.client_id(), new MemoryPersistence());
-		MqttConnectOptions options = new MqttConnectOptions();
-		options.setCleanSession(true);
-		options.setAutomaticReconnect(true);
-		SSLContext tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(), "PKCS12",
-				config.tls_truststore(), config.tls_truststore_password(), "PKCS12");
-		if (tls != null && config.broker_url().startsWith("ssl://")) {
-			// The node's certificate on an ssl:// connection: its CN is the
-			// user the MQTT broker's ACL names (SECURITY.md §7d).
-			options.setSocketFactory(tls.getSocketFactory());
-		}
-		client.connect(options).waitForCompletion();
 		this.sink = new MqttEventSink(this::send, broker, rsObjects, config.topic_prefix(),
 				config.event_source());
-		// Registered only now: a sink that is offered before it can
-		// deliver is a sink the broker counts on for nothing.
+		// The node's certificate on an ssl:// connection: its CN is the
+		// user the MQTT broker's ACL names (SECURITY.md §7d).
+		this.link = MessagingLink.open(context, new LinkSettings(INSTANCE, config.broker_url(),
+				config.client_id(), config.tls_keystore(), config.tls_keystore_password(),
+				config.tls_truststore(), config.tls_truststore_password()));
+		// Registered with the first connection, not before: a sink that is
+		// offered before it can deliver is a sink the broker counts on for
+		// nothing. It stays registered through a later loss — the link
+		// reconnects on its own, and what could not be sent meanwhile is a
+		// resync the sink owes its subscribers.
+		link.onConnected(again -> register(config));
+	}
+
+	/** The messaging instance behind this transport, by name. */
+	static final String INSTANCE = "fennec.services.broker.events";
+
+	private synchronized void register(Config config) {
+		if (registration != null || link == null) {
+			return;
+		}
 		this.registration = context.registerService(EventSink.class, this, null);
 		LOG.info("[DDSR-MQTT] event transport connected to " + config.broker_url()
 				+ ", topic prefix " + config.topic_prefix());
 	}
 
 	private void send(String topic, byte[] payload) throws Exception {
-		MqttMessage message = new MqttMessage(payload);
-		message.setQos(qos);
+		MessagingLink current = link;
+		if (current == null) {
+			throw new IllegalStateException("the event transport is closed");
+		}
 		// Not retained: an event describes a transition, not a state. A
 		// late subscriber must not be told about a registration that has
 		// long been withdrawn — it pulls a snapshot instead
 		// (FR-Sync-Reconnect).
-		message.setRetained(false);
+		//
 		// Waited on, not fired and forgotten. An async publish reports
 		// almost nothing: with the connection down or the in-flight limit
 		// reached, the failure happens after the call returns and used to
 		// be invisible to everyone, broker and consumers alike. Waiting
 		// turns it into an exception the sink can act on, and it is
 		// affordable because this thread is the delivery thread (#124).
-		IMqttDeliveryToken token = client.publish(topic, message);
-		if (publishTimeoutMillis > 0) {
-			token.waitForCompletion(publishTimeoutMillis);
-		}
+		current.publish(topic, payload, qos, publishTimeoutMillis);
 	}
 
 	@Override
@@ -203,7 +202,7 @@ public final class MqttEventTransport implements EventSink {
 	}
 
 	@Deactivate
-	void deactivate() {
+	synchronized void deactivate() {
 		if (registration != null) {
 			try {
 				registration.unregister();
@@ -213,18 +212,9 @@ public final class MqttEventTransport implements EventSink {
 			registration = null;
 		}
 		sink = null;
-		if (client != null) {
-			try {
-				client.disconnectForcibly(500L, 500L);
-			} catch (Exception ignored) {
-				// Shutting down; nothing useful left to do.
-			}
-			try {
-				client.close();
-			} catch (Exception ignored) {
-				// Same.
-			}
-			client = null;
+		if (link != null) {
+			link.close();
+			link = null;
 		}
 	}
 }

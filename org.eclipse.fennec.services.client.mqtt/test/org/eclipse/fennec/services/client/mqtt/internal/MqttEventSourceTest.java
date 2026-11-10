@@ -51,12 +51,15 @@ class MqttEventSourceTest {
 
 		private String filter;
 		private MqttEventSource.MessageListener listener;
+		private Runnable established;
 		private int closed;
 
 		@Override
-		public AutoCloseable subscribe(String topicFilter, MqttEventSource.MessageListener onMessage) {
+		public AutoCloseable subscribe(String topicFilter, MqttEventSource.MessageListener onMessage,
+				Runnable onEstablished) {
 			this.filter = topicFilter;
 			this.listener = onMessage;
+			this.established = onEstablished;
 			return () -> closed++;
 		}
 	}
@@ -131,12 +134,32 @@ class MqttEventSourceTest {
 	}
 
 	@Test
-	void openingSignalsThatTheStreamIsUp() {
+	void theStreamIsUpWhenTheSubscriptionIsInPlaceNotWhenItIsAskedFor() {
 		source("ddsr/events").open(handler);
+
+		assertThat(established)
+				.as("the connection may still be coming up — a snapshot now could miss what follows")
+				.isEmpty();
+
+		subscriber.established.run();
 
 		assertThat(established)
 				.as("the consumer re-snapshots on this signal (FR-Sync-Reconnect)")
 				.containsExactly("up");
+	}
+
+	@Test
+	void everyReconnectSignalsAgain() {
+		source("ddsr/events").open(handler);
+
+		subscriber.established.run();
+		subscriber.established.run();
+		subscriber.established.run();
+
+		assertThat(established)
+				.as("what was published while the connection was away never arrives — the consumer"
+						+ " has to read again each time, not only the first")
+				.containsExactly("up", "up", "up");
 	}
 
 	/**
@@ -224,7 +247,7 @@ class MqttEventSourceTest {
 	@Test
 	void aFailingSubscribeYieldsNoHandleInsteadOfThrowing() {
 		MqttEventSource hostile = new MqttEventSource(
-				(filter, onMessage) -> {
+				(filter, onMessage, onEstablished) -> {
 					throw new IllegalStateException("broker unreachable");
 				},
 				new ResourceSetObjects(), "ddsr/events");

@@ -129,6 +129,9 @@ public class GenericMqttDistribution {
 
 	private MqttDistribution.Served served;
 
+	/** Whether the topics are subscribed on the broker — only then is there something to announce. */
+	private boolean listening;
+
 	private Registration registration;
 
 	private ResourceSet publishedFrom;
@@ -205,7 +208,15 @@ public class GenericMqttDistribution {
 			this.config = config;
 			this.implementation = implementation;
 		}
-		announceIfReady();
+		// Announced once the broker has the subscriptions, not once they
+		// were asked for: the connection comes up on its own time, and a
+		// consumer that hears of this service calls it straight away.
+		served.whenListening(() -> {
+			synchronized (this) {
+				listening = true;
+			}
+			announceIfReady();
+		});
 	}
 
 	@Deactivate
@@ -213,6 +224,9 @@ public class GenericMqttDistribution {
 		// Withdraw first, then stop listening: a consumer is told before
 		// the topics go quiet, which is FR-P3 on this transport.
 		withdraw();
+		synchronized (this) {
+			listening = false;
+		}
 		if (served != null) {
 			served.close();
 			served = null;
@@ -224,7 +238,8 @@ public class GenericMqttDistribution {
 	}
 
 	private synchronized void announceIfReady() {
-		if (registration != null || config == null || !config.publish() || implementation == null) {
+		if (registration != null || config == null || !config.publish() || implementation == null
+				|| !listening) {
 			return;
 		}
 		if (client == null || catalog == null) {

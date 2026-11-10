@@ -15,15 +15,11 @@ package org.eclipse.fennec.services.client.mqtt.internal;
 
 import java.util.logging.Logger;
 
-import javax.net.ssl.SSLContext;
-
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.client.EventSource;
-import org.eclipse.fennec.services.common.TlsContexts;
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
-import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.MessagingLink;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -99,40 +95,40 @@ public final class MqttEventTransport implements EventSource {
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
-	private MqttAsyncClient client;
+	private MessagingLink link;
 
 	private MqttEventSource source;
 
 	private int qos;
 
+	/** The messaging instance behind this transport, by name. */
+	static final String INSTANCE = "fennec.services.client.events";
+
 	@Activate
-	void activate(Config config) throws Exception {
+	void activate(BundleContext context, Config config) {
 		this.qos = config.qos();
-		this.client = new MqttAsyncClient(config.broker_url(), config.client_id(), new MemoryPersistence());
-		MqttConnectOptions options = new MqttConnectOptions();
-		options.setCleanSession(true);
-		options.setAutomaticReconnect(true);
-		SSLContext tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(), "PKCS12",
-				config.tls_truststore(), config.tls_truststore_password(), "PKCS12");
-		if (tls != null && config.broker_url().startsWith("ssl://")) {
-			// The node's certificate on an ssl:// connection: its CN is the
-			// user the MQTT broker's ACL names (SECURITY.md §7d).
-			options.setSocketFactory(tls.getSocketFactory());
-		}
-		client.connect(options).waitForCompletion();
+		// The node's certificate on an ssl:// connection: its CN is the
+		// user the MQTT broker's ACL names (SECURITY.md §7d).
+		this.link = MessagingLink.open(context, new LinkSettings(INSTANCE, config.broker_url(),
+				config.client_id(), config.tls_keystore(), config.tls_keystore_password(),
+				config.tls_truststore(), config.tls_truststore_password()));
 		this.source = new MqttEventSource(this::subscribe, rsObjects, config.topic_prefix());
-		LOG.info("[DDSR-MQTT] client transport connected to " + config.broker_url());
+		LOG.info("[DDSR-MQTT] client transport connecting to " + config.broker_url());
 	}
 
-	private AutoCloseable subscribe(String topicFilter, MqttEventSource.MessageListener onMessage) throws Exception {
-		IMqttMessageListener paho = (topic, message) -> onMessage.onMessage(topic, message.getPayload());
-		client.subscribe(topicFilter, qos, paho).waitForCompletion();
+	private AutoCloseable subscribe(String topicFilter, MqttEventSource.MessageListener onMessage,
+			Runnable onEstablished) {
+		MessagingLink current = link;
+		// The subscription first, the listener second: when the link is
+		// connected already, the listener is told at once, and by then the
+		// subscription has to be there. When it is not, the link restores
+		// its subscriptions before it says it is connected — the same
+		// order, kept for us.
+		AutoCloseable subscription = current.subscribe(topicFilter, qos, onMessage::onMessage);
+		AutoCloseable connects = current.onConnected(again -> onEstablished.run());
 		return () -> {
-			try {
-				client.unsubscribe(topicFilter);
-			} catch (Exception ignored) {
-				// Disconnecting anyway, or already gone.
-			}
+			connects.close();
+			subscription.close();
 		};
 	}
 
@@ -145,18 +141,9 @@ public final class MqttEventTransport implements EventSource {
 	@Deactivate
 	void deactivate() {
 		source = null;
-		if (client != null) {
-			try {
-				client.disconnectForcibly(500L, 500L);
-			} catch (Exception ignored) {
-				// Shutting down.
-			}
-			try {
-				client.close();
-			} catch (Exception ignored) {
-				// Same.
-			}
-			client = null;
+		if (link != null) {
+			link.close();
+			link = null;
 		}
 	}
 }

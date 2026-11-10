@@ -138,6 +138,15 @@ Not retained is deliberate. An event describes a transition, not a
 state. A late subscriber must not be told about a registration that was
 withdrawn long ago; it pulls a snapshot instead.
 
+The same holds after a connection loss. The subscriber's connection
+reconnects on its own and restores the subscription, without a session
+on the messaging broker — so what was published while it was away is
+gone, and the Java client takes a fresh snapshot each time the
+subscription is in place again, the first time included. The publisher
+keeps its sink registered through a loss of its own: an event it could
+not send is a `_resync` it owes, sent before the next one that gets
+through.
+
 The subscriber takes `ddsr/events/#` — the whole subtree — because the
 `EventSource` contract carries no interest set. It works, and it moves
 bytes it could avoid.

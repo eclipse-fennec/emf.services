@@ -22,18 +22,13 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
-import javax.net.ssl.SSLContext;
-
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.common.SecurityRequirements;
-import org.eclipse.fennec.services.common.TlsContexts;
+import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallTracer;
-import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
-import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -47,7 +42,7 @@ import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 
 /**
- * The connection behind {@link MqttDistribution}: one Paho client per
+ * The connection behind {@link MqttDistribution}: one messaging link per
  * broker URL, shared by everything served on it.
  *
  * <p>Pooled by URL rather than per export, because a framework
@@ -94,13 +89,21 @@ public class MqttDistributionComponent implements MqttDistribution {
 		String tls_truststore_password() default "";
 	}
 
-	/** The certificate this node shows on ssl:// connections, if it has one. */
-	private volatile SSLContext tls;
+	/**
+	 * How long an answer may take to reach the broker. Bounded, because
+	 * the thread that waits is one of the few that deliver calls.
+	 */
+	private static final long PUBLISH_TIMEOUT_MILLIS = 30_000;
+
+	private volatile BundleContext context;
+
+	/** Carries the certificate this node shows on ssl:// connections, if it has one. */
+	private volatile Config config;
 
 	@Activate
-	void activate(Config config) {
-		this.tls = TlsContexts.of(config.tls_keystore(), config.tls_keystore_password(), "PKCS12",
-				config.tls_truststore(), config.tls_truststore_password(), "PKCS12");
+	void activate(BundleContext context, Config config) {
+		this.context = context;
+		this.config = config;
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -143,26 +146,62 @@ public class MqttDistributionComponent implements MqttDistribution {
 		}
 		String url = flavor.getBrokers().get(0);
 		Connection connection = connect(url);
+		MessagingLink link = connection.link;
 		MqttOperationDispatcher dispatcher = new MqttOperationDispatcher(flavor, service,
 				"/provider/" + (name == null ? flavor.getName() : name), resourceSets,
-				connection::publish, CallTracer.deferred(() -> tracer));
+				(topic, payload, qos) -> link.publish(topic, payload, qos, PUBLISH_TIMEOUT_MILLIS),
+				CallTracer.deferred(() -> tracer));
 
-		List<String> subscribed = new ArrayList<>();
+		List<String> topics = new ArrayList<>();
+		List<AutoCloseable> subscriptions = new ArrayList<>();
 		try {
+			// On a connected link each of these is in place when it
+			// returns. On one still coming up it is a wish the link makes
+			// true with its first connection — and restores after every
+			// later one, which is what keeps an export answering across a
+			// broker restart.
 			for (String topic : dispatcher.requestTopics()) {
-				connection.subscribe(topic, dispatcher.qosFor(topic),
-						(received, message) -> dispatcher.onMessage(received, message.getPayload()));
-				subscribed.add(topic);
+				subscriptions.add(link.subscribe(topic, dispatcher.qosFor(topic), dispatcher::onMessage));
+				topics.add(topic);
 			}
-		} catch (Exception failed) {
-			for (String topic : subscribed) {
-				connection.unsubscribeQuietly(topic);
-			}
+		} catch (RuntimeException failed) {
+			closeQuietly(subscriptions);
 			release(url);
 			throw new IllegalStateException("could not listen for " + name + " on " + url, failed);
 		}
-		LOG.info("[DDSR-MQTT] serving " + name + " on " + url + " — " + subscribed);
-		return new MqttServed(url, subscribed, connection);
+		LOG.info("[DDSR-MQTT] serving " + name + " on " + url + " — " + topics);
+		return new MqttServed(url, topics, subscriptions, link);
+	}
+
+	@Override
+	public AutoCloseable hold(String brokerUrl, Runnable whenConnected) {
+		if (brokerUrl == null || brokerUrl.isBlank()) {
+			throw new IllegalArgumentException("a connection needs a broker to go to");
+		}
+		MessagingLink link = connect(brokerUrl).link;
+		AtomicBoolean told = new AtomicBoolean();
+		AutoCloseable connects = link.onConnected(again -> {
+			if (told.compareAndSet(false, true)) {
+				whenConnected.run();
+			}
+		});
+		AtomicBoolean held = new AtomicBoolean(true);
+		return () -> {
+			if (held.compareAndSet(true, false)) {
+				closeQuietly(List.of(connects));
+				release(brokerUrl);
+			}
+		};
+	}
+
+	private static void closeQuietly(List<AutoCloseable> handles) {
+		for (AutoCloseable handle : handles) {
+			try {
+				handle.close();
+			} catch (Exception alreadyGone) {
+				// Going down anyway, or never there.
+			}
+		}
 	}
 
 	@Deactivate
@@ -179,7 +218,17 @@ public class MqttDistributionComponent implements MqttDistribution {
 		synchronized (connections) {
 			Connection connection = connections.get(url);
 			if (connection == null) {
-				connection = new Connection(url, tls);
+				String id = UUID.randomUUID().toString().substring(0, 8);
+				Config tls = config;
+				try {
+					connection = new Connection(MessagingLink.open(context,
+							new LinkSettings("fennec.services.provider." + id, url, "ddsr-provider-" + id,
+									tls.tls_keystore(), tls.tls_keystore_password(), tls.tls_truststore(),
+									tls.tls_truststore_password())));
+				} catch (RuntimeException unreachable) {
+					throw new IllegalStateException("cannot connect to the MQTT broker at " + url,
+							unreachable);
+				}
 				connections.put(url, connection);
 			}
 			connection.holders++;
@@ -197,59 +246,19 @@ public class MqttDistributionComponent implements MqttDistribution {
 		}
 	}
 
-	/** One Paho client, and the exports that hold it open. */
+	/** One link, and the exports that hold it open. */
 	private static final class Connection {
 
-		private final MqttAsyncClient client;
+		private final MessagingLink link;
 
 		private int holders;
 
-		Connection(String url, SSLContext tls) {
-			try {
-				client = new MqttAsyncClient(url, "ddsr-provider-" + UUID.randomUUID().toString().substring(0, 8),
-						new MemoryPersistence());
-				MqttConnectOptions options = new MqttConnectOptions();
-				options.setCleanSession(true);
-				options.setAutomaticReconnect(true);
-				if (tls != null && url.startsWith("ssl://")) {
-					options.setSocketFactory(tls.getSocketFactory());
-				}
-				client.connect(options).waitForCompletion();
-			} catch (Exception unreachable) {
-				throw new IllegalStateException("cannot reach the MQTT broker at " + url, unreachable);
-			}
-		}
-
-		void subscribe(String topic, int qos, IMqttMessageListener listener) throws Exception {
-			client.subscribe(topic, qos, listener).waitForCompletion();
-		}
-
-		void publish(String topic, byte[] payload, int qos) throws Exception {
-			MqttMessage message = new MqttMessage(payload);
-			message.setQos(qos);
-			message.setRetained(false);
-			client.publish(topic, message).waitForCompletion();
-		}
-
-		void unsubscribeQuietly(String topic) {
-			try {
-				client.unsubscribe(topic);
-			} catch (Exception alreadyGone) {
-				// Going down anyway, or never there.
-			}
+		Connection(MessagingLink link) {
+			this.link = link;
 		}
 
 		void close() {
-			try {
-				client.disconnectForcibly(500L, 500L);
-			} catch (Exception shuttingDown) {
-				// Nothing left to do about it.
-			}
-			try {
-				client.close();
-			} catch (Exception shuttingDown) {
-				// Same.
-			}
+			link.close();
 		}
 	}
 
@@ -259,14 +268,19 @@ public class MqttDistributionComponent implements MqttDistribution {
 
 		private final List<String> topics;
 
-		private final Connection connection;
+		private final List<AutoCloseable> subscriptions;
+
+		private final MessagingLink link;
+
+		private final List<AutoCloseable> listeners = new ArrayList<>();
 
 		private final AtomicBoolean open = new AtomicBoolean(true);
 
-		MqttServed(String url, List<String> topics, Connection connection) {
+		MqttServed(String url, List<String> topics, List<AutoCloseable> subscriptions, MessagingLink link) {
 			this.url = url;
 			this.topics = List.copyOf(topics);
-			this.connection = connection;
+			this.subscriptions = List.copyOf(subscriptions);
+			this.link = link;
 		}
 
 		@Override
@@ -275,11 +289,29 @@ public class MqttDistributionComponent implements MqttDistribution {
 		}
 
 		@Override
+		public void whenListening(Runnable listening) {
+			// The link restores its subscriptions before it says it is
+			// connected, and makes them at once when it already is: told
+			// here means subscribed there.
+			AtomicBoolean told = new AtomicBoolean();
+			AutoCloseable connects = link.onConnected(again -> {
+				if (open.get() && told.compareAndSet(false, true)) {
+					listening.run();
+				}
+			});
+			synchronized (listeners) {
+				listeners.add(connects);
+			}
+		}
+
+		@Override
 		public void close() {
 			if (open.compareAndSet(true, false)) {
-				for (String topic : topics) {
-					connection.unsubscribeQuietly(topic);
+				synchronized (listeners) {
+					closeQuietly(listeners);
+					listeners.clear();
 				}
+				closeQuietly(subscriptions);
 				release(url);
 			}
 		}

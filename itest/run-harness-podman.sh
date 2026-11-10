@@ -88,7 +88,7 @@ rm -rf "$WORK"; mkdir -p "$WORK"
 # mid-scenario (e.g. a broker torn down while a provider activates)
 podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-client-java \
   ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
-  ddsr-rsa-export ddsr-rsa-import \
+  ddsr-rsa-export ddsr-rsa-import ddsr-rsa-export-amqp ddsr-rsa-import-amqp ddsr-rabbitmq \
   ddsr-payment-h ddsr-probe-h ddsr-probe-mqtt-config ddsr-probe-j \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
@@ -396,6 +396,54 @@ podman stop -t 20 ddsr-rsa-import >/dev/null 2>&1 || true
 podman stop -t 20 ddsr-rsa-export >/dev/null 2>&1 || true
 echo "Scenario I OK: an OSGi service exported over MQTT and bound by @Reference in another framework"
 
+# ============================================================ Scenario R
+log "Scenario R: RSA over AMQP — the same export and import, over RabbitMQ"
+# Scenario I on the third transport (#138): the same plain OSGi service,
+# exported over AMQP 0-9-1 by one framework and bound by @Reference in
+# another. The call is published to the broker's topic exchange under a
+# routing key; the answer comes back on the protocol's own reply-to, in
+# a queue only the caller can read — no reply tree, no ACL convention.
+#
+# AMQP distribution with REST discovery, as it has to be: AMQP carries
+# calls, the registry's events have no AMQP transport.
+podman run -d --replace --name ddsr-rabbitmq --network=host \
+  docker.io/library/rabbitmq:4.1-alpine >/dev/null
+CONTAINERS+=(ddsr-rabbitmq)
+wait_for_log ddsr-rabbitmq "Server startup complete" 120
+
+# shellcheck disable=SC2046
+run_container ddsr-rsa-export-amqp ddsr/rsa-example $(client_args rsa-example) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e RSA_DISTRIBUTION_FLAVOR=fennec.amqp \
+  -e RSA_EXPORT_CONFIGS=fennec.amqp \
+  -e RSA_AMQP_URL="amqp://localhost:5672"
+wait_for_log ddsr-rsa-export-amqp "exported .* over AMQP" 150
+
+# shellcheck disable=SC2046
+run_container ddsr-rsa-import-amqp ddsr/rsa-consumer $(client_args rsa-example-consumer) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e RSA_FLAVOR=fennec.amqp
+wait_for_log ddsr-rsa-import-amqp "RSA-Consumer" 150
+
+podman logs ddsr-rsa-export-amqp >"$WORK/rsa-export-amqp.log" 2>&1
+podman logs ddsr-rsa-import-amqp >"$WORK/rsa-import-amqp.log" 2>&1
+grep -q "greetings so far, none of them local" "$WORK/rsa-import-amqp.log" \
+  || { echo "SCENARIO R FAILED: the consumer never got an answer"; cat "$WORK/rsa-import-amqp.log"; exit 1; }
+grep -q "under ddsr.rpc\." "$WORK/rsa-export-amqp.log" \
+  || { echo "SCENARIO R FAILED: the export did not listen under a routing key"; cat "$WORK/rsa-export-amqp.log"; exit 1; }
+# The guarded Ledger is asked to be exported here too, and for the same
+# reason as over MQTT it is not: a call carries no credential.
+if grep -q "exported Ledger" "$WORK/rsa-export-amqp.log"; then
+  echo "SCENARIO R FAILED: a guarded contract was exported over AMQP"; exit 1
+fi
+grep -q "cannot check it" "$WORK/rsa-export-amqp.log" \
+  || { echo "SCENARIO R FAILED: the guarded Ledger was not refused over AMQP"; cat "$WORK/rsa-export-amqp.log"; exit 1; }
+echo "  ✓ guarded-contract-refused-over-amqp: the Ledger is not served where no caller can be checked"
+podman stop -t 20 ddsr-rsa-import-amqp >/dev/null 2>&1 || true
+podman stop -t 20 ddsr-rsa-export-amqp >/dev/null 2>&1 || true
+podman stop -t 20 ddsr-rabbitmq >/dev/null 2>&1 || true
+echo "Scenario R OK: an OSGi service exported over AMQP and bound by @Reference in another framework"
+
 # ============================================================ Scenario K
 log "Scenario K: RSA over REST, secured — the interface says who may call"
 # The Ledger's interface carries @RolesAllowed("ledger-reader"), its
@@ -662,4 +710,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + I + K + J + Q + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + R + K + J + Q + F + G + H)"

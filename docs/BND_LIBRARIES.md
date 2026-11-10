@@ -2,17 +2,19 @@
 
 Fennec Services ships two kinds of bnd library, the same way
 [EMF OSGi](https://github.com/eclipse-fennec/emf.osgi) does: one for the
-workspace, which makes the bundles resolvable, and five for projects,
+workspace, which makes the bundles resolvable, and seven for projects,
 which say what a project compiles against and what a launch runs.
 
 | Library | Kind | Gives you |
 | --- | --- | --- |
-| `fennecServices` | workspace | a Maven repository with every bundle the five run lists below name, and the project libraries themselves |
+| `fennecServices` | workspace | a Maven repository with every bundle the seven run lists below name, and the project libraries themselves |
 | `enableFennecServicesClient` | project | the SDK: publish, look up, invoke |
 | `enableFennecServicesRsa` | project | Remote Service Admin on the registry |
 | `enableFennecServicesSecurity` | project | bearer tokens: supply them, verify them |
 | `enableFennecServicesMqtt` | project | the MQTT transport: call, hear events, serve a contract on topics |
 | `enableFennecServicesRsaMqtt` | project | Remote Service Admin over MQTT |
+| `enableFennecServicesAmqp` | project | the AMQP transport: call, serve a contract on routing keys |
+| `enableFennecServicesRsaAmqp` | project | Remote Service Admin over AMQP |
 
 ## In the workspace
 
@@ -28,7 +30,7 @@ use:
 
 That puts one repository into the workspace — *Eclipse Fennec Services*,
 indexed from Maven Central and its snapshot repository — with exactly
-what the five run lists name.
+what the seven run lists name.
 
 ## In a project
 
@@ -46,6 +48,8 @@ what the five run lists name.
 | `enableFennecServicesSecurity` | `…services.api` (`TokenSupplier`, `CallPrincipal`), `…security.jwt` (`SecurityNames`) |
 | `enableFennecServicesMqtt` | `…flavor.mqtt` (topics, QoS, message form), for a project that names MQTT placements itself |
 | `enableFennecServicesRsaMqtt` | nothing — the flavor is a configuration |
+| `enableFennecServicesAmqp` | `…flavor.amqp` (exchange, routing keys, message form), for a project that names AMQP placements itself |
+| `enableFennecServicesRsaAmqp` | nothing — the flavor is a configuration |
 
 A service exported through Remote Service Admin usually needs nothing at
 compile time: it is a plain OSGi service with `service.exported.*`
@@ -80,6 +84,8 @@ launch that takes minutes to start.
 | `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, the client-certificate filter of mode `mtls`, Nimbus JOSE+JWT |
 | `enableFennecServicesMqtt` | the MQTT client transport, the MQTT flavor rules, the MQTT distribution, the messaging link with Gecko Messaging (`api`, `core`, `mqtt3`) and the Paho build it drives — on top of the client |
 | `enableFennecServicesRsaMqtt` | the RSA distribution and discovery for `fennec.mqtt` — on top of `…Rsa` and `…Mqtt` |
+| `enableFennecServicesAmqp` | the AMQP invoker, the AMQP flavor rules, the AMQP distribution, the messaging link with Gecko Messaging (`api`, `core`, `amqp`), the RabbitMQ client and the Netty 4.2 it requires — on top of the client |
+| `enableFennecServicesRsaAmqp` | the RSA distribution for `fennec.amqp` — on top of `…Rsa` and `…Amqp` |
 
 The security components act only where configured or where an
 application asks for their mode, so the security list is safe in a
@@ -97,7 +103,11 @@ the transport list is safe in a launch that speaks only REST. A part
 that is given a broker creates its connection as a messaging instance
 by configuration, so such a launch needs the Configuration Admin
 service — the one piece of the configuration stack the MQTT list does
-count on. Gecko Messaging 2.0 is a snapshot for now, which the
+count on. AMQP comes the same way, in `enableFennecServicesAmqp` and
+`enableFennecServicesRsaAmqp`; it has no discovery of its own, so a
+node that serves over it announces over REST. The messaging link is
+named in both transport lists, so that either stands alone.
+Gecko Messaging 2.0 is a snapshot for now, which the
 `fennecServices` index resolves from the Central snapshot repository.
 Which
 flavor a node speaks is in [Remote Service Admin](RSA.md) and

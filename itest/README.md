@@ -69,6 +69,13 @@ broker. Requirements and decisions:
   The same framework is asked to export the guarded `Ledger` too, and
   the scenario checks that MQTT refuses it — a call there carries no
   credential.
+- **R (podman only) — RSA over AMQP:** scenario I on the third
+  transport (#138). The same service is exported over AMQP 0-9-1 by one
+  framework and bound with `@Reference` in another, over a RabbitMQ
+  container: the call goes to the topic exchange under a routing key,
+  the answer comes back on the protocol's own reply-to. AMQP
+  distribution with REST discovery, and the guarded `Ledger` is refused
+  here as it is over MQTT.
 - **K (podman only, secured) — roles per operation over RSA:** the
   `Ledger` interface carries `@RolesAllowed` and `@PermitAll`; exported
   over REST with the node's verifier, imported by a framework whose
@@ -114,7 +121,7 @@ drain in scenario G.
 
 ```bash
 ./itest/run-harness.sh          # host processes: A + B + F + G + H + T + N (podman only for Keycloak)
-./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + K + J + Q + F + G + H
+./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + R + K + J + Q + F + G + H
 HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 ```
 

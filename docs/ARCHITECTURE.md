@@ -168,14 +168,22 @@ org.eclipse.fennec.services.client.rest         # the REST flavor
                                    #   RestServiceInvoker: the reflective wire call
                                    #   ReflectiveServiceProxyFactory: java.lang.reflect.Proxy
 
-org.eclipse.fennec.services.messaging           # shared: the connection of every MQTT part
+org.eclipse.fennec.services.messaging           # shared: the connection of every MQTT and AMQP part
                                    #   MessagingLink: one Gecko Messaging instance
-                                   #     (mqtt3) per broker URL, derived from its
-                                   #     owner's configuration and deleted with it
+                                   #     per broker URL (mqtt3 or amqp, by its
+                                   #     scheme), derived from its owner's
+                                   #     configuration and deleted with it
+                                   #   request/serve where the protocol has a reply
+                                   #     address of its own (AMQP)
                                    #   never waits for the instance: subscribe is a
                                    #     wish, onConnected the news — DS activates
                                    #     the instance on the configuration thread
                                    #   bytes only: the envelope stays this project's
+
+org.eclipse.fennec.services.flavor.amqp         # the AMQP placement rule and message form (#138)
+org.eclipse.fennec.services.client.amqp         #   AmqpServiceInvoker, flavor AMQP
+org.eclipse.fennec.services.provider.amqp       #   AmqpDistribution + AmqpOperationDispatcher
+org.eclipse.fennec.services.rsa.distribution.amqp  # configuration type fennec.amqp
 
 org.eclipse.fennec.services.flavor.rest         # shared: the placement rules
                                    #   RestPlacement: where an argument goes

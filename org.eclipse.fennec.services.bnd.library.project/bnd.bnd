@@ -9,6 +9,8 @@ Bundle-Description: \
 	  enableFennecServicesSecurity  bearer tokens: supply and verify \
 	  enableFennecServicesMqtt      the MQTT transport: call, hear, serve \
 	  enableFennecServicesRsaMqtt   Remote Service Admin over MQTT \
+	  enableFennecServicesAmqp      the AMQP transport: call, serve \
+	  enableFennecServicesRsaAmqp   Remote Service Admin over AMQP \
 	\
 	The run lists carry this project's bundles and what they need \
 	directly — never an HTTP stack or Jersey, which enableJakartaREST \
@@ -27,4 +29,6 @@ Provide-Capability: \
 	bnd.library;bnd.library=enableFennecServicesRsa;path=library/rsa,\
 	bnd.library;bnd.library=enableFennecServicesSecurity;path=library/security,\
 	bnd.library;bnd.library=enableFennecServicesMqtt;path=library/mqtt,\
-	bnd.library;bnd.library=enableFennecServicesRsaMqtt;path=library/rsaMqtt
+	bnd.library;bnd.library=enableFennecServicesRsaMqtt;path=library/rsaMqtt,\
+	bnd.library;bnd.library=enableFennecServicesAmqp;path=library/amqp,\
+	bnd.library;bnd.library=enableFennecServicesRsaAmqp;path=library/rsaAmqp

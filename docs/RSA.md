@@ -151,6 +151,7 @@ console, on `RsaProvider.Config` and `RsaConsumer.Config`.
 | `…rsa` | the `RemoteServiceAdmin` itself, and two SPIs |
 | `…rsa.distribution.rest` | serving an exported service over REST |
 | `…rsa.distribution.mqtt` | the same over MQTT (#98) |
+| `…rsa.distribution.amqp` | the same over AMQP 0-9-1 (#138) |
 | `…rsa.discovery.rest` | announcing and finding endpoints via the broker |
 | `…rsa.discovery.mqtt` | the same, with the broker's events heard over MQTT |
 | `…rsa.discovery.local` | endpoints declared in a bundle (122.6.2 XML) |
@@ -202,13 +203,35 @@ That node serves over MQTT and announces over REST — which is the
 pairing that shows the two SPIs are really independent, and what the
 harness runs as scenario I.
 
+`fennec.amqp` is the third configuration type, and it only ever comes
+in that pairing: AMQP carries calls, and the broker's events have no
+AMQP transport. A provider says
+
+```json
+"org.eclipse.fennec.services.rsa.provider": {
+  "distribution.flavor": "fennec.amqp",
+  "amqp.url": "amqp://localhost:5672",
+  "broker.url": "http://localhost:8887/ddsr/rest"
+}
+```
+
+and a consumer `"flavor": "fennec.amqp"` — its discovery falls back to
+REST by itself. Calls travel to the topic exchange under
+`ddsr.rpc.<provider>.<contract>.<op>`; the answer comes back on the
+reply address of the protocol, in a queue only the caller can read, so
+there is no reply tree and no ACL to write for it. A user and password
+for the broker are not part of `amqp.url` — the URL is announced with
+every export — but of the connection
+([Transports](TRANSPORTS.md#clientamqp-and-provideramqp--calls-over-amqp)).
+The harness runs this as scenario R.
+
 Three things the role configuration keeps in step, each of which is a
 silent failure when done by hand:
 
 - a node hearing over MQTT gets the event transport configured and its
   client pointed at it;
-- a node serving over MQTT gets no HTTP stack, because an export that
-  answers on topics needs no server;
+- a node serving over MQTT or AMQP gets no HTTP stack, because an
+  export that answers on topics or routing keys needs no server;
 - the client's `supported.flavors` follows what the node actually
   speaks. A lookup filters by it, so a node that says REST is never
   shown a service reachable only over MQTT — and nothing reports that,
@@ -290,8 +313,8 @@ any other.
   serves the endpoint behind the bearer filter; every operation is then
   held to its requirement — `401` without a token, `403` naming the
   missing role. A node without an issuer does not export a guarded
-  contract at all, and neither does MQTT, where a call carries no
-  credential of its own: refused, never served open.
+  contract at all, and neither do MQTT and AMQP, where a call carries
+  no credential of its own: refused, never served open.
 - **Import.** The proxy is a plain `@Reference`. Every call carries the
   importing node's token — one of the provider's audience, asked for
   from the identity provider per target, so a token minted for the
@@ -310,8 +333,9 @@ without a mapping in between.
 
 ## Limits worth knowing
 
-- **Two flavors ship**, `fennec.rest` and `fennec.mqtt`, and a node may
-  use one for serving and the other for announcing — see
+- **Three flavors ship**, `fennec.rest`, `fennec.mqtt` and
+  `fennec.amqp`, and a node may use one for serving and another for
+  announcing (AMQP serves only) — see
   [Two transports](#two-transports-and-splitting-them).
 - **Calls carry the node's identity, not a user's.** An imported proxy
   calls with the importing node's own client credentials. Acting on

@@ -1,0 +1,10 @@
+# enableFennecServicesRsaAmqp — Remote Service Admin over AMQP: the
+# distribution for the flavor fennec.amqp, on top of
+# enableFennecServicesRsa and enableFennecServicesAmqp. There is no
+# discovery of its own — AMQP carries calls, and a node that serves over
+# it announces over REST. Chosen per node through the role's
+# distribution.flavor.
+fennec.services.range: [0.1.0,0.2.0)
+
+-runbundles.fennec.services.rsa.amqp: \
+	org.eclipse.fennec.services.rsa.distribution.amqp;version='${fennec.services.range}'

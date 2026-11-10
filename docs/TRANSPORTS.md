@@ -2,10 +2,11 @@
 
 What ships, and what a deployment has to tell it.
 
-Two transports exist: REST with Server-Sent Events, and MQTT. REST is
-the complete one — discovery, sessions, invocation and events. MQTT
-today carries events, and invocation for a flavor that declares it. The
-broker itself is only reachable over REST.
+Three transports exist: REST with Server-Sent Events, MQTT and AMQP.
+REST is the complete one — discovery, sessions, invocation and events.
+MQTT carries events, and invocation for a flavor that declares it.
+AMQP carries invocation only. The broker itself is only reachable over
+REST.
 
 ## What a flavor says
 
@@ -36,6 +37,16 @@ object is the body, anything else is a query parameter.
 operation, an `MqttOperationFlavor` may override those and says whether
 correlation is used.
 
+**`AmqpFlavor`** (AMQP 0-9-1): one or more `brokers` (`amqp://…` or
+`amqps://…`, the virtual host as the path), the topic `exchange` calls
+are published to — `amq.topic` unless said otherwise — and a
+`requestRoutingKey`. An operation is reached under
+`<requestRoutingKey>.<operation>`, or under the `routingKey` of its
+`AmqpOperationFlavor`. There is no response address in the flavor, and
+that is the point: a call names its reply address in the protocol's own
+`reply-to`, the address is a queue only the caller can read, and the
+answer is matched by the protocol's `correlation-id`.
+
 ## `client.rest` — talking to the broker over REST
 
 Registers the four broker proxies (`BrokerCatalog`,
@@ -65,17 +76,21 @@ framework and a `ResourceSet` with `emf.name=services`.
 Note that `broker.url` is only the broker. The address of an actual
 service call comes from the flavor, never from this setting.
 
-## The MQTT connection
+## The messaging connection
 
-Every MQTT part of a node — the client's event source and invoker, the
-generic distribution, the broker's event sink — connects through
+Every MQTT and AMQP part of a node — the client's event source and
+invokers, the generic distributions, the broker's event sink — connects
+through
 [Gecko Messaging](https://github.com/geckoprojects-org/org.gecko.messaging)
 (`…services.messaging`). None of them is configured differently for it:
-each derives a messaging instance (binding `mqtt3`, factory PID
-`org.gecko.messaging.mqtt3`) from the broker URL, client id and `tls.*`
-attributes it already has, and takes it away again when it stops. What a
-launch has to bring is the Configuration Admin service, which is how an
-instance comes to be.
+each derives a messaging instance from the broker URL, client id and
+`tls.*` attributes it already has, and takes it away again when it
+stops. The scheme of the URL says which binding speaks to the broker —
+`tcp`, `ssl`, `ws`, `wss` the `mqtt3` binding (factory PID
+`org.gecko.messaging.mqtt3`), `amqp` and `amqps` the `amqp` one
+(`org.gecko.messaging.amqp`). What a launch has to bring is the binding
+for the protocols it speaks and the Configuration Admin service, which
+is how an instance comes to be.
 
 What the instance gives each of them:
 
@@ -94,12 +109,14 @@ What the instance gives each of them:
   TypeScript node reads what it always read.
 
 The instances are named `fennec.services.broker.events`,
-`fennec.services.client.events`, `fennec.services.invoker.<id>` and
-`fennec.services.provider.<id>`, and show up under those names in
+`fennec.services.client.events`, `fennec.services.invoker.<id>`,
+`fennec.services.provider.<id>` and, for AMQP,
+`fennec.services.amqp.invoker.<id>` and
+`fennec.services.amqp.provider.<id>`, and show up under those names in
 `MessageServiceRuntime`. A message is limited to 1 MiB, sent and
 received.
 
-One thing follows for a caller: the invoker opens its connection with
+One thing follows for a caller: an invoker opens its connection with
 the first call to a broker and waits for it, up to the reply timeout.
 A first call made while a component is being activated by a
 configuration can run into that timeout — the instance is activated on
@@ -265,6 +282,39 @@ One `EventSink`, dormant until configured.
 
 Production launches ship the MQTT bundles unconfigured. See
 [Eventing](EVENTING.md) for the topic layout and what is guaranteed.
+
+## `client.amqp` and `provider.amqp` — calls over AMQP
+
+`client.amqp` registers a service invoker for flavor `AMQP`. Like the
+MQTT one it needs no address — it dials the broker and exchange a
+flavor announces — and is configured only with how long to wait and
+who the node is to a broker:
+
+`org.eclipse.fennec.services.client.amqp.invoker`
+
+| Property | Default |
+| --- | --- |
+| `reply.timeout.seconds` | `10` |
+| `username`, `password` | empty — the broker's default user |
+| `tls.keystore`, `tls.truststore` and their passwords | empty; used on `amqps://` |
+
+A user and a password are stated here and never in a broker URL: the
+URL is what a flavor announces to every consumer.
+
+`provider.amqp` is the serving half, `AmqpDistribution`: one binding
+per operation on the flavor's exchange, a dispatcher that invokes the
+service and answers to the reply address the call named. Its
+connection takes the same identity attributes under
+`org.eclipse.fennec.services.provider.amqp.connection`. Today it is
+reached through Remote Service Admin (`fennec.amqp`,
+[RSA](RSA.md#two-transports-and-splitting-them)); a factory
+configuration that serves a contract from its document, as
+`provider.mqtt` has, is not built for AMQP yet.
+
+The reply queue is exclusive to the connection that declared it, so no
+other connection can consume from it. The answer is still routed by a
+key on the topic exchange; a broker that should also keep others from
+binding that key says so in its permissions.
 
 ## `provider.rest` — serving a contract with no generated code
 

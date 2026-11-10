@@ -84,7 +84,7 @@ public interface LanguageBinding extends NamedElement {
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>File Header</em>' attribute list.
 	 * @see org.eclipse.fennec.services.ServicesPackage#getLanguageBinding_FileHeader()
-	 * @model
+	 * @model unique="false"
 	 * @generated
 	 */
 	EList<String> getFileHeader();

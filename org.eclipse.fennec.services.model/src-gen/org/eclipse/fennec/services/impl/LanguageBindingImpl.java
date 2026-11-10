@@ -15,7 +15,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
-import org.eclipse.emf.ecore.util.EDataTypeUniqueEList;
+import org.eclipse.emf.ecore.util.EDataTypeEList;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.EObjectResolvingEList;
 import org.eclipse.emf.ecore.util.InternalEList;
@@ -211,7 +211,7 @@ public abstract class LanguageBindingImpl extends MinimalEObjectImpl.Container i
 	@Override
 	public EList<String> getFileHeader() {
 		if (fileHeader == null) {
-			fileHeader = new EDataTypeUniqueEList<String>(String.class, this, ServicesPackage.LANGUAGE_BINDING__FILE_HEADER);
+			fileHeader = new EDataTypeEList<String>(String.class, this, ServicesPackage.LANGUAGE_BINDING__FILE_HEADER);
 		}
 		return fileHeader;
 	}

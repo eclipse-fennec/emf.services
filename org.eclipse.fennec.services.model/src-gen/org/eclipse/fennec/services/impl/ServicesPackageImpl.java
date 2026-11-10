@@ -5223,7 +5223,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEClass(languageBindingEClass, LanguageBinding.class, "LanguageBinding", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getLanguageBinding_ServiceInterfaces(), this.getServiceInterface(), null, "serviceInterfaces", null, 1, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getLanguageBinding_TargetPackage(), ecorePackage.getEString(), "targetPackage", null, 1, 1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getLanguageBinding_FileHeader(), ecorePackage.getEString(), "fileHeader", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getLanguageBinding_FileHeader(), ecorePackage.getEString(), "fileHeader", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, !IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getLanguageBinding_TypeMappings(), this.getTypeMapping(), null, "typeMappings", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getLanguageBinding_PackageMappings(), this.getPackageMapping(), null, "packageMappings", null, 0, -1, LanguageBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 

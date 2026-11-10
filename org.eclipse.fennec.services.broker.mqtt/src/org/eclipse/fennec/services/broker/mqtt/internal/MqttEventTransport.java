@@ -19,6 +19,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventSink;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.messaging.LinkSettings;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.gecko.messaging.api.annotations.RequireMessaging;
@@ -176,7 +177,7 @@ public final class MqttEventTransport implements EventSink {
 				+ ", topic prefix " + config.topic_prefix());
 	}
 
-	private void send(String topic, byte[] payload) throws Exception {
+	private void send(String topic, CloudEventCodec.Message payload) throws Exception {
 		MessagingLink current = link;
 		if (current == null) {
 			throw new IllegalStateException("the event transport is closed");

@@ -202,7 +202,13 @@ class DerivationTest {
 		List<DerivedConfiguration> plan = Derivation.forProvider(servesOverAmqp);
 
 		assertThat(byLabel(plan, Derivation.DISTRIBUTION_AMQP_PID).properties())
-				.containsEntry("broker.url", "amqp://rabbit:5672/calls");
+				.containsEntry("broker.url", "amqp://rabbit:5672/calls")
+				.as("nobody named an encoding, so the flavor's default applies").containsEntry("content.type", "");
+		assertThat(byLabel(Derivation.forProvider(servesOverAmqp.withEncoding(" application/json ")),
+				Derivation.DISTRIBUTION_AMQP_PID).properties())
+				.as("an exported interface has no contract document, so the role says what its calls"
+						+ " are encoded in")
+				.containsEntry("content.type", "application/json");
 		assertThat(plan).extracting(DerivedConfiguration::label)
 				.as("a node that serves over AMQP is a client of its broker and needs no server of its own")
 				.doesNotContain(Derivation.DISTRIBUTION_PID, Derivation.DISTRIBUTION_MQTT_PID)

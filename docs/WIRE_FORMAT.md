@@ -233,6 +233,13 @@ writes with `cloudEvents=structured`, treating everything that is not
 that arrives wrapped in a string is still read as that document, which
 is what this codec wrote itself before it followed the format.
 
+Who writes the envelope depends on the transport. Over SSE it is this
+project's codec (`CloudEventCodec`, `cloud-events.ts`). Over MQTT and
+AMQP a Java node leaves it to the messaging instance behind its
+connection, so XMI travels there as `data_base64`; a TypeScript node
+writes its own, with XMI as a string. Each reads the other — the
+harness runs both directions.
+
 The payload itself is not the envelope's business: it is whatever
 `Resource.save` produced for that content type, and a reader hands it
 to `Resource.load` of the resource factory registered for the same
@@ -254,10 +261,11 @@ emf.codec registers `application/json`. The envelope says which
 `dataschema` names the package and not a class in it: the attribute is
 an absolute URI, which has no fragment, and it is the package whose URI
 changes when the schema changes incompatibly. It is set wherever the
-envelope carries the document — structured mode, on SSE, MQTT and
-AMQP. Over HTTP in binary mode it is not set yet: the body there may be
-of any model, or absent, and the header is written before the body is
-known.
+envelope carries a document. In structured mode that is every event,
+call and answer. Over HTTP in binary mode it is the `ce-dataschema`
+header of a call or an answer whose body is a model object; a call
+whose arguments all travel in the query, or an answer that is a plain
+value, has no schema to name and carries none.
 
 `<transition>` is the `ServiceEventType` literal in lower case with
 `_` as `.`: `registered`, `modified`, `unregistering`,

@@ -103,12 +103,6 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 		String tls_truststore_password() default "";
 	}
 
-	/**
-	 * How long an answer may take to reach the broker. Bounded, because
-	 * the thread that waits is one of the few that deliver calls.
-	 */
-	private static final long PUBLISH_TIMEOUT_MILLIS = 30_000;
-
 	private volatile BundleContext context;
 
 	/** Who this node is to a broker. */
@@ -164,7 +158,6 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 		MessagingLink link = connection.link;
 		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(flavor, service,
 				"/provider/" + (name == null ? flavor.getName() : name), resourceSets,
-				(topic, payload, qos) -> link.publish(topic, payload, qos, PUBLISH_TIMEOUT_MILLIS),
 				CallTracer.deferred(() -> tracer));
 
 		List<String> channels = new ArrayList<>();
@@ -176,13 +169,10 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 			// later one, which is what keeps an export answering across a
 			// broker restart.
 			for (String channel : dispatcher.channels()) {
-				int qos = dispatcher.qosFor(channel);
-				// The one difference between the protocols that reaches
-				// this far: who knows where the answer goes.
-				subscriptions.add(route.repliesNatively()
-						? link.serve(channel, qos, (received, payload, reply) -> dispatcher.onRequest(received,
-								payload, reply::send))
-						: link.subscribe(channel, qos, dispatcher::onMessage));
+				// The same on every protocol: the connection knows where
+				// the answer goes, because it read the request.
+				subscriptions.add(link.serve(channel, dispatcher.qosFor(channel),
+						(received, call, reply) -> dispatcher.onRequest(received, call, reply::send)));
 				channels.add(channel);
 			}
 		} catch (RuntimeException failed) {

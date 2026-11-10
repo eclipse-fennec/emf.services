@@ -32,6 +32,7 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceInvocation;
 import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.ServiceOperation;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
@@ -54,22 +55,16 @@ import io.cloudevents.model.ce.CloudEvent;
  * <p>One dispatcher for every flavor that travels over messaging. What
  * a channel is called and what a call is encoded in it reads from the
  * flavor's {@link MessagingRoute}; what it does with a call is the same
- * on every protocol. The one thing that is not is where the answer
- * goes, and the caller of this class says which it is by the method it
- * calls:
- * <ul>
- * <li>{@link #onMessage} — the way back is in the envelope (MQTT
- * 3.1.1): the call names a reply topic, and the answer is published
- * there;</li>
- * <li>{@link #onRequest} — the way back is the protocol's (AMQP): the
- * connection hands in a {@link Reply} that already knows the address
- * and the correlation.</li>
- * </ul>
+ * on every protocol — and so is where the answer goes: the connection
+ * hands in a {@link Reply} that knows the address and the correlation
+ * the request carried, whether those travelled in properties of the
+ * protocol or in the envelope.
  *
- * <p>It knows no client. Subscribing and publishing are the
- * component's business; what arrives and what goes back is this
- * class's, which is what lets the whole decision be exercised without a
- * broker.
+ * <p>It knows no client and no wire. What arrives is an envelope and
+ * the document beside it, already read; what goes back is the same
+ * pair. Subscribing, publishing and what an event looks like in bytes
+ * are the connection's business, which is what lets the whole decision
+ * be exercised without a broker.
  *
  * <p>A failure is an answer. A handler that throws, an argument that
  * will not decode, a method that is not there — each comes back as a
@@ -80,16 +75,10 @@ public final class MessagingOperationDispatcher {
 
 	private static final Logger LOG = Logger.getLogger(MessagingOperationDispatcher.class.getName());
 
-	/** Where an answer goes when the call named a topic. The component supplies the connection. */
-	public interface Publisher {
-
-		void publish(String topic, byte[] payload, int qos) throws Exception;
-	}
-
-	/** The way back to the caller of one request, when the protocol carries it. */
+	/** The way back to the caller of one request. */
 	public interface Reply {
 
-		void send(byte[] payload) throws Exception;
+		void send(CloudEventCodec.Message answer) throws Exception;
 	}
 
 	private final MessagingRoute route;
@@ -100,31 +89,25 @@ public final class MessagingOperationDispatcher {
 
 	private final ComponentServiceObjects<ResourceSet> resourceSets;
 
-	private final Publisher publisher;
-
 	private final CallTracer tracer;
 
 	public MessagingOperationDispatcher(ServiceFlavor flavor, Supplier<Object> service, String source,
-			ComponentServiceObjects<ResourceSet> resourceSets, Publisher publisher) {
-		this(flavor, service, source, resourceSets, publisher, CallTracer.NONE);
+			ComponentServiceObjects<ResourceSet> resourceSets) {
+		this(flavor, service, source, resourceSets, CallTracer.NONE);
 	}
 
 	/**
-	 * @param publisher where answers to calls that name a topic go; may
-	 *        be null for a flavor whose protocol carries the reply
-	 *        address
 	 * @param tracer whoever is watching calls (#126). A dispatcher built
 	 *        without one is built with {@link CallTracer#NONE}: serving a
 	 *        contract over channels has never required telemetry.
 	 */
 	public MessagingOperationDispatcher(ServiceFlavor flavor, Supplier<Object> service, String source,
-			ComponentServiceObjects<ResourceSet> resourceSets, Publisher publisher, CallTracer tracer) {
+			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer) {
 		this.tracer = tracer == null ? CallTracer.NONE : tracer;
 		this.route = MessagingRoute.of(flavor);
 		this.service = service;
 		this.source = source;
 		this.resourceSets = resourceSets;
-		this.publisher = publisher;
 	}
 
 	/** The route this dispatcher answers on. */
@@ -144,51 +127,31 @@ public final class MessagingOperationDispatcher {
 	}
 
 	/**
-	 * One call whose way back is in its envelope. Never throws: a
-	 * dispatcher that let a failure escape would take down the
-	 * subscription that every other caller of this contract shares.
+	 * One call. Never throws: a dispatcher that let a failure escape
+	 * would take down the subscription that every other caller of this
+	 * contract shares.
 	 */
-	public void onMessage(String channel, byte[] payload) {
-		dispatch(channel, payload, null);
-	}
-
-	/**
-	 * One call whose way back the protocol carries. Never throws, for
-	 * the same reason.
-	 */
-	public void onRequest(String channel, byte[] payload, Reply reply) {
-		dispatch(channel, payload, reply);
-	}
-
-	private void dispatch(String channel, byte[] payload, Reply handedIn) {
+	public void onRequest(String channel, CloudEventCodec.Message call, Reply reply) {
 		MessagingRoute.Operation placed = route.onChannel(channel);
 		if (placed == null) {
 			LOG.fine(() -> "[DDSR-MSG] nothing of this contract answers on " + channel);
 			return;
 		}
-		CloudEvent request;
+		CloudEvent request = call.attributes();
 		ServiceInvocation invocation;
 		try {
-			var message = MessagingRoute.read(payload, CloudEvents.TYPE_INVOKE);
-			request = message.attributes();
-			invocation = invocationOf(message.data(), request.getDatacontenttype());
+			if (!CloudEvents.TYPE_INVOKE.equals(request.getType())) {
+				throw new IllegalArgumentException("a '" + request.getType() + "' is not a call");
+			}
+			if (call.data() == null) {
+				throw new IllegalArgumentException("a call without its document says nothing");
+			}
+			invocation = invocationOf(call.data(), request.getDatacontenttype());
 		} catch (Exception unreadable) {
-			// There is nothing to answer to: a message this side cannot
-			// read is one whose reply address it cannot trust either.
+			// Not answered: what this side cannot read as a call is not
+			// one it can say anything true about.
 			LOG.warning("[DDSR-MSG] unreadable call on " + channel + " dropped: " + unreadable);
 			return;
-		}
-
-		Reply reply = handedIn;
-		if (reply == null) {
-			String replyTo;
-			try {
-				replyTo = MessagingRoute.replyAddressOf(request);
-			} catch (RuntimeException noAddress) {
-				LOG.warning("[DDSR-MSG] a call on " + channel + " named no reply address: " + noAddress);
-				return;
-			}
-			reply = answer -> publisher.publish(replyTo, answer, placed.qos());
 		}
 
 		// The caller's trace, continued here (#126). It travelled in the
@@ -266,7 +229,7 @@ public final class MessagingOperationDispatcher {
 		String contentType = placed.produces();
 		try {
 			byte[] document = write(List.of(result), contentType);
-			reply.send(MessagingRoute.write(
+			reply.send(new CloudEventCodec.Message(
 					CloudEvents.describing(MessagingRoute.reply(request, source, contentType), result),
 					document));
 		} catch (Exception unanswerable) {
@@ -278,7 +241,7 @@ public final class MessagingOperationDispatcher {
 			try {
 				byte[] document = write(List.of(Invocations.failure(String.valueOf(unanswerable), 0)),
 						MessagingRoute.DEFAULT_CONTENT_TYPE);
-				reply.send(MessagingRoute.write(
+				reply.send(new CloudEventCodec.Message(
 						MessagingRoute.reply(request, source, MessagingRoute.DEFAULT_CONTENT_TYPE), document));
 			} catch (Exception silence) {
 				LOG.warning("[DDSR-MSG] and could not say why either: " + silence);

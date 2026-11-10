@@ -267,6 +267,16 @@ public class RestDispatcher {
 		if (request != null && request.getSubject() != null) {
 			reply.setSubject(request.getSubject());
 		}
+		// What schema the answer's body adheres to, where the body is a
+		// model: its root, or the first root of a document that travels
+		// with context. A status with a text, or no body at all, names
+		// none.
+		Object entity = answer.getEntity();
+		if (entity instanceof XmiBundle document && !document.roots().isEmpty()) {
+			CloudEvents.describing(reply, document.roots().get(0));
+		} else if (entity instanceof EObject root) {
+			CloudEvents.describing(reply, root);
+		}
 		Response.ResponseBuilder builder = Response.fromResponse(answer);
 		for (Map.Entry<String, String> header : CloudEventCodec.toHeaders(reply).entrySet()) {
 			builder.header(header.getKey(), header.getValue());

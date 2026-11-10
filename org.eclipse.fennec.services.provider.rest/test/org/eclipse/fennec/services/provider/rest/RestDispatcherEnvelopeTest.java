@@ -154,6 +154,9 @@ class RestDispatcherEnvelopeTest {
 				.isNotEqualTo("req-1");
 		assertThat(answer.getHeaderString("ce-source")).isEqualTo("/provider/Payment");
 		assertThat(answer.getHeaderString("ce-subject")).isEqualTo("Payment/getBalance");
+		assertThat(answer.getHeaderString("ce-dataschema"))
+				.as("a plain value has no schema to name")
+				.isNull();
 	}
 
 	@Test

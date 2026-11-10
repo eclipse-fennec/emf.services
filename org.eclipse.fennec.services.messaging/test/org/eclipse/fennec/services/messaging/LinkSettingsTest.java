@@ -36,6 +36,7 @@ class LinkSettingsTest {
 				Map.entry("osgi.messaging.name", "fennec.broker"),
 				Map.entry("uri", "tcp://localhost:1883"),
 				Map.entry("clientId", "ddsr-broker"),
+				Map.entry("cloudEvents", "structured"),
 				Map.entry("cleanSession", Boolean.TRUE));
 	}
 
@@ -65,6 +66,7 @@ class LinkSettingsTest {
 				Map.entry("osgi.messaging.name", "fennec.calls"),
 				Map.entry("uri", "amqp://localhost:5672"),
 				Map.entry("clientId", "node-1"),
+				Map.entry("cloudEvents", "structured"),
 				Map.entry("exchange", "calls"));
 	}
 

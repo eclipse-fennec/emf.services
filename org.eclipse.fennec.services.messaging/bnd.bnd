@@ -6,8 +6,12 @@ Bundle-Description: \
 	instance derived from what its owner already knows — a broker URL, a \
 	client id, the node's certificate — written as a factory \
 	configuration and taken away again when the owner goes. The instance \
-	owns the connection, the reconnect and the restored subscriptions; \
-	what travels stays what the owner hands over, byte for byte.
+	owns the connection, the reconnect and the restored subscriptions — \
+	and the envelope: every message is a CloudEvent, which the instance \
+	writes and reads in structured mode. The owner hands over what the \
+	event says and the payload it carries.
+
+-library: enableEMF
 
 -buildpath: \
 	osgi.annotation;version=latest,\
@@ -17,7 +21,9 @@ Bundle-Description: \
 	org.osgi.util.promise;version=latest,\
 	org.osgi.util.pushstream;version=latest,\
 	org.osgi.util.function;version=latest,\
-	org.gecko.messaging.api;version=latest
+	org.gecko.messaging.api;version=latest,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	io.cloudevents.model;version=latest
 
 # Plain JUnit 5: what a link asks of the messaging instance is a
 # dictionary, and that is decided without a framework.

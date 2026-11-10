@@ -51,7 +51,7 @@ final class ReplyInbox {
 	private static final Logger LOG = Logger.getLogger(ReplyInbox.class.getName());
 
 	/** One waiting call. A queue of one, because there is one answer. */
-	private final Map<String, BlockingQueue<byte[]>> waiting = new ConcurrentHashMap<>();
+	private final Map<String, BlockingQueue<CloudEventCodec.Message>> waiting = new ConcurrentHashMap<>();
 
 	private final String subtree;
 
@@ -79,8 +79,8 @@ final class ReplyInbox {
 	 *
 	 * @return the message, or {@code null} when the wait ran out
 	 */
-	byte[] await(String requestId, long timeout, TimeUnit unit) throws InterruptedException {
-		BlockingQueue<byte[]> queue = waiting.get(requestId);
+	CloudEventCodec.Message await(String requestId, long timeout, TimeUnit unit) throws InterruptedException {
+		BlockingQueue<CloudEventCodec.Message> queue = waiting.get(requestId);
 		if (queue == null) {
 			throw new IllegalStateException("no call is waiting for " + requestId);
 		}
@@ -88,35 +88,33 @@ final class ReplyInbox {
 	}
 
 	/**
-	 * One message off the subtree. Never throws: this runs on the MQTT
-	 * client's thread, and a message that cannot be read must not take
-	 * the subscription every other call shares down with it.
+	 * One message off the subtree, as the connection read it. Never
+	 * throws: this runs on a thread of the connection, and a message
+	 * that is not an answer must not take the subscription every other
+	 * call shares down with it.
 	 */
-	void deliver(byte[] payload) {
-		String correlation;
-		try {
-			CloudEvent envelope = CloudEventCodec.readStructured(payload).attributes();
-			if (!CloudEvents.TYPE_INVOKE_REPLY.equals(envelope.getType())) {
-				LOG.fine(() -> "[DDSR-MQTT] ignoring a '" + envelope.getType() + "' message on "
-						+ subtree + " — this subtree is for answers");
-				return;
-			}
-			correlation = MessagingRoute.correlationOf(envelope);
-		} catch (RuntimeException unreadable) {
-			LOG.warning("[DDSR-MQTT] unreadable answer on " + subtree + " dropped: " + unreadable);
+	void deliver(CloudEventCodec.Message message) {
+		if (message == null) {
 			return;
 		}
+		CloudEvent envelope = message.attributes();
+		if (!CloudEvents.TYPE_INVOKE_REPLY.equals(envelope.getType())) {
+			LOG.fine(() -> "[DDSR-MQTT] ignoring a '" + envelope.getType() + "' message on "
+					+ subtree + " — this subtree is for answers");
+			return;
+		}
+		String correlation = MessagingRoute.correlationOf(envelope);
 		if (correlation == null) {
 			LOG.warning("[DDSR-MQTT] an answer on " + subtree + " named no call, dropped");
 			return;
 		}
-		BlockingQueue<byte[]> queue = waiting.get(correlation);
+		BlockingQueue<CloudEventCodec.Message> queue = waiting.get(correlation);
 		if (queue == null) {
 			// The caller is gone: it timed out, or was interrupted. There
 			// is nobody to hand this to and nothing to keep it for.
 			LOG.fine(() -> "[DDSR-MQTT] nobody is waiting for " + correlation + " any more");
 			return;
 		}
-		queue.offer(payload);
+		queue.offer(message);
 	}
 }

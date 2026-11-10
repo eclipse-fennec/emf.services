@@ -72,7 +72,18 @@ class MqttEventSinkTest {
 	private final List<Published> sent = new ArrayList<>();
 
 	private final MqttEventSink.Publisher publisher =
-			(topic, payload) -> sent.add(new Published(topic, new String(payload, StandardCharsets.UTF_8)));
+			(topic, message) -> sent.add(new Published(topic, wire(message)));
+
+	/**
+	 * What the event looks like as one document. The sink hands the
+	 * connection an envelope and a payload; rendering both the way the
+	 * JSON event format does keeps these assertions about what a
+	 * subscriber is told, not about how the sink holds it.
+	 */
+	private static String wire(CloudEventCodec.Message message) {
+		return new String(CloudEventCodec.writeStructured(message.attributes(), message.data()),
+				StandardCharsets.UTF_8);
+	}
 
 	/** Serves implementations for references, like the real broker does. */
 	private static final class FakeLookup implements BrokerLookup {
@@ -293,7 +304,7 @@ class MqttEventSinkTest {
 			if (broken.get()) {
 				throw new IllegalStateException("broker unreachable");
 			}
-			sent.add(new Published(topic, new String(payload, StandardCharsets.UTF_8)));
+			sent.add(new Published(topic, wire(payload)));
 		}, lookup, new ResourceSetObjects(), "ddsr/events", "/test/broker");
 
 		sink.publish(registered("ref-1", "Payment"));

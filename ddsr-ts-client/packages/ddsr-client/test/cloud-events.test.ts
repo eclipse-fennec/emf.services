@@ -12,10 +12,10 @@
  ********************************************************************/
 
 import { describe, expect, it } from 'vitest';
-import { ServiceEventType } from '@ddsr/model';
+import { DDSRFactory, DDSRPackage, ServiceEventType } from '@ddsr/model';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO, CE_TYPE_INVOKE,
-  dataAsText, fromHeaders, lifecycleEventTypeOf, lifecycleTypeOf, newEnvelope,
+  dataAsText, describing, fromHeaders, lifecycleEventTypeOf, lifecycleTypeOf, newEnvelope,
   readStructured, toHeaders, writeStructured,
 } from '../src/cloudevents/cloud-events';
 
@@ -104,6 +104,18 @@ describe('cloud events', () => {
       + `"datacontenttype":"application/xml","data_base64":"${base64}"}`;
 
     expect(dataAsText(readStructured(message))).toBe(XMI);
+  });
+
+  it('names the schema of a payload by the namespace of its package', () => {
+    const invocation = DDSRFactory.eINSTANCE.createServiceInvocation();
+
+    const described = describing(envelope('application/xml'), invocation);
+
+    // An absolute URI, so the package and not a class in it.
+    expect(described.dataschema).toBe(DDSRPackage.eNS_URI);
+    expect(described.dataschema).not.toContain('#');
+    expect(toHeaders(described)['ce-dataschema']).toBe(DDSRPackage.eNS_URI);
+    expect(describing(envelope(), undefined).dataschema).toBeUndefined();
   });
 
   it('writes neither data member for an event that has no payload', () => {

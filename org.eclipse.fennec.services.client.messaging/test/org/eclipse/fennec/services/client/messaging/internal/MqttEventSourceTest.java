@@ -51,6 +51,20 @@ class MqttEventSourceTest {
 
 		private String filter;
 		private MqttEventSource.MessageListener listener;
+
+		/**
+		 * One message off the wire, the way the connection hands it on:
+		 * read as a CloudEvent, and not handed on at all when it is none.
+		 */
+		void push(String topic, byte[] wire) {
+			CloudEventCodec.Message message;
+			try {
+				message = CloudEventCodec.readStructured(wire);
+			} catch (RuntimeException noCloudEvent) {
+				return;
+			}
+			listener.onMessage(topic, message);
+		}
 		private Runnable established;
 		private int closed;
 
@@ -181,7 +195,7 @@ class MqttEventSourceTest {
 	void aReceivedPayloadBecomesAServiceEvent() {
 		source("ddsr/events").open(handler);
 
-		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
+		subscriber.push("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
 
 		assertThat(received).hasSize(1);
 		ServiceEvent event = received.get(0);
@@ -194,8 +208,8 @@ class MqttEventSourceTest {
 	void anUndecodablePayloadIsSkippedWithoutEndingTheSubscription() {
 		source("ddsr/events").open(handler);
 
-		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage("this is not XMI"));
-		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
+		subscriber.push("ddsr/events/Payment", lifecycleMessage("this is not XMI"));
+		subscriber.push("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
 
 		assertThat(received)
 				.as("one bad message must not cost us the next good one")
@@ -206,8 +220,8 @@ class MqttEventSourceTest {
 	void aMessageThatIsNotACloudEventIsSkipped() {
 		source("ddsr/events").open(handler);
 
-		subscriber.listener.onMessage("ddsr/events/Payment", EVENT_XMI.getBytes(StandardCharsets.UTF_8));
-		subscriber.listener.onMessage("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
+		subscriber.push("ddsr/events/Payment", EVENT_XMI.getBytes(StandardCharsets.UTF_8));
+		subscriber.push("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
 
 		assertThat(received)
 				.as("a bare document is no longer the wire shape, and it must not end the subscription")
@@ -218,7 +232,7 @@ class MqttEventSourceTest {
 	void aMessageOfAForeignTypeIsNotADdsrLifecycleEvent() {
 		source("ddsr/events").open(handler);
 
-		subscriber.listener.onMessage("ddsr/events/Payment",
+		subscriber.push("ddsr/events/Payment",
 				message(EVENT_XMI, "com.example.something.happened"));
 
 		assertThat(received)
@@ -230,7 +244,7 @@ class MqttEventSourceTest {
 	void anEmptyPayloadIsIgnored() {
 		source("ddsr/events").open(handler);
 
-		subscriber.listener.onMessage("ddsr/events/Payment", new byte[0]);
+		subscriber.push("ddsr/events/Payment", new byte[0]);
 
 		assertThat(received).isEmpty();
 	}

@@ -14,7 +14,7 @@
 import type { FlavorPlugin, TokenSupplier } from '@ddsr/client';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrClientError, DdsrServiceError,
-  DdsrTransportError, bearerScheme, demandsAuthentication, newEnvelope, toArray, toHeaders,
+  DdsrTransportError, bearerScheme, demandsAuthentication, describing, newEnvelope, toArray, toHeaders,
 } from '@ddsr/client';
 import type {
   ServiceFlavor,
@@ -143,6 +143,9 @@ export class RestFlavorPlugin implements FlavorPlugin {
     // contract says, the envelope is what carries it.
     const envelope = newEnvelope(CE_TYPE_INVOKE, this.source);
     envelope.subject = operation.name ?? undefined;
+    // A call whose body is a model object says what schema it adheres
+    // to; one without a body names none.
+    describing(envelope, request.body);
     // The trace context travels as the W3C header, which is what an
     // instrumented provider reads — in any language. Written after the
     // span exists, because what travels must name THIS call.

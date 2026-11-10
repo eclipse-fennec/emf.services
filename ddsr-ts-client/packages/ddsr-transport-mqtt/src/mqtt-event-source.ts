@@ -58,7 +58,7 @@ export const RESYNC_TOPIC_SEGMENT = '_resync';
 
 /**
  * MQTT implementation of the event source — the TS mirror of the Java
- * client.mqtt transport, with the same contracts:
+ * client.messaging event transport, with the same contracts:
  *
  * - Subscribes `<prefix>/#`: EventSource.open carries no interest set
  *   (documented A2 finding), routing happens in the SDK's listener

@@ -1,12 +1,10 @@
 Bundle-Name: Fennec Services AMQP Flavor Rules
 Bundle-Description: \
-	Where a call travels on an AMQP 0-9-1 broker and what its message \
-	looks like. Shared by the consumer, which publishes a request, and \
-	by the provider side, which answers it. The routing key is the \
-	frozen convention; the message is a CloudEvent carrying a \
-	ServiceInvocation, the same one the MQTT flavor sends — without a \
-	reply address, because AMQP has one of its own. No client: this \
-	bundle decides, it does not connect.
+	Where a call travels on an AMQP 0-9-1 broker: the exchange and the \
+	routing key an AmqpFlavor states for each operation. The rule only \
+	— what both ends do with it is the messaging transport's, which \
+	reads this flavor and the MQTT one into the same route. No client: \
+	this bundle decides, it does not connect.
 
 -library: enableEMF
 

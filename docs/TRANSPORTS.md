@@ -109,10 +109,8 @@ What the instance gives each of them:
   TypeScript node reads what it always read.
 
 The instances are named `fennec.services.broker.events`,
-`fennec.services.client.events`, `fennec.services.invoker.<id>`,
-`fennec.services.provider.<id>` and, for AMQP,
-`fennec.services.amqp.invoker.<id>` and
-`fennec.services.amqp.provider.<id>`, and show up under those names in
+`fennec.services.client.events`, `fennec.services.invoker.<id>` and
+`fennec.services.provider.<id>`, and show up under those names in
 `MessageServiceRuntime`. A message is limited to 1 MiB, sent and
 received.
 
@@ -123,13 +121,14 @@ configuration can run into that timeout — the instance is activated on
 the thread that delivers configurations, and that thread is the one
 waiting. Calls from a thread of the application's own are not affected.
 
-## `client.mqtt` — events and calls over MQTT
+## `client.messaging` — events over MQTT, calls over MQTT and AMQP
 
 Registers one `EventSource` with `ddsr.event.transport=mqtt`, and is
 **dormant until configured**: its configuration policy requires a
 configuration.
 
-`org.eclipse.fennec.services.client.mqtt`
+`org.eclipse.fennec.services.client.mqtt` (the event transport; its PID
+kept the protocol's name, because events travel over MQTT only)
 
 | Property | Default |
 | --- | --- |
@@ -149,15 +148,32 @@ Configuring it is not enough. The SDK must be pointed at it:
 Without that target the SDK binds whichever event source is present,
 which in any launch that also has REST is the SSE one.
 
-The same bundle also **calls** services announced over MQTT (#98). That
-half needs no address of its own — the brokers a flavor announces are
-where it dials — and is configured only with how long to wait:
+The same bundle also **calls** services announced over a messaging
+broker (#98, #138) — with one invoker for MQTT and AMQP. Over messaging
+the API is the same for both: publish the call to a channel, receive
+the one answer that correlates. What differs is what the flavor says —
+what a channel is called, where the broker is, and how the answer finds
+its way back (in the envelope over MQTT 3.1.1, in the protocol's own
+reply-to over AMQP). The invoker needs no address of its own — the
+broker a flavor announces is where it dials, and the scheme of that URL
+says which protocol — and is configured with how long to wait and who
+the node is to a broker:
 
-`org.eclipse.fennec.services.client.mqtt.invoker`
+`org.eclipse.fennec.services.client.messaging.invoker`
 
 | Property | Default |
 | --- | --- |
 | `reply.timeout.seconds` | `10` |
+| `username`, `password` | empty — the broker's default user |
+| `tls.keystore`, `tls.truststore` and their passwords | empty; used on a TLS URL (`ssl://`, `amqps://`) |
+
+A user and a password are stated here and never in a broker URL: the
+URL is what a flavor announces to every consumer.
+
+Which protocols the invoker can actually speak is a matter of what the
+launch carries: the `mqtt3` binding with Paho, the `amqp` binding with
+the RabbitMQ client, or both. That is the whole difference between an
+MQTT and an AMQP deployment — configuration and dependencies.
 
 Which transport a proxy uses is not configured at all: the SDK picks by
 the flavors the service announces, in the order it announces them, from
@@ -165,21 +181,36 @@ the invokers this runtime has. A service reachable only over a
 transport that is not installed fails with a message naming both sides
 instead of a call going out the wrong way.
 
-## `provider.mqtt` — serving a contract over topics
+## `provider.messaging` — serving a contract over a messaging broker
 
-The MQTT twin of `provider.rest`: one subscription per operation of a
-flavor, a dispatcher that reads the call, invokes the service and
-answers on the topic the call named. Nothing in it is written per
-contract.
+The messaging twin of `provider.rest`, for MQTT and AMQP alike: one
+subscription per operation of a flavor, a dispatcher that reads the
+call, invokes the service and answers the way the call asks to be
+answered — on the topic it named (MQTT), or on the reply address the
+protocol carried (AMQP). Nothing in it is written per contract, and
+nothing per protocol beyond that one distinction.
 
-Connections are pooled per broker URL, opened with the first export and
-closed with the last.
+Connections are pooled per broker URL (and exchange), opened with the
+first export and closed with the last. Who the node is to a broker is
+the connection's to say:
+
+`org.eclipse.fennec.services.provider.messaging.connection`
+
+| Property | Default |
+| --- | --- |
+| `username`, `password` | empty — the broker's default user |
+| `tls.keystore`, `tls.truststore` and their passwords | empty; used on a TLS URL |
+
+Over AMQP the reply queue is exclusive to the connection that declared
+it, so no other connection can consume from it. The answer is still
+routed by a key on the topic exchange; a broker that should also keep
+others from binding that key says so in its permissions.
 
 Since #25 it also has the configuration-driven half, the twin of
 `provider.rest`: one factory configuration serves one contract from a
 model document and, if asked, announces it.
 
-Factory PID `org.eclipse.fennec.services.provider.mqtt`
+Factory PID `org.eclipse.fennec.services.provider.messaging`
 
 | Property | Default | |
 | --- | --- | --- |
@@ -188,11 +219,12 @@ Factory PID `org.eclipse.fennec.services.provider.mqtt`
 | `model.entry` | — | **required**, the path inside it |
 | `ddsr.contract` | `""` | the contract's name |
 | `publish` | `false` | announce to a broker as well as serve |
-| `mqtt.broker` | `""` | where this instance listens; empty keeps what the document says |
+| `messaging.broker` | `""` | where this instance listens — a URL of the protocol the document's flavor speaks; empty keeps what the document says |
 | `broker.url` | `""` | only used to name the contract in the announcement |
 
-Topics and QoS are **not** in that table, and that is the point: they
-are the contract's, read from the same document that is announced. What
+Topics, routing keys and QoS are **not** in that table, and that is the
+point: they are the contract's, read from the same document that is
+announced — whether it carries an `MqttFlavor` or an `AmqpFlavor`. What
 a deployment states is where it runs.
 
 Unlike the REST twin it goes down in the right order by construction:
@@ -282,39 +314,6 @@ One `EventSink`, dormant until configured.
 
 Production launches ship the MQTT bundles unconfigured. See
 [Eventing](EVENTING.md) for the topic layout and what is guaranteed.
-
-## `client.amqp` and `provider.amqp` — calls over AMQP
-
-`client.amqp` registers a service invoker for flavor `AMQP`. Like the
-MQTT one it needs no address — it dials the broker and exchange a
-flavor announces — and is configured only with how long to wait and
-who the node is to a broker:
-
-`org.eclipse.fennec.services.client.amqp.invoker`
-
-| Property | Default |
-| --- | --- |
-| `reply.timeout.seconds` | `10` |
-| `username`, `password` | empty — the broker's default user |
-| `tls.keystore`, `tls.truststore` and their passwords | empty; used on `amqps://` |
-
-A user and a password are stated here and never in a broker URL: the
-URL is what a flavor announces to every consumer.
-
-`provider.amqp` is the serving half, `AmqpDistribution`: one binding
-per operation on the flavor's exchange, a dispatcher that invokes the
-service and answers to the reply address the call named. Its
-connection takes the same identity attributes under
-`org.eclipse.fennec.services.provider.amqp.connection`. Today it is
-reached through Remote Service Admin (`fennec.amqp`,
-[RSA](RSA.md#two-transports-and-splitting-them)); a factory
-configuration that serves a contract from its document, as
-`provider.mqtt` has, is not built for AMQP yet.
-
-The reply queue is exclusive to the connection that declared it, so no
-other connection can consume from it. The answer is still routed by a
-key on the topic exchange; a broker that should also keep others from
-binding that key says so in its permissions.
 
 ## `provider.rest` — serving a contract with no generated code
 

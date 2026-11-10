@@ -60,20 +60,14 @@ public final class Derivation {
 	/** The transport that carries the broker's events to an MQTT-hearing node. */
 	static final String CLIENT_MQTT_PID = "org.eclipse.fennec.services.client.mqtt";
 
-	/** How this node calls services announced over MQTT. */
-	static final String INVOKER_MQTT_PID = "org.eclipse.fennec.services.client.mqtt.invoker";
-
 	/** Where a node that serves over AMQP listens (#138). */
 	static final String DISTRIBUTION_AMQP_PID = "org.eclipse.fennec.services.rsa.distribution.amqp";
 
-	/** How this node calls services announced over AMQP. */
-	static final String INVOKER_AMQP_PID = "org.eclipse.fennec.services.client.amqp.invoker";
+	/** How this node calls services announced over a messaging broker — MQTT or AMQP. */
+	static final String INVOKER_MESSAGING_PID = "org.eclipse.fennec.services.client.messaging.invoker";
 
-	/** Who this node is to the AMQP brokers it serves on. */
-	static final String CONNECTION_AMQP_PID = "org.eclipse.fennec.services.provider.amqp.connection";
-
-	/** How the MQTT distribution connects to the brokers it serves on. */
-	static final String CONNECTION_MQTT_PID = "org.eclipse.fennec.services.provider.mqtt.connection";
+	/** Who this node is to the messaging brokers it serves on. */
+	static final String CONNECTION_MESSAGING_PID = "org.eclipse.fennec.services.provider.messaging.connection";
 
 	static final String ADMIN_FACTORY = "org.eclipse.fennec.services.rsa";
 
@@ -114,8 +108,7 @@ public final class Derivation {
 		}
 		contracts(plan, settings);
 		client(plan, settings);
-		mqttConnections(plan, settings, true);
-		amqpConnections(plan, settings, true);
+		messagingConnections(plan, settings, true);
 		distribution(plan, settings);
 		discovery(plan, settings);
 		plan.add(admin(settings, "(ddsr.rsa.flavor=" + settings.effectiveDistributionFlavor() + ")"));
@@ -136,8 +129,7 @@ public final class Derivation {
 		identity(plan, settings, false);
 		contracts(plan, settings);
 		client(plan, settings);
-		mqttConnections(plan, settings, false);
-		amqpConnections(plan, settings, false);
+		messagingConnections(plan, settings, false);
 		discovery(plan, settings);
 		plan.add(admin(settings, NO_DISTRIBUTION));
 		plan.add(topology(settings));
@@ -283,42 +275,30 @@ public final class Derivation {
 	}
 
 	/**
-	 * The node's certificate on its MQTT connections (SECURITY.md §7d):
-	 * calls it makes over an announced MQTT flavor, and — where it serves
-	 * over MQTT — the distribution's connection. Only where MQTT is in
-	 * play at all and the node has a certificate; its CN is then its name
-	 * on the reply topics, the user an MQTT broker's ACL names.
+	 * The node's certificate on its messaging connections (SECURITY.md
+	 * §7d): the calls it makes over an announced MQTT or AMQP flavor,
+	 * and — where it serves over one of them — the distribution's
+	 * connection. One invoker and one distribution serve both protocols,
+	 * so there is one configuration of each. Only where messaging is in
+	 * play at all and the node has a certificate; over MQTT its CN is
+	 * then its name on the reply topics, the user a broker's ACL names.
 	 */
-	private static void mqttConnections(List<DerivedConfiguration> plan, RsaSettings settings, boolean serves) {
+	private static void messagingConnections(List<DerivedConfiguration> plan, RsaSettings settings,
+			boolean serves) {
 		NodeIdentity identity = settings.identity();
-		boolean mqtt = RsaSettings.MQTT.equals(settings.flavor()) || settings.hearsOverMqtt()
-				|| (serves && RsaSettings.MQTT.equals(settings.effectiveDistributionFlavor()));
-		if (!mqtt || !identity.hasTls()) {
+		boolean servesOverMessaging = serves && overMessaging(settings.effectiveDistributionFlavor());
+		boolean messaging = overMessaging(settings.flavor()) || settings.hearsOverMqtt() || servesOverMessaging;
+		if (!messaging || !identity.hasTls()) {
 			return;
 		}
-		plan.add(DerivedConfiguration.of(INVOKER_MQTT_PID, mqttTls(identity)));
-		if (serves && RsaSettings.MQTT.equals(settings.effectiveDistributionFlavor())) {
-			plan.add(DerivedConfiguration.of(CONNECTION_MQTT_PID, mqttTls(identity)));
+		plan.add(DerivedConfiguration.of(INVOKER_MESSAGING_PID, mqttTls(identity)));
+		if (servesOverMessaging) {
+			plan.add(DerivedConfiguration.of(CONNECTION_MESSAGING_PID, mqttTls(identity)));
 		}
 	}
 
-	/**
-	 * The node's certificate on its AMQP connections, where AMQP is in
-	 * play and the node has one: the calls it makes over an announced
-	 * AMQP flavor and, where it serves over AMQP, the distribution's
-	 * connection. The same four attributes as on MQTT.
-	 */
-	private static void amqpConnections(List<DerivedConfiguration> plan, RsaSettings settings, boolean serves) {
-		NodeIdentity identity = settings.identity();
-		boolean amqp = RsaSettings.AMQP.equals(settings.flavor())
-				|| (serves && RsaSettings.AMQP.equals(settings.effectiveDistributionFlavor()));
-		if (!amqp || !identity.hasTls()) {
-			return;
-		}
-		plan.add(DerivedConfiguration.of(INVOKER_AMQP_PID, mqttTls(identity)));
-		if (serves && RsaSettings.AMQP.equals(settings.effectiveDistributionFlavor())) {
-			plan.add(DerivedConfiguration.of(CONNECTION_AMQP_PID, mqttTls(identity)));
-		}
+	private static boolean overMessaging(String configType) {
+		return RsaSettings.MQTT.equals(configType) || RsaSettings.AMQP.equals(configType);
 	}
 
 	private static Map<String, Object> mqttTls(NodeIdentity identity) {

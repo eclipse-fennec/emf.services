@@ -17,6 +17,8 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,25 +72,40 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addInvoker(ServiceInvoker invoker, Map<String, Object> properties) {
-		FlavorKind kind = flavorOf(properties);
-		if (kind != null) {
+		for (FlavorKind kind : flavorsOf(properties)) {
 			invokers.put(kind, invoker);
 		}
 	}
 
 	void removeInvoker(ServiceInvoker invoker, Map<String, Object> properties) {
-		FlavorKind kind = flavorOf(properties);
-		if (kind != null) {
+		for (FlavorKind kind : flavorsOf(properties)) {
 			invokers.remove(kind, invoker);
 		}
 	}
 
-	private static FlavorKind flavorOf(Map<String, Object> properties) {
+	/**
+	 * The flavors an invoker speaks: one, or several — the messaging
+	 * invoker speaks every flavor that travels over a messaging broker,
+	 * because there the API is one and the flavor says the rest.
+	 */
+	private static List<FlavorKind> flavorsOf(Map<String, Object> properties) {
 		Object declared = properties == null ? null : properties.get(ServiceInvoker.FLAVOR_PROPERTY);
-		if (declared == null) {
-			return null;
+		List<Object> names = new ArrayList<>();
+		if (declared instanceof Object[] several) {
+			names.addAll(Arrays.asList(several));
+		} else if (declared instanceof Collection<?> several) {
+			names.addAll(several);
+		} else if (declared != null) {
+			names.add(declared);
 		}
-		return FlavorKind.getByName(String.valueOf(declared));
+		List<FlavorKind> kinds = new ArrayList<>();
+		for (Object name : names) {
+			FlavorKind kind = FlavorKind.getByName(String.valueOf(name));
+			if (kind != null) {
+				kinds.add(kind);
+			}
+		}
+		return kinds;
 	}
 
 	/**

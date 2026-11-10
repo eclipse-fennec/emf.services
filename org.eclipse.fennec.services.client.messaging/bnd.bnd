@@ -1,0 +1,35 @@
+Bundle-Name: Fennec Services Client Messaging Transport
+Bundle-Description: \
+	The consumer side of everything that travels over a messaging \
+	broker. Receives the registry's lifecycle events over MQTT — one \
+	implementation of the SDK's EventSource — and calls services whose \
+	flavor says MQTT or AMQP — one ServiceInvoker for both, because over \
+	messaging the API is the same and the flavor says the rest. The SDK \
+	does not change because this bundle exists; which protocols it can \
+	speak is decided by the messaging bindings the launch carries.
+
+-library: enableEMF
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.messaging;version=snapshot,\
+	org.gecko.messaging.api;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	osgi.core;version=latest,\
+	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
+	org.eclipse.fennec.services.flavor.messaging;version=snapshot,\
+	io.cloudevents.model;version=latest,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+# Plain JUnit: the source takes its subscriber as a constructor argument,
+# so it is exercised without a broker or an OSGi runtime.
+-testpath: \
+	jakarta.json-api;version=latest,\
+	org.eclipse.parsson.jakarta.json;version=latest,\
+	${junit},\
+	junit-platform-launcher;version=latest

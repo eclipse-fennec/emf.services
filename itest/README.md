@@ -84,7 +84,7 @@ broker. Requirements and decisions:
   `401` at the provider. Skipped with `HARNESS_AUTH=none`.
 - **J (podman only) — MQTT with no provider code:** the implementation
   is an ordinary OSGi service; a factory configuration of
-  `provider.mqtt` reads the contract from a model document, subscribes
+  `provider.messaging` reads the contract from a model document, subscribes
   per operation and announces what it serves. The probe reads the
   announced `MqttFlavor` and calls `echo` over mosquitto, and the three
   arguments come back in the contract's order — both ends read one

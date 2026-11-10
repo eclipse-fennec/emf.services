@@ -24,7 +24,7 @@ flowchart LR
   subgraph JavaSDK["Java SDK"]
     cj["client.java<br/>provider/consumer/locator"]
     cr["client.rest"]
-    cm["client.mqtt<br/>EventSource"]
+    cm["client.messaging<br/>EventSource"]
     cj --- cr
     cj --- cm
   end
@@ -180,10 +180,16 @@ org.eclipse.fennec.services.messaging           # shared: the connection of ever
                                    #     the instance on the configuration thread
                                    #   bytes only: the envelope stays this project's
 
-org.eclipse.fennec.services.flavor.amqp         # the AMQP placement rule and message form (#138)
-org.eclipse.fennec.services.client.amqp         #   AmqpServiceInvoker, flavor AMQP
-org.eclipse.fennec.services.provider.amqp       #   AmqpDistribution + AmqpOperationDispatcher
-org.eclipse.fennec.services.rsa.distribution.amqp  # configuration type fennec.amqp
+org.eclipse.fennec.services.flavor.amqp         # the AMQP placement rule (#138)
+org.eclipse.fennec.services.flavor.messaging    # MessagingRoute: an MQTT or an AMQP flavor read into
+                                   #   one shape — broker, channel per operation, and how
+                                   #   an answer finds its way back
+org.eclipse.fennec.services.client.messaging    # events over MQTT (EventSource) and ONE invoker
+                                   #   for flavors MQTT and AMQP
+org.eclipse.fennec.services.provider.messaging  # ONE distribution, dispatcher and factory
+                                   #   configuration for both flavors
+org.eclipse.fennec.services.rsa.distribution.messaging  # fennec.mqtt and fennec.amqp: a
+                                   #   provider each, on that one distribution
 
 org.eclipse.fennec.services.flavor.rest         # shared: the placement rules
                                    #   RestPlacement: where an argument goes

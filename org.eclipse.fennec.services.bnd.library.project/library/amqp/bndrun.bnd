@@ -1,27 +1,28 @@
-# enableFennecServicesAmqp — the AMQP 0-9-1 transport in a launch, on top
-# of the client (enableFennecServicesClient): calling services announced
-# over AMQP and serving a contract on routing keys. Both parts are
-# dormant until a flavor names a broker, so the bundles are safe in a
-# launch that speaks only REST.
+# enableFennecServicesAmqp — the messaging transport in a launch, with
+# the AMQP 0-9-1 binding, on top of the client
+# (enableFennecServicesClient): calling services announced over AMQP and
+# serving a contract on routing keys. Dormant until a flavor names a
+# broker, so the bundles are safe in a launch that speaks only REST.
 #
-# The connection is a Gecko Messaging instance (amqp), which each part
-# configures for itself — so this list needs the Configuration Admin
-# service the launch chooses anyway, and brings the messaging bundles,
-# the RabbitMQ client they drive and the Netty 4.2 that client requires.
-# The messaging link and its API are named here as in
-# enableFennecServicesMqtt; a launch with both lists names them twice,
-# which is one bundle each.
+# The transport bundles are the ones enableFennecServicesMqtt names —
+# one invoker and one distribution for every protocol. What this list
+# adds is what makes AMQP spoken here: the amqp binding of Gecko
+# Messaging, the RabbitMQ client it drives and the Netty 4.2 that client
+# requires. Needs the Configuration Admin service the launch chooses
+# anyway.
 fennec.services.range: [0.1.0,0.2.0)
 
 -runbundles.fennec.services.amqp: \
-	org.eclipse.fennec.services.client.amqp;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.client.messaging;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.provider.messaging;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.flavor.messaging;version='${fennec.services.range}',\
+	org.eclipse.fennec.services.flavor.mqtt;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.flavor.amqp;version='${fennec.services.range}',\
-	org.eclipse.fennec.services.provider.amqp;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.messaging;version='${fennec.services.range}',\
 	org.gecko.messaging.api;version='[2.0.0,2.1.0)',\
 	org.gecko.messaging.core;version='[2.0.0,2.1.0)',\
-	org.gecko.messaging.amqp;version='[2.0.0,2.1.0)',\
 	org.osgi.util.pushstream;version='[1.1.0,1.1.1)',\
+	org.gecko.messaging.amqp;version='[2.0.0,2.1.0)',\
 	com.rabbitmq.client;version='[5.37.0,5.37.1)',\
 	io.netty.common;version='[4.2.20,4.2.21)',\
 	io.netty.buffer;version='[4.2.20,4.2.21)',\

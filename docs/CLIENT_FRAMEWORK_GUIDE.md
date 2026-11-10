@@ -520,8 +520,8 @@ variables a Java node reads (`DDSR_TLS_KEYSTORE`, `DDSR_TLS_CA`,
 broker that demands one and holds the topics to an ACL
 ([Security](SECURITY.md) §7d). A Java node gives each MQTT connection
 the same four `tls.*` attributes as the REST transport — on
-`…client.mqtt` (the event source), `…client.mqtt.invoker` (calls),
-`…provider.mqtt.connection` (the generic distribution) and
+`…client.mqtt` (the event source), `…client.messaging.invoker` (calls),
+`…provider.messaging.connection` (the generic distribution) and
 `…broker.mqtt` (the broker's sink) — and they apply to `ssl://` URLs
 only. With a key store the invoker answers under the CN of its key, so
 the reply topics carry the name the ACL knows. In TypeScript the

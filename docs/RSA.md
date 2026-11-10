@@ -150,8 +150,7 @@ console, on `RsaProvider.Config` and `RsaConsumer.Config`.
 | --- | --- |
 | `…rsa` | the `RemoteServiceAdmin` itself, and two SPIs |
 | `…rsa.distribution.rest` | serving an exported service over REST |
-| `…rsa.distribution.mqtt` | the same over MQTT (#98) |
-| `…rsa.distribution.amqp` | the same over AMQP 0-9-1 (#138) |
+| `…rsa.distribution.messaging` | the same over a messaging broker: one provider for `fennec.mqtt` (#98) and one for `fennec.amqp` (#138), on one distribution |
 | `…rsa.discovery.rest` | announcing and finding endpoints via the broker |
 | `…rsa.discovery.mqtt` | the same, with the broker's events heard over MQTT |
 | `…rsa.discovery.local` | endpoints declared in a bundle (122.6.2 XML) |
@@ -222,7 +221,7 @@ reply address of the protocol, in a queue only the caller can read, so
 there is no reply tree and no ACL to write for it. A user and password
 for the broker are not part of `amqp.url` — the URL is announced with
 every export — but of the connection
-([Transports](TRANSPORTS.md#clientamqp-and-provideramqp--calls-over-amqp)).
+([Transports](TRANSPORTS.md#providermessaging--serving-a-contract-over-a-messaging-broker)).
 The harness runs this as scenario R.
 
 Three things the role configuration keeps in step, each of which is a

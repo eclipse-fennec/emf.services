@@ -29,7 +29,9 @@ public interface ServiceInvoker {
 
 	/**
 	 * Which flavor an invoker speaks, as a service property — the value
-	 * is a {@code FlavorKind} name, {@code REST} or {@code MQTT}.
+	 * is a {@code FlavorKind} name such as {@code REST}, or several of
+	 * them for an invoker that speaks more than one: the messaging
+	 * invoker says {@code MQTT} and {@code AMQP}.
 	 *
 	 * <p>The proxy factory reads it to pick the invoker for a service
 	 * from the flavors that service announces. An invoker that declares

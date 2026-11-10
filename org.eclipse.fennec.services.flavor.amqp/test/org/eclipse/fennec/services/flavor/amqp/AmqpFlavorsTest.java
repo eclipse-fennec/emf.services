@@ -20,10 +20,7 @@ import org.eclipse.fennec.services.AmqpFlavor;
 import org.eclipse.fennec.services.AmqpOperationFlavor;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.junit.jupiter.api.Test;
-
-import io.cloudevents.model.ce.CloudEvent;
 
 /** The AMQP placement rules, which both ends of a call read alike. */
 class AmqpFlavorsTest {
@@ -120,29 +117,5 @@ class AmqpFlavorsTest {
 		charge.getProduces().add("application/json");
 		assertThat(AmqpFlavors.consumes(charge)).isEqualTo("application/x-protobuf");
 		assertThat(AmqpFlavors.produces(charge)).isEqualTo("application/json");
-	}
-
-	@Test
-	void aCallCarriesNoReplyAddressBecauseTheProtocolDoes() {
-		CloudEvent request = AmqpMessages.request("/consumer/a", "charge", "application/xml");
-
-		assertThat(request.getType()).isEqualTo(CloudEvents.TYPE_INVOKE);
-		assertThat(request.getSubject()).isEqualTo("charge");
-		assertThat(request.getExtensions().get(CloudEvents.EXTENSION_REPLY_TO)).isNull();
-	}
-
-	@Test
-	void anAnswerNamesTheCallAndComesBackReadable() {
-		CloudEvent request = AmqpMessages.request("/consumer/a", "charge", "application/xml");
-		CloudEvent reply = AmqpMessages.reply(request, "/provider/p", "application/xml");
-		byte[] wire = AmqpMessages.write(reply, "<r/>".getBytes());
-
-		var read = AmqpMessages.read(wire, CloudEvents.TYPE_INVOKE_REPLY);
-		assertThat(read.attributes().getSubject()).isEqualTo("charge");
-		assertThat(read.attributes().getExtensions().get(CloudEvents.EXTENSION_CORRELATION_ID))
-				.isEqualTo(request.getEventId());
-		assertThat(new String(read.data())).isEqualTo("<r/>");
-		assertThatThrownBy(() -> AmqpMessages.read(wire, CloudEvents.TYPE_INVOKE))
-				.hasMessageContaining("expected");
 	}
 }

@@ -130,6 +130,31 @@ public final class CloudEvents {
 		if (event.getTimestamp() != null) {
 			envelope.setTime(event.getTimestamp());
 		}
+		return describing(envelope, event);
+	}
+
+	/**
+	 * Say which schema the payload adheres to: the namespace URI of the
+	 * package its root belongs to, as the envelope's {@code dataschema}.
+	 *
+	 * <p>The package and not the class. The attribute is an absolute URI,
+	 * which has no fragment, and it is the package whose URI changes
+	 * when the schema changes incompatibly — which is exactly what the
+	 * specification asks of it. A reader that knows the content type
+	 * knows how to decode the payload; one that knows the schema too
+	 * knows what it is decoding into, before it has opened it.
+	 *
+	 * @param root the root of the document the envelope carries; an
+	 *             object without a package leaves the envelope as it is
+	 * @return the envelope, for chaining
+	 */
+	public static CloudEvent describing(CloudEvent envelope, EObject root) {
+		if (root != null && root.eClass() != null && root.eClass().getEPackage() != null) {
+			String namespace = root.eClass().getEPackage().getNsURI();
+			if (namespace != null && !namespace.isBlank()) {
+				envelope.setDataschema(namespace);
+			}
+		}
 		return envelope;
 	}
 

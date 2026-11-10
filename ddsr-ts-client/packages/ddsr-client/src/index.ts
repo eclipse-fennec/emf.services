@@ -46,7 +46,7 @@ export type { RestEventSourceOptions } from './events/rest-event-source.js';
 export { SseParser } from './events/sse-parser.js';
 export {
   newEnvelope, writeStructured, readStructured, toHeaders, fromHeaders, dataAsText,
-  isTextual, lifecycleTypeOf, lifecycleEventTypeOf,
+  isJson, isTextual, lifecycleTypeOf, lifecycleEventTypeOf,
   CE_SPEC_VERSION, CE_STRUCTURED_MEDIA_TYPE, CE_HEADER_PREFIX,
   CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY, CE_TYPE_RESYNC,
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO,

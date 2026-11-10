@@ -17,10 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Date;
 import java.util.Map;
 
 import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.ServicesPackage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -75,6 +78,87 @@ class CloudEventCodecTest {
 		assertThat(new String(message, StandardCharsets.UTF_8))
 			.contains("\"data_base64\":\"CgP/AH8=\"");
 		assertThat(CloudEventCodec.readStructured(message).data()).isEqualTo(protobuf);
+	}
+
+	@Test
+	void a_json_payload_is_stored_directly_as_a_json_value() {
+		String document = "{\"name\": \"Zürich\", \"values\": [1, true, null]}";
+
+		byte[] message = CloudEventCodec.writeStructured(envelope("application/json"),
+				document.getBytes(StandardCharsets.UTF_8));
+
+		assertThat(new String(message, StandardCharsets.UTF_8))
+			.as("the format forbids a JSON document wrapped in a string (JSON event format §3.1.1)")
+			.contains("\"data\":{\"name\":\"Zürich\",\"values\":[1,true,null]}")
+			.doesNotContain("data_base64");
+		assertThat(new String(CloudEventCodec.readStructured(message).data(), StandardCharsets.UTF_8))
+			.as("what comes back is the same document, whatever its white space was")
+			.isEqualTo("{\"name\":\"Zürich\",\"values\":[1,true,null]}");
+	}
+
+	@Test
+	void a_structured_suffix_counts_as_json_too() {
+		byte[] message = CloudEventCodec.writeStructured(envelope("application/vnd.acme+json; charset=utf-8"),
+				"[1,2]".getBytes(StandardCharsets.UTF_8));
+
+		assertThat(new String(message, StandardCharsets.UTF_8)).contains("\"data\":[1,2]");
+	}
+
+	@Test
+	void data_declared_json_that_is_not_json_is_not_sent() {
+		assertThatThrownBy(() -> CloudEventCodec.writeStructured(envelope("application/json"),
+				"<not json/>".getBytes(StandardCharsets.UTF_8)))
+			.isInstanceOf(CloudEventException.class)
+			.hasMessageContaining("declared JSON");
+	}
+
+	@Test
+	void a_json_document_a_peer_wrapped_in_a_string_is_still_read() {
+		// What this codec wrote itself before it followed the format, and
+		// what a peer that has not caught up still writes.
+		String wrapped = "{\"specversion\":\"1.0\",\"id\":\"1\",\"source\":\"/s\",\"type\":\"t\","
+				+ "\"datacontenttype\":\"application/json\",\"data\":\"{\\\"a\\\": 1}\"}";
+
+		assertThat(new String(CloudEventCodec.readStructured(wrapped.getBytes(StandardCharsets.UTF_8)).data(),
+				StandardCharsets.UTF_8)).isEqualTo("{\"a\": 1}");
+	}
+
+	@Test
+	void a_plain_string_under_a_json_content_type_stays_a_json_string() {
+		String plain = "{\"specversion\":\"1.0\",\"id\":\"1\",\"source\":\"/s\",\"type\":\"t\","
+				+ "\"datacontenttype\":\"application/json\",\"data\":\"just a string\"}";
+
+		assertThat(new String(CloudEventCodec.readStructured(plain.getBytes(StandardCharsets.UTF_8)).data(),
+				StandardCharsets.UTF_8))
+			.as("a string is a JSON string value; it is not parsed as a document (§3.1.2)")
+			.isEqualTo("\"just a string\"");
+	}
+
+	@Test
+	void xml_that_another_implementation_sent_as_base64_is_read_as_the_same_document() {
+		// Gecko Messaging treats every payload that is not text/* as
+		// binary. Both forms are valid; a reader has to take both.
+		String base64 = Base64.getEncoder().encodeToString(XMI.getBytes(StandardCharsets.UTF_8));
+		String message = "{\"specversion\":\"1.0\",\"id\":\"1\",\"source\":\"/s\",\"type\":\"t\","
+				+ "\"datacontenttype\":\"application/xml\",\"data_base64\":\"" + base64 + "\"}";
+
+		assertThat(new String(CloudEventCodec.readStructured(message.getBytes(StandardCharsets.UTF_8)).data(),
+				StandardCharsets.UTF_8)).isEqualTo(XMI);
+	}
+
+	@Test
+	void the_schema_is_the_namespace_of_the_payloads_package() {
+		CloudEvent envelope = CloudEvents.describing(envelope("application/xml"),
+				ServicesFactory.eINSTANCE.createServiceInvocation());
+
+		assertThat(envelope.getDataschema())
+			.as("an absolute URI, so the package and not a class in it — a fragment is not allowed there")
+			.isEqualTo(ServicesPackage.eNS_URI)
+			.doesNotContain("#");
+		assertThat(new String(CloudEventCodec.writeStructured(envelope, XMI.getBytes(StandardCharsets.UTF_8)),
+				StandardCharsets.UTF_8))
+			.contains("\"dataschema\":\"" + ServicesPackage.eNS_URI + "\"");
+		assertThat(CloudEvents.describing(envelope(null), null).getDataschema()).isNull();
 	}
 
 	@Test

@@ -19,15 +19,6 @@ Bundle-Description: \
 	org.osgi.util.function;version=latest,\
 	org.gecko.messaging.api;version=latest
 
-# A link is a messaging instance, and an instance needs a binding to be
-# one: said here, so a launch that is resolved gets the binding with the
-# bundle that cannot do without it. As a header rather than with the
-# API's @RequireMessaging, which bnd refuses ("invalid filter
-# information") — the annotation's filter is built from macros.
-Require-Capability: \
-	osgi.implementation;\
-		filter:="(&(osgi.implementation=osgi.messaging)(version>=1.0.0)(!(version>=2.0.0))(osgi.messaging.protocol=mqtt3))"
-
 # Plain JUnit 5: what a link asks of the messaging instance is a
 # dictionary, and that is decided without a framework.
 -testpath: \

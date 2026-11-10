@@ -17,6 +17,8 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.eclipse.fennec.services.BearerTokenScheme;
+import org.eclipse.fennec.services.AmqpFlavor;
+import org.eclipse.fennec.services.AmqpOperationFlavor;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.MqttOperationFlavor;
@@ -64,8 +66,11 @@ import org.eclipse.fennec.services.ServiceOperationFlavor;
  * <ul>
  *   <li>{@code RestFlavor}: {@code |host=|basePath=|contentTypes=<list>}</li>
  *   <li>{@code MqttFlavor}: {@code |brokers=<list>|requestTopic=|responseTopic=|defaultQos=<literal>|defaultRetained=<bool>}</li>
+ *   <li>{@code AmqpFlavor}: {@code |brokers=<list>|exchange=|requestRoutingKey=} — the
+ *       exchange renders its model default ({@code amq.topic}) when unset</li>
  *   <li>{@code RestOperationFlavor}: {@code |method=<literal>|path=|returnCodes=<list>}</li>
  *   <li>{@code MqttOperationFlavor}: {@code |requestTopic=|responseTopic=|qos=<literal>|retained=<bool>|correlation=<bool>|returnPath=<literal>}</li>
+ *   <li>{@code AmqpOperationFlavor}: {@code |routingKey=}</li>
  *   <li>an unknown flavor/operation-flavor subclass renders only its
  *       eClass name — conservative: visible, the hash moves.</li>
  * </ul>
@@ -132,6 +137,9 @@ public final class ServiceImplementationFingerprint {
 
 	// ------------------------------------------------------------------
 
+	/** The model default of {@code AmqpFlavor.exchange}, rendered explicitly. */
+	private static final String AMQP_DEFAULT_EXCHANGE = "amq.topic";
+
 	private static String flavorLine(ServiceFlavor flavor) {
 		StringBuilder line = new StringBuilder("F|")
 				.append(flavor.eClass().getName())
@@ -147,6 +155,11 @@ public final class ServiceImplementationFingerprint {
 					.append("|responseTopic=").append(esc(mqtt.getResponseTopic()))
 					.append("|defaultQos=").append(mqtt.getDefaultQos() != null ? mqtt.getDefaultQos().getLiteral() : "")
 					.append("|defaultRetained=").append(mqtt.isDefaultRetained());
+		} else if (flavor instanceof AmqpFlavor amqp) {
+			line.append("|brokers=").append(list(amqp.getBrokers()))
+					.append("|exchange=").append(esc(amqp.getExchange() != null ? amqp.getExchange()
+							: AMQP_DEFAULT_EXCHANGE))
+					.append("|requestRoutingKey=").append(esc(amqp.getRequestRoutingKey()));
 		}
 		return line.toString();
 	}
@@ -205,6 +218,8 @@ public final class ServiceImplementationFingerprint {
 					.append("|retained=").append(mqtt.isRetained())
 					.append("|correlation=").append(mqtt.isCorrelation())
 					.append("|returnPath=").append(literal(mqtt.getReturnPath()));
+		} else if (operationFlavor instanceof AmqpOperationFlavor amqp) {
+			line.append("|routingKey=").append(esc(amqp.getRoutingKey()));
 		}
 		return line.toString();
 	}

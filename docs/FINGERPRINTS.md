@@ -150,10 +150,11 @@ explicitly. The golden is `secure-payment-impl.{xmi,canonical.txt,im1}`.
 
 Flavor-specific fields: `RestFlavor` adds
 `|host=|basePath=|contentTypes=<list>`, `MqttFlavor` adds
-`|brokers=<list>|requestTopic=|responseTopic=|defaultQos=|defaultRetained=`;
-operation flavors add their REST (`|method=|path=|returnCodes=`) or
+`|brokers=<list>|requestTopic=|responseTopic=|defaultQos=|defaultRetained=`,
+`AmqpFlavor` adds `|brokers=<list>|exchange=|requestRoutingKey=`;
+operation flavors add their REST (`|method=|path=|returnCodes=`),
 MQTT (`|requestTopic=|responseTopic=|qos=|retained=|correlation=|returnPath=`)
-fields. Unknown subclasses render only their eClass name.
+or AMQP (`|routingKey=`) fields. Unknown subclasses render only their eClass name.
 
 ## Outside both schemes — by design
 

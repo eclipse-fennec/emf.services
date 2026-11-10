@@ -116,6 +116,31 @@ describe('ServiceImplementationFingerprint (im1) — cross-language golden', () 
     expect(canonical).toContain('|defaultQos=AT_LEAST_ONCE');
   });
 
+  it('covers the amqp flavor fields (Java parity)', () => {
+    const factory = DDSRFactory.eINSTANCE;
+    const impl = factory.createServiceImplementation();
+    impl.name = 'amqp-impl';
+    impl.implementationId = 'fixture:amqp:1';
+    const amqp = factory.createAmqpFlavor();
+    amqp.name = 'amqp';
+    (amqp as Record<string, unknown>).kind = 'AMQP';
+    amqp.requestRoutingKey = 'ddsr.rpc.payments';
+    amqp.brokers.push('amqp://localhost:5672');
+    const charge = factory.createAmqpOperationFlavor();
+    charge.name = 'charge';
+    charge.routingKey = 'ddsr.rpc.payments.debit';
+    amqp.operationFlavors.push(charge);
+    impl.flavors.push(amqp);
+
+    const canonical = implementationCanonicalForm(impl)!;
+    // The same line the Java test pins, character for character.
+    expect(canonical).toContain(
+      'F|AmqpFlavor|amqp|kind=AMQP|brokers=1:amqp://localhost:5672' +
+        '|exchange=amq.topic|requestRoutingKey=ddsr.rpc.payments',
+    );
+    expect(canonical).toContain('|routingKey=ddsr.rpc.payments.debit');
+  });
+
   it('undefined for undefined input', () => {
     expect(implementationFingerprint(undefined)).toBeUndefined();
     expect(implementationCanonicalForm(undefined)).toBeUndefined();

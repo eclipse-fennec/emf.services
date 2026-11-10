@@ -97,6 +97,12 @@ function flavorLine(flavor: Record<string, unknown>): string {
       `|responseTopic=${esc(str(flavor.responseTopic))}` +
       `|defaultQos=${enumText(flavor.defaultQos, 'AT_LEAST_ONCE')}` +
       `|defaultRetained=${boolWithDefault(flavor.defaultRetained, false)}`;
+  } else if (cls === 'AmqpFlavor') {
+    line +=
+      `|brokers=${list(flavor.brokers)}` +
+      // The model default rendered explicitly, like every default here.
+      `|exchange=${esc(str(flavor.exchange ?? 'amq.topic'))}` +
+      `|requestRoutingKey=${esc(str(flavor.requestRoutingKey))}`;
   }
   return line;
 }
@@ -205,6 +211,8 @@ function operationFlavorLine(opFlavor: Record<string, unknown>): string {
       `|retained=${boolWithDefault(opFlavor.retained, false)}` +
       `|correlation=${boolWithDefault(opFlavor.correlation, true)}` +
       `|returnPath=${esc(str(opFlavor.returnPath))}`;
+  } else if (cls === 'AmqpOperationFlavor') {
+    line += `|routingKey=${esc(str(opFlavor.routingKey))}`;
   }
   return line;
 }

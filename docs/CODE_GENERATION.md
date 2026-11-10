@@ -70,6 +70,15 @@ generations written with identical filesets collide and the later one
 silently replaces the earlier. They also need separate `output`
 directories, because bnd empties an output before a run.
 
+The generator reads MOFM2T and OCL to the letter, and a template has
+to as well. Nothing is coerced: `concat` takes a String, so a number
+is written with `toString()`. `substitute` replaces the first
+occurrence, `substituteAll` every one. `or` does not skip an invalid
+operand, so test for an absent value in an `if` of its own before
+touching it. A template that breaks one of these rules does not fail
+the build — the generation writes no file, and the template tests in
+`org.eclipse.fennec.services.m2t` are what notices.
+
 ### What tells the generator about your language
 
 A **`LanguageBinding`** in a model document. It references the

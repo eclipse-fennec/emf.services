@@ -68,6 +68,8 @@ wait_for_log() { # container pattern timeout_s
       sleep 2
       podman logs "$container" >"$WORK/$container.timeout.log" 2>&1 || true
       echo "full log: $WORK/$container.timeout.log" >&2
+      # The file is gone with the runner; its end is what a CI log can show.
+      tail -40 "$WORK/$container.timeout.log" >&2 || true
       return 1
     fi
   done
@@ -235,13 +237,21 @@ podman run -d --replace --name ddsr-mosquitto --network=host \
   -v "$ROOT/itest/containers/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro,Z" \
   docker.io/library/eclipse-mosquitto:2 >/dev/null
 CONTAINERS+=(ddsr-mosquitto)
-wait_for_log ddsr-mosquitto "mosquitto version 2" 60
+# "running", not just the version: the banner is printed before the
+# listener is open, and a broker that dies in between has printed it too.
+wait_for_log ddsr-mosquitto "mosquitto version 2.* running" 60
 
+# What the broker said belongs beside what the probe said: a probe that
+# cannot connect does not know why.
+scenario_c_failed() {
+  echo "SCENARIO C FAILED"; cat "$WORK/mqtt-probe.log"
+  echo "--- mosquitto ---"; podman logs ddsr-mosquitto 2>&1 | tail -40
+  exit 1
+}
 podman run --rm --name ddsr-mqtt-probe --network=host \
   -e MQTT_URL="mqtt://localhost:1883" ddsr/ts mqtt-wire-probe.ts >"$WORK/mqtt-probe.log" 2>&1 \
-  || { echo "SCENARIO C FAILED"; cat "$WORK/mqtt-probe.log"; exit 1; }
-grep -q "MQTT_PROBE_OK" "$WORK/mqtt-probe.log" \
-  || { echo "SCENARIO C FAILED"; cat "$WORK/mqtt-probe.log"; exit 1; }
+  || scenario_c_failed
+grep -q "MQTT_PROBE_OK" "$WORK/mqtt-probe.log" || scenario_c_failed
 echo "Scenario C OK: broker-shaped event document delivered and decoded over real MQTT/TCP"
 
 # ============================================================ Scenario D

@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { Diagnostic, MqttFlavor, RestFlavor, ServiceFlavor, ServiceInterface } from '@ddsr/model';
+import type { AmqpFlavor, Diagnostic, MqttFlavor, RestFlavor, ServiceFlavor, ServiceInterface } from '@ddsr/model';
 import type { BindingDTO, ClientRuntime, ClientRuntimeDTO, PublishedDTO } from '../api/client-runtime.js';
 import type { DdsrConsumerImpl } from './consumer-impl.js';
 import type { DdsrProviderImpl } from './provider-impl.js';
@@ -127,6 +127,11 @@ function addressOf(flavors: ServiceFlavor[]): string | undefined {
       const mqtt = flavor as MqttFlavor;
       const brokers = toArray<string>(mqtt.brokers);
       if (brokers.length > 0) return `${brokers[0]} ${mqtt.requestTopic}`;
+    }
+    if (kind === 'AMQP' || kind === 'AmqpFlavor') {
+      const amqp = flavor as AmqpFlavor;
+      const brokers = toArray<string>(amqp.brokers);
+      if (brokers.length > 0) return `${brokers[0]} ${amqp.requestRoutingKey}`;
     }
   }
   return undefined;

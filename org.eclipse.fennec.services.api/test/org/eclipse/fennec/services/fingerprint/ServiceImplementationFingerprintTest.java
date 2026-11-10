@@ -26,6 +26,9 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.ConnectionScheme;
+import org.eclipse.fennec.services.AmqpFlavor;
+import org.eclipse.fennec.services.AmqpOperationFlavor;
+import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.MqttFlavor;
 import org.eclipse.fennec.services.MqttQos;
 import org.eclipse.fennec.services.Parameter;
@@ -315,6 +318,34 @@ class ServiceImplementationFingerprintTest {
 		assertThat(canonical).contains("|brokers=1:tcp://localhost:1883");
 		assertThat(canonical).contains("|requestTopic=req/topic");
 		assertThat(canonical).contains("|defaultQos=" + MqttQos.AT_LEAST_ONCE.getLiteral());
+	}
+
+	@Test
+	void amqpFlavorFieldsAreCovered() {
+		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
+		implementation.setName("amqp-impl");
+		implementation.setImplementationId("fixture:amqp:1");
+		AmqpFlavor amqp = ServicesFactory.eINSTANCE.createAmqpFlavor();
+		amqp.setName("amqp");
+		amqp.setKind(FlavorKind.AMQP);
+		amqp.setRequestRoutingKey("ddsr.rpc.payments");
+		amqp.getBrokers().add("amqp://localhost:5672");
+		AmqpOperationFlavor charge = ServicesFactory.eINSTANCE.createAmqpOperationFlavor();
+		charge.setName("charge");
+		charge.setRoutingKey("ddsr.rpc.payments.debit");
+		amqp.getOperationFlavors().add(charge);
+		implementation.getFlavors().add(amqp);
+
+		String canonical = ServiceImplementationFingerprint.canonicalForm(implementation);
+		assertThat(canonical).contains("F|AmqpFlavor|amqp|kind=AMQP|brokers=1:amqp://localhost:5672"
+				+ "|exchange=amq.topic|requestRoutingKey=ddsr.rpc.payments");
+		assertThat(canonical).contains("|routingKey=ddsr.rpc.payments.debit");
+
+		// Where a call travels is the endpoint: another exchange is
+		// another implementation fingerprint.
+		String before = ServiceImplementationFingerprint.fingerprint(implementation);
+		amqp.setExchange("calls");
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isNotEqualTo(before);
 	}
 
 	@Test

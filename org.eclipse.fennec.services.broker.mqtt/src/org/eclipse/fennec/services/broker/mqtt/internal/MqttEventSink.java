@@ -52,7 +52,7 @@ public final class MqttEventSink implements EventSink {
 	/**
 	 * The bit of the connection this sink needs, named separately so tests can
 	 * stand in for it. Publishing is all we do — subscribing is the
-	 * consumer's side, in {@code client.mqtt}.
+	 * consumer's side, in {@code client.messaging}.
 	 */
 	public interface Publisher {
 

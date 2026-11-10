@@ -6,7 +6,7 @@
     "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",
     "tls.truststore.password": "$[env:DDSR_TLS_TRUSTSTORE_PASSWORD;default=]"
   },
-  "org.eclipse.fennec.services.client.mqtt.invoker": {
+  "org.eclipse.fennec.services.client.messaging.invoker": {
     "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
     "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
     "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",

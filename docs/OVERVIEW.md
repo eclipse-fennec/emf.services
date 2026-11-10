@@ -145,7 +145,7 @@ never edit them by hand.
 
 **Talking to it**
 - `…client.java` — the SDK, transport-agnostic
-- `…client.rest`, `…client.mqtt` — the two transports
+- `…client.rest`, `…client.messaging` — the transports: REST, and everything that travels over a messaging broker (MQTT, AMQP)
 - `…xmi.codec` — the wire codec and the fingerprints
 
 **Serving**

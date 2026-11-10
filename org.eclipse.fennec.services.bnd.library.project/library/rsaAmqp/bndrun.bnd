@@ -7,4 +7,4 @@
 fennec.services.range: [0.1.0,0.2.0)
 
 -runbundles.fennec.services.rsa.amqp: \
-	org.eclipse.fennec.services.rsa.distribution.amqp;version='${fennec.services.range}'
+	org.eclipse.fennec.services.rsa.distribution.messaging;version='${fennec.services.range}'

@@ -131,7 +131,26 @@ class IdentityDerivationTest {
 				"ssl://localhost:8883", "ddsr/rpc", "fennec.mqtt", "fennec.mqtt", certified);
 		List<DerivedConfiguration> plan = Derivation.forProvider(mqtt);
 
-		for (String pid : List.of(Derivation.INVOKER_MQTT_PID, Derivation.CONNECTION_MQTT_PID, Derivation.CLIENT_MQTT_PID)) {
+		for (String pid : List.of(Derivation.INVOKER_MESSAGING_PID, Derivation.CONNECTION_MESSAGING_PID, Derivation.CLIENT_MQTT_PID)) {
+			assertThat(byLabel(plan, pid).properties()).as(pid)
+					.containsEntry("tls.keystore", "/tls/node.p12")
+					.containsEntry("tls.truststore", "/tls/truststore.p12");
+		}
+	}
+
+	@Test
+	void overAmqpTheCertificateGoesToTheSameTwoConfigurations() {
+		NodeIdentity certified = new NodeIdentity("", "", "", "", "", "", List.of(), "", "", "/tls/node.p12",
+				"changeit", "/tls/truststore.p12", "changeit", false);
+		RsaSettings amqp = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095, "0.0.0.0", "services",
+				true, "ddsrHttp", "node-a", "1.0.0", "fennec.rest", "promiscuous", "promiscuous", 30, 0, "",
+				"tcp://localhost:1883", "ddsr/rpc", "fennec.amqp", "", certified)
+				.withAmqpUrl("amqps://rabbit:5671");
+		List<DerivedConfiguration> plan = Derivation.forProvider(amqp);
+
+		// One invoker and one distribution serve both protocols, so the
+		// certificate goes where it goes over MQTT.
+		for (String pid : List.of(Derivation.INVOKER_MESSAGING_PID, Derivation.CONNECTION_MESSAGING_PID)) {
 			assertThat(byLabel(plan, pid).properties()).as(pid)
 					.containsEntry("tls.keystore", "/tls/node.p12")
 					.containsEntry("tls.truststore", "/tls/truststore.p12");
@@ -144,7 +163,7 @@ class IdentityDerivationTest {
 				"changeit", "", "", true);
 
 		assertThat(Derivation.forProvider(provider(certified, ""))).noneMatch(entry ->
-				entry.label().equals(Derivation.INVOKER_MQTT_PID) || entry.label().equals(Derivation.CONNECTION_MQTT_PID));
+				entry.label().equals(Derivation.INVOKER_MESSAGING_PID) || entry.label().equals(Derivation.CONNECTION_MESSAGING_PID));
 	}
 
 	@Test

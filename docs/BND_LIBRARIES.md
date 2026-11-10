@@ -48,7 +48,7 @@ what the seven run lists name.
 | `enableFennecServicesSecurity` | `…services.api` (`TokenSupplier`, `CallPrincipal`), `…security.jwt` (`SecurityNames`) |
 | `enableFennecServicesMqtt` | `…flavor.mqtt` (topics, QoS, message form), for a project that names MQTT placements itself |
 | `enableFennecServicesRsaMqtt` | nothing — the flavor is a configuration |
-| `enableFennecServicesAmqp` | `…flavor.amqp` (exchange, routing keys, message form), for a project that names AMQP placements itself |
+| `enableFennecServicesAmqp` | `…flavor.amqp` (exchange and routing keys), for a project that names AMQP placements itself |
 | `enableFennecServicesRsaAmqp` | nothing — the flavor is a configuration |
 
 A service exported through Remote Service Admin usually needs nothing at
@@ -82,10 +82,10 @@ launch that takes minutes to start.
 | `enableFennecServicesClient` | the SDK and the REST transport, the wire codec, CloudEvents, EMF, protobuf |
 | `enableFennecServicesRsa` | the RSA core, its role configuration, REST distribution and discovery, the topology manager, the generic REST distribution, the EObject registry, the RSA and Event Admin APIs — on top of the client |
 | `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, the client-certificate filter of mode `mtls`, Nimbus JOSE+JWT |
-| `enableFennecServicesMqtt` | the MQTT client transport, the MQTT flavor rules, the MQTT distribution, the messaging link with Gecko Messaging (`api`, `core`, `mqtt3`) and the Paho build it drives — on top of the client |
-| `enableFennecServicesRsaMqtt` | the RSA distribution and discovery for `fennec.mqtt` — on top of `…Rsa` and `…Mqtt` |
-| `enableFennecServicesAmqp` | the AMQP invoker, the AMQP flavor rules, the AMQP distribution, the messaging link with Gecko Messaging (`api`, `core`, `amqp`), the RabbitMQ client and the Netty 4.2 it requires — on top of the client |
-| `enableFennecServicesRsaAmqp` | the RSA distribution for `fennec.amqp` — on top of `…Rsa` and `…Amqp` |
+| `enableFennecServicesMqtt` | the messaging transport (`…client.messaging`, `…provider.messaging`, the flavor rules, the messaging link, Gecko Messaging `api` and `core`) with the `mqtt3` binding and the Paho build it drives — on top of the client |
+| `enableFennecServicesRsaMqtt` | `…rsa.distribution.messaging` and the discovery that hears events over MQTT — on top of `…Rsa` and `…Mqtt` |
+| `enableFennecServicesAmqp` | the same messaging transport with the `amqp` binding, the RabbitMQ client and the Netty 4.2 it requires — on top of the client |
+| `enableFennecServicesRsaAmqp` | `…rsa.distribution.messaging` — on top of `…Rsa` and `…Amqp` |
 
 The security components act only where configured or where an
 application asks for their mode, so the security list is safe in a
@@ -98,15 +98,18 @@ MQTT comes in two lists, so that a client that speaks MQTT does not
 pull Remote Service Admin: `enableFennecServicesMqtt` for the transport,
 and `enableFennecServicesRsaMqtt` next to it and `…Rsa` for a node that
 exports or imports over `fennec.mqtt`. Every MQTT part is dormant until
-it is given a broker (`mqtt.broker`, or the RSA role's `mqtt.url`), so
+it is given a broker (`messaging.broker`, or the RSA role's `mqtt.url`), so
 the transport list is safe in a launch that speaks only REST. A part
 that is given a broker creates its connection as a messaging instance
 by configuration, so such a launch needs the Configuration Admin
 service — the one piece of the configuration stack the MQTT list does
 count on. AMQP comes the same way, in `enableFennecServicesAmqp` and
 `enableFennecServicesRsaAmqp`; it has no discovery of its own, so a
-node that serves over it announces over REST. The messaging link is
-named in both transport lists, so that either stands alone.
+node that serves over it announces over REST. The transport is the
+same bundles in both lists — one invoker and one distribution for
+every protocol — and what a list adds is its binding and that
+binding's client library. They are named in both, so that either list
+stands alone.
 Gecko Messaging 2.0 is a snapshot for now, which the
 `fennecServices` index resolves from the Central snapshot repository.
 Which

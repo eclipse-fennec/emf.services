@@ -48,7 +48,7 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 /**
  * OSGi DS adapter for {@link DdsrClientImpl}. References the broker
  * role services ({@link BrokerImplementations}, {@link BrokerLookup})
- * — whichever flavor bundle (client.rest, future client.mqtt, or an
+ * — whichever flavor bundle (client.rest, client.messaging, or an
  * in-process broker.core) provides them is what the SDK ends up
  * talking to.
  *

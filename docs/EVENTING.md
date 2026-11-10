@@ -120,7 +120,7 @@ proxy or a foreign server.
 
 ## MQTT
 
-Publisher `…broker.mqtt`, subscriber `…client.mqtt`. Both are dormant
+Publisher `…broker.mqtt`, subscriber `…client.messaging` (configured as `…client.mqtt`). Both are dormant
 until configured — their configuration policy requires a configuration.
 
 - topic: `ddsr/events/<interfaceName>`, one publish per interface the

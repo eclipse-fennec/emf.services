@@ -11,7 +11,8 @@
  */
 export const FlavorKind = {
   REST: 'REST',
-  MQTT: 'MQTT'
+  MQTT: 'MQTT',
+  AMQP: 'AMQP'
 } as const;
 
 export type FlavorKind = typeof FlavorKind[keyof typeof FlavorKind];
@@ -29,5 +30,6 @@ export function getFlavorKind(name: string): FlavorKind | undefined {
 export function getFlavorKindByLiteral(literal: string): FlavorKind | undefined {
   if (literal === 'REST') return FlavorKind.REST;
   if (literal === 'MQTT') return FlavorKind.MQTT;
+  if (literal === 'AMQP') return FlavorKind.AMQP;
   return undefined;
 }

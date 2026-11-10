@@ -12,6 +12,8 @@ import org.eclipse.emf.ecore.EValidator;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
+import org.eclipse.fennec.services.AmqpFlavor;
+import org.eclipse.fennec.services.AmqpOperationFlavor;
 import org.eclipse.fennec.services.ApiType;
 import org.eclipse.fennec.services.Argument;
 import org.eclipse.fennec.services.BearerTokenScheme;
@@ -354,6 +356,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass amqpFlavorEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EClass serviceOperationFlavorEClass = null;
 
 	/**
@@ -383,6 +392,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass mqttOperationFlavorEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass amqpOperationFlavorEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -2262,6 +2278,46 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EClass getAmqpFlavor() {
+		return amqpFlavorEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getAmqpFlavor_Brokers() {
+		return (EAttribute)amqpFlavorEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getAmqpFlavor_Exchange() {
+		return (EAttribute)amqpFlavorEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getAmqpFlavor_RequestRoutingKey() {
+		return (EAttribute)amqpFlavorEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getServiceOperationFlavor() {
 		return serviceOperationFlavorEClass;
 	}
@@ -2494,6 +2550,26 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EAttribute getMqttOperationFlavor_ReturnPath() {
 		return (EAttribute)mqttOperationFlavorEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getAmqpOperationFlavor() {
+		return amqpOperationFlavorEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getAmqpOperationFlavor_RoutingKey() {
+		return (EAttribute)amqpOperationFlavorEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -4479,6 +4555,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(mqttFlavorEClass, MQTT_FLAVOR__DEFAULT_QOS);
 		createEAttribute(mqttFlavorEClass, MQTT_FLAVOR__DEFAULT_RETAINED);
 
+		amqpFlavorEClass = createEClass(AMQP_FLAVOR);
+		createEAttribute(amqpFlavorEClass, AMQP_FLAVOR__BROKERS);
+		createEAttribute(amqpFlavorEClass, AMQP_FLAVOR__EXCHANGE);
+		createEAttribute(amqpFlavorEClass, AMQP_FLAVOR__REQUEST_ROUTING_KEY);
+
 		serviceOperationFlavorEClass = createEClass(SERVICE_OPERATION_FLAVOR);
 		createEReference(serviceOperationFlavorEClass, SERVICE_OPERATION_FLAVOR__OPERATION);
 		createEAttribute(serviceOperationFlavorEClass, SERVICE_OPERATION_FLAVOR__CONSUMES);
@@ -4507,6 +4588,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__RETAINED);
 		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__CORRELATION);
 		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__RETURN_PATH);
+
+		amqpOperationFlavorEClass = createEClass(AMQP_OPERATION_FLAVOR);
+		createEAttribute(amqpOperationFlavorEClass, AMQP_OPERATION_FLAVOR__ROUTING_KEY);
 
 		securityRequirementEClass = createEClass(SECURITY_REQUIREMENT);
 		createEAttribute(securityRequirementEClass, SECURITY_REQUIREMENT__AUTHENTICATED);
@@ -4785,9 +4869,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		serviceFlavorEClass.getESuperTypes().add(this.getNamedElement());
 		restFlavorEClass.getESuperTypes().add(this.getServiceFlavor());
 		mqttFlavorEClass.getESuperTypes().add(this.getServiceFlavor());
+		amqpFlavorEClass.getESuperTypes().add(this.getServiceFlavor());
 		serviceOperationFlavorEClass.getESuperTypes().add(this.getNamedElement());
 		restOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
 		mqttOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
+		amqpOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
 		securitySchemeEClass.getESuperTypes().add(this.getNamedElement());
 		bearerTokenSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
 		mutualTlsSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
@@ -4976,6 +5062,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getMqttFlavor_DefaultQos(), this.getMqttQos(), "defaultQos", "AT_LEAST_ONCE", 1, 1, MqttFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getMqttFlavor_DefaultRetained(), ecorePackage.getEBoolean(), "defaultRetained", "false", 1, 1, MqttFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(amqpFlavorEClass, AmqpFlavor.class, "AmqpFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getAmqpFlavor_Brokers(), ecorePackage.getEString(), "brokers", null, 1, -1, AmqpFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getAmqpFlavor_Exchange(), ecorePackage.getEString(), "exchange", "amq.topic", 1, 1, AmqpFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getAmqpFlavor_RequestRoutingKey(), ecorePackage.getEString(), "requestRoutingKey", null, 1, 1, AmqpFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		initEClass(serviceOperationFlavorEClass, ServiceOperationFlavor.class, "ServiceOperationFlavor", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getServiceOperationFlavor_Operation(), this.getServiceOperation(), null, "operation", null, 1, 1, ServiceOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceOperationFlavor_Consumes(), ecorePackage.getEString(), "consumes", null, 0, -1, ServiceOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5004,6 +5095,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getMqttOperationFlavor_Retained(), ecorePackage.getEBoolean(), "retained", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getMqttOperationFlavor_Correlation(), ecorePackage.getEBoolean(), "correlation", "true", 1, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getMqttOperationFlavor_ReturnPath(), ecorePackage.getEString(), "returnPath", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(amqpOperationFlavorEClass, AmqpOperationFlavor.class, "AmqpOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getAmqpOperationFlavor_RoutingKey(), ecorePackage.getEString(), "routingKey", null, 0, 1, AmqpOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(securityRequirementEClass, SecurityRequirement.class, "SecurityRequirement", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getSecurityRequirement_Authenticated(), ecorePackage.getEBoolean(), "authenticated", null, 0, 1, SecurityRequirement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5329,6 +5423,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEEnum(flavorKindEEnum, FlavorKind.class, "FlavorKind");
 		addEEnumLiteral(flavorKindEEnum, FlavorKind.REST);
 		addEEnumLiteral(flavorKindEEnum, FlavorKind.MQTT);
+		addEEnumLiteral(flavorKindEEnum, FlavorKind.AMQP);
 
 		initEEnum(httpMethodEEnum, HttpMethod.class, "HttpMethod");
 		addEEnumLiteral(httpMethodEEnum, HttpMethod.GET);
@@ -5506,7 +5601,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (flavorKindEEnum,
 		   source,
 		   new String[] {
-			   "documentation", "Identifier of a transport flavor. Reference values REST and MQTT ship with the prototype. New flavors are added by extending ServiceFlavor and adding a literal here. Consumers attach FlavorKind values to their ConsumerCapability so the registry can filter implementations by transport compatibility."
+			   "documentation", "Identifier of a transport flavor. Reference values REST, MQTT and AMQP ship with the project. New flavors are added by extending ServiceFlavor and adding a literal here. Consumers attach FlavorKind values to their ConsumerCapability so the registry can filter implementations by transport compatibility."
 		   });
 		addAnnotation
 		  (httpMethodEEnum,
@@ -6361,6 +6456,30 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Default retained flag on published messages. Per-operation override possible."
 		   });
 		addAnnotation
+		  (amqpFlavorEClass,
+		   source,
+		   new String[] {
+			   "documentation", "AMQP 0-9-1 transport. A call is published to a topic exchange under a routing key; the answer goes to the reply address the call names in the protocol\'s own reply-to property and is matched by its correlation id. Unlike MQTT there is no response address in the flavor: the consumer declares an exclusive queue of its own, so who may read an answer is enforced by the broker rather than by a naming convention."
+		   });
+		addAnnotation
+		  (getAmqpFlavor_Brokers(),
+		   source,
+		   new String[] {
+			   "documentation", "One or more broker URLs (amqp://\u2026 or amqps://\u2026), including the virtual host. Multiple brokers indicate a high-availability cluster; the client picks one and fails over."
+		   });
+		addAnnotation
+		  (getAmqpFlavor_Exchange(),
+		   source,
+		   new String[] {
+			   "documentation", "The topic exchange calls are published to. The default is the topic exchange every AMQP 0-9-1 broker declares."
+		   });
+		addAnnotation
+		  (getAmqpFlavor_RequestRoutingKey(),
+		   source,
+		   new String[] {
+			   "documentation", "Base routing key for incoming calls, segments separated by \'.\'. An operation is reached under <requestRoutingKey>.<operation name> unless its AmqpOperationFlavor.routingKey says otherwise."
+		   });
+		addAnnotation
 		  (serviceOperationFlavorEClass,
 		   source,
 		   new String[] {
@@ -6503,6 +6622,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Optional alternative convention for asynchronous responses: a topic pattern with placeholders the producer fills in when publishing the response."
+		   });
+		addAnnotation
+		  (amqpOperationFlavorEClass,
+		   source,
+		   new String[] {
+			   "documentation", "How one operation is reached over AMQP."
+		   });
+		addAnnotation
+		  (getAmqpOperationFlavor_RoutingKey(),
+		   source,
+		   new String[] {
+			   "documentation", "The full routing key of this operation. Null = <AmqpFlavor.requestRoutingKey>.<operation name>."
 		   });
 		addAnnotation
 		  (securityRequirementEClass,

@@ -16,7 +16,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * and utility methods for working with them.
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * Identifier of a transport flavor. Reference values REST and MQTT ship with the prototype. New flavors are added by extending ServiceFlavor and adding a literal here. Consumers attach FlavorKind values to their ConsumerCapability so the registry can filter implementations by transport compatibility.
+ * Identifier of a transport flavor. Reference values REST, MQTT and AMQP ship with the project. New flavors are added by extending ServiceFlavor and adding a literal here. Consumers attach FlavorKind values to their ConsumerCapability so the registry can filter implementations by transport compatibility.
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.services.ServicesPackage#getFlavorKind()
  * @model
@@ -42,7 +42,17 @@ public enum FlavorKind implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	MQTT(1, "MQTT", "MQTT");
+	MQTT(1, "MQTT", "MQTT"),
+
+	/**
+	 * The '<em><b>AMQP</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #AMQP_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	AMQP(2, "AMQP", "AMQP");
 
 	/**
 	 * The '<em><b>REST</b></em>' literal value.
@@ -67,6 +77,17 @@ public enum FlavorKind implements Enumerator {
 	public static final int MQTT_VALUE = 1;
 
 	/**
+	 * The '<em><b>AMQP</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #AMQP
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int AMQP_VALUE = 2;
+
+	/**
 	 * An array of all the '<em><b>Flavor Kind</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -76,6 +97,7 @@ public enum FlavorKind implements Enumerator {
 		new FlavorKind[] {
 			REST,
 			MQTT,
+			AMQP,
 		};
 
 	/**
@@ -134,6 +156,7 @@ public enum FlavorKind implements Enumerator {
 		switch (value) {
 			case REST_VALUE: return REST;
 			case MQTT_VALUE: return MQTT;
+			case AMQP_VALUE: return AMQP;
 		}
 		return null;
 	}

@@ -277,6 +277,15 @@ public interface ServicesFactory extends EFactory {
 	MqttFlavor createMqttFlavor();
 
 	/**
+	 * Returns a new object of class '<em>Amqp Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Amqp Flavor</em>'.
+	 * @generated
+	 */
+	AmqpFlavor createAmqpFlavor();
+
+	/**
 	 * Returns a new object of class '<em>Rest Operation Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -311,6 +320,15 @@ public interface ServicesFactory extends EFactory {
 	 * @generated
 	 */
 	MqttOperationFlavor createMqttOperationFlavor();
+
+	/**
+	 * Returns a new object of class '<em>Amqp Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Amqp Operation Flavor</em>'.
+	 * @generated
+	 */
+	AmqpOperationFlavor createAmqpOperationFlavor();
 
 	/**
 	 * Returns a new object of class '<em>Security Requirement</em>'.

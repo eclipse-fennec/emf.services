@@ -123,10 +123,11 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="FlavorKind">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Identifier of a transport flavor. Reference values REST and MQTT ship with the prototype. New flavors are added by extending ServiceFlavor and adding a literal here. Consumers attach FlavorKind values to their ConsumerCapability so the registry can filter implementations by transport compatibility."/>
+      <details key="documentation" value="Identifier of a transport flavor. Reference values REST, MQTT and AMQP ship with the project. New flavors are added by extending ServiceFlavor and adding a literal here. Consumers attach FlavorKind values to their ConsumerCapability so the registry can filter implementations by transport compatibility."/>
     </eAnnotations>
     <eLiterals name="REST"/>
     <eLiterals name="MQTT" value="1"/>
+    <eLiterals name="AMQP" value="2"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="HttpMethod">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -990,6 +991,29 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AmqpFlavor" eSuperTypes="#//ServiceFlavor">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="AMQP 0-9-1 transport. A call is published to a topic exchange under a routing key; the answer goes to the reply address the call names in the protocol's own reply-to property and is matched by its correlation id. Unlike MQTT there is no response address in the flavor: the consumer declares an exclusive queue of its own, so who may read an answer is enforced by the broker rather than by a naming convention."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="brokers" lowerBound="1"
+        upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="One or more broker URLs (amqp://… or amqps://…), including the virtual host. Multiple brokers indicate a high-availability cluster; the client picks one and fails over."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="exchange" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString" defaultValueLiteral="amq.topic">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The topic exchange calls are published to. The default is the topic exchange every AMQP 0-9-1 broker declares."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requestRoutingKey" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Base routing key for incoming calls, segments separated by '.'. An operation is reached under &lt;requestRoutingKey>.&lt;operation name> unless its AmqpOperationFlavor.routingKey says otherwise."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ServiceOperationFlavor" abstract="true"
       eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -1132,6 +1156,16 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="returnPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Optional alternative convention for asynchronous responses: a topic pattern with placeholders the producer fills in when publishing the response."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AmqpOperationFlavor" eSuperTypes="#//ServiceOperationFlavor">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How one operation is reached over AMQP."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="routingKey" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The full routing key of this operation. Null = &lt;AmqpFlavor.requestRoutingKey>.&lt;operation name>."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>

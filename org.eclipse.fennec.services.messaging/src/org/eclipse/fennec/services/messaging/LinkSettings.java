@@ -32,12 +32,29 @@ import java.util.Locale;
  *                           this node believes (PKCS12), or empty for the
  *                           JVM's
  * @param truststorePassword its password
+ * @param exchange           on AMQP, the topic exchange this link
+ *                           publishes to and binds on; empty for the
+ *                           broker's own ({@code amq.topic})
+ * @param username           who this node is to a broker that asks for
+ *                           a name and a password, or empty
+ * @param password           the password
  */
 public record LinkSettings(String name, String url, String clientId, String keystore,
-		String keystorePassword, String truststore, String truststorePassword) {
+		String keystorePassword, String truststore, String truststorePassword, String exchange,
+		String username, String password) {
 
 	/** MQTT 3.1.1 — the wire every MQTT part of this workspace speaks. */
 	static final String MQTT3_FACTORY_PID = "org.gecko.messaging.mqtt3";
+
+	/** AMQP 0-9-1. */
+	static final String AMQP_FACTORY_PID = "org.gecko.messaging.amqp";
+
+	/** A link on a broker that has no exchanges to choose from. */
+	public LinkSettings(String name, String url, String clientId, String keystore, String keystorePassword,
+			String truststore, String truststorePassword) {
+		this(name, url, clientId, keystore, keystorePassword, truststore, truststorePassword, null, null,
+				null);
+	}
 
 	public LinkSettings {
 		if (name == null || name.isBlank()) {
@@ -50,7 +67,22 @@ public record LinkSettings(String name, String url, String clientId, String keys
 
 	/** A link without a certificate of its own. */
 	public static LinkSettings of(String name, String url, String clientId) {
-		return new LinkSettings(name, url, clientId, null, null, null, null);
+		return new LinkSettings(name, url, clientId, null, null, null, null, null, null, null);
+	}
+
+	/**
+	 * The same link, as this user. Stated beside the URL rather than
+	 * inside it, because the URL is what a flavor announces to everyone.
+	 */
+	public LinkSettings as(String username, String password) {
+		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
+				truststorePassword, exchange, username, password);
+	}
+
+	/** The same link, on this exchange. */
+	public LinkSettings onExchange(String exchange) {
+		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
+				truststorePassword, exchange, username, password);
 	}
 
 	/**
@@ -61,6 +93,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 		String scheme = scheme();
 		return switch (scheme) {
 		case "tcp", "ssl", "ws", "wss" -> MQTT3_FACTORY_PID;
+		case "amqp", "amqps" -> AMQP_FACTORY_PID;
 		default -> throw new IllegalArgumentException("no messaging binding for a '" + scheme
 				+ "' broker: " + url);
 		};
@@ -82,10 +115,16 @@ public record LinkSettings(String name, String url, String clientId, String keys
 		if (clientId != null && !clientId.isBlank()) {
 			configuration.put("clientId", clientId);
 		}
-		// No session to come back to: what a subscriber missed while it
-		// was away it reads again (FR-Sync-Reconnect), and the instance
-		// restores its subscriptions itself.
-		configuration.put("cleanSession", Boolean.TRUE);
+		if (MQTT3_FACTORY_PID.equals(factoryPid())) {
+			// No session to come back to: what a subscriber missed while
+			// it was away it reads again (FR-Sync-Reconnect), and the
+			// instance restores its subscriptions itself.
+			configuration.put("cleanSession", Boolean.TRUE);
+		} else {
+			put(configuration, "exchange", exchange);
+		}
+		put(configuration, "username", username);
+		put(configuration, ".password", password);
 		if (secured()) {
 			put(configuration, "tls.keystore", keystore);
 			put(configuration, ".tls.keystore.password", keystorePassword);
@@ -98,7 +137,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	/** Whether this link's URL asks for TLS. */
 	boolean secured() {
 		String scheme = scheme();
-		return scheme.equals("ssl") || scheme.equals("wss");
+		return scheme.equals("ssl") || scheme.equals("wss") || scheme.equals("amqps");
 	}
 
 	private String scheme() {
@@ -115,6 +154,20 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	/** Never the passwords: this is what a log line prints. */
 	@Override
 	public String toString() {
-		return name + " → " + url;
+		return name + " → " + address();
+	}
+
+	/**
+	 * The URL without what an AMQP URL may carry before the host: user
+	 * and password.
+	 */
+	public String address() {
+		int scheme = url.indexOf("://");
+		int at = url.indexOf('@', scheme < 0 ? 0 : scheme + 3);
+		int path = url.indexOf('/', scheme < 0 ? 0 : scheme + 3);
+		if (scheme < 0 || at < 0 || (path >= 0 && path < at)) {
+			return url;
+		}
+		return url.substring(0, scheme + 3) + url.substring(at + 1);
 	}
 }

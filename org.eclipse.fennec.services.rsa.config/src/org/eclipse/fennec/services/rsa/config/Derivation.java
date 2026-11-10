@@ -63,6 +63,15 @@ public final class Derivation {
 	/** How this node calls services announced over MQTT. */
 	static final String INVOKER_MQTT_PID = "org.eclipse.fennec.services.client.mqtt.invoker";
 
+	/** Where a node that serves over AMQP listens (#138). */
+	static final String DISTRIBUTION_AMQP_PID = "org.eclipse.fennec.services.rsa.distribution.amqp";
+
+	/** How this node calls services announced over AMQP. */
+	static final String INVOKER_AMQP_PID = "org.eclipse.fennec.services.client.amqp.invoker";
+
+	/** Who this node is to the AMQP brokers it serves on. */
+	static final String CONNECTION_AMQP_PID = "org.eclipse.fennec.services.provider.amqp.connection";
+
 	/** How the MQTT distribution connects to the brokers it serves on. */
 	static final String CONNECTION_MQTT_PID = "org.eclipse.fennec.services.provider.mqtt.connection";
 
@@ -106,6 +115,7 @@ public final class Derivation {
 		contracts(plan, settings);
 		client(plan, settings);
 		mqttConnections(plan, settings, true);
+		amqpConnections(plan, settings, true);
 		distribution(plan, settings);
 		discovery(plan, settings);
 		plan.add(admin(settings, "(ddsr.rsa.flavor=" + settings.effectiveDistributionFlavor() + ")"));
@@ -127,6 +137,7 @@ public final class Derivation {
 		contracts(plan, settings);
 		client(plan, settings);
 		mqttConnections(plan, settings, false);
+		amqpConnections(plan, settings, false);
 		discovery(plan, settings);
 		plan.add(admin(settings, NO_DISTRIBUTION));
 		plan.add(topology(settings));
@@ -198,6 +209,11 @@ public final class Derivation {
 			plan.add(DerivedConfiguration.of(DISTRIBUTION_MQTT_PID, Map.of(
 					"broker.url", settings.mqttUrl(),
 					"topic.prefix", settings.topicPrefix())));
+			return;
+		}
+		if (RsaSettings.AMQP.equals(settings.effectiveDistributionFlavor())) {
+			plan.add(DerivedConfiguration.of(DISTRIBUTION_AMQP_PID, Map.of(
+					"broker.url", settings.amqpUrl())));
 			return;
 		}
 		Map<String, Object> rest = new LinkedHashMap<>();
@@ -283,6 +299,25 @@ public final class Derivation {
 		plan.add(DerivedConfiguration.of(INVOKER_MQTT_PID, mqttTls(identity)));
 		if (serves && RsaSettings.MQTT.equals(settings.effectiveDistributionFlavor())) {
 			plan.add(DerivedConfiguration.of(CONNECTION_MQTT_PID, mqttTls(identity)));
+		}
+	}
+
+	/**
+	 * The node's certificate on its AMQP connections, where AMQP is in
+	 * play and the node has one: the calls it makes over an announced
+	 * AMQP flavor and, where it serves over AMQP, the distribution's
+	 * connection. The same four attributes as on MQTT.
+	 */
+	private static void amqpConnections(List<DerivedConfiguration> plan, RsaSettings settings, boolean serves) {
+		NodeIdentity identity = settings.identity();
+		boolean amqp = RsaSettings.AMQP.equals(settings.flavor())
+				|| (serves && RsaSettings.AMQP.equals(settings.effectiveDistributionFlavor()));
+		if (!amqp || !identity.hasTls()) {
+			return;
+		}
+		plan.add(DerivedConfiguration.of(INVOKER_AMQP_PID, mqttTls(identity)));
+		if (serves && RsaSettings.AMQP.equals(settings.effectiveDistributionFlavor())) {
+			plan.add(DerivedConfiguration.of(CONNECTION_AMQP_PID, mqttTls(identity)));
 		}
 	}
 

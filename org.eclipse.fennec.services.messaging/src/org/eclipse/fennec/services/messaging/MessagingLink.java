@@ -35,6 +35,7 @@ import org.gecko.messaging.api.MessageContextBuilder;
 import org.gecko.messaging.api.MessagePublisher;
 import org.gecko.messaging.api.MessageSubscription;
 import org.gecko.messaging.api.MessagingConstants;
+import org.gecko.messaging.api.replyto.ReplyToPublisher;
 import org.gecko.messaging.api.runtime.ConnectionEvent;
 import org.gecko.messaging.api.runtime.ConnectionListener;
 import org.gecko.messaging.api.runtime.ConnectionState;
@@ -90,6 +91,33 @@ public final class MessagingLink implements AutoCloseable {
 		 */
 		void received(String topic, byte[] payload);
 	}
+
+	/** What a subscription that answers hands its requests to. */
+	public interface RequestReceiver {
+
+		/**
+		 * @param topic   the topic the request was published to
+		 * @param payload the request body
+		 * @param reply   where the answer goes — the address the request
+		 *                itself named, with its correlation
+		 */
+		void received(String topic, byte[] payload, Reply reply);
+	}
+
+	/** The way back to whoever sent a request. */
+	public interface Reply {
+
+		/**
+		 * Answer, and wait for the broker to have it.
+		 *
+		 * @throws Exception when the request named no reply address, or
+		 *                   the answer could not be handed over
+		 */
+		void send(byte[] payload) throws Exception;
+	}
+
+	/** How long an answer may take to reach the broker. */
+	private static final long REPLY_PUBLISH_TIMEOUT_MILLIS = 30_000;
 
 	private final BundleContext context;
 
@@ -211,7 +239,80 @@ public final class MessagingLink implements AutoCloseable {
 	 * @throws IllegalStateException when the broker refuses it
 	 */
 	public AutoCloseable subscribe(String topicFilter, int qos, Receiver receiver) {
-		Subscribed subscribed = new Subscribed(topicFilter, qos, receiver);
+		return want(new Subscribed(topicFilter, qos,
+				(instance, message) -> receiver.received(message.getContext().getChannel(), bytes(message))));
+	}
+
+	/**
+	 * Subscribe to requests: messages that say where their answer goes.
+	 *
+	 * <p>For a protocol that carries a reply address and a correlation
+	 * of its own (AMQP). The receiver is handed a way back that already
+	 * knows both, so nothing about either travels in the payload.
+	 *
+	 * @return closing it ends the subscription. Idempotent.
+	 * @throws IllegalStateException when the broker refuses it
+	 */
+	public AutoCloseable serve(String topicFilter, int qos, RequestReceiver receiver) {
+		return want(new Subscribed(topicFilter, qos, (instance, message) -> {
+			MessageContext request = message.getContext();
+			receiver.received(request.getChannel(), bytes(message), answer -> {
+				if (request.getReplyToChannel() == null) {
+					throw new IllegalStateException("the request on " + request.getChannel()
+							+ " named no reply address");
+				}
+				await(instance.publisher.publish(builder -> builder.channel(request.getReplyToChannel())
+						.correlationId(request.getCorrelationId())
+						.extensionEntry(MessagingConstants.EXTENSION_QOS, qos)
+						.content(ByteBuffer.wrap(answer))
+						.buildMessage()), REPLY_PUBLISH_TIMEOUT_MILLIS, request.getReplyToChannel());
+			});
+		}));
+	}
+
+	/**
+	 * Publish a request and wait for its answer.
+	 *
+	 * <p>The reply address and the correlation are the protocol's: the
+	 * instance subscribes a queue only it can read before the request
+	 * goes out, and takes the one answer that correlates.
+	 *
+	 * @return the answer's payload
+	 * @throws TimeoutException              when no answer came in time
+	 * @throws UnsupportedOperationException on a protocol without a
+	 *                                       reply address of its own
+	 * @throws Exception                     when the link is not
+	 *                                       connected or the request
+	 *                                       could not be handed over
+	 */
+	public byte[] request(String topic, byte[] payload, int qos, long timeoutMillis) throws Exception {
+		Instance current = instance;
+		if (current == null) {
+			throw new IllegalStateException("no connection to " + settings.address() + " yet");
+		}
+		if (current.requests == null) {
+			throw new UnsupportedOperationException("the connection to " + settings.address()
+					+ " carries no reply address of its own");
+		}
+		MessageContextBuilder builder = current.builders.getService();
+		Message request;
+		try {
+			request = builder.channel(topic)
+					.extensionEntry(MessagingConstants.EXTENSION_QOS, qos)
+					.extensionEntry(MessagingConstants.EXTENSION_REPLY_TIMEOUT, timeoutMillis)
+					.content(ByteBuffer.wrap(payload))
+					.buildMessage();
+		} finally {
+			current.builders.ungetService(builder);
+		}
+		Promise<Message> answered = current.requests.publishWithReply(request);
+		// A little longer than the instance waits itself, so that its
+		// timeout — which names the reason — is the one that is reported.
+		await(answered, timeoutMillis + 1_000, topic);
+		return bytes(answered.getValue());
+	}
+
+	private AutoCloseable want(Subscribed subscribed) {
 		wanted.add(subscribed);
 		Instance current = instance;
 		if (current != null) {
@@ -240,23 +341,35 @@ public final class MessagingLink implements AutoCloseable {
 	public void publish(String topic, byte[] payload, int qos, long timeoutMillis) throws Exception {
 		Instance current = instance;
 		if (current == null) {
-			throw new IllegalStateException("no connection to " + settings.url() + " yet");
+			throw new IllegalStateException("no connection to " + settings.address() + " yet");
 		}
 		Promise<Void> handedOver = current.publisher.publish(builder -> builder.channel(topic)
 				.extensionEntry(MessagingConstants.EXTENSION_QOS, qos)
 				.content(ByteBuffer.wrap(payload))
 				.buildMessage());
 		if (timeoutMillis > 0) {
-			CountDownLatch settled = new CountDownLatch(1);
-			handedOver.onResolve(settled::countDown);
-			if (!settled.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
-				throw new TimeoutException("the broker at " + settings.url() + " did not take the message on "
-						+ topic + " within " + timeoutMillis + " ms");
-			}
-		}
-		if (handedOver.isDone()) {
+			await(handedOver, timeoutMillis, topic);
+		} else if (handedOver.isDone()) {
 			rethrow(handedOver.getFailure());
 		}
+	}
+
+	/** Wait for a promise of the instance, and fail the way it failed. */
+	private void await(Promise<?> settling, long timeoutMillis, String topic) throws Exception {
+		CountDownLatch settled = new CountDownLatch(1);
+		settling.onResolve(settled::countDown);
+		if (!settled.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
+			throw new TimeoutException("the broker at " + settings.address() + " did not settle " + topic
+					+ " within " + timeoutMillis + " ms");
+		}
+		rethrow(settling.getFailure());
+	}
+
+	private static byte[] bytes(Message message) {
+		ByteBuffer content = message.payload();
+		byte[] payload = new byte[content.remaining()];
+		content.get(payload);
+		return payload;
 	}
 
 	/**
@@ -320,7 +433,7 @@ public final class MessagingLink implements AutoCloseable {
 
 	/** Where this link goes. */
 	public String url() {
-		return settings.url();
+		return settings.address();
 	}
 
 	/** End the subscriptions, take the instance away. Idempotent. */
@@ -451,7 +564,8 @@ public final class MessagingLink implements AutoCloseable {
 	/** The services of one messaging instance. */
 	private record Instance(ServiceReference<MessagePublisher> publisherReference, MessagePublisher publisher,
 			ServiceReference<MessageSubscription> subscriptionReference, MessageSubscription subscription,
-			ServiceObjects<MessageContextBuilder> builders) {
+			ServiceObjects<MessageContextBuilder> builders, ServiceReference<ReplyToPublisher> requestsReference,
+			ReplyToPublisher requests) {
 
 		static Instance of(BundleContext context, String filter) {
 			try {
@@ -461,8 +575,15 @@ public final class MessagingLink implements AutoCloseable {
 						context.getServiceReferences(MessageSubscription.class, filter), "subscription");
 				ServiceReference<MessageContextBuilder> builder = only(
 						context.getServiceReferences(MessageContextBuilder.class, filter), "context builder");
+				// Only where the protocol has a reply address of its own —
+				// the instance offers the service exactly then.
+				Collection<ServiceReference<ReplyToPublisher>> requests = context
+						.getServiceReferences(ReplyToPublisher.class, filter);
+				ServiceReference<ReplyToPublisher> request = requests.isEmpty() ? null
+						: requests.iterator().next();
 				return new Instance(publisher, context.getService(publisher), subscription,
-						context.getService(subscription), context.getServiceObjects(builder));
+						context.getService(subscription), context.getServiceObjects(builder), request,
+						request == null ? null : context.getService(request));
 			} catch (InvalidSyntaxException impossible) {
 				throw new IllegalStateException(impossible);
 			}
@@ -490,10 +611,18 @@ public final class MessagingLink implements AutoCloseable {
 			try {
 				context.ungetService(publisherReference);
 				context.ungetService(subscriptionReference);
+				if (requestsReference != null) {
+					context.ungetService(requestsReference);
+				}
 			} catch (IllegalStateException bundleStopping) {
 				// Released with the bundle.
 			}
 		}
+	}
+
+	/** What a subscription does with a message of the instance it is on. */
+	private interface Handler {
+		void handle(Instance from, Message message);
 	}
 
 	/** One wish: a topic filter, and where its messages go. */
@@ -503,7 +632,7 @@ public final class MessagingLink implements AutoCloseable {
 
 		private final int qos;
 
-		private final Receiver receiver;
+		private final Handler handler;
 
 		private Instance on;
 
@@ -511,10 +640,10 @@ public final class MessagingLink implements AutoCloseable {
 
 		private boolean ended;
 
-		Subscribed(String topicFilter, int qos, Receiver receiver) {
+		Subscribed(String topicFilter, int qos, Handler handler) {
 			this.topicFilter = topicFilter;
 			this.qos = qos;
-			this.receiver = receiver;
+			this.handler = handler;
 		}
 
 		/** Subscribe on this instance, once. */
@@ -523,7 +652,7 @@ public final class MessagingLink implements AutoCloseable {
 				return;
 			}
 			PushStream<Message> opened = target.subscription.subscribe(target.contextFor(topicFilter, qos));
-			Promise<Void> running = opened.forEach(this::deliver);
+			Promise<Void> running = opened.forEach(message -> deliver(target, message));
 			if (running.isDone()) {
 				Throwable refused;
 				try {
@@ -533,7 +662,7 @@ public final class MessagingLink implements AutoCloseable {
 					refused = interrupted;
 				}
 				if (refused != null) {
-					throw new IllegalStateException("the broker at " + settings.url() + " refused "
+					throw new IllegalStateException("the broker at " + settings.address() + " refused "
 							+ topicFilter, refused);
 				}
 			}
@@ -568,12 +697,9 @@ public final class MessagingLink implements AutoCloseable {
 		 * message that cannot be handled must not take the subscription
 		 * down with it.
 		 */
-		private void deliver(Message message) {
+		private void deliver(Instance from, Message message) {
 			try {
-				ByteBuffer content = message.payload();
-				byte[] payload = new byte[content.remaining()];
-				content.get(payload);
-				receiver.received(message.getContext().getChannel(), payload);
+				handler.handle(from, message);
 			} catch (RuntimeException failed) {
 				LOG.log(Level.WARNING, "[DDSR-MSG] a message on " + topicFilter + " could not be handled",
 						failed);

@@ -49,10 +49,60 @@ class LinkSettingsTest {
 
 	@Test
 	void aSchemeNoBindingSpeaksIsRefusedBeforeAnythingIsWritten() {
-		assertThatThrownBy(() -> LinkSettings.of("n", "amqp://h:5672", null).factoryPid())
-				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("amqp");
+		assertThatThrownBy(() -> LinkSettings.of("n", "kafka://h:9092", null).factoryPid())
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("kafka");
 		assertThatThrownBy(() -> LinkSettings.of("n", "localhost:1883", null).factoryPid())
 				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void anAmqpUrlIsSpokenByTheAmqpBindingOnItsExchange() {
+		LinkSettings link = LinkSettings.of("fennec.calls", "amqp://localhost:5672", "node-1")
+				.onExchange("calls");
+
+		assertThat(link.factoryPid()).isEqualTo("org.gecko.messaging.amqp");
+		assertThat(link.configuration()).containsOnly(
+				Map.entry("osgi.messaging.name", "fennec.calls"),
+				Map.entry("uri", "amqp://localhost:5672"),
+				Map.entry("clientId", "node-1"),
+				Map.entry("exchange", "calls"));
+	}
+
+	@Test
+	void aNameAndPasswordTravelBesideTheUrlThePasswordPrivate() {
+		Map<String, Object> configuration = LinkSettings.of("n", "amqp://rabbit:5672", null)
+				.as("payments", "secret").configuration();
+
+		assertThat(configuration).containsEntry("username", "payments").containsEntry(".password", "secret")
+				.doesNotContainKey("password");
+		assertThat(LinkSettings.of("n", "amqp://rabbit:5672", null).as("", null).configuration())
+				.doesNotContainKeys("username", ".password");
+	}
+
+	@Test
+	void withoutAnExchangeTheBindingKeepsItsOwn() {
+		assertThat(LinkSettings.of("n", "amqp://h:5672", null).configuration())
+				.doesNotContainKeys("exchange", "cleanSession");
+	}
+
+	@Test
+	void amqpsCarriesTheStores() {
+		Map<String, Object> configuration = new LinkSettings("n", "amqps://h:5671", "id", "/k.p12", "kpw",
+				"/t.p12", "tpw").configuration();
+
+		assertThat(configuration).containsKeys("tls.keystore", ".tls.keystore.password", "tls.truststore",
+				".tls.truststore.password");
+	}
+
+	@Test
+	void theCredentialsOfAnAmqpUrlStayOutOfLogLines() {
+		LinkSettings link = LinkSettings.of("n", "amqp://guest:secret@rabbit:5672/vhost", null);
+
+		assertThat(link.address()).isEqualTo("amqp://rabbit:5672/vhost");
+		assertThat(link).hasToString("n → amqp://rabbit:5672/vhost");
+		// An '@' in a path is not user info.
+		assertThat(LinkSettings.of("n", "amqp://rabbit:5672/a@b", null).address())
+				.isEqualTo("amqp://rabbit:5672/a@b");
 	}
 
 	@Test

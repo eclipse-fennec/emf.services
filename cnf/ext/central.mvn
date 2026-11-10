@@ -231,6 +231,17 @@ org.geckoprojects.paho:org.eclipse.paho.client.mqttv3:1.3.0
 org.geckoprojects.messaging:org.gecko.messaging.api:2.0.0-SNAPSHOT
 org.geckoprojects.messaging:org.gecko.messaging.core:2.0.0-SNAPSHOT
 org.geckoprojects.messaging:org.gecko.messaging.mqtt3:2.0.0-SNAPSHOT
+# AMQP 0-9-1 (#138): the binding, the RabbitMQ client it drives, and the Netty 4.2 that
+# client has required since 5.27 — only what its imports need, beside the 4.1 of grpc.
+org.geckoprojects.messaging:org.gecko.messaging.amqp:2.0.0-SNAPSHOT
+com.rabbitmq:amqp-client:5.37.0
+io.netty:netty-common:4.2.20.Final
+io.netty:netty-buffer:4.2.20.Final
+io.netty:netty-resolver:4.2.20.Final
+io.netty:netty-transport:4.2.20.Final
+io.netty:netty-transport-native-unix-common:4.2.20.Final
+io.netty:netty-codec-base:4.2.20.Final
+io.netty:netty-handler:4.2.20.Final
 # Exakte Versionen, die die migrierten bndruns pinnen (Mehrfachversionen pro GA sind ok):
 biz.aQute.bnd:aQute.libg:7.0.0
 biz.aQute.bnd:biz.aQute.bnd.annotation:7.0.0

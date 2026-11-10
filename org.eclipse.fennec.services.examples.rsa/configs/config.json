@@ -34,6 +34,7 @@
     "distribution.flavor": "$[env:RSA_DISTRIBUTION_FLAVOR;default=]",
     "discovery.flavor": "$[env:RSA_DISCOVERY_FLAVOR;default=]",
     "mqtt.url": "$[env:RSA_MQTT_URL;default=tcp://localhost:1883]",
+    "amqp.url": "$[env:RSA_AMQP_URL;default=amqp://localhost:5672]",
     "topic.prefix": "$[env:RSA_TOPIC_PREFIX;default=ddsr/rpc]",
     "provider.heartbeat.seconds": "30",
     "session.interval.seconds": "0"

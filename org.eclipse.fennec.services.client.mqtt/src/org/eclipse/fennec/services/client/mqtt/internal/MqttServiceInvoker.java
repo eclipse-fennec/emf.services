@@ -49,6 +49,7 @@ import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
+import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -88,6 +89,7 @@ import io.cloudevents.model.ce.CloudEvent;
 @Component(service = ServiceInvoker.class,
 		configurationPid = "org.eclipse.fennec.services.client.mqtt.invoker",
 		property = ServiceInvoker.FLAVOR_PROPERTY + "=MQTT")
+@RequireMessaging(protocol = "mqtt3")
 public class MqttServiceInvoker implements ServiceInvoker {
 
 	private static final Logger LOG = Logger.getLogger(MqttServiceInvoker.class.getName());

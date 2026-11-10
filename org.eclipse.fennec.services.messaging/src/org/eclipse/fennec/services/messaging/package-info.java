@@ -12,11 +12,12 @@
  ********************************************************************/
 
 // A link is a messaging instance, and an instance needs a binding to be
-// one: said here, so a launch that is resolved gets the binding with
-// the bundle that cannot do without it.
+// one. Which binding is the business of whoever opens the link — the
+// MQTT parts ask for mqtt3, the AMQP parts for amqp — so a launch that
+// speaks one protocol is not made to carry the other.
 @Export
 @Version("1.0.0")
-@RequireMessaging(protocol = "mqtt3")
+@RequireMessaging
 package org.eclipse.fennec.services.messaging;
 
 import org.gecko.messaging.api.annotations.RequireMessaging;

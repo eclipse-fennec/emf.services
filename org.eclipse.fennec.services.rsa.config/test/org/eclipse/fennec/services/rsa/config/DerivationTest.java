@@ -190,4 +190,52 @@ class DerivationTest {
 		assertThat(byLabel(plan, Derivation.CLIENT_PID).properties())
 				.containsEntry("eventSource.target", "(ddsr.event.transport=rest)");
 	}
+
+	@Test
+	@DisplayName("serving over AMQP: its own distribution, announced over REST, no HTTP stack")
+	void amqpDistribution() {
+		RsaSettings servesOverAmqp = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095,
+				"0.0.0.0", "services", true, "ddsrHttp", "node-a", "1.0.0", "fennec.rest",
+				"promiscuous", "promiscuous", 30, 0, "", "tcp://mosquitto:1883", "ddsr/rpc",
+				"fennec.amqp", "").withAmqpUrl("amqp://rabbit:5672/calls");
+
+		List<DerivedConfiguration> plan = Derivation.forProvider(servesOverAmqp);
+
+		assertThat(byLabel(plan, Derivation.DISTRIBUTION_AMQP_PID).properties())
+				.containsEntry("broker.url", "amqp://rabbit:5672/calls");
+		assertThat(plan).extracting(DerivedConfiguration::label)
+				.as("a node that serves over AMQP is a client of its broker and needs no server of its own")
+				.doesNotContain(Derivation.DISTRIBUTION_PID, Derivation.DISTRIBUTION_MQTT_PID)
+				.noneMatch(label -> label.startsWith(Derivation.FELIX_HTTP_FACTORY));
+		assertThat(byLabel(plan, Derivation.ADMIN_FACTORY + "~" + Derivation.factoryName("fennec.amqp"))
+				.properties())
+				.containsEntry("remote.configs.supported", "fennec.amqp")
+				.containsEntry("distribution.target", "(ddsr.rsa.flavor=fennec.amqp)")
+				.containsEntry("discovery.target", "(ddsr.rsa.flavor=fennec.rest)");
+		assertThat(byLabel(plan, Derivation.CLIENT_PID).properties())
+				.containsEntry("supported.flavors", "AMQP,REST");
+	}
+
+	@Test
+	@DisplayName("a consumer whose one flavor is AMQP still hears over REST — AMQP carries calls only")
+	void amqpConsumerHearsOverRest() {
+		RsaSettings callsOverAmqp = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",
+				false, "", "node-b", "1.0.0", "fennec.amqp", "promiscuous", "promiscuous", 30, 0, "",
+				"tcp://mosquitto:1883", "ddsr/rpc", "", "");
+
+		List<DerivedConfiguration> plan = Derivation.forConsumer(callsOverAmqp);
+
+		assertThat(byLabel(plan, Derivation.DISCOVERY_PID).properties())
+				.as("there is no discovery over AMQP to point an admin at")
+				.containsEntry("broker.url", "http://broker:8887/ddsr/rest");
+		assertThat(byLabel(plan, Derivation.CLIENT_PID).properties())
+				.as("a lookup filters by what the consumer says it speaks: without AMQP here the node"
+						+ " is never shown a service that is reachable only that way")
+				.containsEntry("supported.flavors", "AMQP,REST")
+				.containsEntry("eventSource.target", "(ddsr.event.transport=rest)");
+		assertThat(byLabel(plan, Derivation.ADMIN_FACTORY + "~" + Derivation.factoryName("fennec.amqp"))
+				.properties())
+				.containsEntry("remote.configs.supported", "fennec.amqp")
+				.containsEntry("discovery.target", "(ddsr.rsa.flavor=fennec.rest)");
+	}
 }

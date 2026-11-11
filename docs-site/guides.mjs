@@ -16,6 +16,7 @@ export const GUIDES = [
   { file: 'CODE_GENERATION.md', slug: 'code-generation', title: 'Code generation' },
   { file: 'RSA.md', slug: 'rsa', title: 'Remote Service Admin' },
   { file: 'CLIENT_FRAMEWORK_GUIDE.md', slug: 'client-framework', title: 'Client framework (Java)' },
+  { file: 'CLIENT_COMPONENTS.md', slug: 'client-components', title: 'How the Java client is wired' },
   { file: 'ACQUISITION.md', slug: 'acquisition', title: 'Discovery, Acquisition, Invocation' },
   { file: 'UPDATE_POLICY.md', slug: 'update-policy', title: 'Update policies' },
   { file: 'WIRE_FORMAT.md', slug: 'wire-format', title: 'Wire format reference' },

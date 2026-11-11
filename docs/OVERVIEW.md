@@ -25,6 +25,7 @@ not built, the page says so and names the issue.
 | configure REST or MQTT for your deployment | [Transports](TRANSPORTS.md) |
 | export an OSGi service to another framework | [Remote Service Admin](RSA.md) |
 | write a Java provider or consumer by hand | [Client framework](CLIENT_FRAMEWORK_GUIDE.md) |
+| know why a Java client does not start, or what it waits for | [How the Java client is wired](CLIENT_COMPONENTS.md) |
 | watch what a broker or a client holds | [Runtime services](RUNTIME.md) |
 | trace a call across consumer, broker and provider | [Telemetry](TELEMETRY.md) |
 | know who may publish, look up, and call | [Security](SECURITY.md) |

@@ -22,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
@@ -82,16 +83,14 @@ public class Registrations {
 
 	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
 	void setEventAdmin(EventAdmin eventAdmin) {
-		this.eventAdmin = eventAdmin;
+		this.eventAdmin.set(eventAdmin);
 	}
 
 	void unsetEventAdmin(EventAdmin eventAdmin) {
-		if (this.eventAdmin == eventAdmin) {
-			this.eventAdmin = null;
-		}
+		this.eventAdmin.compareAndSet(eventAdmin, null);
 	}
 
-	private volatile EventAdmin eventAdmin;
+	private final AtomicReference<EventAdmin> eventAdmin = new AtomicReference<>();
 
 	private final List<ExportedService> exported = new CopyOnWriteArrayList<>();
 
@@ -191,7 +190,7 @@ public class Registrations {
 						failure);
 			}
 		}
-		EventAdmin admin = eventAdmin;
+		EventAdmin admin = eventAdmin.get();
 		if (admin != null) {
 			admin.postEvent(asEvent(event, endpoint));
 		}

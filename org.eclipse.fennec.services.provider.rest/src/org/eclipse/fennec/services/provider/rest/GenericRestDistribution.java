@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -212,8 +213,18 @@ public class GenericRestDistribution extends Application {
 	 * dynamic, and read per call through {@link CallTracer#deferred}:
 	 * this component outlives the telemetry bundle in both directions.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	private volatile CallTracer tracer;
+	private final AtomicReference<CallTracer> tracer = new AtomicReference<>();
+
+	@Reference(name = "tracer", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setTracer(CallTracer tracer) {
+		this.tracer.set(tracer);
+	}
+
+	void unsetTracer(CallTracer tracer) {
+		// Only the one that is bound: a replacement is set before the one
+		// it replaces is unset.
+		this.tracer.compareAndSet(tracer, null);
+	}
 
 	private volatile DdsrClient client;
 
@@ -360,7 +371,7 @@ public class GenericRestDistribution extends Application {
 				componentContext.getProperties().get(ServedSecurity.AUTH));
 		this.dispatcher = new RestDispatcher(flavor,
 				() -> implementation(context, config.service_filter(), self), contract, resourceSets,
-				CallTracer.deferred(() -> tracer), enforce, config.max_body_bytes());
+				CallTracer.deferred(tracer::get), enforce, config.max_body_bytes());
 		LOG.info("[DDSR] serving " + contract + " generically at " + flavor.getBasePath());
 
 		// Under the same monitor announceIfReady takes: a binding on

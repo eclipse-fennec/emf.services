@@ -13,6 +13,8 @@
 
 package org.eclipse.fennec.services.telemetry.rest;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import java.lang.reflect.Method;
 
 import org.eclipse.fennec.services.common.ClientOrigin;
@@ -72,12 +74,22 @@ public class TracedRequests implements ContainerRequestFilter, ContainerResponse
 	 * deployment without telemetry installs nothing, and this extension
 	 * then costs a property lookup per request.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	private volatile CallTracer tracer;
+	private final AtomicReference<CallTracer> tracer = new AtomicReference<>();
+
+	@Reference(name = "tracer", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setTracer(CallTracer tracer) {
+		this.tracer.set(tracer);
+	}
+
+	void unsetTracer(CallTracer tracer) {
+		// Only the one that is bound: a replacement is set before the one
+		// it replaces is unset.
+		this.tracer.compareAndSet(tracer, null);
+	}
 
 	@Override
 	public void filter(ContainerRequestContext request) {
-		CallTracer bound = tracer;
+		CallTracer bound = tracer.get();
 		if (bound == null || isEventStream(request)) {
 			return;
 		}

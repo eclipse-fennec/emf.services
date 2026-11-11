@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.net.ssl.SSLContext;
 
@@ -169,8 +170,18 @@ public final class RestTransport {
 	 * Whoever is watching calls, if anyone is (#126). Optional and
 	 * dynamic, like everywhere else this seam is used.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	private volatile CallTracer tracer;
+	private final AtomicReference<CallTracer> tracer = new AtomicReference<>();
+
+	@Reference(name = "tracer", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setTracer(CallTracer tracer) {
+		this.tracer.set(tracer);
+	}
+
+	void unsetTracer(CallTracer tracer) {
+		// Only the one that is bound: a replacement is set before the one
+		// it replaces is unset.
+		this.tracer.compareAndSet(tracer, null);
+	}
 
 	/** The target that selects the supplier of a node without tokens. */
 	static final String NO_TOKENS = "(" + TokenSupplier.KIND + "=" + TokenSupplier.KIND_NONE + ")";
@@ -427,7 +438,7 @@ public final class RestTransport {
 	}
 
 	private CallTracer tracer() {
-		CallTracer bound = tracer;
+		CallTracer bound = tracer.get();
 		return bound == null ? CallTracer.NONE : bound;
 	}
 

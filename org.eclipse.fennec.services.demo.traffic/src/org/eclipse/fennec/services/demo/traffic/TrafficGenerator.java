@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.ServiceLocator;
@@ -91,8 +92,18 @@ public class TrafficGenerator {
 	 * and the two calls under it read as one unit of work instead of
 	 * three unrelated traces.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	private volatile CallTracer tracer;
+	private final AtomicReference<CallTracer> tracer = new AtomicReference<>();
+
+	@Reference(name = "tracer", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setTracer(CallTracer tracer) {
+		this.tracer.set(tracer);
+	}
+
+	void unsetTracer(CallTracer tracer) {
+		// Only the one that is bound: a replacement is set before the one
+		// it replaces is unset.
+		this.tracer.compareAndSet(tracer, null);
+	}
 
 	private ScheduledExecutorService schedule;
 
@@ -153,7 +164,7 @@ public class TrafficGenerator {
 	 */
 	private void callOnce() {
 		Config current = config;
-		CallTracer watching = tracer;
+		CallTracer watching = tracer.get();
 		try (CallSpan tick = watching == null ? CallSpan.NONE : watching.doing("Demo/tick")) {
 			tick.attribute("fennec.demo.contract", current.contract());
 			oneRound(current);

@@ -158,9 +158,12 @@ public final class Derivation {
 			rest.put("tls.truststore", identity.trustStore());
 			rest.put("tls.truststore.password", identity.trustStorePassword());
 		}
-		if (identity.brokerByCertificate()) {
-			rest.put("broker.authentication", "certificate");
-		}
+		// Which token supplier the transport binds, as the targets of its
+		// two references — the supplier's own property, so the transport
+		// does not exist before the supplier it was configured for does.
+		// By certificate the broker is shown the supplier that has none.
+		rest.put("broker.tokens.target", tokens(identity.callsWithToken() && !identity.brokerByCertificate()));
+		rest.put("provider.tokens.target", tokens(identity.callsWithToken()));
 		plan.add(DerivedConfiguration.of(CLIENT_REST_PID, Map.copyOf(rest)));
 		Map<String, Object> client = new LinkedHashMap<>();
 		client.put("provider.heartbeat.seconds", String.valueOf(settings.heartbeatSeconds()));
@@ -311,6 +314,16 @@ public final class Derivation {
 
 	/** The largest body a node takes — the same key on every part that reads one. */
 	static final String MAX_BODY_BYTES = "max.body.bytes";
+
+	/**
+	 * The target that selects a token supplier by what it says it is
+	 * ({@code TokenSupplier.KIND} in the api bundle; spelled out because
+	 * this bundle writes configurations and depends on none of the
+	 * bundles it configures).
+	 */
+	private static String tokens(boolean shown) {
+		return "(fennec.tokens=" + (shown ? "oauth" : "none") + ")";
+	}
 
 	private static boolean overMessaging(String configType) {
 		return RsaSettings.MQTT.equals(configType) || RsaSettings.AMQP.equals(configType);

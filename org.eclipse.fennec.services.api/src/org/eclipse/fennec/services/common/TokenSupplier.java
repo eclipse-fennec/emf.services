@@ -24,14 +24,31 @@ package org.eclipse.fennec.services.common;
  * a token minted for the broker's audience must not travel to a
  * provider, where it could be replayed.
  *
- * <p>No service, no header: a node talking to a broker in mode
- * {@code none} needs nothing registered.
+ * <p><b>Which supplier a node uses is its configuration's statement.</b>
+ * Every supplier registers with {@link #KIND}, saying what it is, and
+ * whoever needs one binds it by that: a mandatory reference whose
+ * target the configuration writes, e.g.
+ * {@code "broker.tokens.target": "(fennec.tokens=oauth)"}. A node that
+ * shows no token says so the same way — {@code (fennec.tokens=none)}
+ * selects the supplier that has none to give. So nothing depends on
+ * which component happened to start first: a node configured for
+ * tokens does not call before its supplier is there.
  */
 @FunctionalInterface
 public interface TokenSupplier {
 
+	/** The service property a supplier says what it is with. */
+	String KIND = "fennec.tokens";
+
+	/** {@link #KIND}: the supplier of a node that shows no token. */
+	String KIND_NONE = "none";
+
+	/** {@link #KIND}: tokens from an OAuth client-credentials grant. */
+	String KIND_OAUTH = "oauth";
+
 	/**
-	 * A token valid now, without the {@code Bearer} prefix.
+	 * A token valid now, without the {@code Bearer} prefix — or null
+	 * from the supplier of a node that shows none.
 	 *
 	 * <p>An implementation caches and renews as it sees fit; this is
 	 * called on every call to the broker.

@@ -110,12 +110,17 @@ public final class RestTransport {
 				required = false)
 		String origin_label() default "";
 
-		@AttributeDefinition(name = "Broker authentication", required = false,
-				description = "How this node proves itself to the broker: token (the bearer token of the "
-						+ "token supplier) or certificate (the TLS key store below, for a broker in mode mtls). "
-						+ "With certificate no token goes to the broker; tokens for providers are asked for "
-						+ "per audience either way.")
-		String broker_authentication() default TOKEN;
+		@AttributeDefinition(name = "Tokens for the broker", required = false,
+				description = "Which token supplier this node shows the broker a token of, as the target of "
+						+ "the reference: (fennec.tokens=oauth) for the client-credentials supplier, "
+						+ "(fennec.tokens=none) for a node that shows none — against an open broker, or "
+						+ "one it proves itself to by certificate (the TLS key store below).")
+		String broker_tokens_target() default NO_TOKENS;
+
+		@AttributeDefinition(name = "Tokens for providers", required = false,
+				description = "Which token supplier calls to providers take their tokens from, asked per "
+						+ "audience: (fennec.tokens=oauth) or (fennec.tokens=none).")
+		String provider_tokens_target() default NO_TOKENS;
 
 		@AttributeDefinition(name = "TLS key store", required = false,
 				description = "The certificate and key this node shows to a server that asks for one (mode "
@@ -155,27 +160,35 @@ public final class RestTransport {
 	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
 	private volatile CallTracer tracer;
 
+	/** The target that selects the supplier of a node without tokens. */
+	static final String NO_TOKENS = "(" + TokenSupplier.KIND + "=" + TokenSupplier.KIND_NONE + ")";
+
 	/**
-	 * Where the bearer token for the broker comes from, if this node
-	 * has one (SECURITY.md §4). Optional and dynamic: against a broker
-	 * in mode none nothing is registered, and a supplier that arrives
-	 * later is used from the next call on.
+	 * Where the bearer token for the broker comes from (SECURITY.md §4).
+	 * Mandatory and static, and which supplier it is the configuration
+	 * says with {@code broker.tokens.target}: a node configured to show
+	 * a token does not exist as a transport before its supplier does, so
+	 * nothing behind it — the proxies, the client, a publisher — can
+	 * call the broker without one. A node that shows none targets the
+	 * supplier that has none.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	private volatile TokenSupplier tokens;
+	@Reference(name = "broker.tokens", target = NO_TOKENS)
+	private TokenSupplier brokerTokens;
+
+	/**
+	 * Where the tokens for calls to providers come from, asked per
+	 * audience. A reference of its own because the two differ on a node
+	 * that proves itself to the broker by certificate: no token for the
+	 * broker, tokens for the providers.
+	 */
+	@Reference(name = "provider.tokens", target = NO_TOKENS)
+	private TokenSupplier providerTokens;
 
 	private static final Logger LOG = Logger.getLogger(RestTransport.class.getName());
 
-	/** {@link Config#broker_authentication()}: the broker gets the token supplier's token. */
-	static final String TOKEN = "token";
 
-	/** {@link Config#broker_authentication()}: the broker gets the node's certificate, and no token. */
-	static final String CERTIFICATE = "certificate";
 
 	private URI baseUrl;
-
-	/** Whether calls to the broker carry the token; not when the node proves itself by certificate. */
-	private volatile boolean tokenToBroker = true;
 	private Client client;
 	private Config config;
 
@@ -191,7 +204,6 @@ public final class RestTransport {
 	void activate(BundleContext context, Config config) {
 		this.config = config;
 		this.baseUrl = URI.create(config.broker_url());
-		this.tokenToBroker = tokenToBroker(config);
 		this.origin = ClientOrigin.of(config.origin_label(),
 				context.getProperty(ClientOrigin.FRAMEWORK_UUID));
 		this.client = build(config);
@@ -215,7 +227,6 @@ public final class RestTransport {
 	@Modified
 	void modified(Config config) {
 		this.baseUrl = URI.create(config.broker_url());
-		this.tokenToBroker = tokenToBroker(config);
 		boolean timeoutsChanged = config.connect_timeout_millis() != this.config.connect_timeout_millis()
 				|| config.read_timeout_millis() != this.config.read_timeout_millis()
 				|| !tlsOf(config).equals(tlsOf(this.config));
@@ -274,28 +285,6 @@ public final class RestTransport {
 				.build();
 	}
 
-	/**
-	 * Whether the broker is shown the token. A node that proves itself by
-	 * certificate shows none: the broker in mode mtls would ignore it, and
-	 * a credential sent where it is not needed is one more place it can
-	 * leak from.
-	 */
-	private static boolean tokenToBroker(Config config) {
-		String how = config.broker_authentication() == null ? TOKEN : config.broker_authentication().strip();
-		if (CERTIFICATE.equals(how)) {
-			if (config.tls_keystore() == null || config.tls_keystore().isBlank()) {
-				LOG.warning("[DDSR-Client] broker.authentication=certificate, but no tls.keystore — this node "
-						+ "shows the broker neither a token nor a certificate");
-			}
-			return false;
-		}
-		if (!TOKEN.equals(how)) {
-			LOG.warning("[DDSR-Client] broker.authentication=" + how + " is neither " + TOKEN + " nor "
-					+ CERTIFICATE + " — taken as " + TOKEN);
-		}
-		return true;
-	}
-
 	/** What decides the TLS context, for telling a changed configuration from a repeated one. */
 	private static List<String> tlsOf(Config config) {
 		return List.of(config.tls_keystore(), config.tls_keystore_password(), config.tls_keystore_type(),
@@ -313,12 +302,24 @@ public final class RestTransport {
 	 * requirement (slice 3), not of this filter.
 	 */
 	void authorize(ClientRequestContext request) {
-		TokenSupplier supplier = tokens;
 		URI broker = baseUrl;
-		if (!tokenToBroker || supplier == null || broker == null || !isUnder(request.getUri(), broker)) {
+		if (broker == null || !isUnder(request.getUri(), broker)) {
 			return;
 		}
-		request.getHeaders().putSingle(HttpHeaders.AUTHORIZATION, "Bearer " + supplier.token());
+		// Null from the supplier of a node that shows none: against an
+		// open broker, or one it proves itself to by certificate.
+		String token = brokerTokens.token();
+		if (token != null) {
+			request.getHeaders().putSingle(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+		}
+	}
+
+	/**
+	 * The token a call to a provider carries, for the audience its
+	 * flavor names; null on a node that has none to give.
+	 */
+	String providerToken(String audience) {
+		return providerTokens.token(audience);
 	}
 
 	/** Same scheme, host and port, and a path at or below the broker's. */

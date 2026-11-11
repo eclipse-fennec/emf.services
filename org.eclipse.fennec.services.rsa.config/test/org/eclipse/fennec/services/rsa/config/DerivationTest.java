@@ -219,7 +219,10 @@ class DerivationTest {
 				.containsEntry("distribution.target", "(ddsr.rsa.flavor=fennec.amqp)")
 				.containsEntry("discovery.target", "(ddsr.rsa.flavor=fennec.rest)");
 		assertThat(byLabel(plan, Derivation.CLIENT_PID).properties())
-				.containsEntry("supported.flavors", "AMQP,REST");
+				.containsEntry("supported.flavors", "AMQP,REST")
+				.as("and the client waits for an invoker for each flavor it says it speaks")
+				.containsEntry("invokers.target", "(&(fennec.invokers=AMQP)(fennec.invokers=REST))");
+		assertThat(Derivation.invokersFor("REST")).isEqualTo("(fennec.invokers=REST)");
 	}
 
 	@Test

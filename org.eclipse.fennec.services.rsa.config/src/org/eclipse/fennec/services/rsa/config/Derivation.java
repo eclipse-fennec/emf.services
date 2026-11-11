@@ -169,12 +169,31 @@ public final class Derivation {
 		client.put("provider.heartbeat.seconds", String.valueOf(settings.heartbeatSeconds()));
 		client.put("session.interval.seconds", String.valueOf(settings.sessionIntervalSeconds()));
 		client.put("supported.flavors", settings.supportedFlavors());
+		// The same list a second time, as the condition: the client waits
+		// for an invoker for each flavor it is about to say it speaks.
+		client.put("invokers.target", invokersFor(settings.supportedFlavors()));
 		client.put("eventSource.target", "(ddsr.event.transport="
 				+ (settings.hearsOverMqtt() ? "mqtt" : "rest") + ")");
 		if (!settings.effectiveConsumerId().isBlank()) {
 			client.put("consumer.id", settings.effectiveConsumerId());
 		}
 		plan.add(DerivedConfiguration.of(CLIENT_PID, Map.copyOf(client)));
+	}
+
+	/**
+	 * The filter over {@code fennec.invokers} that is satisfied once there
+	 * is an invoker for every flavor in the list.
+	 */
+	static String invokersFor(String flavors) {
+		StringBuilder all = new StringBuilder();
+		int count = 0;
+		for (String flavor : flavors.split(",")) {
+			if (!flavor.isBlank()) {
+				all.append("(fennec.invokers=").append(flavor.trim()).append(')');
+				count++;
+			}
+		}
+		return count == 1 ? all.toString() : "(&" + all + ")";
 	}
 
 	/**

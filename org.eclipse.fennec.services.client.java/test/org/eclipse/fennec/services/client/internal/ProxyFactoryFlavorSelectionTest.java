@@ -141,10 +141,14 @@ class ProxyFactoryFlavorSelectionTest {
 		return implementation;
 	}
 
+	/** The whiteboard behind the factory under test, as DS would have bound it. */
+	private final InvokerRegistry registry = new InvokerRegistry();
+
 	private ReflectiveServiceProxyFactory factoryWith(NamedInvoker... invokers) {
 		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
+		factory.invokers = registry;
 		for (NamedInvoker invoker : invokers) {
-			factory.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, invoker.name));
+			registry.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, invoker.name));
 		}
 		return factory;
 	}
@@ -190,7 +194,8 @@ class ProxyFactoryFlavorSelectionTest {
 	void an_invoker_that_names_no_flavor_is_never_picked() {
 		NamedInvoker nameless = new NamedInvoker("REST");
 		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
-		factory.addInvoker(nameless, Map.of());
+		factory.invokers = registry;
+		registry.addInvoker(nameless, Map.of());
 		ServiceLocator locator = new FixedLocator(announcing(FlavorKind.REST));
 
 		assertThatThrownBy(() -> factory.newProxy(Payment.class, locator).getBalance("acc-1"))
@@ -218,7 +223,7 @@ class ProxyFactoryFlavorSelectionTest {
 		ReflectiveServiceProxyFactory factory = factoryWith(rest, mqtt);
 		ServiceLocator locator = new FixedLocator(announcing(FlavorKind.REST, FlavorKind.MQTT));
 
-		factory.removeInvoker(rest, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+		registry.removeInvoker(rest, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
 		factory.newProxy(Payment.class, locator).getBalance("acc-1");
 
 		assertThat(rest.calls).isEmpty();

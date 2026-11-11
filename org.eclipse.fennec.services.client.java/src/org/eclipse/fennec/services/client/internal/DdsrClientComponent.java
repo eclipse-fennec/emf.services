@@ -29,6 +29,7 @@ import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.BrokerSessions;
 import org.eclipse.fennec.services.client.DdsrClient;
+import org.eclipse.fennec.services.client.InvokerProvider;
 import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrProvider;
 import org.eclipse.fennec.services.client.EventSource;
@@ -38,6 +39,7 @@ import org.eclipse.fennec.services.runtime.ChangeCountPublisher;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
@@ -60,7 +62,19 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 @Component(
 		service = DdsrClient.class,
 		configurationPid = "org.eclipse.fennec.services.client",
-		immediate = true)
+		// Required: the target of a static reference comes from this
+		// configuration, and a client started on defaults is torn down
+		// and rebuilt the moment it arrives — together with everything
+		// bound to it (#232 was the same thing on the transport).
+		configurationPolicy = ConfigurationPolicy.REQUIRE,
+		immediate = true,
+		// Never injected, only waited for. A client tells the broker which
+		// flavors it speaks, so it must not exist before there is an
+		// invoker for each of them, nor outlive one: the target names the
+		// flavors (invokers.target, beside supported.flavors), and DS
+		// keeps the client down while one is missing.
+		reference = @Reference(name = "invokers", service = InvokerProvider.class,
+				target = InvokerProvider.REST_TARGET))
 @Designate(ocd = DdsrClientComponent.Config.class)
 public final class DdsrClientComponent implements DdsrClient {
 
@@ -73,6 +87,13 @@ public final class DdsrClientComponent implements DdsrClient {
 				name = "Supported flavors",
 				description = "Comma-separated list of FlavorKind values the consumer can speak (REST, MQTT)")
 		String supported_flavors() default "REST";
+
+		@AttributeDefinition(
+				name = "Invokers to wait for",
+				description = "LDAP filter over the flavors there is an invoker for (fennec.invokers). The client "
+						+ "starts once it matches and stops when it no longer does. It should name the supported "
+						+ "flavors, e.g. (&(fennec.invokers=REST)(fennec.invokers=MQTT)).")
+		String invokers_target() default InvokerProvider.REST_TARGET;
 
 		@AttributeDefinition(
 				name = "Consumer ID",

@@ -279,9 +279,50 @@ client must not accidentally bind the in-process one.
 | Property | Default | |
 | --- | --- | --- |
 | `supported.flavors` | `REST` | comma-separated flavor kinds |
+| `invokers.target` | `(fennec.invokers=REST)` | the invokers the client waits for — see below |
 | `consumer.id` | generated | `consumer-<uuid>` when empty |
 | `session.interval.seconds` | `600` | 0 switches sessions off |
 | `provider.heartbeat.seconds` | `30` | 0 switches liveness off |
+
+The client has no defaults to start on: it takes its configuration
+with `ConfigurationPolicy.REQUIRE`, so a node without a
+`org.eclipse.fennec.services.client` configuration has no client.
+
+### A client waits for its invokers
+
+A client tells the broker which flavors it speaks, and a lookup is
+filtered by that. Saying it speaks a flavor it has no invoker for gets
+it services it cannot call, so the two are tied together:
+
+- One component, the `InvokerProvider`, collects every `ServiceInvoker`
+  in the framework and publishes the flavors it has one for as a
+  service property, `fennec.invokers` (a `String[]` of flavor kinds).
+  An invoker is put in before its flavor is published and taken out
+  after the flavor is withdrawn.
+- The client has a reference to that service that is never injected —
+  it is only waited for. `invokers.target` is its target, and it names
+  the same flavors as `supported.flavors`:
+
+  ```json
+  "org.eclipse.fennec.services.client": {
+      "supported.flavors": "REST,MQTT",
+      "invokers.target": "(&(fennec.invokers=REST)(fennec.invokers=MQTT))"
+  }
+  ```
+
+- Until there is an invoker for each of them the client is not
+  activated — `scr:info` shows the reference `invokers` unsatisfied —
+  and nothing has been said to the broker. When one of them goes, the
+  target stops matching and the client goes with it, session and all.
+- The proxy factory binds the same `InvokerProvider`, without a
+  target, and asks it for the invoker of a service. A proxy needs a
+  locator, and a locator comes from a client, so the client's
+  condition covers the factory.
+
+The messaging invoker is one service that speaks `MQTT` and `AMQP`,
+and is listed under both. The RSA role writes both properties from
+the flavors of the node; a hand-written configuration writes them
+itself, as the examples do.
 
 ## A launch that only talks to a broker
 

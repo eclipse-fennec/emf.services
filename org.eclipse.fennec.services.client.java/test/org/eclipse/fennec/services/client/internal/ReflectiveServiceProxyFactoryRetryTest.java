@@ -108,7 +108,9 @@ class ReflectiveServiceProxyFactoryRetryTest {
 
 	private static Payment proxy(ScriptedInvoker invoker, ServiceLocator locator) {
 		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
-		factory.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+		InvokerRegistry invokers = new InvokerRegistry();
+		factory.invokers = invokers;
+		invokers.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
 		return factory.newProxy(Payment.class, locator);
 	}
 

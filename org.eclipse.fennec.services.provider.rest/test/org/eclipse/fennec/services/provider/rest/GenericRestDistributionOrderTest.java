@@ -19,12 +19,15 @@ import static org.mockito.Mockito.mock;
 import java.lang.reflect.Field;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Map;
 
-import org.eclipse.fennec.services.client.Registration;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.osgi.framework.Constants;
+import org.osgi.framework.Filter;
+import org.osgi.framework.FrameworkUtil;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.cm.Configuration;
 
 import jakarta.ws.rs.core.Application;
 
@@ -37,18 +40,42 @@ class GenericRestDistributionOrderTest {
 
 	@Test
 	@SuppressWarnings("unchecked")
-	void onTheWayDownTheWithdrawalComesBeforeTheEndpointGoes() throws Exception {
+	void onTheWayDownTheConditionGoesBeforeTheEndpoint() throws Exception {
+		// The condition is what the announcement is bound to: taking it
+		// away deactivates the announcement, which withdraws — and only
+		// after that does the application go.
 		GenericRestDistribution distribution = new GenericRestDistribution();
-		Registration announced = mock(Registration.class);
+		ServiceRegistration<Object> condition = mock(ServiceRegistration.class);
 		ServiceRegistration<Application> application = mock(ServiceRegistration.class);
-		set(distribution, "registration", announced);
+		Configuration announcement = mock(Configuration.class);
+		set(distribution, "servedRegistration", condition);
 		set(distribution, "application", application);
+		set(distribution, "announcement", announcement);
 
 		distribution.deactivate();
 
-		InOrder order = inOrder(announced, application);
-		order.verify(announced).withdraw();
+		InOrder order = inOrder(condition, announcement, application);
+		order.verify(condition).unregister();
+		order.verify(announcement).delete();
 		order.verify(application).unregister();
+	}
+
+	@Test
+	void theAnnouncementWaitsForThisDistributionAndForPublish() throws Exception {
+		String target = ServedContract.announceTarget("org.eclipse.fennec.services.provider.rest~persons");
+		Filter filter = FrameworkUtil.createFilter(target);
+
+		assertThat(filter.matches(Map.of(ServedContract.DISTRIBUTION,
+				"org.eclipse.fennec.services.provider.rest~persons", ServedContract.PUBLISH, "true"))).isTrue();
+		assertThat(filter.matches(Map.of(ServedContract.DISTRIBUTION,
+				"org.eclipse.fennec.services.provider.rest~persons", ServedContract.PUBLISH, "false")))
+				.as("served, but not yet listed by a whiteboard — or not asked to announce").isFalse();
+		assertThat(filter.matches(Map.of(ServedContract.DISTRIBUTION,
+				"org.eclipse.fennec.services.provider.rest~payment", ServedContract.PUBLISH, "true")))
+				.as("another contract of the same node").isFalse();
+		assertThat(FrameworkUtil.createFilter(ServedContract.announceTarget("a(b)*c\\d")).matches(
+				Map.of(ServedContract.DISTRIBUTION, "a(b)*c\\d", ServedContract.PUBLISH, "true")))
+				.as("a PID is taken literally").isTrue();
 	}
 
 	@Test

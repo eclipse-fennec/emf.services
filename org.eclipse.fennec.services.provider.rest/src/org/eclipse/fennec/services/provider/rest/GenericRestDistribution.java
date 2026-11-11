@@ -13,7 +13,7 @@
 
 package org.eclipse.fennec.services.provider.rest;
 
-import java.net.URI;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Dictionary;
@@ -26,18 +26,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
-import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
-import org.eclipse.fennec.services.broker.core.BrokerCatalog;
-import org.eclipse.fennec.services.client.DdsrClient;
-import org.eclipse.fennec.services.client.Registration;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
@@ -49,6 +44,8 @@ import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.cm.Configuration;
+import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -58,7 +55,7 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.component.annotations.ReferencePolicyOption;
+import org.osgi.service.condition.Condition;
 import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
 import org.osgi.service.jakartars.runtime.dto.RuntimeDTO;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
@@ -86,15 +83,22 @@ import jakarta.ws.rs.core.Application;
  * PROTOTYPE-scoped implementation gets an instance per call rather than
  * one shared across every consumer.
  *
- * <p>With {@code publish} it also announces what it serves, which is what
- * makes a headless provider possible: a configuration and a service, no
- * code — in the FR-P3 order both ways (#204). It registers the
- * application itself rather than letting Declarative Services do it,
- * because DS would register it only after {@code activate} and take it
- * away before {@code deactivate}: the announcement would go out before
- * the endpoint answers, and the endpoint would stop before the
- * withdrawal. So: register, wait until a whiteboard lists the
- * application, announce; and on the way down withdraw, then unregister.
+ * <p>With {@code publish} what it serves is also announced, which is
+ * what makes a headless provider possible: a configuration and a
+ * service, no code — in the FR-P3 order both ways (#204). Announcing is
+ * not this component's job, though; it is {@link RestAnnouncement}'s,
+ * which needs a broker client and a catalog and has them as mandatory
+ * references. This component says <em>when</em>: it registers a
+ * {@link ServedContract} — a condition — whose {@code publish} it
+ * raises once a whiteboard lists the application, and derives the
+ * announcement's configuration with a target on exactly that. Declarative
+ * Services then brings the announcement up after the endpoint answers
+ * and takes it down before the endpoint goes.
+ *
+ * <p>It registers the application itself rather than letting
+ * Declarative Services do it, because DS would register it only after
+ * {@code activate} and take it away before {@code deactivate} — the
+ * wrong side of the announcement both times.
  */
 @Designate(ocd = GenericRestDistribution.Config.class, factory = true)
 // `ddsr.distribution` says what this service is. Declarative Services
@@ -226,13 +230,7 @@ public class GenericRestDistribution extends Application {
 		this.tracer.compareAndSet(tracer, null);
 	}
 
-	private volatile DdsrClient client;
-
-	private volatile BrokerCatalog catalog;
-
 	private RestDispatcher dispatcher;
-
-	private Registration registration;
 
 	private ResourceSet publishedFrom;
 
@@ -256,57 +254,23 @@ public class GenericRestDistribution extends Application {
 	private String reportedRefusal;
 
 	/**
-	 * Optional on purpose: serving and announcing are separate jobs, and
-	 * a deployment that only serves must not wait for a broker client
-	 * that will never come.
-	 *
-	 * <p>Optional because the configuration decides whether it is needed:
-	 * with {@code publish} off this distribution serves an endpoint and
-	 * announces nothing, and a deployment doing that has no broker client
-	 * to offer. DS cannot say "mandatory when publish is true", and the
-	 * shape that could — serving and announcing as two components, as the
-	 * class comment above already suggests — is a change to #84's headless
-	 * provider rather than to this reference.
-	 *
-	 * <p>Bound through a method because the arrival is what triggers the
-	 * announcement: whichever of the two comes last completes the pair.
+	 * Where the announcement's configuration is written. Mandatory: this
+	 * component only exists where someone configured it, so Configuration
+	 * Admin is there.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL,
-			policy = ReferencePolicy.DYNAMIC, policyOption = ReferencePolicyOption.RELUCTANT)
-	void setClient(DdsrClient client) {
-		this.client = client;
-		announceIfReady();
-	}
+	@Reference
+	private ConfigurationAdmin configurations;
 
-	void unsetClient(DdsrClient client) {
-		if (this.client == client) {
-			withdraw();
-			this.client = null;
-		}
-	}
+	/** What is served, as a condition whoever announces waits for. */
+	private ServedContract served;
 
-	/**
-	 * The REST proxy explicitly: a deployment that carries broker.core
-	 * for the interface alone also has that bundle's own in-process
-	 * catalog to offer, and announcing into an empty local broker looks
-	 * like success and reaches nobody.
-	 *
-	 * <p>Optional for the same reason as the client above: without
-	 * {@code publish} there is nothing to announce into.
-	 */
-	@Reference(target = "(ddsr.broker.transport=rest)",
-			cardinality = ReferenceCardinality.OPTIONAL,
-			policy = ReferencePolicy.DYNAMIC, policyOption = ReferencePolicyOption.RELUCTANT)
-	void setCatalog(BrokerCatalog catalog) {
-		this.catalog = catalog;
-		announceIfReady();
-	}
+	private ServiceRegistration<?> servedRegistration;
 
-	void unsetCatalog(BrokerCatalog catalog) {
-		if (this.catalog == catalog) {
-			this.catalog = null;
-		}
-	}
+	/** Whether the condition currently says {@code publish=true}. */
+	private boolean publishing;
+
+	/** The announcement's configuration, derived from this one and deleted with it. */
+	private Configuration announcement;
 
 	/**
 	 * The whiteboards, watched for the one moment that matters here: the
@@ -324,15 +288,16 @@ public class GenericRestDistribution extends Application {
 			updated = "updatedRuntime")
 	void bindRuntime(JakartarsServiceRuntime runtime) {
 		runtimes.add(runtime);
-		announceIfReady();
+		reconsider();
 	}
 
 	void updatedRuntime(JakartarsServiceRuntime runtime) {
-		announceIfReady();
+		reconsider();
 	}
 
 	void unbindRuntime(JakartarsServiceRuntime runtime) {
 		runtimes.remove(runtime);
+		reconsider();
 	}
 
 	/** Where this application stands in the whiteboards, by its own service id. */
@@ -374,18 +339,49 @@ public class GenericRestDistribution extends Application {
 				CallTracer.deferred(tracer::get), enforce, config.max_body_bytes());
 		LOG.info("[DDSR] serving " + contract + " generically at " + flavor.getBasePath());
 
-		// Under the same monitor announceIfReady takes: a binding on
-		// another thread must either see both of these or neither.
+		String pid = String.valueOf(componentContext.getProperties().get(Constants.SERVICE_PID));
+		// Under the same monitor reconsider takes: a binding on another
+		// thread must either see all of these or none.
 		synchronized (this) {
 			this.config = config;
 			this.implementation = implementation;
 			this.mode = componentContext.getProperties().get(ServedSecurity.AUTH);
+			// The condition first and saying "not yet": whoever announces
+			// can only bind it once the whiteboard has listed what is
+			// registered next.
+			this.served = new ServedContract(pid, config, implementation, publishedFrom, mode);
+			this.servedRegistration = context.registerService(
+					new String[] { Condition.class.getName(), ServedContract.class.getName() }, served,
+					served.properties(false));
 			// Registered under the monitor, so a runtime update that lists
 			// it cannot slip in before the field is set and be missed.
 			this.application = context.registerService(Application.class, this,
 					serviceProperties(componentContext.getProperties()));
 		}
-		announceIfReady();
+		if (config.publish()) {
+			this.announcement = announcementFor(pid);
+		}
+		reconsider();
+	}
+
+	/**
+	 * The configuration of the component that announces this contract:
+	 * one factory configuration, named after this one, whose only
+	 * statement is which served contract it waits for.
+	 */
+	private Configuration announcementFor(String pid) {
+		try {
+			Configuration derived = configurations.getFactoryConfiguration(RestAnnouncement.PID,
+					pid.replaceAll("[^A-Za-z0-9_-]", "-"), "?");
+			Dictionary<String, Object> properties = new Hashtable<>();
+			properties.put(RestAnnouncement.SERVED_TARGET, ServedContract.announceTarget(pid));
+			derived.update(properties);
+			return derived;
+		} catch (IOException | RuntimeException failure) {
+			LOG.log(Level.WARNING, "[DDSR] " + config.ddsr_contract() + " is served but cannot be announced: "
+					+ "its announcement could not be configured", failure);
+			return null;
+		}
 	}
 
 	/**
@@ -410,86 +406,70 @@ public class GenericRestDistribution extends Application {
 			Constants.SERVICE_BUNDLEID, Constants.SERVICE_SCOPE);
 
 	/**
-	 * Announce once everything it takes is there — the model, both
-	 * broker-side services, and a configuration that asks for it. Called
-	 * from activation and from every binding, because which of them
-	 * comes last is not ours to decide.
+	 * Say whether the contract is to be announced now: asked to, and
+	 * served. Called from activation and whenever a whiteboard changes,
+	 * because the deployment is the one condition that changes by
+	 * itself — served first, then told (FR-P3, #204). The answer is a
+	 * property of the condition, so a change of it is a service event
+	 * and the announcement follows without being called.
 	 */
-	private synchronized void announceIfReady() {
-		if (registration != null || config == null || !config.publish() || implementation == null) {
-			return;
-		}
-		if (client == null || catalog == null) {
-			return;
-		}
-		// Last, because it is the one condition that changes by itself:
-		// served first, then told (FR-P3, #204).
-		Deployment deployment = deployment();
-		if (deployment.state() == Deployment.State.FAILED && !deployment.reason().equals(reportedRefusal)) {
-			reportedRefusal = deployment.reason();
-			LOG.warning("[DDSR] the whiteboard refused " + config.ddsr_contract() + " (" + deployment.reason()
-					+ ") — not announced");
-		}
-		if (!deployment.deployed()) {
-			return;
-		}
-		announce(config, implementation);
-	}
-
-	/**
-	 * Announce the implementation this component serves.
-	 *
-	 * <p>With this, a provider is a configuration and a service: nothing
-	 * states the contract twice, because what is announced is the same
-	 * document the dispatcher serves from. Only the deployment facts are
-	 * filled in — where this instance is reachable is not contract.
-	 *
-	 * <p>The contract moves into a resource named by its catalog URL
-	 * before publishing, so the body references it instead of carrying a
-	 * second copy of it. The broker recognises that URL and rewires to
-	 * its own entry.
-	 *
-	 * <p>A failure here leaves the endpoint serving. That is deliberate:
-	 * an unreachable broker is a reason not to be discovered, not a
-	 * reason to stop answering the consumers that already found us.
-	 */
-	private void announce(Config config, ServiceImplementation implementation) {
-		DdsrClient broker = this.client;
-		BrokerCatalog brokerCatalog = this.catalog;
-		try {
-			ServiceInterface contract = implementation.getServiceInterfaces().get(0);
-			Diagnostic added = brokerCatalog.addCatalogEntry(contract, config.ddsr_contract() + "-distribution");
-			if (added.getSeverity() == DiagnosticSeverity.ERROR && added.getCode() != 202) {
-				throw new IllegalStateException("the broker refused the contract: " + added.getMessage());
+	private void reconsider() {
+		ServiceRegistration<?> condition;
+		Dictionary<String, Object> properties;
+		synchronized (this) {
+			if (servedRegistration == null || config == null || !config.publish()) {
+				return;
 			}
-
-			String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
-			publishedFrom.createResource(org.eclipse.emf.common.util.URI.createURI(entryUrl))
-					.getContents().add(contract);
-
-			RestFlavor flavor = restFlavorOf(implementation);
-			URI url = URI.create(config.public_url());
-			String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
-			flavor.setHost(url.getScheme() + "://" + url.getAuthority());
-			flavor.setBasePath((url.getPath() != null ? url.getPath() : "") + mountPath);
-			ServedSecurity.announceScheme(contract.getName(), flavor, mode, config.issuer(), config.audiences(),
-					config.jwks_uri(), config.scope_claim(), config.trusted_issuers());
-
-			this.registration = broker.provider().publish(
-					(ServiceProvider) implementation.eContainer(), implementation);
-			LOG.info("[DDSR] published " + contract.getName() + " at " + flavor.getHost()
-					+ flavor.getBasePath() + " (contract → " + entryUrl + ")");
-		} catch (RuntimeException failure) {
-			LOG.log(Level.WARNING, "[DDSR] publishing " + config.ddsr_contract()
-					+ " failed — the endpoint keeps serving", failure);
+			Deployment deployment = deployment();
+			if (deployment.state() == Deployment.State.FAILED && !deployment.reason().equals(reportedRefusal)) {
+				reportedRefusal = deployment.reason();
+				LOG.warning("[DDSR] the whiteboard refused " + config.ddsr_contract() + " ("
+						+ deployment.reason() + ") — not announced");
+			}
+			boolean publish = deployment.deployed();
+			if (publish == publishing) {
+				return;
+			}
+			publishing = publish;
+			condition = servedRegistration;
+			properties = served.properties(publish);
+		}
+		// Outside the monitor: the change is a service event, delivered
+		// on this thread, and the announcement it activates calls the
+		// broker.
+		try {
+			condition.setProperties(properties);
+		} catch (IllegalStateException unregistered) {
+			// on the way down
 		}
 	}
 
 	@Deactivate
 	void deactivate() {
-		// FR-P3 on the way down: consumers hear of it while the endpoint
-		// still answers, and only then does it go.
-		withdraw();
+		// FR-P3 on the way down: the condition goes first, which takes the
+		// announcement down with it — consumers hear of the withdrawal
+		// while the endpoint still answers, and only then does it go.
+		ServiceRegistration<?> condition;
+		synchronized (this) {
+			condition = servedRegistration;
+			servedRegistration = null;
+			publishing = false;
+		}
+		if (condition != null) {
+			try {
+				condition.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// the framework is on its way out and took it already
+			}
+		}
+		if (announcement != null) {
+			try {
+				announcement.delete();
+			} catch (IOException | RuntimeException failure) {
+				LOG.log(Level.FINE, "[DDSR] the announcement's configuration could not be deleted", failure);
+			}
+			announcement = null;
+		}
 		synchronized (this) {
 			if (application != null) {
 				try {
@@ -504,18 +484,6 @@ public class GenericRestDistribution extends Application {
 			resourceSets.ungetService(publishedFrom);
 			publishedFrom = null;
 		}
-	}
-
-	private synchronized void withdraw() {
-		if (registration == null) {
-			return;
-		}
-		try {
-			registration.withdraw();
-		} catch (RuntimeException failure) {
-			LOG.log(Level.WARNING, "[DDSR] withdrawing failed", failure);
-		}
-		registration = null;
 	}
 
 
@@ -593,8 +561,7 @@ public class GenericRestDistribution extends Application {
 		if (entry == null) {
 			throw new IllegalStateException(config.model_bundle() + " carries no entry " + config.model_entry());
 		}
-		Resource document = resourceSet.getResource(org.eclipse.emf.common.util.URI
-				.createURI(entry.toString()), true);
+		Resource document = resourceSet.getResource(URI.createURI(entry.toString()), true);
 		ServiceProvider provider = (ServiceProvider) document.getContents().get(0);
 		return provider.getImplementations().get(0);
 	}
@@ -625,7 +592,7 @@ public class GenericRestDistribution extends Application {
 				new XmiBundleMessageBodyWriter(resourceSets));
 	}
 
-	private static RestFlavor restFlavorOf(ServiceImplementation implementation) {
+	static RestFlavor restFlavorOf(ServiceImplementation implementation) {
 		for (ServiceFlavor flavor : implementation.getFlavors()) {
 			if (flavor instanceof RestFlavor rest) {
 				return rest;

@@ -13,28 +13,30 @@
 
 package org.eclipse.fennec.services.provider.messaging;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
-import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
-import org.eclipse.fennec.services.broker.core.BrokerCatalog;
-import org.eclipse.fennec.services.client.DdsrClient;
-import org.eclipse.fennec.services.client.Registration;
+import org.eclipse.fennec.services.client.announce.ContractAnnouncement;
+import org.eclipse.fennec.services.client.announce.ServedContract;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
+import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.cm.Configuration;
+import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -42,9 +44,6 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -67,10 +66,14 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * says the same thing twice. Which protocol the document's flavor speaks makes no difference to
  * this component.
  *
- * <p>Serving and announcing stay separable, as they are on the REST
- * side: with {@code publish} off this listens and tells nobody, which
- * is what a deployment wants when something else owns the
- * announcement.
+ * <p>Serving and announcing are two jobs, as they are on the REST
+ * side, and this component does the first. With {@code publish} it
+ * says when what it serves may be announced — a {@link ServedContract},
+ * a condition whose {@code publish} it raises once the broker has the
+ * subscriptions — and derives the configuration of the
+ * {@link ContractAnnouncement} that does it. With {@code publish} off
+ * this listens and tells nobody, which is what a deployment wants when
+ * something else owns the announcement.
  */
 @Component(configurationPid = "org.eclipse.fennec.services.provider.messaging",
 		property = "ddsr.distribution=messaging",
@@ -127,61 +130,23 @@ public class GenericMessagingDistribution {
 	@Reference
 	private MessagingDistribution distribution;
 
-	private volatile DdsrClient client;
-
-	private volatile BrokerCatalog catalog;
+	/**
+	 * Where the announcement's configuration is written. Mandatory: this
+	 * component only exists where someone configured it, so Configuration
+	 * Admin is there.
+	 */
+	@Reference
+	private ConfigurationAdmin configurations;
 
 	private MessagingDistribution.Served served;
 
-	/** Whether the topics are subscribed on the broker — only then is there something to announce. */
-	private boolean listening;
-
-	private Registration registration;
-
 	private ResourceSet publishedFrom;
 
-	private Config config;
+	/** What is served, as a condition whoever announces waits for. */
+	private ServiceRegistration<?> condition;
 
-	private ServiceImplementation implementation;
-
-	/**
-	 * Optional, and bound by method, for the reason the REST twin gives:
-	 * serving and announcing are separate jobs, and whichever of the two
-	 * services arrives last completes the pair.
-	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL,
-			policy = ReferencePolicy.DYNAMIC, policyOption = ReferencePolicyOption.RELUCTANT)
-	void setClient(DdsrClient client) {
-		this.client = client;
-		announceIfReady();
-	}
-
-	void unsetClient(DdsrClient client) {
-		if (this.client == client) {
-			withdraw();
-			this.client = null;
-		}
-	}
-
-	/**
-	 * The REST proxy of the catalog explicitly: a deployment that
-	 * carries broker.core for the interface alone also has that bundle's
-	 * in-process catalog, and announcing into an empty local broker
-	 * looks like success and reaches nobody.
-	 */
-	@Reference(target = "(ddsr.broker.transport=rest)",
-			cardinality = ReferenceCardinality.OPTIONAL,
-			policy = ReferencePolicy.DYNAMIC, policyOption = ReferencePolicyOption.RELUCTANT)
-	void setCatalog(BrokerCatalog catalog) {
-		this.catalog = catalog;
-		announceIfReady();
-	}
-
-	void unsetCatalog(BrokerCatalog catalog) {
-		if (this.catalog == catalog) {
-			this.catalog = null;
-		}
-	}
+	/** The announcement's configuration, derived from this one and deleted with it. */
+	private Configuration announcement;
 
 	@Activate
 	void activate(ComponentContext componentContext, BundleContext context, Config config) {
@@ -208,28 +173,67 @@ public class GenericMessagingDistribution {
 				() -> service(context, config.service_filter(), self), contract);
 		LOG.info("[DDSR] serving " + contract + " generically on " + served.channels());
 
-		synchronized (this) {
-			this.config = config;
-			this.implementation = implementation;
+		if (!config.publish()) {
+			return;
 		}
-		// Announced once the broker has the subscriptions, not once they
-		// were asked for: the connection comes up on its own time, and a
-		// consumer that hears of this service calls it straight away.
+		String pid = String.valueOf(componentContext.getProperties().get(Constants.SERVICE_PID));
+		ServedContract contractServed = new ServedContract(pid, config.ddsr_contract() + "-distribution",
+				config.broker_url(), implementation, publishedFrom, () -> "on " + flavor.getBrokers());
+		ServiceRegistration<?> registered = context.registerService(ServedContract.serviceTypes(),
+				contractServed, contractServed.properties(false));
+		synchronized (this) {
+			this.condition = registered;
+		}
+		try {
+			this.announcement = ServedContract.announcementFor(configurations, pid);
+		} catch (IOException | RuntimeException failure) {
+			LOG.log(Level.WARNING, "[DDSR] " + contract + " is served but cannot be announced: its "
+					+ "announcement could not be configured", failure);
+		}
+		// To be announced once the broker has the subscriptions, not once
+		// they were asked for: the connection comes up on its own time,
+		// and a consumer that hears of this service calls it straight
+		// away. Raising the condition is a service event — the
+		// announcement follows without being called.
 		served.whenListening(() -> {
+			ServiceRegistration<?> current;
 			synchronized (this) {
-				listening = true;
+				current = condition;
 			}
-			announceIfReady();
+			if (current != null) {
+				try {
+					current.setProperties(contractServed.properties(true));
+				} catch (IllegalStateException unregistered) {
+					// on the way down
+				}
+			}
 		});
 	}
 
 	@Deactivate
 	void deactivate() {
-		// Withdraw first, then stop listening: a consumer is told before
-		// the topics go quiet, which is FR-P3 on this transport.
-		withdraw();
+		// The condition goes first, which takes the announcement down
+		// with it: a consumer is told before the topics go quiet, which
+		// is FR-P3 on this transport.
+		ServiceRegistration<?> current;
 		synchronized (this) {
-			listening = false;
+			current = condition;
+			condition = null;
+		}
+		if (current != null) {
+			try {
+				current.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// the framework is on its way out and took it already
+			}
+		}
+		if (announcement != null) {
+			try {
+				announcement.delete();
+			} catch (IOException | RuntimeException failure) {
+				LOG.log(Level.FINE, "[DDSR] the announcement's configuration could not be deleted", failure);
+			}
+			announcement = null;
 		}
 		if (served != null) {
 			served.close();
@@ -239,60 +243,6 @@ public class GenericMessagingDistribution {
 			resourceSets.ungetService(publishedFrom);
 			publishedFrom = null;
 		}
-	}
-
-	private synchronized void announceIfReady() {
-		if (registration != null || config == null || !config.publish() || implementation == null
-				|| !listening) {
-			return;
-		}
-		if (client == null || catalog == null) {
-			return;
-		}
-		announce(config, implementation);
-	}
-
-	/**
-	 * Announce what this component serves.
-	 *
-	 * <p>The contract moves into a resource named by its catalog URL
-	 * before publishing, so the body references it instead of carrying a
-	 * second copy. A failure here leaves the subscription in place: an
-	 * unreachable broker is a reason not to be discovered, not a reason
-	 * to stop answering the consumers that already found us.
-	 */
-	private void announce(Config config, ServiceImplementation implementation) {
-		try {
-			ServiceInterface contract = implementation.getServiceInterfaces().get(0);
-			Diagnostic added = catalog.addCatalogEntry(contract, config.ddsr_contract() + "-distribution");
-			if (added.getSeverity() == DiagnosticSeverity.ERROR && added.getCode() != 202) {
-				throw new IllegalStateException("the broker refused the contract: " + added.getMessage());
-			}
-
-			String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
-			publishedFrom.createResource(org.eclipse.emf.common.util.URI.createURI(entryUrl))
-					.getContents().add(contract);
-
-			this.registration = client.provider().publish(
-					(ServiceProvider) implementation.eContainer(), implementation);
-			LOG.info("[DDSR] published " + contract.getName() + " on "
-					+ messagingFlavorOf(implementation).getBrokers() + " (contract → " + entryUrl + ")");
-		} catch (RuntimeException failure) {
-			LOG.log(Level.WARNING, "[DDSR] publishing " + config.ddsr_contract()
-					+ " failed — the subscription keeps answering", failure);
-		}
-	}
-
-	private synchronized void withdraw() {
-		if (registration == null) {
-			return;
-		}
-		try {
-			registration.withdraw();
-		} catch (RuntimeException failure) {
-			LOG.log(Level.WARNING, "[DDSR] withdrawing failed", failure);
-		}
-		registration = null;
 	}
 
 	private static ServiceImplementation load(BundleContext context, Config config, ResourceSet resourceSet) {
@@ -311,7 +261,7 @@ public class GenericMessagingDistribution {
 			throw new IllegalStateException(config.model_bundle() + " carries no entry " + config.model_entry());
 		}
 		Resource document = resourceSet.getResource(
-				org.eclipse.emf.common.util.URI.createURI(entry.toString()), true);
+				URI.createURI(entry.toString()), true);
 		ServiceProvider provider = (ServiceProvider) document.getContents().get(0);
 		return provider.getImplementations().get(0);
 	}

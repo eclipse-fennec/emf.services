@@ -17,8 +17,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -28,12 +26,11 @@ import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServicesFactory;
-import org.eclipse.fennec.services.broker.core.BrokerCatalog;
-import org.eclipse.fennec.services.client.DdsrClient;
-import org.eclipse.fennec.services.client.Registration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.osgi.framework.ServiceRegistration;
+import org.osgi.service.cm.Configuration;
 
 /**
  * The decisions of the generic MQTT distribution — the twin of #84 on
@@ -118,43 +115,28 @@ class GenericMessagingDistributionTest {
 	}
 
 	@Test
-	@DisplayName("on the way down it withdraws first and stops listening second")
-	void withdrawBeforeSilence() throws Exception {
+	@DisplayName("on the way down the condition goes first and the topics go quiet second")
+	@SuppressWarnings("unchecked")
+	void theConditionGoesBeforeSilence() throws Exception {
+		// The announcement is bound to the condition: taking it away
+		// deactivates the announcement, which withdraws. FR-P3 on this
+		// transport — a consumer is told before the topics go quiet.
 		GenericMessagingDistribution distribution = new GenericMessagingDistribution();
-		Registration registration = mock(Registration.class);
+		ServiceRegistration<Object> condition = mock(ServiceRegistration.class);
+		Configuration announcement = mock(Configuration.class);
 		MessagingDistribution.Served served = mock(MessagingDistribution.Served.class);
-		set(distribution, "registration", registration);
+		set(distribution, "condition", condition);
+		set(distribution, "announcement", announcement);
 		set(distribution, "served", served);
 
 		distribution.deactivate();
 
-		InOrder order = inOrder(registration, served);
-		// FR-P3 on this transport: a consumer is told before the topics
-		// go quiet, not after.
-		order.verify(registration).withdraw();
+		InOrder order = inOrder(condition, announcement, served);
+		order.verify(condition).unregister();
+		order.verify(announcement).delete();
 		order.verify(served).close();
 	}
 
-	@Test
-	@DisplayName("nothing is announced before the topics are subscribed")
-	void noAnnouncementBeforeListening() throws Exception {
-		GenericMessagingDistribution distribution = new GenericMessagingDistribution();
-		GenericMessagingDistribution.Config config = mock(GenericMessagingDistribution.Config.class);
-		when(config.publish()).thenReturn(true);
-		set(distribution, "config", config);
-		set(distribution, "implementation", F.createServiceImplementation());
-		DdsrClient client = mock(DdsrClient.class);
-		BrokerCatalog catalog = mock(BrokerCatalog.class);
-
-		// Both announcing services arrive, and each asks whether the pair
-		// is complete — it is, and still nothing may go out: the
-		// connection comes up on its own time, and a consumer told about
-		// a service calls a topic nobody listens on yet.
-		distribution.setClient(client);
-		distribution.setCatalog(catalog);
-
-		verifyNoInteractions(client, catalog);
-	}
 
 
 	void servingOnly() {

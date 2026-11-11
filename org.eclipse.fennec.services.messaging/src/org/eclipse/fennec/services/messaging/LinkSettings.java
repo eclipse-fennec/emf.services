@@ -38,10 +38,19 @@ import java.util.Locale;
  * @param username           who this node is to a broker that asks for
  *                           a name and a password, or empty
  * @param password           the password
+ * @param maxBodyBytes       the largest document a message of this link
+ *                           carries; zero or less leaves the instance's
+ *                           own limit
  */
 public record LinkSettings(String name, String url, String clientId, String keystore,
 		String keystorePassword, String truststore, String truststorePassword, String exchange,
-		String username, String password) {
+		String username, String password, long maxBodyBytes) {
+
+	/**
+	 * What an envelope adds around its document, generously: a handful
+	 * of attributes and extensions, none of them long.
+	 */
+	static final long ENVELOPE_BYTES = 16 * 1024;
 
 	/** MQTT 3.1.1 — the wire every MQTT part of this workspace speaks. */
 	static final String MQTT3_FACTORY_PID = "org.gecko.messaging.mqtt3";
@@ -53,7 +62,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	public LinkSettings(String name, String url, String clientId, String keystore, String keystorePassword,
 			String truststore, String truststorePassword) {
 		this(name, url, clientId, keystore, keystorePassword, truststore, truststorePassword, null, null,
-				null);
+				null, 0);
 	}
 
 	public LinkSettings {
@@ -67,7 +76,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 
 	/** A link without a certificate of its own. */
 	public static LinkSettings of(String name, String url, String clientId) {
-		return new LinkSettings(name, url, clientId, null, null, null, null, null, null, null);
+		return new LinkSettings(name, url, clientId, null, null, null, null, null, null, null, 0);
 	}
 
 	/**
@@ -76,13 +85,23 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	 */
 	public LinkSettings as(String username, String password) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password);
+				truststorePassword, exchange, username, password, maxBodyBytes);
+	}
+
+	/**
+	 * The same link, carrying documents up to this size (#219). Zero or
+	 * less leaves the instance's own limit, which is one megabyte per
+	 * message.
+	 */
+	public LinkSettings carrying(long maxBodyBytes) {
+		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
+				truststorePassword, exchange, username, password, maxBodyBytes);
 	}
 
 	/** The same link, on this exchange. */
 	public LinkSettings onExchange(String exchange) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password);
+				truststorePassword, exchange, username, password, maxBodyBytes);
 	}
 
 	/**
@@ -129,6 +148,14 @@ public record LinkSettings(String name, String url, String clientId, String keys
 		// protocol without message properties (MQTT 3.1.1) a reply
 		// address and a correlation.
 		configuration.put("cloudEvents", "structured");
+		if (maxBodyBytes > 0) {
+			// The instance bounds the message, the deployment states the
+			// document. A document that is not text travels in the
+			// envelope as base64 — four bytes for every three — so the
+			// message that carries the largest document allowed is that
+			// much larger, plus the envelope around it.
+			configuration.put("maxMessageSize", (maxBodyBytes + 2) / 3 * 4 + ENVELOPE_BYTES);
+		}
 		put(configuration, "username", username);
 		put(configuration, ".password", password);
 		if (secured()) {

@@ -29,9 +29,12 @@ import java.io.InputStream;
  * the broker's heap without needing any parser trick at all.
  * <p>
  * The cap is deliberately generous compared to real traffic: it is a
- * backstop against absurd input, not a business rule. Making it
- * configurable per deployment belongs with the broker's own
- * configuration and is not attempted here.
+ * backstop against absurd input, not a business rule — for the
+ * registry's own traffic. A provider that serves a contract is a
+ * different matter: an operation may take a document, and how large a
+ * document it is prepared to hold is that deployment's decision (#219).
+ * So the limit is a parameter with this as its default: whoever serves
+ * a contract states its own, and everything else keeps the backstop.
  */
 public final class WireBody {
 
@@ -47,7 +50,23 @@ public final class WireBody {
 	 * to a consumer (the XMI parser) and never need to be held.
 	 */
 	public static InputStream limited(InputStream in) {
-		return new LimitedInputStream(in, MAX_BYTES);
+		return limited(in, MAX_BYTES);
+	}
+
+	/**
+	 * The same, with the limit the caller is prepared to hold.
+	 *
+	 * @param maxBytes the largest body accepted; anything not positive
+	 *                 means {@link #MAX_BYTES} — there is no way to ask
+	 *                 for no limit at all
+	 */
+	public static InputStream limited(InputStream in, long maxBytes) {
+		return new LimitedInputStream(in, effective(maxBytes));
+	}
+
+	/** The limit a configured value stands for: itself, or the default when it says nothing. */
+	public static long effective(long maxBytes) {
+		return maxBytes > 0 ? maxBytes : MAX_BYTES;
 	}
 
 	/**
@@ -56,14 +75,23 @@ public final class WireBody {
 	 * more than once; prefer {@link #limited(InputStream)}.
 	 */
 	public static byte[] readFully(InputStream in) throws IOException {
+		return readFully(in, MAX_BYTES);
+	}
+
+	/**
+	 * The same, with the limit the caller is prepared to hold; anything
+	 * not positive means {@link #MAX_BYTES}.
+	 */
+	public static byte[] readFully(InputStream in, long maxBytes) throws IOException {
+		long limit = effective(maxBytes);
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		byte[] chunk = new byte[8192];
-		int total = 0;
+		long total = 0;
 		int read;
 		while ((read = in.read(chunk)) != -1) {
 			total += read;
-			if (total > MAX_BYTES) {
-				throw tooLarge();
+			if (total > limit) {
+				throw tooLarge(limit);
 			}
 			buffer.write(chunk, 0, read);
 		}
@@ -75,9 +103,9 @@ public final class WireBody {
 	 * it is too big, and a caller can act on the difference. The JAX-RS
 	 * providers turn this into 413.
 	 */
-	static XmiCodecException tooLarge() {
+	static XmiCodecException tooLarge(long limit) {
 		return new XmiCodecException(XmiCodecException.Reason.TOO_LARGE,
-				"request body exceeds " + MAX_BYTES + " bytes");
+				"request body exceeds " + limit + " bytes");
 	}
 
 	/**
@@ -126,7 +154,7 @@ public final class WireBody {
 		private void count(long bytes) {
 			consumed += bytes;
 			if (consumed > limit) {
-				throw tooLarge();
+				throw tooLarge(limit);
 			}
 		}
 	}

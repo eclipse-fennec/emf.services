@@ -101,6 +101,12 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
 				description = "The password of the trust store.")
 		String tls_truststore_password() default "";
+
+		@AttributeDefinition(name = "Largest call", required = false,
+				description = "How many bytes the document of a call may have. Zero leaves the default of "
+						+ "one megabyte per message; a larger value also raises what this node's "
+						+ "connection accepts and sends. The messaging broker has a limit of its own.")
+		long max_body_bytes() default 0;
 	}
 
 	private volatile BundleContext context;
@@ -158,7 +164,7 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 		MessagingLink link = connection.link;
 		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(flavor, service,
 				"/provider/" + (name == null ? flavor.getName() : name), resourceSets,
-				CallTracer.deferred(() -> tracer));
+				CallTracer.deferred(() -> tracer), config.max_body_bytes());
 
 		List<String> channels = new ArrayList<>();
 		List<AutoCloseable> subscriptions = new ArrayList<>();
@@ -238,7 +244,8 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 							new LinkSettings("fennec.services.provider." + id, url, "ddsr-provider-" + id,
 									who.tls_keystore(), who.tls_keystore_password(), who.tls_truststore(),
 									who.tls_truststore_password())
-									.onExchange(exchange).as(who.username(), who.password())));
+									.onExchange(exchange).as(who.username(), who.password())
+									.carrying(who.max_body_bytes())));
 				} catch (RuntimeException unreachable) {
 					throw new IllegalStateException("cannot connect to the broker at " + url, unreachable);
 				}

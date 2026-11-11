@@ -140,6 +140,12 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 		@AttributeDefinition(name = "TLS trust store password", type = AttributeType.PASSWORD, required = false,
 				description = "The password of the trust store.")
 		String tls_truststore_password() default "";
+
+		@AttributeDefinition(name = "Largest answer", required = false,
+				description = "How many bytes the document of an answer may have. Zero leaves the default "
+						+ "of one megabyte per message; a larger value also raises what this node's "
+						+ "connections accept and send. The messaging broker has a limit of its own.")
+		long max_body_bytes() default 0;
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -381,7 +387,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 					+ correlation);
 		}
 		XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), resourceSets,
-				message.attributes().getDatacontenttype());
+				message.attributes().getDatacontenttype(), config.max_body_bytes());
 		for (EObject root : bundle.roots()) {
 			if (root instanceof ServiceInvocationResult result) {
 				if (result.getDiagnostic() != null) {
@@ -420,7 +426,8 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 							new LinkSettings("fennec.services.invoker." + id, url, "ddsr-consumer-" + id,
 									config.tls_keystore(), config.tls_keystore_password(),
 									config.tls_truststore(), config.tls_truststore_password())
-									.onExchange(route.exchange()).as(config.username(), config.password()));
+									.onExchange(route.exchange()).as(config.username(), config.password())
+									.carrying(config.max_body_bytes()));
 					links.put(key, link);
 				}
 				if (link.awaitConnected(config.reply_timeout_seconds(), TimeUnit.SECONDS)) {

@@ -240,7 +240,20 @@ public final class XmiCodec {
 	/** Reads the envelope in the encoding the content type names; {@code null} is XMI. */
 	public static XmiBundle readBundle(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects,
 			String contentType) throws IOException {
-		return readGuarded(in, rsObjects, contentType, res -> {
+		return readBundle(in, rsObjects, contentType, WireBody.MAX_BYTES);
+	}
+
+	/**
+	 * The same, for a caller that serves a contract and has said how
+	 * large a document it is prepared to hold (#219). Every other guard
+	 * stays as it is: the limit is the one thing a deployment may move.
+	 *
+	 * @param maxBytes the largest document accepted; anything not
+	 *                 positive means {@link WireBody#MAX_BYTES}
+	 */
+	public static XmiBundle readBundle(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects,
+			String contentType, long maxBytes) throws IOException {
+		return readGuarded(in, rsObjects, contentType, maxBytes, res -> {
 			// resolveAll settles proxies that can be reached without I/O.
 			// The deny-all URI handler is still installed at this point, so
 			// every external fetch fails and EcoreUtil leaves such a
@@ -270,6 +283,11 @@ public final class XmiCodec {
 	 */
 	private static <T> T readGuarded(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects,
 			String contentType, ResourceReader<T> reader) throws IOException {
+		return readGuarded(in, rsObjects, contentType, WireBody.MAX_BYTES, reader);
+	}
+
+	private static <T> T readGuarded(InputStream in, ComponentServiceObjects<ResourceSet> rsObjects,
+			String contentType, long maxBytes, ResourceReader<T> reader) throws IOException {
 		ResourceSet rs = rsObjects.getService();
 		// Front of the list so it shadows the file:/http: handlers. The
 		// ResourceSet is a prototype instance, but we still restore the
@@ -287,7 +305,8 @@ public final class XmiCodec {
 				// ones that go through a MessageBodyReader.
 				// The size cap covers every encoding; the parser features
 				// are XML's own and would mean nothing to another format.
-				res.load(WireBody.limited(in), res instanceof XMLResource ? secureLoadOptions() : Map.of());
+				res.load(WireBody.limited(in, maxBytes),
+						res instanceof XMLResource ? secureLoadOptions() : Map.of());
 			} catch (IOException parseError) {
 				// Malformed or unacceptable XMI is a client problem — 400,
 				// not 500. The parser message stays in the log: it can carry

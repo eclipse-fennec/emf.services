@@ -66,6 +66,7 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import io.cloudevents.model.ce.CloudEvent;
@@ -107,6 +108,7 @@ public class RestDispatcher {
 	private final ComponentServiceObjects<ResourceSet> resourceSets;
 	private final CallTracer tracer;
 	private final boolean enforce;
+	private final long maxBodyBytes;
 
 	/**
 	 * @param implementations where the service behind the contract comes
@@ -142,6 +144,20 @@ public class RestDispatcher {
 	 */
 	RestDispatcher(RestFlavor flavor, Supplier<ServiceObjects<Object>> implementations, String contract,
 			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer, boolean enforce) {
+		this(flavor, implementations, contract, resourceSets, tracer, enforce, WireBody.MAX_BYTES);
+	}
+
+	/**
+	 * @param maxBodyBytes how much of a request body is read before the
+	 *        call is refused with 413 (#219). A deployment's statement:
+	 *        the codec's megabyte is the default and stays it for zero or
+	 *        less, a deployment that moves larger models says so where it
+	 *        configures the distribution.
+	 */
+	RestDispatcher(RestFlavor flavor, Supplier<ServiceObjects<Object>> implementations, String contract,
+			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer, boolean enforce,
+			long maxBodyBytes) {
+		this.maxBodyBytes = WireBody.effective(maxBodyBytes);
 		this.flavor = flavor;
 		this.implementations = implementations;
 		this.contract = contract;
@@ -308,6 +324,12 @@ public class RestDispatcher {
 		Object body;
 		try {
 			body = body(operationFlavor, entity);
+		} catch (WebApplicationException refusal) {
+			// The codec's own word on its refusal — 413 for a body over
+			// the limit, 400 for one it cannot read. Caught here, before
+			// the catch below would call both unreadable: too large is
+			// something a caller can act on, and only if it is told.
+			return Response.status(refusal.getResponse().getStatus()).entity(refusal.getMessage()).build();
 		} catch (IOException | RuntimeException undecodable) {
 			return Response.status(400)
 					.entity("the request body is not readable as what the contract declares: "
@@ -419,7 +441,7 @@ public class RestDispatcher {
 			// so both come from there rather than being decided again.
 			byte[] body;
 			try {
-				body = WireBody.readFully(entity);
+				body = WireBody.readFully(entity, maxBodyBytes);
 			} catch (XmiCodecException refusal) {
 				throw XmiHttpErrors.toHttp(refusal);
 			}
@@ -437,7 +459,8 @@ public class RestDispatcher {
 				// means XMI, which is what every caller had before.
 				String contentType = operationFlavor.getConsumes().isEmpty() ? null
 						: operationFlavor.getConsumes().get(0);
-				roots = XmiCodec.readBundle(new ByteArrayInputStream(body), resourceSets, contentType).roots();
+				roots = XmiCodec.readBundle(new ByteArrayInputStream(body), resourceSets, contentType, maxBodyBytes)
+						.roots();
 			} catch (XmiCodecException refusal) {
 				throw XmiHttpErrors.toHttp(refusal);
 			}
@@ -451,7 +474,14 @@ public class RestDispatcher {
 			}
 			return root;
 		}
-		String text = new String(entity.readAllBytes(), UTF_8);
+		// The same bound for a body that is no model: text is held in
+		// memory just the same.
+		String text;
+		try {
+			text = new String(WireBody.readFully(entity, maxBodyBytes), UTF_8);
+		} catch (XmiCodecException refusal) {
+			throw XmiHttpErrors.toHttp(refusal);
+		}
 		return text.isEmpty() ? null : text;
 	}
 

@@ -46,6 +46,7 @@ import java.util.Set;
  * @param identity who this node is to its identity provider (SECURITY.md §6)
  * @param amqpUrl the AMQP broker a node that serves over {@code fennec.amqp} listens on
  * @param encoding the content type calls served over a messaging broker are encoded in; empty is XMI
+ * @param maxBodyBytes how large the body of a call may be, in either direction; 0 is the default of one megabyte
  */
 public record RsaSettings(
 		String brokerUrl,
@@ -70,7 +71,8 @@ public record RsaSettings(
 		String discoveryFlavor,
 		NodeIdentity identity,
 		String amqpUrl,
-		String encoding) {
+		String encoding,
+		long maxBodyBytes) {
 
 	/** Where RabbitMQ listens when nobody says otherwise. */
 	public static final String DEFAULT_AMQP_URL = "amqp://localhost:5672";
@@ -89,7 +91,7 @@ public record RsaSettings(
 			String distributionFlavor, String discoveryFlavor, NodeIdentity identity) {
 		this(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp, httpId, registryName,
 				defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds, sessionIntervalSeconds,
-				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null, null);
+				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null, null, 0);
 	}
 
 	/** The same node, with its AMQP broker named. */
@@ -97,7 +99,7 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, url, encoding);
+				identity, url, encoding, maxBodyBytes);
 	}
 
 	/**
@@ -109,7 +111,19 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, amqpUrl, contentType);
+				identity, amqpUrl, contentType, maxBodyBytes);
+	}
+
+	/**
+	 * The same node, with the largest body it takes named (#219): what a
+	 * provider reads of a call, and what a consumer reads of an answer
+	 * that came over a messaging broker. Zero or less is the default.
+	 */
+	public RsaSettings withMaxBodyBytes(long bytes) {
+		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
+				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
+				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
+				identity, amqpUrl, encoding, Math.max(0, bytes));
 	}
 
 	/** A node without an identity — what every node was before SECURITY.md §6. */

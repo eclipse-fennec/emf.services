@@ -244,4 +244,26 @@ class DerivationTest {
 				.containsEntry("remote.configs.supported", "fennec.amqp")
 				.containsEntry("discovery.target", "(ddsr.rsa.flavor=fennec.rest)");
 	}
+
+	@Test
+	@DisplayName("#219: the largest body is said once, on the role, and reaches the part that reads bodies")
+	void maxBodyBytes() {
+		assertThat(byLabel(Derivation.forProvider(provider()), Derivation.DISTRIBUTION_PID).properties())
+				.as("nobody named a limit, so the default of the part applies").doesNotContainKey("max.body.bytes");
+		assertThat(byLabel(Derivation.forProvider(provider().withMaxBodyBytes(8_000_000)),
+				Derivation.DISTRIBUTION_PID).properties()).containsEntry("max.body.bytes", "8000000");
+
+		List<DerivedConfiguration> overMqtt = Derivation.forProvider(mqttProvider().withMaxBodyBytes(8_000_000));
+		assertThat(byLabel(overMqtt, Derivation.CONNECTION_MESSAGING_PID).properties())
+				.as("over a messaging broker the connection reads the call").containsEntry("max.body.bytes", "8000000");
+		assertThat(byLabel(overMqtt, Derivation.INVOKER_MESSAGING_PID).properties())
+				.as("and the invoker the answer").containsEntry("max.body.bytes", "8000000");
+		assertThat(Derivation.forProvider(mqttProvider())).extracting(DerivedConfiguration::label)
+				.as("a node with neither a certificate nor a limit leaves its connections unconfigured")
+				.doesNotContain(Derivation.CONNECTION_MESSAGING_PID, Derivation.INVOKER_MESSAGING_PID);
+		assertThat(Derivation.forProvider(provider().withMaxBodyBytes(8_000_000)))
+				.extracting(DerivedConfiguration::label)
+				.as("a node that only speaks REST has no messaging connection to tell")
+				.doesNotContain(Derivation.CONNECTION_MESSAGING_PID, Derivation.INVOKER_MESSAGING_PID);
+	}
 }

@@ -234,6 +234,15 @@ for JSON that is emf.codec (`org.eclipse.fennec.codec`). A node that
 has none refuses to write or read the document rather than falling
 back to XMI. Scenario S of the harness is that call.
 
+**How large a call may be.** A body is read up to 1 MiB and refused
+above it (413 over REST). A node that takes larger models says so on
+its role: `"max.body.bytes": 33554432` on the provider raises what its
+exports read — over REST the request body, over a messaging broker the
+call's document and what the connection carries; on the consumer it
+raises what an answer over a messaging broker may be. Zero, the
+default, leaves the megabyte
+([Transports](TRANSPORTS.md#how-large-a-body-may-be)).
+
 Three things the role configuration keeps in step, each of which is a
 silent failure when done by hand:
 

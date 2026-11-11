@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.messaging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -154,5 +155,27 @@ class LinkSettingsTest {
 	void whatALogLinePrintsCarriesNoPassword() {
 		assertThat(new LinkSettings("n", "ssl://h:8883", "id", "/k.p12", "secret", null, "other"))
 				.hasToString("n → ssl://h:8883");
+	}
+
+	@Test
+	void aLinkThatNamesNoSizeLeavesTheInstanceItsOwnLimit() {
+		assertThat(LinkSettings.of("n", "tcp://h:1883", null).configuration())
+				.doesNotContainKey("maxMessageSize");
+		assertThat(LinkSettings.of("n", "tcp://h:1883", null).carrying(0).configuration())
+				.doesNotContainKey("maxMessageSize");
+	}
+
+	@Test
+	void theMessageIsLargerThanTheDocumentItCarries() {
+		long document = 3L * 1024 * 1024;
+
+		for (String url : List.of("tcp://h:1883", "amqp://h:5672")) {
+			Map<String, Object> configuration = LinkSettings.of("n", url, null).carrying(document)
+					.onExchange("calls").as("user", "secret").configuration();
+
+			assertThat(configuration.get("maxMessageSize")).as(url
+					+ ": a document that is not text travels as base64, four bytes for three, inside an envelope")
+					.isEqualTo(4L * 1024 * 1024 + LinkSettings.ENVELOPE_BYTES);
+		}
 	}
 }

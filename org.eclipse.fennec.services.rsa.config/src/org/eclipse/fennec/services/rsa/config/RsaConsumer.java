@@ -144,6 +144,11 @@ public class RsaConsumer extends NodeConfiguration {
 				description = "The password of the trust store.")
 		String tls_truststore_password() default "";
 
+		@AttributeDefinition(name = "Largest body", required = false,
+				description = "How many bytes an answer that comes over a messaging broker may have. Zero leaves "
+						+ "the default of one megabyte; answers over REST are read up to that default.")
+		long max_body_bytes() default 0;
+
 	}
 
 	@Reference
@@ -188,6 +193,7 @@ public class RsaConsumer extends NodeConfiguration {
 				new NodeIdentity(config.token_uri(), config.client_id(), config.client_secret(), config.scope(),
 						"", "", List.of(), "scope", "sub", config.tls_keystore(), config.tls_keystore_password(),
 						config.tls_truststore(), config.tls_truststore_password(),
-						"certificate".equals(config.broker_authentication().strip())));
+						"certificate".equals(config.broker_authentication().strip())))
+				.withMaxBodyBytes(config.max_body_bytes());
 	}
 }

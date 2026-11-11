@@ -14,12 +14,12 @@
 package org.eclipse.fennec.services.provider.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Field;
-import java.util.List;
 
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.MessagingFlavor;
@@ -137,12 +137,12 @@ class GenericMessagingDistributionTest {
 		order.verify(served).close();
 	}
 
-
-
+	@Test
+	@DisplayName("a distribution that only serves goes down without a condition to take away")
 	void servingOnly() {
 		GenericMessagingDistribution distribution = new GenericMessagingDistribution();
 
-		assertThat(List.of(distribution)).allSatisfy(d -> d.deactivate());
+		assertThatCode(distribution::deactivate).doesNotThrowAnyException();
 	}
 
 	private static void set(GenericMessagingDistribution distribution, String field, Object value)

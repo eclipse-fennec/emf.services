@@ -79,27 +79,35 @@ class RestServiceInvokerBearerTest {
 	}
 
 	@Test
-	void aGuardedOperationWithoutASupplierFailsSayingWhy() throws Exception {
+	void aGuardedOperationOnANodeWithoutTokensFailsSayingWhy() throws Exception {
 		RestOperationFlavor op = operation(true);
 
-		assertThatThrownBy(() -> invoker(null).bearerFor(flavorWithScheme(op), op, "record"))
+		assertThatThrownBy(() -> invoker(new NoTokens()).bearerFor(flavorWithScheme(op), op, "record"))
 				.isInstanceOf(DdsrException.class)
-				.hasMessageContaining("no token supplier");
+				.hasMessageContaining("provider.tokens.target");
 	}
 
 	@Test
-	void anOpenOperationOfAGuardedTargetNeedsNoSupplier() throws Exception {
+	void anOpenOperationOfAGuardedTargetNeedsNoToken() throws Exception {
 		RestOperationFlavor op = operation(false);
 
-		assertThat(invoker(null).bearerFor(flavorWithScheme(op), op, "version")).isNull();
+		assertThat(invoker(new NoTokens()).bearerFor(flavorWithScheme(op), op, "version")).isNull();
 	}
 
 	private static RestServiceInvoker invoker(TokenSupplier tokens) throws Exception {
+		// The invoker asks its transport, whose configuration says which
+		// supplier answers for providers.
+		RestTransport transport = new RestTransport();
+		set(transport, RestTransport.class, "providerTokens", tokens);
 		RestServiceInvoker invoker = new RestServiceInvoker();
-		Field field = RestServiceInvoker.class.getDeclaredField("tokens");
-		field.setAccessible(true);
-		field.set(invoker, tokens);
+		set(invoker, RestServiceInvoker.class, "tx", transport);
 		return invoker;
+	}
+
+	private static void set(Object target, Class<?> type, String name, Object value) throws Exception {
+		Field field = type.getDeclaredField(name);
+		field.setAccessible(true);
+		field.set(target, value);
 	}
 
 	private static RestOperationFlavor operation(boolean guarded) {

@@ -101,11 +101,14 @@ broker_auth_args() {
 }
 
 # Runs a command (a function such as start_jar, too) as the given client.
+# DDSR_TOKENS names the token supplier the node's REST transport binds —
+# the configurations write it into the target of that reference
+# ((fennec.tokens=oauth)); without it a node shows no token.
 as_client() { # client command...
   local client="$1"; shift
   if secured; then
     DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID="$client" \
-      DDSR_OAUTH_CLIENT_SECRET="$client-secret" DDSR_OAUTH_SCOPE=ddsr-broker "$@"
+      DDSR_OAUTH_CLIENT_SECRET="$client-secret" DDSR_OAUTH_SCOPE=ddsr-broker DDSR_TOKENS=oauth "$@"
   else
     "$@"
   fi
@@ -115,14 +118,15 @@ as_client() { # client command...
 export_client() { # client
   secured || return 0
   export DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID="$1" DDSR_OAUTH_CLIENT_SECRET="$1-secret" \
-    DDSR_OAUTH_SCOPE=ddsr-broker
+    DDSR_OAUTH_SCOPE=ddsr-broker DDSR_TOKENS=oauth
 }
 
 # The same as podman -e arguments, one per line (use with mapfile).
 client_args() { # client
   secured || return 0
   printf -- '-e\n%s\n' "DDSR_OAUTH_TOKEN_URI=$KEYCLOAK_TOKEN_URI" \
-    "DDSR_OAUTH_CLIENT_ID=$1" "DDSR_OAUTH_CLIENT_SECRET=$1-secret" "DDSR_OAUTH_SCOPE=ddsr-broker"
+    "DDSR_OAUTH_CLIENT_ID=$1" "DDSR_OAUTH_CLIENT_SECRET=$1-secret" "DDSR_OAUTH_SCOPE=ddsr-broker" \
+    "DDSR_TOKENS=oauth"
 }
 
 # What a node that serves guarded contracts verifies, as podman -e

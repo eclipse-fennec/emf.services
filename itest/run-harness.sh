@@ -580,7 +580,7 @@ echo "  ✓ gateway: the certificate in the header counts from the gateway's add
 # The Java client, with its certificate in a key store: it subscribes, and
 # the imported catalog proxy lists what the broker holds.
 (cd "$WORK" && mkdir -p client-mtls && cd client-mtls \
-  && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_BROKER_URL="$MTLS_URL" DDSR_CONSUMER_ID=java-client \
+  && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_TOKENS=none DDSR_BROKER_URL="$MTLS_URL" DDSR_CONSUMER_ID=java-client \
        DDSR_TLS_KEYSTORE="$TLS_DIR/java-client.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit \
        DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_TLS_TRUSTSTORE_PASSWORD=changeit \
        java -Dgosh.args=--nointeractive -jar "$CLIENT_JAR") >"$WORK/client-mtls.log" 2>&1 &
@@ -663,7 +663,7 @@ if secured; then
   PERSONS_URL="http://localhost:9095/payments"
   require_port_free 9095
   (cd "$WORK" && mkdir -p payment-mtls && cd payment-mtls \
-    && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_BROKER_URL="$MTLS_URL" DDSR_BROKER_AUTHENTICATION=certificate \
+    && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_TOKENS=none DDSR_BROKER_URL="$MTLS_URL" \
          DDSR_CONSUMER_ID=payment-java DDSR_TLS_KEYSTORE="$TLS_DIR/payment-java.p12" \
          DDSR_TLS_KEYSTORE_PASSWORD=changeit DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" \
          DDSR_TLS_TRUSTSTORE_PASSWORD=changeit PAYMENTS_HTTP_PORT=9095 PAYMENTS_PUBLIC_URL="$PERSONS_URL" \
@@ -697,7 +697,7 @@ if secured; then
          head -c 3000 <<<"$ANNOUNCED"; echo; exit 1; }
   echo "  ✓ provider: announced over its certificate, serving in bearer, the scheme names the audience person-store"
   (cd "$WORK" && mkdir -p client-mtls-oauth && cd client-mtls-oauth \
-    && exec env DDSR_BROKER_URL="$MTLS_URL" DDSR_BROKER_AUTHENTICATION=certificate DDSR_CONSUMER_ID=java-client \
+    && exec env DDSR_BROKER_URL="$MTLS_URL" DDSR_TOKENS=oauth DDSR_BROKER_TOKENS=none DDSR_CONSUMER_ID=java-client \
          DDSR_TLS_KEYSTORE="$TLS_DIR/java-client.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit \
          DDSR_TLS_TRUSTSTORE="$TLS_DIR/truststore.p12" DDSR_TLS_TRUSTSTORE_PASSWORD=changeit \
          DDSR_OAUTH_TOKEN_URI="$KEYCLOAK_TOKEN_URI" DDSR_OAUTH_CLIENT_ID=java-client \

@@ -34,7 +34,6 @@ import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.SecurityRequirements;
-import org.eclipse.fennec.services.common.TokenSupplier;
 import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -89,15 +88,6 @@ public final class RestServiceInvoker implements ServiceInvoker {
 	 */
 	@Reference(policy = ReferencePolicy.DYNAMIC, cardinality = ReferenceCardinality.OPTIONAL)
 	private volatile CallTracer tracer;
-
-	/**
-	 * Where this node's tokens come from, if it has any (SECURITY.md §6).
-	 * Asked per call, for the audience the target's flavor names — never
-	 * for the broker's: a provider must not receive a token it could
-	 * replay against the broker.
-	 */
-	@Reference(policy = ReferencePolicy.DYNAMIC, cardinality = ReferenceCardinality.OPTIONAL)
-	private volatile TokenSupplier tokens;
 
 	private CallTracer tracer() {
 		CallTracer bound = tracer;
@@ -243,7 +233,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 	/**
 	 * The token a call to this target carries: one of the audience its
 	 * flavor's bearer scheme names, or none when the flavor names no
-	 * scheme. A guarded operation on a node without a token supplier
+	 * scheme. A guarded operation on a node configured without tokens
 	 * fails here, saying why, rather than as a bare 401 from the provider.
 	 */
 	String bearerFor(RestFlavor flavor, RestOperationFlavor op, String operationName) {
@@ -251,16 +241,18 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		if (scheme == null) {
 			return null;
 		}
-		TokenSupplier supplier = tokens;
-		if (supplier == null) {
-			if (SecurityRequirements.demandsAuthentication(op.getOperation())) {
-				throw new DdsrException("'" + operationName + "' needs a bearer token of " + scheme.getIssuer()
-						+ ", and this node has no token supplier — configure its client credentials");
-			}
-			return null;
-		}
+		// Asked per call, for the audience the target's flavor names —
+		// never for the broker's: a provider must not receive a token it
+		// could replay against the broker. Which supplier answers is the
+		// transport's configuration (provider.tokens.target).
 		String audience = scheme.getAudiences().isEmpty() ? null : scheme.getAudiences().get(0);
-		return supplier.token(audience);
+		String token = tx.providerToken(audience);
+		if (token == null && SecurityRequirements.demandsAuthentication(op.getOperation())) {
+			throw new DdsrException("'" + operationName + "' needs a bearer token of " + scheme.getIssuer()
+					+ ", and this node is configured without tokens for providers — set "
+					+ "provider.tokens.target on its REST transport and configure its client credentials");
+		}
+		return token;
 	}
 
 	private static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept,

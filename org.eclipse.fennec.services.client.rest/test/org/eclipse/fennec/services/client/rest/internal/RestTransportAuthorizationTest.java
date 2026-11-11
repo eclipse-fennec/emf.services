@@ -68,18 +68,23 @@ class RestTransportAuthorizationTest {
 	@Test
 	void aNodeThatProvesItselfByCertificateShowsTheBrokerNoToken() throws Exception {
 		// Discovery over the node's certificate, calls over tokens: the
-		// supplier is there for the providers, and still the broker gets none.
-		RestTransport transport = transport(() -> "t0k3n");
-		set(transport, "tokenToBroker", false);
+		// configuration targets the supplier without tokens for the
+		// broker and the real one for the providers.
+		RestTransport transport = transport(new NoTokens());
+		set(transport, "providerTokens", (TokenSupplier) () -> "t0k3n");
 
 		assertThat(call(transport, "http://broker.test:8887/ddsr/rest/catalog/").containsKey(HttpHeaders.AUTHORIZATION))
 				.isFalse();
+		assertThat(transport.providerToken("ledger")).isEqualTo("t0k3n");
 	}
 
 	@Test
-	void withoutASupplierNothingIsAdded() throws Exception {
-		assertThat(call(transport(null), "http://broker.test:8887/ddsr/rest/catalog/").containsKey(HttpHeaders.AUTHORIZATION))
+	void aNodeConfiguredWithoutTokensAddsNothing() throws Exception {
+		RestTransport transport = transport(new NoTokens());
+
+		assertThat(call(transport, "http://broker.test:8887/ddsr/rest/catalog/").containsKey(HttpHeaders.AUTHORIZATION))
 				.isFalse();
+		assertThat(transport.providerToken("ledger")).isNull();
 	}
 
 	@Test
@@ -104,7 +109,8 @@ class RestTransportAuthorizationTest {
 	private static RestTransport transport(TokenSupplier tokens) throws Exception {
 		RestTransport transport = new RestTransport();
 		set(transport, "baseUrl", BROKER);
-		set(transport, "tokens", tokens);
+		set(transport, "brokerTokens", tokens);
+		set(transport, "providerTokens", new NoTokens());
 		return transport;
 	}
 

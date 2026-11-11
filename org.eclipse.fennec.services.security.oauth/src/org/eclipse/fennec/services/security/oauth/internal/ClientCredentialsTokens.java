@@ -24,6 +24,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Hashtable;
+import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -128,7 +130,9 @@ public class ClientCredentialsTokens implements TokenSupplier {
 			return;
 		}
 		configure(config);
-		registration = context.registerService(TokenSupplier.class, this, null);
+		Dictionary<String, Object> properties = new Hashtable<>();
+		properties.put(TokenSupplier.KIND, TokenSupplier.KIND_OAUTH);
+		registration = context.registerService(TokenSupplier.class, this, properties);
 		LOG.info("[DDSR] bearer tokens for client '" + config.client_id() + "' from " + tokenUri);
 	}
 

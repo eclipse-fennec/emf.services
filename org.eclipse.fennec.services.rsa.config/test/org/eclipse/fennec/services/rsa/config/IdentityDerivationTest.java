@@ -118,7 +118,9 @@ class IdentityDerivationTest {
 				.containsEntry("tls.keystore", "/tls/rsa-example.p12")
 				.containsEntry("tls.keystore.password", "changeit")
 				.containsEntry("tls.truststore", "/tls/truststore.p12")
-				.containsEntry("broker.authentication", "certificate");
+				.as("by certificate the broker is shown no token, the providers still are")
+				.containsEntry("broker.tokens.target", "(fennec.tokens=none)")
+				.containsEntry("provider.tokens.target", "(fennec.tokens=oauth)");
 		assertThat(plan).anyMatch(entry -> entry.label().equals(Derivation.OAUTH_PID));
 	}
 
@@ -169,7 +171,19 @@ class IdentityDerivationTest {
 	@Test
 	void aTokenOnlyNodeWritesNothingAboutTls() {
 		assertThat(byLabel(Derivation.forProvider(provider(IDENTITY, "")), Derivation.CLIENT_REST_PID).properties())
-				.containsOnlyKeys("broker.url");
+				.as("no certificate, so no stores — and the supplier the node was given credentials for, on both references")
+				.containsOnlyKeys("broker.url", "broker.tokens.target", "provider.tokens.target")
+				.containsEntry("broker.tokens.target", "(fennec.tokens=oauth)")
+				.containsEntry("provider.tokens.target", "(fennec.tokens=oauth)");
+	}
+
+	@Test
+	void aNodeWithoutCredentialsSaysItShowsNoToken() {
+		assertThat(byLabel(Derivation.forProvider(provider(NodeIdentity.NONE, "")), Derivation.CLIENT_REST_PID)
+				.properties())
+				.as("said, not left out: the transport binds the supplier that has none instead of waiting for one")
+				.containsEntry("broker.tokens.target", "(fennec.tokens=none)")
+				.containsEntry("provider.tokens.target", "(fennec.tokens=none)");
 	}
 
 	@Test

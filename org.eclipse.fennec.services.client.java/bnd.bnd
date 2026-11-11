@@ -11,6 +11,7 @@ Bundle-Description: \
 -buildpath: \
 	osgi.core;version=latest,\
 	org.osgi.service.condition;version=latest,\
+	org.osgi.service.cm;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.component;version=latest,\
 	org.osgi.service.metatype.annotations;version=latest,\

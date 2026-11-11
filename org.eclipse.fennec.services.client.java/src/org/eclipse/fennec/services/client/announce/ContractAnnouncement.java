@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.provider.rest;
+package org.eclipse.fennec.services.client.announce;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -19,7 +19,6 @@ import java.util.logging.Logger;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
-import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
@@ -33,17 +32,16 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * Announces one contract a {@link GenericRestDistribution} serves, for
- * as long as it is to be announced.
+ * Announces one contract a distribution serves, for as long as it is to
+ * be announced.
  *
- * <p>Serving and announcing are two jobs, and this is the second. It
- * needs three things and has no life without any of them, so all three
- * are mandatory, static references:
+ * <p>Serving and announcing are two jobs, and this is the second — one
+ * component for every transport. It needs three things and has no life
+ * without any of them, so all three are mandatory, static references:
  * <ul>
  * <li>the {@linkplain ServedContract served contract}, with a target
  * that only matches while its {@code publish} is {@code true} — the
- * distribution raises that once the whiteboard lists its
- * application;</li>
+ * distribution raises that once the contract is reachable;</li>
  * <li>the client, to publish through;</li>
  * <li>the broker's catalog over REST, to enter the contract in.</li>
  * </ul>
@@ -56,23 +54,18 @@ import org.osgi.service.component.annotations.Reference;
  *
  * <p>Nobody writes this component's configuration by hand: the
  * distribution derives it from its own when that says
- * {@code publish}, and deletes it again.
+ * {@code publish}, and deletes it again
+ * ({@link ServedContract#announcementFor}).
  */
 @Component(
 		service = {},
-		configurationPid = RestAnnouncement.PID,
+		configurationPid = ServedContract.ANNOUNCEMENT_PID,
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
-public class RestAnnouncement {
+public class ContractAnnouncement {
 
-	/** The factory PID a distribution derives one configuration of per announced contract. */
-	static final String PID = "org.eclipse.fennec.services.provider.rest.announcement";
+	private static final Logger LOG = Logger.getLogger(ContractAnnouncement.class.getName());
 
-	/** The configuration property that selects the served contract. */
-	static final String SERVED_TARGET = "served.target";
-
-	private static final Logger LOG = Logger.getLogger(RestAnnouncement.class.getName());
-
-	/** What is announced — selected by {@link #SERVED_TARGET} from the configuration. */
+	/** What is announced — selected by {@code served.target} from the configuration. */
 	@Reference(name = "served")
 	ServedContract served;
 
@@ -95,51 +88,43 @@ public class RestAnnouncement {
 	 *
 	 * <p>With this, a provider is a configuration and a service: nothing
 	 * states the contract twice, because what is announced is the same
-	 * document the dispatcher serves from. Only the deployment facts are
-	 * filled in — where this instance is reachable is not contract.
+	 * document the distribution serves from. Only the deployment facts
+	 * are filled in — where this instance is reachable is not contract.
 	 *
 	 * <p>The contract moves into a resource named by its catalog URL
 	 * before publishing, so the body references it instead of carrying a
 	 * second copy of it. The broker recognises that URL and rewires to
 	 * its own entry.
 	 *
-	 * <p>A failure here leaves the endpoint serving. That is deliberate:
+	 * <p>A failure here leaves the contract served. That is deliberate:
 	 * an unreachable broker is a reason not to be discovered, not a
 	 * reason to stop answering the consumers that already found us.
 	 */
 	@Activate
 	void activate() {
-		GenericRestDistribution.Config config = served.config();
 		ServiceImplementation implementation = served.implementation();
+		ServiceInterface contract = implementation.getServiceInterfaces().get(0);
 		try {
-			ServiceInterface contract = implementation.getServiceInterfaces().get(0);
-			Diagnostic added = catalog.addCatalogEntry(contract, config.ddsr_contract() + "-distribution");
+			Diagnostic added = catalog.addCatalogEntry(contract, served.requestor());
 			if (added.getSeverity() == DiagnosticSeverity.ERROR && added.getCode() != 202) {
 				throw new IllegalStateException("the broker refused the contract: " + added.getMessage());
 			}
 
-			String entryUrl = config.broker_url().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
+			String entryUrl = served.brokerUrl().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
 			served.resourceSet().createResource(URI.createURI(entryUrl)).getContents().add(contract);
 
-			RestFlavor flavor = GenericRestDistribution.restFlavorOf(implementation);
-			URI url = URI.createURI(config.public_url());
-			String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
-			flavor.setHost(url.scheme() + "://" + url.authority());
-			flavor.setBasePath((url.path() != null ? url.path() : "") + mountPath);
-			ServedSecurity.announceScheme(contract.getName(), flavor, served.mode(), config.issuer(),
-					config.audiences(), config.jwks_uri(), config.scope_claim(), config.trusted_issuers());
+			String where = served.deploy();
 
 			this.registration = client.provider().publish(
 					(ServiceProvider) implementation.eContainer(), implementation);
-			LOG.info("[DDSR] published " + contract.getName() + " at " + flavor.getHost()
-					+ flavor.getBasePath() + " (contract → " + entryUrl + ")");
+			LOG.info("[DDSR] published " + contract.getName() + " " + where + " (contract → " + entryUrl + ")");
 		} catch (RuntimeException failure) {
-			LOG.log(Level.WARNING, "[DDSR] publishing " + config.ddsr_contract()
-					+ " failed — the endpoint keeps serving", failure);
+			LOG.log(Level.WARNING, "[DDSR] publishing " + contract.getName()
+					+ " failed — it keeps being served", failure);
 		}
 	}
 
-	/** Consumers hear of it while the endpoint still answers. */
+	/** Consumers hear of it while the contract is still served. */
 	@Deactivate
 	void deactivate() {
 		if (registration == null) {

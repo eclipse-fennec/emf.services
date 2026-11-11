@@ -33,6 +33,8 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
+import org.eclipse.fennec.services.client.announce.ContractAnnouncement;
+import org.eclipse.fennec.services.client.announce.ServedContract;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.xmi.codec.XmiBundleMessageBodyWriter;
 import org.eclipse.fennec.services.xmi.codec.XmiMessageBodyReader;
@@ -55,7 +57,6 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.condition.Condition;
 import org.osgi.service.jakartars.runtime.JakartarsServiceRuntime;
 import org.osgi.service.jakartars.runtime.dto.RuntimeDTO;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
@@ -86,7 +87,7 @@ import jakarta.ws.rs.core.Application;
  * <p>With {@code publish} what it serves is also announced, which is
  * what makes a headless provider possible: a configuration and a
  * service, no code — in the FR-P3 order both ways (#204). Announcing is
- * not this component's job, though; it is {@link RestAnnouncement}'s,
+ * not this component's job, though; it is {@link ContractAnnouncement}'s,
  * which needs a broker client and a catalog and has them as mandatory
  * references. This component says <em>when</em>: it registers a
  * {@link ServedContract} — a condition — whose {@code publish} it
@@ -349,9 +350,9 @@ public class GenericRestDistribution extends Application {
 			// The condition first and saying "not yet": whoever announces
 			// can only bind it once the whiteboard has listed what is
 			// registered next.
-			this.served = new ServedContract(pid, config, implementation, publishedFrom, mode);
-			this.servedRegistration = context.registerService(
-					new String[] { Condition.class.getName(), ServedContract.class.getName() }, served,
+			this.served = new ServedContract(pid, config.ddsr_contract() + "-distribution", config.broker_url(),
+					implementation, publishedFrom, () -> deployed(config, implementation));
+			this.servedRegistration = context.registerService(ServedContract.serviceTypes(), served,
 					served.properties(false));
 			// Registered under the monitor, so a runtime update that lists
 			// it cannot slip in before the field is set and be missed.
@@ -364,24 +365,32 @@ public class GenericRestDistribution extends Application {
 		reconsider();
 	}
 
-	/**
-	 * The configuration of the component that announces this contract:
-	 * one factory configuration, named after this one, whose only
-	 * statement is which served contract it waits for.
-	 */
+	/** The configuration of the component that announces this contract. */
 	private Configuration announcementFor(String pid) {
 		try {
-			Configuration derived = configurations.getFactoryConfiguration(RestAnnouncement.PID,
-					pid.replaceAll("[^A-Za-z0-9_-]", "-"), "?");
-			Dictionary<String, Object> properties = new Hashtable<>();
-			properties.put(RestAnnouncement.SERVED_TARGET, ServedContract.announceTarget(pid));
-			derived.update(properties);
-			return derived;
+			return ServedContract.announcementFor(configurations, pid);
 		} catch (IOException | RuntimeException failure) {
 			LOG.log(Level.WARNING, "[DDSR] " + config.ddsr_contract() + " is served but cannot be announced: "
 					+ "its announcement could not be configured", failure);
 			return null;
 		}
+	}
+
+	/**
+	 * What only the deployment knows, written into the flavor before it
+	 * is announced: where this instance is reachable, and how a caller
+	 * proves itself where the document cannot say it.
+	 */
+	private String deployed(Config config, ServiceImplementation implementation) {
+		RestFlavor flavor = restFlavorOf(implementation);
+		URI url = URI.createURI(config.public_url());
+		String mountPath = flavor.getBasePath() != null ? flavor.getBasePath() : "";
+		flavor.setHost(url.scheme() + "://" + url.authority());
+		flavor.setBasePath((url.path() != null ? url.path() : "") + mountPath);
+		ServedSecurity.announceScheme(implementation.getServiceInterfaces().get(0).getName(), flavor, mode,
+				config.issuer(), config.audiences(), config.jwks_uri(), config.scope_claim(),
+				config.trusted_issuers());
+		return "at " + flavor.getHost() + flavor.getBasePath();
 	}
 
 	/**
@@ -592,7 +601,7 @@ public class GenericRestDistribution extends Application {
 				new XmiBundleMessageBodyWriter(resourceSets));
 	}
 
-	static RestFlavor restFlavorOf(ServiceImplementation implementation) {
+	private static RestFlavor restFlavorOf(ServiceImplementation implementation) {
 		for (ServiceFlavor flavor : implementation.getFlavors()) {
 			if (flavor instanceof RestFlavor rest) {
 				return rest;

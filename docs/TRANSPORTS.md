@@ -366,7 +366,8 @@ announced: it registers a condition (`ServedContract`, an OSGi
 `Condition` with `osgi.condition.id=fennec.distribution.served`) whose
 `publish` property is `false` until a whiteboard lists the application,
 and `true` from then on. The announcing is done by a second component,
-`RestAnnouncement`, which binds three things as mandatory references —
+`ContractAnnouncement` in the client SDK bundle — the same one for
+every transport — which binds three things as mandatory references —
 that condition with a target on `publish=true`, the client, and the
 broker's catalog over REST — announces when it comes up and withdraws
 when it goes down.
@@ -375,13 +376,15 @@ So the order [Eventing](EVENTING.md) describes is the order
 Declarative Services activates and deactivates in: served first, then
 told; withdrawn first, then gone. And what an announcement is waiting
 for is readable in the component runtime (`scr:info` on
-`…provider.rest.RestAnnouncement`) — a missing broker client shows as
+`…client.announce.ContractAnnouncement`) — a missing broker client shows as
 an unsatisfied reference instead of as an announcement that silently
 never happens.
 
 Nobody configures the announcement: the distribution derives its
-configuration (factory PID `…provider.rest.announcement`) from its
+configuration (factory PID `…client.announcement`) from its
 own and deletes it again, which is why it needs Configuration Admin.
+The messaging distribution does the same; there the condition turns
+`true` once the messaging broker has the subscriptions.
 A whiteboard that refuses the application is reported once, with the
 runtime's own reason, and nothing is announced.
 

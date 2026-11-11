@@ -96,6 +96,21 @@ class InvokerRegistryTest {
 	}
 
 	@Test
+	@DisplayName("one object registered for two flavors loses only the flavor that goes")
+	void theSameObjectTwice() {
+		ServiceInvoker shared = invoker();
+		activate(FlavorKind.REST);
+		registry.addInvoker(shared, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+		registry.addInvoker(shared, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "MQTT"));
+		published.clear();
+
+		registry.removeInvoker(shared, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "MQTT"));
+
+		assertThat(published).containsExactly("[REST] callable");
+		assertThat(registry.flavors()).containsExactly(FlavorKind.REST);
+	}
+
+	@Test
 	@DisplayName("one invoker that speaks two flavors is published under both")
 	void theMessagingInvokerIsTwoFlavors() {
 		activate(FlavorKind.MQTT);

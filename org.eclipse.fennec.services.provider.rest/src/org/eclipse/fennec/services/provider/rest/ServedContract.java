@@ -46,6 +46,9 @@ public final class ServedContract implements Condition {
 	/** Which distribution this is: the PID of the configuration that serves it. */
 	public static final String DISTRIBUTION = "fennec.distribution";
 
+	/** The name of the contract, for whoever reads the registry. */
+	public static final String CONTRACT = "fennec.distribution.contract";
+
 	/** Whether the contract is to be announced now: served, and asked to. */
 	public static final String PUBLISH = "publish";
 
@@ -93,7 +96,11 @@ public final class ServedContract implements Condition {
 		Dictionary<String, Object> properties = new Hashtable<>();
 		properties.put(Condition.CONDITION_ID, ID);
 		properties.put(DISTRIBUTION, distribution);
-		properties.put("ddsr.contract", implementation.getServiceInterfaces().get(0).getName());
+		// Not `ddsr.contract`: that is the property a transport searches
+		// the implementation of a contract by, and this is not one — a
+		// dispatcher that found it would try to invoke the contract's
+		// operations on a condition.
+		properties.put(CONTRACT, implementation.getServiceInterfaces().get(0).getName());
 		properties.put(PUBLISH, String.valueOf(publish));
 		return properties;
 	}

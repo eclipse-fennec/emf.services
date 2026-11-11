@@ -96,6 +96,20 @@ class RestAnnouncementTest {
 				.doesNotThrowAnyException();
 	}
 
+	@Test
+	void theConditionIsNotMistakenForAnImplementationOfTheContract() {
+		// A dispatcher looks the implementation up with (ddsr.contract=<name>).
+		// The condition names the contract too — under another key, or the
+		// dispatcher would invoke the contract's operations on it.
+		ServedContract served = new ServedContract("pid", mock(GenericRestDistribution.Config.class),
+				implementation(), new ResourceSetImpl(), "none");
+
+		assertThat(served.properties(true).get("ddsr.contract")).isNull();
+		assertThat(served.properties(true).get(ServedContract.CONTRACT)).isEqualTo("PersonStore");
+		assertThat(served.properties(true).get(ServedContract.PUBLISH)).isEqualTo("true");
+		assertThat(served.properties(false).get(ServedContract.PUBLISH)).isEqualTo("false");
+	}
+
 	private RestAnnouncement announcement(ServiceImplementation implementation) {
 		GenericRestDistribution.Config config = mock(GenericRestDistribution.Config.class);
 		when(config.ddsr_contract()).thenReturn("PersonStore");

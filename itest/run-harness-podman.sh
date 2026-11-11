@@ -324,7 +324,7 @@ log "Scenario E: MQTT service flavor (A2 Etappe 2) — TS provider serves Paymen
 # The TS provider announces BOTH flavors on one implementation (the DoD
 # scenario's "same interface, different transports") and listens on the
 # mosquitto container; the probe reads the broker address from the
-# ANNOUNCED MqttFlavor and calls getBalance over topics.
+# ANNOUNCED MessagingFlavor and calls getBalance over topics.
 podman rm -f ddsr-payment-mqtt >/dev/null 2>&1 || true
 # shellcheck disable=SC2046
 podman run -d --replace --name ddsr-provider-ts-mqtt --network=host $(client_args ts-provider) \
@@ -348,7 +348,7 @@ if [ "$probe_mqtt_rc" != "0" ]; then
   echo "SCENARIO E FAILED"; cat "$WORK/probe-e.log"; exit 1
 fi
 grep -q "✓ mqtt-flavor-announced" "$WORK/probe-e.log" \
-  || { echo "SCENARIO E FAILED: provider did not announce the MqttFlavor"; cat "$WORK/probe-e.log"; exit 1; }
+  || { echo "SCENARIO E FAILED: provider did not announce the MessagingFlavor"; cat "$WORK/probe-e.log"; exit 1; }
 grep -q "✓ mqtt-invoke-getBalance" "$WORK/probe-e.log" \
   || { echo "SCENARIO E FAILED: invocation over MQTT failed"; cat "$WORK/probe-e.log"; exit 1; }
 echo "Scenario E OK: Payment invoked over the announced MQTT flavor (request/response via mosquitto)"
@@ -534,7 +534,7 @@ log "Scenario J: MQTT with no provider code — a factory configuration serves B
 # announces what it serves. Nothing in the provider knows about Paho,
 # topics or the envelope, and no code was generated for it either.
 #
-# The probe reads the announced MqttFlavor and calls echo over
+# The probe reads the announced MessagingFlavor and calls echo over
 # mosquitto: the three arguments come back in the contract's order, so
 # both ends read one document the same way.
 # shellcheck disable=SC2046
@@ -559,7 +559,7 @@ if [ "$probe_j_rc" != "0" ]; then
   echo "SCENARIO J FAILED"; cat "$WORK/probe-j.log"; exit 1
 fi
 grep -q "✓ mqtt-probe-flavor-announced" "$WORK/probe-j.log" \
-  || { echo "SCENARIO J FAILED: the configuration announced no MqttFlavor"; cat "$WORK/probe-j.log"; exit 1; }
+  || { echo "SCENARIO J FAILED: the configuration announced no MessagingFlavor"; cat "$WORK/probe-j.log"; exit 1; }
 grep -q "✓ mqtt-probe-echo" "$WORK/probe-j.log" \
   || { echo "SCENARIO J FAILED: the call over topics did not come back"; cat "$WORK/probe-j.log"; exit 1; }
 echo "Scenario J OK: a contract served and announced over MQTT by configuration alone"

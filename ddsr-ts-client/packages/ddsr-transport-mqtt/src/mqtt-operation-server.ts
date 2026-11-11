@@ -14,7 +14,7 @@
 import type { TlsOptions } from '@ddsr/client';
 import { randomUUID } from 'node:crypto';
 import { toArray } from '@ddsr/client';
-import type { MqttFlavor, MqttOperationFlavor, ServiceOperationFlavor } from '@ddsr/model';
+import type { MessagingFlavor, MessagingOperationFlavor, ServiceOperationFlavor } from '@ddsr/model';
 import {
   MqttRpcClientLike,
   connectMqtt,
@@ -41,7 +41,7 @@ export interface MqttOperationServerOptions {
 
 /**
  * The provider side of the MQTT request/response convention:
- * subscribes each operation's request topic of the given MqttFlavor,
+ * subscribes each operation's request topic of the given MessagingFlavor,
  * dispatches to the matching handler, and publishes the answer — a
  * CloudEvent of its own, correlated with the call — to the reply topic
  * the call named. A handler failure answers with a Diagnostic, so the
@@ -50,14 +50,14 @@ export interface MqttOperationServerOptions {
  * answer to.
  */
 export class MqttOperationServer {
-  private readonly flavor: MqttFlavor;
+  private readonly flavor: MessagingFlavor;
   private readonly handlers: OperationHandlers;
   private readonly options: MqttOperationServerOptions;
   private readonly log: (message: string) => void;
   private client: MqttRpcClientLike | undefined;
   private readonly topicToOperation = new Map<string, string>();
 
-  constructor(flavor: MqttFlavor, handlers: OperationHandlers, options: MqttOperationServerOptions = {}) {
+  constructor(flavor: MessagingFlavor, handlers: OperationHandlers, options: MqttOperationServerOptions = {}) {
     this.flavor = flavor;
     this.handlers = handlers;
     this.options = options;
@@ -67,14 +67,14 @@ export class MqttOperationServer {
   async start(): Promise<void> {
     const brokers = toArray<string>(this.flavor.brokers);
     const url = this.options.brokerUrl ?? brokers[0];
-    if (!url) throw new Error('MqttFlavor announces no brokers and the server has no brokerUrl override');
+    if (!url) throw new Error('MessagingFlavor announces no brokers and the server has no brokerUrl override');
     const factory = this.options.clientFactory ?? connectMqtt;
     this.client = await factory(url, this.options.clientId ?? `ddsr-provider-${randomUUID().slice(0, 8)}`,
       this.options.tls);
     this.client.on('message', (topic, payload) => void this.dispatch(topic, payload));
 
     for (const opFlavor of toArray<ServiceOperationFlavor>(this.flavor.operationFlavors)) {
-      const mqttOp = opFlavor as MqttOperationFlavor;
+      const mqttOp = opFlavor as MessagingOperationFlavor;
       const operationName = mqttOp.operation?.name ?? mqttOp.name;
       if (!operationName || !this.handlers[operationName]) {
         this.log(`no handler for operation flavor '${mqttOp.name}' — not subscribing`);

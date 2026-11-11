@@ -41,7 +41,7 @@ flowchart LR
   mq --> cm
   mq --> tsm
   tsr <-. "invocation: RestFlavor.host" .-> prov["provider endpoint<br/>(REST or MQTT topics)"]
-  tsm <-. "invocation: MqttFlavor.brokers" .-> mq
+  tsm <-. "invocation: MessagingFlavor.brokers" .-> mq
   Broker --- codec
   JavaSDK --- codec
 ```
@@ -178,12 +178,14 @@ org.eclipse.fennec.services.messaging           # shared: the connection of ever
                                    #   never waits for the instance: subscribe is a
                                    #     wish, onConnected the news — DS activates
                                    #     the instance on the configuration thread
-                                   #   bytes only: the envelope stays this project's
+                                   #   the instance writes the envelope (structured mode)
 
-org.eclipse.fennec.services.flavor.amqp         # the AMQP placement rule (#138)
-org.eclipse.fennec.services.flavor.messaging    # MessagingRoute: an MQTT or an AMQP flavor read into
-                                   #   one shape — broker, channel per operation, and how
-                                   #   an answer finds its way back
+org.eclipse.fennec.services.flavor.messaging    # the placement rules of a MessagingFlavor
+                                   #   MessagingFlavors: channel per operation, where
+                                   #     answers go, QoS — the protocol (the flavor's
+                                   #     kind) only decides how a channel is spelled
+                                   #   MessagingRoute: a flavor read once, which is what
+                                   #     invoker, dispatcher and distribution work on
 org.eclipse.fennec.services.client.messaging    # events over MQTT (EventSource) and ONE invoker
                                    #   for flavors MQTT and AMQP
 org.eclipse.fennec.services.provider.messaging  # ONE distribution, dispatcher and factory
@@ -502,19 +504,23 @@ Frozen with the TypeScript reference implementation
 (`ddsr-transport-mqtt/src/mqtt-rpc.ts`). A call is two events:
 
 ```
-request topic:   MqttOperationFlavor.requestTopic,
-                 otherwise <MqttFlavor.requestTopic>/<operation.name>
-reply topic:     chosen by the CONSUMER: <base>/<request id> with
-                 base = MqttOperationFlavor.responseTopic
-                      | MqttFlavor.responseTopic
-                      | <requestTopic>/reply
-request:         CloudEvent, type …invoke, replyto = the reply topic,
+request channel: MessagingOperationFlavor.channel,
+                 otherwise <MessagingFlavor.channel><sep><operation.name>
+                 (<sep> is "/" over MQTT, "." over AMQP)
+reply channel:   chosen by the CONSUMER and named in the call.
+                 Where the flavor names a place for answers —
+                 MessagingOperationFlavor.replyChannel
+                 | MessagingFlavor.replyChannel — it is
+                 <that><sep><consumer><sep><request id>.
+                 Where it names none, the consumer's connection
+                 provides a channel only it reads.
+request:         CloudEvent, type …invoke, replyto = the reply channel,
                  data = a ServiceInvocation document
 response:        CloudEvent, type …invoke.reply,
                  correlationid = the request's id,
                  data = a ServiceInvocationResult document
-QoS:             MqttOperationFlavor.qos | MqttFlavor.defaultQos
-                 | AT_LEAST_ONCE;   retained: never
+QoS:             MessagingOperationFlavor.qos | MessagingFlavor.defaultQos
+                 | AT_LEAST_ONCE, at most 1 over AMQP;   retained: never
 ```
 
 The payload is the model: one `Argument` per value in the `Property`
@@ -527,7 +533,7 @@ operation and parameters resolve inside it.
 One reply topic per request: the subscription never sees somebody
 else's answer, and `correlationid` double-checks. The DDSR broker takes
 no part in the invocation — discovery/acquisition only (ACQUISITION.md
-§1); the MQTT broker's address comes from `MqttFlavor.brokers`, exactly
+§1); the MQTT broker's address comes from `MessagingFlavor.brokers`, exactly
 like `RestFlavor.host` on the REST path. A handler error answers with a
 `Diagnostic` instead of leaving the consumer to time out.
 

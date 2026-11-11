@@ -55,13 +55,21 @@ final class ReplyInbox {
 
 	private final String subtree;
 
-	ReplyInbox(String subtree) {
+	private final String filter;
+
+	/**
+	 * @param subtree where this consumer's answers arrive
+	 * @param filter  what covers that subtree, in the spelling of the
+	 *                flavor's protocol
+	 */
+	ReplyInbox(String subtree, String filter) {
 		this.subtree = subtree;
+		this.filter = filter;
 	}
 
 	/** The filter that covers every answer to this consumer. */
 	String filter() {
-		return subtree + "/#";
+		return filter;
 	}
 
 	/** Expect the answer to this call. */

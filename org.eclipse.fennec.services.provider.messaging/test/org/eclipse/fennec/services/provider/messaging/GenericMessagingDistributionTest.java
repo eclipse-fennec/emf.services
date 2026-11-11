@@ -23,8 +23,8 @@ import static org.mockito.Mockito.when;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.MqttFlavor;
+import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServicesFactory;
@@ -48,8 +48,8 @@ class GenericMessagingDistributionTest {
 
 	private static final ServicesFactory F = ServicesFactory.eINSTANCE;
 
-	private static MqttFlavor flavorOn(String broker) {
-		MqttFlavor flavor = F.createMqttFlavor();
+	private static MessagingFlavor flavorOn(String broker) {
+		MessagingFlavor flavor = F.createMessagingFlavor();
 		flavor.setName("payments-mqtt");
 		if (broker != null) {
 			flavor.getBrokers().add(broker);
@@ -60,9 +60,9 @@ class GenericMessagingDistributionTest {
 	@Test
 	@DisplayName("a document that names its broker runs as it is")
 	void theDocumentIsEnough() {
-		MqttFlavor flavor = flavorOn("tcp://modelled:1883");
+		MessagingFlavor flavor = flavorOn("tcp://modelled:1883");
 
-		assertThat(GenericMessagingDistribution.brokersOf(GenericMessagingDistribution.listenOn(flavor, "")))
+		assertThat(GenericMessagingDistribution.listenOn(flavor, "").getBrokers())
 			.as("an empty setting is not a configuration")
 			.containsExactly("tcp://modelled:1883");
 	}
@@ -70,9 +70,9 @@ class GenericMessagingDistributionTest {
 	@Test
 	@DisplayName("a configured broker replaces the modelled one rather than joining it")
 	void configurationWins() {
-		MqttFlavor flavor = flavorOn("tcp://modelled:1883");
+		MessagingFlavor flavor = flavorOn("tcp://modelled:1883");
 
-		assertThat(GenericMessagingDistribution.brokersOf(GenericMessagingDistribution.listenOn(flavor, "tcp://deployed:1883")))
+		assertThat(GenericMessagingDistribution.listenOn(flavor, "tcp://deployed:1883").getBrokers())
 			.as("a deployment that has moved is not also still at the old address")
 			.containsExactly("tcp://deployed:1883");
 	}
@@ -80,9 +80,9 @@ class GenericMessagingDistributionTest {
 	@Test
 	@DisplayName("a document that leaves the broker to the deployment, and a deployment that says nothing")
 	void nobodyNamedABroker() {
-		MqttFlavor flavor = flavorOn(null);
+		MessagingFlavor flavor = flavorOn(null);
 
-		assertThat(GenericMessagingDistribution.brokersOf(GenericMessagingDistribution.listenOn(flavor, "")))
+		assertThat(GenericMessagingDistribution.listenOn(flavor, "").getBrokers())
 			.as("there is nothing to connect to — which is a component with nothing to do, not a failure")
 			.isEmpty();
 	}
@@ -90,11 +90,11 @@ class GenericMessagingDistributionTest {
 	@Test
 	@DisplayName("an AMQP document is deployed the same way: its broker is the deployment's to say")
 	void anAmqpFlavorListensWhereTheDeploymentSays() {
-		AmqpFlavor flavor = F.createAmqpFlavor();
+		MessagingFlavor flavor = F.createMessagingFlavor();
+		flavor.setKind(FlavorKind.AMQP);
 		flavor.getBrokers().add("amqp://modelled:5672");
 
-		assertThat(GenericMessagingDistribution.brokersOf(
-				GenericMessagingDistribution.listenOn(flavor, "amqp://deployed:5672")))
+		assertThat(GenericMessagingDistribution.listenOn(flavor, "amqp://deployed:5672").getBrokers())
 			.containsExactly("amqp://deployed:5672");
 
 		ServiceImplementation implementation = F.createServiceImplementation();

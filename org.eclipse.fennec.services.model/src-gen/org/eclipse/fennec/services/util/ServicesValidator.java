@@ -149,10 +149,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateServiceFlavor((ServiceFlavor)value, diagnostics, context);
 			case ServicesPackage.REST_FLAVOR:
 				return validateRestFlavor((RestFlavor)value, diagnostics, context);
-			case ServicesPackage.MQTT_FLAVOR:
-				return validateMqttFlavor((MqttFlavor)value, diagnostics, context);
-			case ServicesPackage.AMQP_FLAVOR:
-				return validateAmqpFlavor((AmqpFlavor)value, diagnostics, context);
+			case ServicesPackage.MESSAGING_FLAVOR:
+				return validateMessagingFlavor((MessagingFlavor)value, diagnostics, context);
 			case ServicesPackage.SERVICE_OPERATION_FLAVOR:
 				return validateServiceOperationFlavor((ServiceOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.REST_OPERATION_FLAVOR:
@@ -161,10 +159,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateRestParameterBinding((RestParameterBinding)value, diagnostics, context);
 			case ServicesPackage.REST_EXCEPTION_BINDING:
 				return validateRestExceptionBinding((RestExceptionBinding)value, diagnostics, context);
-			case ServicesPackage.MQTT_OPERATION_FLAVOR:
-				return validateMqttOperationFlavor((MqttOperationFlavor)value, diagnostics, context);
-			case ServicesPackage.AMQP_OPERATION_FLAVOR:
-				return validateAmqpOperationFlavor((AmqpOperationFlavor)value, diagnostics, context);
+			case ServicesPackage.MESSAGING_OPERATION_FLAVOR:
+				return validateMessagingOperationFlavor((MessagingOperationFlavor)value, diagnostics, context);
 			case ServicesPackage.SECURITY_REQUIREMENT:
 				return validateSecurityRequirement((SecurityRequirement)value, diagnostics, context);
 			case ServicesPackage.SECURITY_SCHEME:
@@ -261,8 +257,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateHttpMethod((HttpMethod)value, diagnostics, context);
 			case ServicesPackage.PARAMETER_BINDING:
 				return validateParameterBinding((ParameterBinding)value, diagnostics, context);
-			case ServicesPackage.MQTT_QOS:
-				return validateMqttQos((MqttQos)value, diagnostics, context);
+			case ServicesPackage.MESSAGING_QOS:
+				return validateMessagingQos((MessagingQos)value, diagnostics, context);
 			case ServicesPackage.REGISTRY_KIND:
 				return validateRegistryKind((RegistryKind)value, diagnostics, context);
 			case ServicesPackage.EXPRESSION_LANGUAGE:
@@ -1170,17 +1166,8 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public boolean validateMqttFlavor(MqttFlavor mqttFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return validate_EveryDefaultConstraint(mqttFlavor, diagnostics, context);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	public boolean validateAmqpFlavor(AmqpFlavor amqpFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return validate_EveryDefaultConstraint(amqpFlavor, diagnostics, context);
+	public boolean validateMessagingFlavor(MessagingFlavor messagingFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(messagingFlavor, diagnostics, context);
 	}
 
 	/**
@@ -1383,17 +1370,8 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public boolean validateMqttOperationFlavor(MqttOperationFlavor mqttOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return validate_EveryDefaultConstraint(mqttOperationFlavor, diagnostics, context);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	public boolean validateAmqpOperationFlavor(AmqpOperationFlavor amqpOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return validate_EveryDefaultConstraint(amqpOperationFlavor, diagnostics, context);
+	public boolean validateMessagingOperationFlavor(MessagingOperationFlavor messagingOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(messagingOperationFlavor, diagnostics, context);
 	}
 
 	/**
@@ -2190,7 +2168,7 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public boolean validateMqttQos(MqttQos mqttQos, DiagnosticChain diagnostics, Map<Object, Object> context) {
+	public boolean validateMessagingQos(MessagingQos messagingQos, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

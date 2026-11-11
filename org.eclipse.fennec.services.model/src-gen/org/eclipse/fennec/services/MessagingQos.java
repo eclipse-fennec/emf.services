@@ -12,18 +12,18 @@ import org.osgi.annotation.versioning.ProviderType;
 
 /**
  * <!-- begin-user-doc -->
- * A representation of the literals of the enumeration '<em><b>Mqtt Qos</b></em>',
+ * A representation of the literals of the enumeration '<em><b>Messaging Qos</b></em>',
  * and utility methods for working with them.
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * MQTT quality-of-service level. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, ack-with-redelivery — DDSR default); EXACTLY_ONCE (2, four-way handshake).
+ * Quality-of-service level of a message. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, acknowledged, redelivered — the default); EXACTLY_ONCE (2, where the protocol has it: MQTT does, AMQP 0-9-1 does not and refuses it).
  * <!-- end-model-doc -->
- * @see org.eclipse.fennec.services.ServicesPackage#getMqttQos()
+ * @see org.eclipse.fennec.services.ServicesPackage#getMessagingQos()
  * @model
  * @generated
  */
 @ProviderType
-public enum MqttQos implements Enumerator {
+public enum MessagingQos implements Enumerator {
 	/**
 	 * The '<em><b>AT MOST ONCE</b></em>' literal object.
 	 * <!-- begin-user-doc -->
@@ -88,37 +88,37 @@ public enum MqttQos implements Enumerator {
 	public static final int EXACTLY_ONCE_VALUE = 2;
 
 	/**
-	 * An array of all the '<em><b>Mqtt Qos</b></em>' enumerators.
+	 * An array of all the '<em><b>Messaging Qos</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private static final MqttQos[] VALUES_ARRAY =
-		new MqttQos[] {
+	private static final MessagingQos[] VALUES_ARRAY =
+		new MessagingQos[] {
 			AT_MOST_ONCE,
 			AT_LEAST_ONCE,
 			EXACTLY_ONCE,
 		};
 
 	/**
-	 * A public read-only list of all the '<em><b>Mqtt Qos</b></em>' enumerators.
+	 * A public read-only list of all the '<em><b>Messaging Qos</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public static final List<MqttQos> VALUES = Collections.unmodifiableList(Arrays.asList(VALUES_ARRAY));
+	public static final List<MessagingQos> VALUES = Collections.unmodifiableList(Arrays.asList(VALUES_ARRAY));
 
 	/**
-	 * Returns the '<em><b>Mqtt Qos</b></em>' literal with the specified literal value.
+	 * Returns the '<em><b>Messaging Qos</b></em>' literal with the specified literal value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @param literal the literal.
 	 * @return the matching enumerator or <code>null</code>.
 	 * @generated
 	 */
-	public static MqttQos get(String literal) {
+	public static MessagingQos get(String literal) {
 		for (int i = 0; i < VALUES_ARRAY.length; ++i) {
-			MqttQos result = VALUES_ARRAY[i];
+			MessagingQos result = VALUES_ARRAY[i];
 			if (result.toString().equals(literal)) {
 				return result;
 			}
@@ -127,16 +127,16 @@ public enum MqttQos implements Enumerator {
 	}
 
 	/**
-	 * Returns the '<em><b>Mqtt Qos</b></em>' literal with the specified name.
+	 * Returns the '<em><b>Messaging Qos</b></em>' literal with the specified name.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @param name the name.
 	 * @return the matching enumerator or <code>null</code>.
 	 * @generated
 	 */
-	public static MqttQos getByName(String name) {
+	public static MessagingQos getByName(String name) {
 		for (int i = 0; i < VALUES_ARRAY.length; ++i) {
-			MqttQos result = VALUES_ARRAY[i];
+			MessagingQos result = VALUES_ARRAY[i];
 			if (result.getName().equals(name)) {
 				return result;
 			}
@@ -145,14 +145,14 @@ public enum MqttQos implements Enumerator {
 	}
 
 	/**
-	 * Returns the '<em><b>Mqtt Qos</b></em>' literal with the specified integer value.
+	 * Returns the '<em><b>Messaging Qos</b></em>' literal with the specified integer value.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @param value the integer value.
 	 * @return the matching enumerator or <code>null</code>.
 	 * @generated
 	 */
-	public static MqttQos get(int value) {
+	public static MessagingQos get(int value) {
 		switch (value) {
 			case AT_MOST_ONCE_VALUE: return AT_MOST_ONCE;
 			case AT_LEAST_ONCE_VALUE: return AT_LEAST_ONCE;
@@ -188,7 +188,7 @@ public enum MqttQos implements Enumerator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private MqttQos(int value, String name, String literal) {
+	private MessagingQos(int value, String name, String literal) {
 		this.value = value;
 		this.name = name;
 		this.literal = literal;
@@ -235,4 +235,4 @@ public enum MqttQos implements Enumerator {
 		return literal;
 	}
 	
-} //MqttQos
+} //MessagingQos

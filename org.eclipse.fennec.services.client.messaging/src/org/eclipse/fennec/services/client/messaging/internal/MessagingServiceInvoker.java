@@ -66,22 +66,23 @@ import io.cloudevents.model.ce.CloudEvent;
  * Calls a service over a messaging broker: the consumer half of the
  * convention whose provider half is {@code provider.messaging}.
  *
- * <p>One invoker for every flavor that travels over messaging — MQTT
- * and AMQP today. Over messaging the API is the same for both: publish
- * the call to a channel, receive the one answer that correlates with
- * it. What differs is read from the flavor as a {@link MessagingRoute}
- * and is not this class's business, with one exception it cannot hide:
- * how the answer finds its way back.
+ * <p>One invoker for every flavor that travels over messaging,
+ * whichever protocol its broker speaks. Over messaging the API is the
+ * same: publish the call to a channel, receive the one answer that
+ * correlates with it. Which channel, which broker, what encoding — all
+ * of that is read from the flavor as a {@link MessagingRoute} and is
+ * not this class's business. One thing the flavor says does change
+ * what happens here: where the answer goes.
  * <ul>
- * <li>Where the protocol carries a reply address (AMQP), the
- * connection does all of it: it declares a queue only it can read,
- * names it in the request and matches the answer.</li>
- * <li>Where it does not (MQTT 3.1.1), the address travels in the
- * envelope. The reply topic is subscribed first and published to
- * second, and the first step is not a detail: a broker fast enough to
+ * <li>The flavor names a place for answers: this consumer listens on a
+ * subtree of its own name there, and each call names its own channel
+ * in it. The subtree is subscribed first and the call published
+ * second, and the first step is not a detail — a broker fast enough to
  * answer before the subscription exists would deliver the answer to
- * nobody. The subtree carries this consumer's name, so that a broker's
- * ACL can keep two consumers' answers apart.</li>
+ * nobody. That the subtree carries the consumer's name is what lets a
+ * broker's ACL keep two consumers' answers apart.</li>
+ * <li>The flavor names none: the connection provides a reply channel
+ * only it reads, names it in the request and matches the answer.</li>
  * </ul>
  *
  * <p>Where to dial is the service's own statement — the broker its
@@ -235,11 +236,11 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 			// it before it has opened it.
 			request = CloudEvents.describing(
 					MessagingRoute.request(source, operation.getName(), placed.consumes(), null), invocation);
-			if (!route.repliesNatively()) {
-				// The reply topic has to be known before the call exists,
+			if (placed.namesReplyChannel()) {
+				// The reply channel has to be known before the call exists,
 				// because the call carries it — so the envelope is built
-				// first and its own id names the topic it answers on.
-				replyTopic = route.replyTopic(placed, consumer, request.getEventId());
+				// first and its own id names the channel it answers on.
+				replyTopic = route.replyChannel(placed, consumer, request.getEventId());
 				request.getExtensions().put(CloudEvents.EXTENSION_REPLY_TO, replyTopic);
 			}
 		} catch (Exception unwritable) {
@@ -266,9 +267,9 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 					.attribute(ClientOrigin.ATTRIBUTE, source);
 			try {
 				CloudEventCodec.Message call = new CloudEventCodec.Message(request, document);
-				CloudEventCodec.Message answer = route.repliesNatively()
-						? link.request(placed.channel(), call, placed.qos(), timeout)
-						: viaInbox(link, route, placed, call, replyTopic, timeout);
+				CloudEventCodec.Message answer = placed.namesReplyChannel()
+						? viaInbox(link, route, placed, call, replyTopic, timeout)
+						: link.request(placed.channel(), call, placed.qos(), timeout);
 				return valueOf(answer, request, operationName);
 			} catch (InterruptedException interrupted) {
 				Thread.currentThread().interrupt();
@@ -293,12 +294,13 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 		}
 	}
 
-	/** The way back in the envelope: wait in this consumer's inbox for the answer that correlates. */
+	/** The flavor names a place for answers: wait in this consumer's inbox there for the one that correlates. */
 	private CloudEventCodec.Message viaInbox(MessagingLink link, MessagingRoute route,
 			MessagingRoute.Operation placed, CloudEventCodec.Message call, String replyTopic, long timeout)
 			throws Exception {
 		CloudEvent request = call.attributes();
-		ReplyInbox inbox = inboxFor(link, route.replySubtree(placed, consumer), placed.qos());
+		ReplyInbox inbox = inboxFor(link, route.replySubtree(placed, consumer),
+				route.replyFilter(placed, consumer), placed.qos());
 		inbox.expect(request.getEventId());
 		try {
 			// Never retained: a call is a transition.
@@ -336,7 +338,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 	 * calls apart. Several calls in flight then cost several entries in
 	 * a map instead of several subscribe/unsubscribe round trips.
 	 */
-	private ReplyInbox inboxFor(MessagingLink link, String subtree, int qos) {
+	private ReplyInbox inboxFor(MessagingLink link, String subtree, String filter, int qos) {
 		synchronized (inboxes) {
 			// Per broker, because a subtree of the same name on another
 			// broker is another subscription.
@@ -345,7 +347,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 			if (inbox != null) {
 				return inbox;
 			}
-			ReplyInbox fresh = new ReplyInbox(subtree);
+			ReplyInbox fresh = new ReplyInbox(subtree, filter);
 			try {
 				// In place when this returns, because the link is connected
 				// — and restored by the link after every loss, so the inbox

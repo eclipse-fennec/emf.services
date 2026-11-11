@@ -42,7 +42,7 @@ OperationFlavor
 └── streamOptions      : StreamOptions?      (set when one of the channels is of stream type)
 
 OperationChannel
-├── flavor             : Flavor              (RestFlavor, MqttFlavor, GrpcFlavor, …)
+├── flavor             : Flavor              (RestFlavor, MessagingFlavor, GrpcFlavor, …)
 ├── correlationStrategy: CorrelationStrategy (see §5)
 └── timeout            : Duration?           (optional, default is flavor specific)
 
@@ -58,7 +58,7 @@ BackPressureStrategy : enum { NONE, DROP_OLDEST, DROP_NEWEST, BLOCK }
 DeliveryGuarantee : enum { AT_MOST_ONCE, AT_LEAST_ONCE, EXACTLY_ONCE }
 ```
 
-`Flavor` itself becomes the abstract base class that `RestFlavor`, `MqttFlavor`, `GrpcFlavor` and friends inherit from (today `RestFlavor` is already a concrete subclass, which fits). Every flavor subclass carries its transport-specific properties (host, base path for REST; broker, topic for MQTT; and so on) and declares the interaction styles its transport can carry as a capability (see §6, §7).
+`Flavor` itself becomes the abstract base class that `RestFlavor`, `MessagingFlavor`, `GrpcFlavor` and friends inherit from (today `RestFlavor` is already a concrete subclass, which fits). Every flavor subclass carries its transport-specific properties (host, base path for REST; broker, topic for MQTT; and so on) and declares the interaction styles its transport can carry as a capability (see §6, §7).
 
 `publishedVia`/`discoverableVia` and the `operationFlavors`/`OperationChannel` structure can be written by hand, but also **derived from an imported OpenAPI/AsyncAPI contract** — the mapping is in §12.
 
@@ -222,7 +222,7 @@ Not every flavor can carry every interaction style. That is declared through fla
 RestFlavor capabilities:
   ddsr.interaction.styles : { REQUEST_RESPONSE, FIRE_AND_FORGET, EVENT_STREAM (via SSE) }
 
-MqttFlavor capabilities:
+MessagingFlavor capabilities:
   ddsr.interaction.styles : { ALL }
   ddsr.correlation.strategies : { TOPIC_BASED, HEADER_BASED, NONE }
 
@@ -323,19 +323,19 @@ Before the stream paths are implemented concretely, the team use case workshop c
 - **Who chooses between several `discoverableVia` options?** If a provider is findable both through the REST catalog and through MQTT discovery, and the consumer can do both — who decides? Gut feeling: the consumer has a `preferredDiscovery` ordering and the broker respects it. But that moves resolution logic into the consumer, which is not where it has been.
 - **Capability namespace conventions:** a registry-style document for the official namespaces (`ddsr.transport`, `ddsr.contentType`, …) — its own document, or inline here?
 - **Resolution performance:** evaluating LDAP filters per lookup is fine for a manageable catalog, but at 1000+ implementations we need index structures over the capability namespaces. A stage-4 optimisation.
-- **Flavor subclasses vs. one generic flavor with capabilities:** instead of `RestFlavor extends Flavor` and `MqttFlavor extends Flavor` as hard-coded subclasses, one could declare *one* generic `Flavor` with capabilities (`ddsr.transport.family=rest`). The trade-off: more extensible vs. less type safety. Today we have subclasses — should we keep them?
+- **Flavor subclasses vs. one generic flavor with capabilities:** instead of `RestFlavor extends Flavor` and `MessagingFlavor extends Flavor` as hard-coded subclasses, one could declare *one* generic `Flavor` with capabilities (`ddsr.transport.family=rest`). The trade-off: more extensible vs. less type safety. Today we have subclasses — should we keep them?
 - **`OperationChannel` identity:** with the symmetric default, `requestChannel` and `responseChannel` are the same object in the XMI (through a cross-reference). Is that stable across a reload (EMF identity), or do we have to make sure the identity survives an `EcoreUtil.copy`?
 
 ## 12. Contract import (OpenAPI / AsyncAPI) and stub-free consumption in the v2 model
 
 Two connected ideas that the v2 channel model picks up directly. On the requirements side: `REQUIREMENTS.md` §5 (FR-Rev-OpenAPI / FR-Rev-AsyncAPI / FR-Rev-Contract-*, "dynamic (stub-free) consumption" / FR-Dynamic-*) and §8 deferred; backlog: [OPEN_ISSUES.md](OPEN_ISSUES.md) A7 (ingestion) and A8 (the dynamic consumer).
 
-**Important:** OpenAPI and AsyncAPI are *import and description formats*, **not** a new flavor. The derived transport is an ordinary `RestFlavor` or `MqttFlavor` — no new flavor subclass appears.
+**Important:** OpenAPI and AsyncAPI are *import and description formats*, **not** a new flavor. The derived transport is an ordinary `RestFlavor` or `MessagingFlavor` — no new flavor subclass appears.
 
 ### 12.1 Contract → v2 flavor/channel mapping
 
 - **OpenAPI → REST.** The document supplies catalog `ServiceInterface`s; the publishing `ServiceImplementation` gets `publishedVia`/`discoverableVia` = the derived `RestFlavor`. Every OpenAPI operation (`path` + method) → one `OperationFlavor` with `interactionStyle = REQUEST_RESPONSE` and a **symmetric** `OperationChannel` (§4): `flavor = RestFlavor`, `correlationStrategy = SYNCHRONOUS`. That matches today's v1 behaviour.
-- **AsyncAPI → MQTT/async.** `channels`/`messages` → `OperationFlavor`s. **This is where the v2 model starts to carry weight:** AsyncAPI operations are typically `EVENT_STREAM` or `FIRE_AND_FORGET`, and the request and response channels sit on *different* topics → an **asymmetric split channel** (§4) with `MqttFlavor`. AsyncAPI `replyTo`/`correlationId` map straight onto `CorrelationStrategy = TOPIC_BASED` or `HEADER_BASED` (§5); QoS/delivery → `StreamOptions.delivery` (§2).
+- **AsyncAPI → MQTT/async.** `channels`/`messages` → `OperationFlavor`s. **This is where the v2 model starts to carry weight:** AsyncAPI operations are typically `EVENT_STREAM` or `FIRE_AND_FORGET`, and the request and response channels sit on *different* topics → an **asymmetric split channel** (§4) with `MessagingFlavor`. AsyncAPI `replyTo`/`correlationId` map straight onto `CorrelationStrategy = TOPIC_BASED` or `HEADER_BASED` (§5); QoS/delivery → `StreamOptions.delivery` (§2).
 - **Why into the v2 model and not (only) v1:** v1 knows only the synchronous REST round trip. An AsyncAPI stream cannot be expressed in v1 without loss — it needs the interaction style and channel axis from §2/§3. The `RestFlavor` branch of an OpenAPI import, by contrast, already works against v1.
 - **Validation:** the cross-axis validator from §7 applies automatically — an AsyncAPI stream operation accidentally mapped onto a `RestFlavor` fails at publish through the `PublishHook`.
 

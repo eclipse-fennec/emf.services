@@ -27,9 +27,8 @@ jersey.deps:
 	bnd.identity;id='org.eclipse.fennec.services.rsa.distribution.messaging',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.discovery.mqtt',\
 	bnd.identity;id='org.eclipse.fennec.services.provider.messaging',\
-	bnd.identity;id='org.eclipse.fennec.services.flavor.mqtt',\
+	bnd.identity;id='org.eclipse.fennec.services.flavor.messaging',\
 	bnd.identity;id='org.eclipse.fennec.services.client.messaging',\
-	bnd.identity;id='org.eclipse.fennec.services.flavor.amqp',\
 	bnd.identity;id='org.eclipse.fennec.codec',\
 	bnd.identity;id='org.eclipse.fennec.services.cloudevents',\
 	bnd.identity;id='org.eclipse.fennec.services.rsa.topology',\
@@ -97,7 +96,6 @@ jersey.deps:
 	org.eclipse.fennec.services.rsa.distribution.messaging;version=snapshot,\
 	org.eclipse.fennec.services.rsa.discovery.mqtt;version=snapshot,\
 	org.eclipse.fennec.services.provider.messaging;version=snapshot,\
-	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
 	org.eclipse.fennec.services.flavor.messaging;version=snapshot,\
 	org.eclipse.fennec.services.client.messaging;version=snapshot,\
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
@@ -106,7 +104,6 @@ jersey.deps:
 	org.gecko.messaging.api;version='[2.0.0,2.1.0)',\
 	org.gecko.messaging.core;version='[2.0.0,2.1.0)',\
 	org.gecko.messaging.mqtt3;version='[2.0.0,2.1.0)',\
-	org.eclipse.fennec.services.flavor.amqp;version=snapshot,\
 	org.gecko.messaging.amqp;version='[2.0.0,2.1.0)',\
 	org.eclipse.fennec.codec;version='[0.1.0,0.1.1)',\
 	org.eclipse.fennec.codec.api;version='[0.1.0,0.1.1)',\

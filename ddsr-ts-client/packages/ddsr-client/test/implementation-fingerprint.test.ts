@@ -97,48 +97,35 @@ describe('ServiceImplementationFingerprint (im1) — cross-language golden', () 
     expect(implementationFingerprint(withDocs)).toBe(implementationFingerprint(stripped));
   });
 
-  it('covers the mqtt flavor fields (Java parity)', () => {
+  it('covers the messaging flavor fields (Java parity)', () => {
     const factory = DDSRFactory.eINSTANCE;
     const impl = factory.createServiceImplementation();
-    impl.name = 'mqtt-impl';
-    impl.implementationId = 'fixture:mqtt:1';
-    const mqtt = factory.createMqttFlavor();
-    mqtt.name = 'mqtt';
-    mqtt.requestTopic = 'req/topic';
-    (mqtt as Record<string, unknown>).defaultQos = 'AT_LEAST_ONCE';
-    mqtt.brokers.push('tcp://localhost:1883');
-    impl.flavors.push(mqtt);
-
-    const canonical = implementationCanonicalForm(impl)!;
-    expect(canonical).toContain('F|MqttFlavor|mqtt|');
-    expect(canonical).toContain('|brokers=1:tcp://localhost:1883');
-    expect(canonical).toContain('|requestTopic=req/topic');
-    expect(canonical).toContain('|defaultQos=AT_LEAST_ONCE');
-  });
-
-  it('covers the amqp flavor fields (Java parity)', () => {
-    const factory = DDSRFactory.eINSTANCE;
-    const impl = factory.createServiceImplementation();
-    impl.name = 'amqp-impl';
-    impl.implementationId = 'fixture:amqp:1';
-    const amqp = factory.createAmqpFlavor();
-    amqp.name = 'amqp';
-    (amqp as Record<string, unknown>).kind = 'AMQP';
-    amqp.requestRoutingKey = 'ddsr.rpc.payments';
-    amqp.brokers.push('amqp://localhost:5672');
-    const charge = factory.createAmqpOperationFlavor();
+    impl.name = 'messaging-impl';
+    impl.implementationId = 'fixture:messaging:1';
+    const flavor = factory.createMessagingFlavor();
+    flavor.name = 'mqtt';
+    (flavor as Record<string, unknown>).kind = 'MQTT';
+    flavor.channel = 'ddsr/rpc/req/payments';
+    flavor.replyChannel = 'ddsr/rpc/res/payments';
+    (flavor as Record<string, unknown>).defaultQos = 'AT_LEAST_ONCE';
+    flavor.brokers.push('tcp://localhost:1883');
+    const charge = factory.createMessagingOperationFlavor();
     charge.name = 'charge';
-    charge.routingKey = 'ddsr.rpc.payments.debit';
-    amqp.operationFlavors.push(charge);
-    impl.flavors.push(amqp);
+    charge.channel = 'billing/debit';
+    flavor.operationFlavors.push(charge);
+    impl.flavors.push(flavor);
 
     const canonical = implementationCanonicalForm(impl)!;
-    // The same line the Java test pins, character for character.
+    // The same two lines the Java test pins, character for character.
     expect(canonical).toContain(
-      'F|AmqpFlavor|amqp|kind=AMQP|brokers=1:amqp://localhost:5672' +
-        '|exchange=amq.topic|requestRoutingKey=ddsr.rpc.payments',
+      'F|MessagingFlavor|mqtt|kind=MQTT|brokers=1:tcp://localhost:1883' +
+        '|channel=ddsr/rpc/req/payments|replyChannel=ddsr/rpc/res/payments|exchange=' +
+        '|defaultQos=AT_LEAST_ONCE',
     );
-    expect(canonical).toContain('|routingKey=ddsr.rpc.payments.debit');
+    expect(canonical).toContain(
+      'o|MessagingOperationFlavor|charge|operation=|consumes=0:|produces=0:' +
+        '|channel=billing/debit|replyChannel=|qos=AT_MOST_ONCE',
+    );
   });
 
   it('undefined for undefined input', () => {

@@ -723,7 +723,7 @@ From `org.eclipse.fennec.services.model.ddsr`:
 - `ServiceException(name, version, type, description, properties[])`
 - `ServiceProvider(name, version, symbolicName, descriptions[], implementations[])`  *(implementations are CONTAINMENT — exclusive ownership)*
 - `ServiceImplementation(name, version, implementationId, description, serviceInterfaces[], flavors[], properties[], componentDescription?)`
-- `ServiceFlavor` abstract; concrete: `RestFlavor(host, basePath, contentTypes[], operationFlavors[])`, `MqttFlavor(brokers[], requestTopic, responseTopic, defaultQos, defaultRetained, operationFlavors[])`
+- `ServiceFlavor` abstract; concrete: `RestFlavor(host, basePath, contentTypes[], operationFlavors[])`, `MessagingFlavor(brokers[], channel, replyChannel, exchange, defaultQos, operationFlavors[])` — one for MQTT and AMQP, the `kind` says which
 - `RestOperationFlavor(operation→ServiceOperation, method, path, returnCodes[], consumes[], produces[])`
 - `ServiceReference(id, properties[], provider, usingProviders[], registration)`
 - `ServiceRegistration(reference, unregistered)`

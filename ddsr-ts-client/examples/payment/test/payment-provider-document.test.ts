@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { fingerprint, toArray } from '@ddsr/client';
-import type { MqttFlavor, RestFlavor, RestOperationFlavor, RestParameterBinding, ServiceFlavor } from '@ddsr/model';
+import type { MessagingFlavor, RestFlavor, RestOperationFlavor, RestParameterBinding, ServiceFlavor } from '@ddsr/model';
 import { loadPaymentProvider } from '../payment-api';
 
 const golden = fileURLToPath(new URL('../../../../itest/fixtures/fingerprint/payment.sd1', import.meta.url));
@@ -61,12 +61,12 @@ describe('the Payment provider document', () => {
 
   it('announces MQTT only where a broker is configured', () => {
     const restOnly = loadPaymentProvider('payments-ts', 'http://localhost:9090/payments');
-    expect(flavor(restOnly.implementation.flavors, 'MqttFlavor')).toBeUndefined();
+    expect(flavor(restOnly.implementation.flavors, 'MessagingFlavor')).toBeUndefined();
 
     const both = loadPaymentProvider('payments-ts', 'http://localhost:9090/payments', 'tcp://localhost:1883');
-    const mqtt = flavor<MqttFlavor>(both.implementation.flavors, 'MqttFlavor')!;
+    const mqtt = flavor<MessagingFlavor>(both.implementation.flavors, 'MessagingFlavor')!;
     expect(toArray<string>(mqtt.brokers)).toEqual(['tcp://localhost:1883']);
-    expect(mqtt.requestTopic).toBe('ddsr/rpc/payments-ts');
+    expect(mqtt.channel).toBe('ddsr/rpc/payments-ts');
   });
 
   it('keeps the typed properties the fidelity probes compare', () => {

@@ -33,9 +33,8 @@ divergence between the languages is a bug in one of them, never a
 - `null` and the empty string both render empty.
 - Enum and boolean attributes render their **model default explicitly**
   — EMF omits defaults on the wire, the canonical form does not
-  (`FlavorKind → REST`, `HttpMethod → GET`, `MqttFlavor.defaultQos →
-  AT_LEAST_ONCE`, `MqttOperationFlavor.qos → AT_MOST_ONCE`,
-  `correlation → true`, `retained`/`defaultRetained → false`).
+  (`FlavorKind → REST`, `HttpMethod → GET`, `MessagingFlavor.defaultQos →
+  AT_LEAST_ONCE`, `MessagingOperationFlavor.qos → AT_MOST_ONCE`).
 - Numeric property values: integers as exact decimal text;
   double/float as IEEE-754 bit patterns (`bits:<hex>`) so `0.1` is the
   same on every platform.
@@ -149,12 +148,11 @@ eClass name. The `kind` renders its model default (`BEARER_TOKEN`)
 explicitly. The golden is `secure-payment-impl.{xmi,canonical.txt,im1}`.
 
 Flavor-specific fields: `RestFlavor` adds
-`|host=|basePath=|contentTypes=<list>`, `MqttFlavor` adds
-`|brokers=<list>|requestTopic=|responseTopic=|defaultQos=|defaultRetained=`,
-`AmqpFlavor` adds `|brokers=<list>|exchange=|requestRoutingKey=`;
-operation flavors add their REST (`|method=|path=|returnCodes=`),
-MQTT (`|requestTopic=|responseTopic=|qos=|retained=|correlation=|returnPath=`)
-or AMQP (`|routingKey=`) fields. Unknown subclasses render only their eClass name.
+`|host=|basePath=|contentTypes=<list>`, `MessagingFlavor` adds
+`|brokers=<list>|channel=|replyChannel=|exchange=|defaultQos=`;
+operation flavors add their REST (`|method=|path=|returnCodes=`) or
+messaging (`|channel=|replyChannel=|qos=`)
+fields. Unknown subclasses render only their eClass name.
 
 ## Outside both schemes — by design
 

@@ -92,7 +92,7 @@ broker. Requirements and decisions:
   is an ordinary OSGi service; a factory configuration of
   `provider.messaging` reads the contract from a model document, subscribes
   per operation and announces what it serves. The probe reads the
-  announced `MqttFlavor` and calls `echo` over mosquitto, and the three
+  announced `MessagingFlavor` and calls `echo` over mosquitto, and the three
   arguments come back in the contract's order — both ends read one
   document the same way (#25). The twin of #84 on this transport: what
   the deployment states is the broker, nothing else.

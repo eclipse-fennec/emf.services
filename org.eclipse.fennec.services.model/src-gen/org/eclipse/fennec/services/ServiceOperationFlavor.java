@@ -12,7 +12,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Abstract transport-binding refinement for a single operation. Concrete subclasses (RestOperationFlavor, MqttOperationFlavor) add transport-specific fields.
+ * Abstract transport-binding refinement for a single operation. Concrete subclasses (RestOperationFlavor, MessagingOperationFlavor) add transport-specific fields.
  * <!-- end-model-doc -->
  *
  * <p>

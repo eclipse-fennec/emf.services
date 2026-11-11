@@ -19,8 +19,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.AmqpOperationFlavor;
+import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.MessagingOperationFlavor;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -212,7 +212,7 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 		// answering every call.
 		String routingKey = routingPrefix() + "." + segment(provider) + "."
 				+ segment(contract.getName().toLowerCase(Locale.ROOT));
-		AmqpFlavor flavor = flavorFor(contract, routingKey, config.broker_url(), exchange(),
+		MessagingFlavor flavor = flavorFor(contract, routingKey, config.broker_url(), exchange(),
 				config.content_type());
 
 		MessagingDistribution.Served served = distribution.serve(flavor, service,
@@ -226,16 +226,16 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 	}
 
 	/** A flavor whose routing keys say where each operation answers. */
-	private static AmqpFlavor flavorFor(ServiceInterface contract, String routingKey, String broker,
+	private static MessagingFlavor flavorFor(ServiceInterface contract, String routingKey, String broker,
 			String exchange, String contentType) {
-		AmqpFlavor flavor = ServicesFactory.eINSTANCE.createAmqpFlavor();
+		MessagingFlavor flavor = ServicesFactory.eINSTANCE.createMessagingFlavor();
 		flavor.setName(contract.getName() + "-amqp");
 		flavor.setKind(FlavorKind.AMQP);
 		flavor.getBrokers().add(broker);
 		flavor.setExchange(exchange);
-		flavor.setRequestRoutingKey(routingKey);
+		flavor.setChannel(routingKey);
 		for (ServiceOperation operation : contract.getOperations()) {
-			AmqpOperationFlavor operationFlavor = ServicesFactory.eINSTANCE.createAmqpOperationFlavor();
+			MessagingOperationFlavor operationFlavor = ServicesFactory.eINSTANCE.createMessagingOperationFlavor();
 			operationFlavor.setName(operation.getName());
 			operationFlavor.setOperation(operation);
 			// The encoding only where the deployment named one; else the
@@ -282,7 +282,7 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 		return "rsa-" + frameworkTag + (serviceId == null ? "" : "-" + serviceId);
 	}
 
-	private static ServiceImplementation implementationOf(ServiceInterface contract, AmqpFlavor flavor,
+	private static ServiceImplementation implementationOf(ServiceInterface contract, MessagingFlavor flavor,
 			String provider) {
 		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
 		implementation.setName(provider + "-" + contract.getName());
@@ -325,7 +325,7 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 
 		@Override
 		public Map<String, Object> properties() {
-			AmqpFlavor flavor = (AmqpFlavor) implementation.getFlavors().get(0);
+			MessagingFlavor flavor = (MessagingFlavor) implementation.getFlavors().get(0);
 			return Map.of(ROUTING_KEY_PROPERTY, routingKey, BROKER_PROPERTY, flavor.getBrokers().get(0),
 					EXCHANGE_PROPERTY, flavor.getExchange());
 		}

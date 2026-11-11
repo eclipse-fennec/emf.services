@@ -168,16 +168,12 @@ export class DDSRPackage extends BasicEPackage {
     REST_FLAVOR__HOST: null as unknown as EAttribute | EReference,
     REST_FLAVOR__BASE_PATH: null as unknown as EAttribute | EReference,
     REST_FLAVOR__CONTENT_TYPES: null as unknown as EAttribute | EReference,
-    MQTT_FLAVOR: null as unknown as EClass,
-    MQTT_FLAVOR__BROKERS: null as unknown as EAttribute | EReference,
-    MQTT_FLAVOR__REQUEST_TOPIC: null as unknown as EAttribute | EReference,
-    MQTT_FLAVOR__RESPONSE_TOPIC: null as unknown as EAttribute | EReference,
-    MQTT_FLAVOR__DEFAULT_QOS: null as unknown as EAttribute | EReference,
-    MQTT_FLAVOR__DEFAULT_RETAINED: null as unknown as EAttribute | EReference,
-    AMQP_FLAVOR: null as unknown as EClass,
-    AMQP_FLAVOR__BROKERS: null as unknown as EAttribute | EReference,
-    AMQP_FLAVOR__EXCHANGE: null as unknown as EAttribute | EReference,
-    AMQP_FLAVOR__REQUEST_ROUTING_KEY: null as unknown as EAttribute | EReference,
+    MESSAGING_FLAVOR: null as unknown as EClass,
+    MESSAGING_FLAVOR__BROKERS: null as unknown as EAttribute | EReference,
+    MESSAGING_FLAVOR__CHANNEL: null as unknown as EAttribute | EReference,
+    MESSAGING_FLAVOR__REPLY_CHANNEL: null as unknown as EAttribute | EReference,
+    MESSAGING_FLAVOR__EXCHANGE: null as unknown as EAttribute | EReference,
+    MESSAGING_FLAVOR__DEFAULT_QOS: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION_FLAVOR: null as unknown as EClass,
     SERVICE_OPERATION_FLAVOR__OPERATION: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION_FLAVOR__CONSUMES: null as unknown as EAttribute | EReference,
@@ -195,15 +191,10 @@ export class DDSRPackage extends BasicEPackage {
     REST_EXCEPTION_BINDING: null as unknown as EClass,
     REST_EXCEPTION_BINDING__EXCEPTION: null as unknown as EAttribute | EReference,
     REST_EXCEPTION_BINDING__STATUS: null as unknown as EAttribute | EReference,
-    MQTT_OPERATION_FLAVOR: null as unknown as EClass,
-    MQTT_OPERATION_FLAVOR__REQUEST_TOPIC: null as unknown as EAttribute | EReference,
-    MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC: null as unknown as EAttribute | EReference,
-    MQTT_OPERATION_FLAVOR__QOS: null as unknown as EAttribute | EReference,
-    MQTT_OPERATION_FLAVOR__RETAINED: null as unknown as EAttribute | EReference,
-    MQTT_OPERATION_FLAVOR__CORRELATION: null as unknown as EAttribute | EReference,
-    MQTT_OPERATION_FLAVOR__RETURN_PATH: null as unknown as EAttribute | EReference,
-    AMQP_OPERATION_FLAVOR: null as unknown as EClass,
-    AMQP_OPERATION_FLAVOR__ROUTING_KEY: null as unknown as EAttribute | EReference,
+    MESSAGING_OPERATION_FLAVOR: null as unknown as EClass,
+    MESSAGING_OPERATION_FLAVOR__CHANNEL: null as unknown as EAttribute | EReference,
+    MESSAGING_OPERATION_FLAVOR__REPLY_CHANNEL: null as unknown as EAttribute | EReference,
+    MESSAGING_OPERATION_FLAVOR__QOS: null as unknown as EAttribute | EReference,
     SECURITY_REQUIREMENT: null as unknown as EClass,
     SECURITY_REQUIREMENT__AUTHENTICATED: null as unknown as EAttribute | EReference,
     SECURITY_REQUIREMENT__SCOPES: null as unknown as EAttribute | EReference,
@@ -1500,87 +1491,54 @@ export class DDSRPackage extends BasicEPackage {
     restFlavorClass.getEStructuralFeatures().push(restFlavor_contentTypes);
     DDSRPackage.Literals.REST_FLAVOR__CONTENT_TYPES = restFlavor_contentTypes;
 
-    // Create MqttFlavor class
-    const mqttFlavorClass = new BasicEClass();
-    mqttFlavorClass.setName('MqttFlavor');
-    mqttFlavorClass.setAbstract(false);
-    mqttFlavorClass.setInterface(false);
-    this.getEClassifiers().push(mqttFlavorClass);
-    mqttFlavorClass.setEPackage(this);
-    DDSRPackage.Literals.MQTT_FLAVOR = mqttFlavorClass;
+    // Create MessagingFlavor class
+    const messagingFlavorClass = new BasicEClass();
+    messagingFlavorClass.setName('MessagingFlavor');
+    messagingFlavorClass.setAbstract(false);
+    messagingFlavorClass.setInterface(false);
+    this.getEClassifiers().push(messagingFlavorClass);
+    messagingFlavorClass.setEPackage(this);
+    DDSRPackage.Literals.MESSAGING_FLAVOR = messagingFlavorClass;
 
     // Create brokers feature
-    const mqttFlavor_brokers = new BasicEAttribute();
-    mqttFlavor_brokers.setName('brokers');
-    mqttFlavor_brokers.setLowerBound(1);
-    mqttFlavor_brokers.setUpperBound(-1);
-    mqttFlavorClass.getEStructuralFeatures().push(mqttFlavor_brokers);
-    DDSRPackage.Literals.MQTT_FLAVOR__BROKERS = mqttFlavor_brokers;
+    const messagingFlavor_brokers = new BasicEAttribute();
+    messagingFlavor_brokers.setName('brokers');
+    messagingFlavor_brokers.setLowerBound(1);
+    messagingFlavor_brokers.setUpperBound(-1);
+    messagingFlavorClass.getEStructuralFeatures().push(messagingFlavor_brokers);
+    DDSRPackage.Literals.MESSAGING_FLAVOR__BROKERS = messagingFlavor_brokers;
 
-    // Create requestTopic feature
-    const mqttFlavor_requestTopic = new BasicEAttribute();
-    mqttFlavor_requestTopic.setName('requestTopic');
-    mqttFlavor_requestTopic.setLowerBound(1);
-    mqttFlavor_requestTopic.setUpperBound(1);
-    mqttFlavorClass.getEStructuralFeatures().push(mqttFlavor_requestTopic);
-    DDSRPackage.Literals.MQTT_FLAVOR__REQUEST_TOPIC = mqttFlavor_requestTopic;
+    // Create channel feature
+    const messagingFlavor_channel = new BasicEAttribute();
+    messagingFlavor_channel.setName('channel');
+    messagingFlavor_channel.setLowerBound(1);
+    messagingFlavor_channel.setUpperBound(1);
+    messagingFlavorClass.getEStructuralFeatures().push(messagingFlavor_channel);
+    DDSRPackage.Literals.MESSAGING_FLAVOR__CHANNEL = messagingFlavor_channel;
 
-    // Create responseTopic feature
-    const mqttFlavor_responseTopic = new BasicEAttribute();
-    mqttFlavor_responseTopic.setName('responseTopic');
-    mqttFlavor_responseTopic.setLowerBound(0);
-    mqttFlavor_responseTopic.setUpperBound(1);
-    mqttFlavorClass.getEStructuralFeatures().push(mqttFlavor_responseTopic);
-    DDSRPackage.Literals.MQTT_FLAVOR__RESPONSE_TOPIC = mqttFlavor_responseTopic;
-
-    // Create defaultQos feature
-    const mqttFlavor_defaultQos = new BasicEAttribute();
-    mqttFlavor_defaultQos.setName('defaultQos');
-    mqttFlavor_defaultQos.setLowerBound(1);
-    mqttFlavor_defaultQos.setUpperBound(1);
-    mqttFlavorClass.getEStructuralFeatures().push(mqttFlavor_defaultQos);
-    DDSRPackage.Literals.MQTT_FLAVOR__DEFAULT_QOS = mqttFlavor_defaultQos;
-
-    // Create defaultRetained feature
-    const mqttFlavor_defaultRetained = new BasicEAttribute();
-    mqttFlavor_defaultRetained.setName('defaultRetained');
-    mqttFlavor_defaultRetained.setLowerBound(1);
-    mqttFlavor_defaultRetained.setUpperBound(1);
-    mqttFlavorClass.getEStructuralFeatures().push(mqttFlavor_defaultRetained);
-    DDSRPackage.Literals.MQTT_FLAVOR__DEFAULT_RETAINED = mqttFlavor_defaultRetained;
-
-    // Create AmqpFlavor class
-    const amqpFlavorClass = new BasicEClass();
-    amqpFlavorClass.setName('AmqpFlavor');
-    amqpFlavorClass.setAbstract(false);
-    amqpFlavorClass.setInterface(false);
-    this.getEClassifiers().push(amqpFlavorClass);
-    amqpFlavorClass.setEPackage(this);
-    DDSRPackage.Literals.AMQP_FLAVOR = amqpFlavorClass;
-
-    // Create brokers feature
-    const amqpFlavor_brokers = new BasicEAttribute();
-    amqpFlavor_brokers.setName('brokers');
-    amqpFlavor_brokers.setLowerBound(1);
-    amqpFlavor_brokers.setUpperBound(-1);
-    amqpFlavorClass.getEStructuralFeatures().push(amqpFlavor_brokers);
-    DDSRPackage.Literals.AMQP_FLAVOR__BROKERS = amqpFlavor_brokers;
+    // Create replyChannel feature
+    const messagingFlavor_replyChannel = new BasicEAttribute();
+    messagingFlavor_replyChannel.setName('replyChannel');
+    messagingFlavor_replyChannel.setLowerBound(0);
+    messagingFlavor_replyChannel.setUpperBound(1);
+    messagingFlavorClass.getEStructuralFeatures().push(messagingFlavor_replyChannel);
+    DDSRPackage.Literals.MESSAGING_FLAVOR__REPLY_CHANNEL = messagingFlavor_replyChannel;
 
     // Create exchange feature
-    const amqpFlavor_exchange = new BasicEAttribute();
-    amqpFlavor_exchange.setName('exchange');
-    amqpFlavor_exchange.setLowerBound(1);
-    amqpFlavor_exchange.setUpperBound(1);
-    amqpFlavorClass.getEStructuralFeatures().push(amqpFlavor_exchange);
-    DDSRPackage.Literals.AMQP_FLAVOR__EXCHANGE = amqpFlavor_exchange;
+    const messagingFlavor_exchange = new BasicEAttribute();
+    messagingFlavor_exchange.setName('exchange');
+    messagingFlavor_exchange.setLowerBound(0);
+    messagingFlavor_exchange.setUpperBound(1);
+    messagingFlavorClass.getEStructuralFeatures().push(messagingFlavor_exchange);
+    DDSRPackage.Literals.MESSAGING_FLAVOR__EXCHANGE = messagingFlavor_exchange;
 
-    // Create requestRoutingKey feature
-    const amqpFlavor_requestRoutingKey = new BasicEAttribute();
-    amqpFlavor_requestRoutingKey.setName('requestRoutingKey');
-    amqpFlavor_requestRoutingKey.setLowerBound(1);
-    amqpFlavor_requestRoutingKey.setUpperBound(1);
-    amqpFlavorClass.getEStructuralFeatures().push(amqpFlavor_requestRoutingKey);
-    DDSRPackage.Literals.AMQP_FLAVOR__REQUEST_ROUTING_KEY = amqpFlavor_requestRoutingKey;
+    // Create defaultQos feature
+    const messagingFlavor_defaultQos = new BasicEAttribute();
+    messagingFlavor_defaultQos.setName('defaultQos');
+    messagingFlavor_defaultQos.setLowerBound(1);
+    messagingFlavor_defaultQos.setUpperBound(1);
+    messagingFlavorClass.getEStructuralFeatures().push(messagingFlavor_defaultQos);
+    DDSRPackage.Literals.MESSAGING_FLAVOR__DEFAULT_QOS = messagingFlavor_defaultQos;
 
     // Create ServiceOperationFlavor class
     const serviceOperationFlavorClass = new BasicEClass();
@@ -1727,79 +1685,38 @@ export class DDSRPackage extends BasicEPackage {
     restExceptionBindingClass.getEStructuralFeatures().push(restExceptionBinding_status);
     DDSRPackage.Literals.REST_EXCEPTION_BINDING__STATUS = restExceptionBinding_status;
 
-    // Create MqttOperationFlavor class
-    const mqttOperationFlavorClass = new BasicEClass();
-    mqttOperationFlavorClass.setName('MqttOperationFlavor');
-    mqttOperationFlavorClass.setAbstract(false);
-    mqttOperationFlavorClass.setInterface(false);
-    this.getEClassifiers().push(mqttOperationFlavorClass);
-    mqttOperationFlavorClass.setEPackage(this);
-    DDSRPackage.Literals.MQTT_OPERATION_FLAVOR = mqttOperationFlavorClass;
+    // Create MessagingOperationFlavor class
+    const messagingOperationFlavorClass = new BasicEClass();
+    messagingOperationFlavorClass.setName('MessagingOperationFlavor');
+    messagingOperationFlavorClass.setAbstract(false);
+    messagingOperationFlavorClass.setInterface(false);
+    this.getEClassifiers().push(messagingOperationFlavorClass);
+    messagingOperationFlavorClass.setEPackage(this);
+    DDSRPackage.Literals.MESSAGING_OPERATION_FLAVOR = messagingOperationFlavorClass;
 
-    // Create requestTopic feature
-    const mqttOperationFlavor_requestTopic = new BasicEAttribute();
-    mqttOperationFlavor_requestTopic.setName('requestTopic');
-    mqttOperationFlavor_requestTopic.setLowerBound(0);
-    mqttOperationFlavor_requestTopic.setUpperBound(1);
-    mqttOperationFlavorClass.getEStructuralFeatures().push(mqttOperationFlavor_requestTopic);
-    DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__REQUEST_TOPIC = mqttOperationFlavor_requestTopic;
+    // Create channel feature
+    const messagingOperationFlavor_channel = new BasicEAttribute();
+    messagingOperationFlavor_channel.setName('channel');
+    messagingOperationFlavor_channel.setLowerBound(0);
+    messagingOperationFlavor_channel.setUpperBound(1);
+    messagingOperationFlavorClass.getEStructuralFeatures().push(messagingOperationFlavor_channel);
+    DDSRPackage.Literals.MESSAGING_OPERATION_FLAVOR__CHANNEL = messagingOperationFlavor_channel;
 
-    // Create responseTopic feature
-    const mqttOperationFlavor_responseTopic = new BasicEAttribute();
-    mqttOperationFlavor_responseTopic.setName('responseTopic');
-    mqttOperationFlavor_responseTopic.setLowerBound(0);
-    mqttOperationFlavor_responseTopic.setUpperBound(1);
-    mqttOperationFlavorClass.getEStructuralFeatures().push(mqttOperationFlavor_responseTopic);
-    DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC = mqttOperationFlavor_responseTopic;
+    // Create replyChannel feature
+    const messagingOperationFlavor_replyChannel = new BasicEAttribute();
+    messagingOperationFlavor_replyChannel.setName('replyChannel');
+    messagingOperationFlavor_replyChannel.setLowerBound(0);
+    messagingOperationFlavor_replyChannel.setUpperBound(1);
+    messagingOperationFlavorClass.getEStructuralFeatures().push(messagingOperationFlavor_replyChannel);
+    DDSRPackage.Literals.MESSAGING_OPERATION_FLAVOR__REPLY_CHANNEL = messagingOperationFlavor_replyChannel;
 
     // Create qos feature
-    const mqttOperationFlavor_qos = new BasicEAttribute();
-    mqttOperationFlavor_qos.setName('qos');
-    mqttOperationFlavor_qos.setLowerBound(0);
-    mqttOperationFlavor_qos.setUpperBound(1);
-    mqttOperationFlavorClass.getEStructuralFeatures().push(mqttOperationFlavor_qos);
-    DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__QOS = mqttOperationFlavor_qos;
-
-    // Create retained feature
-    const mqttOperationFlavor_retained = new BasicEAttribute();
-    mqttOperationFlavor_retained.setName('retained');
-    mqttOperationFlavor_retained.setLowerBound(0);
-    mqttOperationFlavor_retained.setUpperBound(1);
-    mqttOperationFlavorClass.getEStructuralFeatures().push(mqttOperationFlavor_retained);
-    DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETAINED = mqttOperationFlavor_retained;
-
-    // Create correlation feature
-    const mqttOperationFlavor_correlation = new BasicEAttribute();
-    mqttOperationFlavor_correlation.setName('correlation');
-    mqttOperationFlavor_correlation.setLowerBound(1);
-    mqttOperationFlavor_correlation.setUpperBound(1);
-    mqttOperationFlavorClass.getEStructuralFeatures().push(mqttOperationFlavor_correlation);
-    DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__CORRELATION = mqttOperationFlavor_correlation;
-
-    // Create returnPath feature
-    const mqttOperationFlavor_returnPath = new BasicEAttribute();
-    mqttOperationFlavor_returnPath.setName('returnPath');
-    mqttOperationFlavor_returnPath.setLowerBound(0);
-    mqttOperationFlavor_returnPath.setUpperBound(1);
-    mqttOperationFlavorClass.getEStructuralFeatures().push(mqttOperationFlavor_returnPath);
-    DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETURN_PATH = mqttOperationFlavor_returnPath;
-
-    // Create AmqpOperationFlavor class
-    const amqpOperationFlavorClass = new BasicEClass();
-    amqpOperationFlavorClass.setName('AmqpOperationFlavor');
-    amqpOperationFlavorClass.setAbstract(false);
-    amqpOperationFlavorClass.setInterface(false);
-    this.getEClassifiers().push(amqpOperationFlavorClass);
-    amqpOperationFlavorClass.setEPackage(this);
-    DDSRPackage.Literals.AMQP_OPERATION_FLAVOR = amqpOperationFlavorClass;
-
-    // Create routingKey feature
-    const amqpOperationFlavor_routingKey = new BasicEAttribute();
-    amqpOperationFlavor_routingKey.setName('routingKey');
-    amqpOperationFlavor_routingKey.setLowerBound(0);
-    amqpOperationFlavor_routingKey.setUpperBound(1);
-    amqpOperationFlavorClass.getEStructuralFeatures().push(amqpOperationFlavor_routingKey);
-    DDSRPackage.Literals.AMQP_OPERATION_FLAVOR__ROUTING_KEY = amqpOperationFlavor_routingKey;
+    const messagingOperationFlavor_qos = new BasicEAttribute();
+    messagingOperationFlavor_qos.setName('qos');
+    messagingOperationFlavor_qos.setLowerBound(0);
+    messagingOperationFlavor_qos.setUpperBound(1);
+    messagingOperationFlavorClass.getEStructuralFeatures().push(messagingOperationFlavor_qos);
+    DDSRPackage.Literals.MESSAGING_OPERATION_FLAVOR__QOS = messagingOperationFlavor_qos;
 
     // Create SecurityRequirement class
     const securityRequirementClass = new BasicEClass();
@@ -2966,12 +2883,10 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.VERSIONED_ELEMENT);
     (DDSRPackage.Literals.SERVICE_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.REST_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_FLAVOR);
-    (DDSRPackage.Literals.MQTT_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_FLAVOR);
-    (DDSRPackage.Literals.AMQP_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_FLAVOR);
+    (DDSRPackage.Literals.MESSAGING_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_FLAVOR);
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.REST_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
-    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
-    (DDSRPackage.Literals.AMQP_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
+    (DDSRPackage.Literals.MESSAGING_OPERATION_FLAVOR as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
     (DDSRPackage.Literals.SECURITY_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.BEARER_TOKEN_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
     (DDSRPackage.Literals.MUTUAL_TLS_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
@@ -3077,13 +2992,10 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.REST_FLAVOR__HOST as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.REST_FLAVOR__BASE_PATH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.REST_FLAVOR__CONTENT_TYPES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.MQTT_FLAVOR__BROKERS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.MQTT_FLAVOR__REQUEST_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.MQTT_FLAVOR__RESPONSE_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.MQTT_FLAVOR__DEFAULT_RETAINED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
-    (DDSRPackage.Literals.AMQP_FLAVOR__BROKERS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.AMQP_FLAVOR__EXCHANGE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.AMQP_FLAVOR__REQUEST_ROUTING_KEY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MESSAGING_FLAVOR__BROKERS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MESSAGING_FLAVOR__CHANNEL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MESSAGING_FLAVOR__REPLY_CHANNEL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MESSAGING_FLAVOR__EXCHANGE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__OPERATION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION);
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__CONSUMES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR__PRODUCES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
@@ -3095,12 +3007,8 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.REST_PARAMETER_BINDING__WIRE_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.REST_EXCEPTION_BINDING__EXCEPTION as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_EXCEPTION);
     (DDSRPackage.Literals.REST_EXCEPTION_BINDING__STATUS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
-    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__REQUEST_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETAINED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
-    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__CORRELATION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
-    (DDSRPackage.Literals.MQTT_OPERATION_FLAVOR__RETURN_PATH as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
-    (DDSRPackage.Literals.AMQP_OPERATION_FLAVOR__ROUTING_KEY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MESSAGING_OPERATION_FLAVOR__CHANNEL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MESSAGING_OPERATION_FLAVOR__REPLY_CHANNEL as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SECURITY_REQUIREMENT__AUTHENTICATED as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.SECURITY_REQUIREMENT__SCOPES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.BEARER_TOKEN_SCHEME__ISSUER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);

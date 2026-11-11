@@ -39,9 +39,9 @@
           <parameterBindings parameter="/1/@operations.1/@parameters.0" binding="QUERY"/>
         </operationFlavors>
       </flavors>
-      <flavors xsi:type="services:MqttFlavor" name="payments-mqtt" kind="MQTT" requestTopic="ddsr/rpc/payments-ts">
-        <operationFlavors xsi:type="services:MqttOperationFlavor" name="charge" operation="/1/@operations.0"/>
-        <operationFlavors xsi:type="services:MqttOperationFlavor" name="getBalance" operation="/1/@operations.1"/>
+      <flavors xsi:type="services:MessagingFlavor" name="payments-mqtt" kind="MQTT" channel="ddsr/rpc/payments-ts">
+        <operationFlavors xsi:type="services:MessagingOperationFlavor" name="charge" operation="/1/@operations.0"/>
+        <operationFlavors xsi:type="services:MessagingOperationFlavor" name="getBalance" operation="/1/@operations.1"/>
       </flavors>
       <properties xsi:type="services:StringProperty" name="ddsr.provider.lang" value="typescript"/>
       <properties xsi:type="services:IntProperty" name="service.ranking" value="10"/>

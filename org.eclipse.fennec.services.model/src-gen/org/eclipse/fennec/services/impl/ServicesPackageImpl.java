@@ -12,8 +12,6 @@ import org.eclipse.emf.ecore.EValidator;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.AmqpOperationFlavor;
 import org.eclipse.fennec.services.ApiType;
 import org.eclipse.fennec.services.Argument;
 import org.eclipse.fennec.services.BearerTokenScheme;
@@ -52,9 +50,9 @@ import org.eclipse.fennec.services.LifecycleHook;
 import org.eclipse.fennec.services.LifecycleHookKind;
 import org.eclipse.fennec.services.LocalServiceRegistry;
 import org.eclipse.fennec.services.LongProperty;
-import org.eclipse.fennec.services.MqttFlavor;
-import org.eclipse.fennec.services.MqttOperationFlavor;
-import org.eclipse.fennec.services.MqttQos;
+import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.MessagingOperationFlavor;
+import org.eclipse.fennec.services.MessagingQos;
 import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.NamedElement;
 import org.eclipse.fennec.services.NumericRangeConstraint;
@@ -349,14 +347,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass mqttFlavorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass amqpFlavorEClass = null;
+	private EClass messagingFlavorEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -391,14 +382,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EClass mqttOperationFlavorEClass = null;
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	private EClass amqpOperationFlavorEClass = null;
+	private EClass messagingOperationFlavorEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -741,7 +725,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	private EEnum mqttQosEEnum = null;
+	private EEnum messagingQosEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -2218,8 +2202,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EClass getMqttFlavor() {
-		return mqttFlavorEClass;
+	public EClass getMessagingFlavor() {
+		return messagingFlavorEClass;
 	}
 
 	/**
@@ -2228,8 +2212,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttFlavor_Brokers() {
-		return (EAttribute)mqttFlavorEClass.getEStructuralFeatures().get(0);
+	public EAttribute getMessagingFlavor_Brokers() {
+		return (EAttribute)messagingFlavorEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -2238,8 +2222,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttFlavor_RequestTopic() {
-		return (EAttribute)mqttFlavorEClass.getEStructuralFeatures().get(1);
+	public EAttribute getMessagingFlavor_Channel() {
+		return (EAttribute)messagingFlavorEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -2248,8 +2232,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttFlavor_ResponseTopic() {
-		return (EAttribute)mqttFlavorEClass.getEStructuralFeatures().get(2);
+	public EAttribute getMessagingFlavor_ReplyChannel() {
+		return (EAttribute)messagingFlavorEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -2258,8 +2242,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttFlavor_DefaultQos() {
-		return (EAttribute)mqttFlavorEClass.getEStructuralFeatures().get(3);
+	public EAttribute getMessagingFlavor_Exchange() {
+		return (EAttribute)messagingFlavorEClass.getEStructuralFeatures().get(3);
 	}
 
 	/**
@@ -2268,48 +2252,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttFlavor_DefaultRetained() {
-		return (EAttribute)mqttFlavorEClass.getEStructuralFeatures().get(4);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getAmqpFlavor() {
-		return amqpFlavorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getAmqpFlavor_Brokers() {
-		return (EAttribute)amqpFlavorEClass.getEStructuralFeatures().get(0);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getAmqpFlavor_Exchange() {
-		return (EAttribute)amqpFlavorEClass.getEStructuralFeatures().get(1);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getAmqpFlavor_RequestRoutingKey() {
-		return (EAttribute)amqpFlavorEClass.getEStructuralFeatures().get(2);
+	public EAttribute getMessagingFlavor_DefaultQos() {
+		return (EAttribute)messagingFlavorEClass.getEStructuralFeatures().get(4);
 	}
 
 	/**
@@ -2488,8 +2432,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EClass getMqttOperationFlavor() {
-		return mqttOperationFlavorEClass;
+	public EClass getMessagingOperationFlavor() {
+		return messagingOperationFlavorEClass;
 	}
 
 	/**
@@ -2498,8 +2442,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttOperationFlavor_RequestTopic() {
-		return (EAttribute)mqttOperationFlavorEClass.getEStructuralFeatures().get(0);
+	public EAttribute getMessagingOperationFlavor_Channel() {
+		return (EAttribute)messagingOperationFlavorEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -2508,8 +2452,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttOperationFlavor_ResponseTopic() {
-		return (EAttribute)mqttOperationFlavorEClass.getEStructuralFeatures().get(1);
+	public EAttribute getMessagingOperationFlavor_ReplyChannel() {
+		return (EAttribute)messagingOperationFlavorEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -2518,58 +2462,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EAttribute getMqttOperationFlavor_Qos() {
-		return (EAttribute)mqttOperationFlavorEClass.getEStructuralFeatures().get(2);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getMqttOperationFlavor_Retained() {
-		return (EAttribute)mqttOperationFlavorEClass.getEStructuralFeatures().get(3);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getMqttOperationFlavor_Correlation() {
-		return (EAttribute)mqttOperationFlavorEClass.getEStructuralFeatures().get(4);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getMqttOperationFlavor_ReturnPath() {
-		return (EAttribute)mqttOperationFlavorEClass.getEStructuralFeatures().get(5);
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EClass getAmqpOperationFlavor() {
-		return amqpOperationFlavorEClass;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public EAttribute getAmqpOperationFlavor_RoutingKey() {
-		return (EAttribute)amqpOperationFlavorEClass.getEStructuralFeatures().get(0);
+	public EAttribute getMessagingOperationFlavor_Qos() {
+		return (EAttribute)messagingOperationFlavorEClass.getEStructuralFeatures().get(2);
 	}
 
 	/**
@@ -4278,8 +4172,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
-	public EEnum getMqttQos() {
-		return mqttQosEEnum;
+	public EEnum getMessagingQos() {
+		return messagingQosEEnum;
 	}
 
 	/**
@@ -4548,17 +4442,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(restFlavorEClass, REST_FLAVOR__BASE_PATH);
 		createEAttribute(restFlavorEClass, REST_FLAVOR__CONTENT_TYPES);
 
-		mqttFlavorEClass = createEClass(MQTT_FLAVOR);
-		createEAttribute(mqttFlavorEClass, MQTT_FLAVOR__BROKERS);
-		createEAttribute(mqttFlavorEClass, MQTT_FLAVOR__REQUEST_TOPIC);
-		createEAttribute(mqttFlavorEClass, MQTT_FLAVOR__RESPONSE_TOPIC);
-		createEAttribute(mqttFlavorEClass, MQTT_FLAVOR__DEFAULT_QOS);
-		createEAttribute(mqttFlavorEClass, MQTT_FLAVOR__DEFAULT_RETAINED);
-
-		amqpFlavorEClass = createEClass(AMQP_FLAVOR);
-		createEAttribute(amqpFlavorEClass, AMQP_FLAVOR__BROKERS);
-		createEAttribute(amqpFlavorEClass, AMQP_FLAVOR__EXCHANGE);
-		createEAttribute(amqpFlavorEClass, AMQP_FLAVOR__REQUEST_ROUTING_KEY);
+		messagingFlavorEClass = createEClass(MESSAGING_FLAVOR);
+		createEAttribute(messagingFlavorEClass, MESSAGING_FLAVOR__BROKERS);
+		createEAttribute(messagingFlavorEClass, MESSAGING_FLAVOR__CHANNEL);
+		createEAttribute(messagingFlavorEClass, MESSAGING_FLAVOR__REPLY_CHANNEL);
+		createEAttribute(messagingFlavorEClass, MESSAGING_FLAVOR__EXCHANGE);
+		createEAttribute(messagingFlavorEClass, MESSAGING_FLAVOR__DEFAULT_QOS);
 
 		serviceOperationFlavorEClass = createEClass(SERVICE_OPERATION_FLAVOR);
 		createEReference(serviceOperationFlavorEClass, SERVICE_OPERATION_FLAVOR__OPERATION);
@@ -4581,16 +4470,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(restExceptionBindingEClass, REST_EXCEPTION_BINDING__EXCEPTION);
 		createEAttribute(restExceptionBindingEClass, REST_EXCEPTION_BINDING__STATUS);
 
-		mqttOperationFlavorEClass = createEClass(MQTT_OPERATION_FLAVOR);
-		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__REQUEST_TOPIC);
-		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC);
-		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__QOS);
-		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__RETAINED);
-		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__CORRELATION);
-		createEAttribute(mqttOperationFlavorEClass, MQTT_OPERATION_FLAVOR__RETURN_PATH);
-
-		amqpOperationFlavorEClass = createEClass(AMQP_OPERATION_FLAVOR);
-		createEAttribute(amqpOperationFlavorEClass, AMQP_OPERATION_FLAVOR__ROUTING_KEY);
+		messagingOperationFlavorEClass = createEClass(MESSAGING_OPERATION_FLAVOR);
+		createEAttribute(messagingOperationFlavorEClass, MESSAGING_OPERATION_FLAVOR__CHANNEL);
+		createEAttribute(messagingOperationFlavorEClass, MESSAGING_OPERATION_FLAVOR__REPLY_CHANNEL);
+		createEAttribute(messagingOperationFlavorEClass, MESSAGING_OPERATION_FLAVOR__QOS);
 
 		securityRequirementEClass = createEClass(SECURITY_REQUIREMENT);
 		createEAttribute(securityRequirementEClass, SECURITY_REQUIREMENT__AUTHENTICATED);
@@ -4796,7 +4679,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		flavorKindEEnum = createEEnum(FLAVOR_KIND);
 		httpMethodEEnum = createEEnum(HTTP_METHOD);
 		parameterBindingEEnum = createEEnum(PARAMETER_BINDING);
-		mqttQosEEnum = createEEnum(MQTT_QOS);
+		messagingQosEEnum = createEEnum(MESSAGING_QOS);
 		registryKindEEnum = createEEnum(REGISTRY_KIND);
 		expressionLanguageEEnum = createEEnum(EXPRESSION_LANGUAGE);
 		catalogStatusEEnum = createEEnum(CATALOG_STATUS);
@@ -4868,12 +4751,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		serviceImplementationEClass.getESuperTypes().add(this.getVersionedElement());
 		serviceFlavorEClass.getESuperTypes().add(this.getNamedElement());
 		restFlavorEClass.getESuperTypes().add(this.getServiceFlavor());
-		mqttFlavorEClass.getESuperTypes().add(this.getServiceFlavor());
-		amqpFlavorEClass.getESuperTypes().add(this.getServiceFlavor());
+		messagingFlavorEClass.getESuperTypes().add(this.getServiceFlavor());
 		serviceOperationFlavorEClass.getESuperTypes().add(this.getNamedElement());
 		restOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
-		mqttOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
-		amqpOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
+		messagingOperationFlavorEClass.getESuperTypes().add(this.getServiceOperationFlavor());
 		securitySchemeEClass.getESuperTypes().add(this.getNamedElement());
 		bearerTokenSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
 		mutualTlsSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
@@ -5055,17 +4936,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getRestFlavor_BasePath(), ecorePackage.getEString(), "basePath", null, 1, 1, RestFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestFlavor_ContentTypes(), ecorePackage.getEString(), "contentTypes", null, 0, -1, RestFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(mqttFlavorEClass, MqttFlavor.class, "MqttFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getMqttFlavor_Brokers(), ecorePackage.getEString(), "brokers", null, 1, -1, MqttFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttFlavor_RequestTopic(), ecorePackage.getEString(), "requestTopic", null, 1, 1, MqttFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttFlavor_ResponseTopic(), ecorePackage.getEString(), "responseTopic", null, 0, 1, MqttFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttFlavor_DefaultQos(), this.getMqttQos(), "defaultQos", "AT_LEAST_ONCE", 1, 1, MqttFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttFlavor_DefaultRetained(), ecorePackage.getEBoolean(), "defaultRetained", "false", 1, 1, MqttFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(amqpFlavorEClass, AmqpFlavor.class, "AmqpFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getAmqpFlavor_Brokers(), ecorePackage.getEString(), "brokers", null, 1, -1, AmqpFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getAmqpFlavor_Exchange(), ecorePackage.getEString(), "exchange", "amq.topic", 1, 1, AmqpFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getAmqpFlavor_RequestRoutingKey(), ecorePackage.getEString(), "requestRoutingKey", null, 1, 1, AmqpFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEClass(messagingFlavorEClass, MessagingFlavor.class, "MessagingFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getMessagingFlavor_Brokers(), ecorePackage.getEString(), "brokers", null, 1, -1, MessagingFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMessagingFlavor_Channel(), ecorePackage.getEString(), "channel", null, 1, 1, MessagingFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMessagingFlavor_ReplyChannel(), ecorePackage.getEString(), "replyChannel", null, 0, 1, MessagingFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMessagingFlavor_Exchange(), ecorePackage.getEString(), "exchange", null, 0, 1, MessagingFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMessagingFlavor_DefaultQos(), this.getMessagingQos(), "defaultQos", "AT_LEAST_ONCE", 1, 1, MessagingFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(serviceOperationFlavorEClass, ServiceOperationFlavor.class, "ServiceOperationFlavor", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getServiceOperationFlavor_Operation(), this.getServiceOperation(), null, "operation", null, 1, 1, ServiceOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5088,16 +4964,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getRestExceptionBinding_Exception(), this.getServiceException(), null, "exception", null, 1, 1, RestExceptionBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getRestExceptionBinding_Status(), ecorePackage.getEInt(), "status", "500", 1, 1, RestExceptionBinding.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
-		initEClass(mqttOperationFlavorEClass, MqttOperationFlavor.class, "MqttOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getMqttOperationFlavor_RequestTopic(), ecorePackage.getEString(), "requestTopic", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttOperationFlavor_ResponseTopic(), ecorePackage.getEString(), "responseTopic", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttOperationFlavor_Qos(), this.getMqttQos(), "qos", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttOperationFlavor_Retained(), ecorePackage.getEBoolean(), "retained", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttOperationFlavor_Correlation(), ecorePackage.getEBoolean(), "correlation", "true", 1, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-		initEAttribute(getMqttOperationFlavor_ReturnPath(), ecorePackage.getEString(), "returnPath", null, 0, 1, MqttOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
-
-		initEClass(amqpOperationFlavorEClass, AmqpOperationFlavor.class, "AmqpOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
-		initEAttribute(getAmqpOperationFlavor_RoutingKey(), ecorePackage.getEString(), "routingKey", null, 0, 1, AmqpOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEClass(messagingOperationFlavorEClass, MessagingOperationFlavor.class, "MessagingOperationFlavor", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getMessagingOperationFlavor_Channel(), ecorePackage.getEString(), "channel", null, 0, 1, MessagingOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMessagingOperationFlavor_ReplyChannel(), ecorePackage.getEString(), "replyChannel", null, 0, 1, MessagingOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getMessagingOperationFlavor_Qos(), this.getMessagingQos(), "qos", null, 0, 1, MessagingOperationFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(securityRequirementEClass, SecurityRequirement.class, "SecurityRequirement", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getSecurityRequirement_Authenticated(), ecorePackage.getEBoolean(), "authenticated", null, 0, 1, SecurityRequirement.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5440,10 +5310,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.HEADER);
 		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.PATH);
 
-		initEEnum(mqttQosEEnum, MqttQos.class, "MqttQos");
-		addEEnumLiteral(mqttQosEEnum, MqttQos.AT_MOST_ONCE);
-		addEEnumLiteral(mqttQosEEnum, MqttQos.AT_LEAST_ONCE);
-		addEEnumLiteral(mqttQosEEnum, MqttQos.EXACTLY_ONCE);
+		initEEnum(messagingQosEEnum, MessagingQos.class, "MessagingQos");
+		addEEnumLiteral(messagingQosEEnum, MessagingQos.AT_MOST_ONCE);
+		addEEnumLiteral(messagingQosEEnum, MessagingQos.AT_LEAST_ONCE);
+		addEEnumLiteral(messagingQosEEnum, MessagingQos.EXACTLY_ONCE);
 
 		initEEnum(registryKindEEnum, RegistryKind.class, "RegistryKind");
 		addEEnumLiteral(registryKindEEnum, RegistryKind.LOCAL);
@@ -5616,10 +5486,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Where a Parameter of a ServiceOperation travels on a REST wire (RestParameterBinding). BODY = part of the request payload; this is the default, so a parameter without an explicit binding is BODY and the literal is omitted from the wire by EMF, which is intended here. QUERY = query parameter, key = wireName or the parameter name. HEADER = HTTP header, name = wireName or the parameter name. PATH = substituted into a \'{name}\' template segment of RestOperationFlavor.path. Transport-specific by design: it lives in the flavor layer (im1), not on the catalog Parameter (sd1), so a binding change never moves a contract address."
 		   });
 		addAnnotation
-		  (mqttQosEEnum,
+		  (messagingQosEEnum,
 		   source,
 		   new String[] {
-			   "documentation", "MQTT quality-of-service level. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, ack-with-redelivery \u2014 DDSR default); EXACTLY_ONCE (2, four-way handshake)."
+			   "documentation", "Quality-of-service level of a message. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, acknowledged, redelivered \u2014 the default); EXACTLY_ONCE (2, where the protocol has it: MQTT does, AMQP 0-9-1 does not and refuses it)."
 		   });
 		addAnnotation
 		  (registryKindEEnum,
@@ -6369,7 +6239,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (serviceFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "Abstract base for a transport binding. Concrete subclasses (RestFlavor, MqttFlavor, \u2026) add transport-specific defaults. Operation-level bindings live in operationFlavors. Extended by third-party flavor plugins."
+			   "documentation", "Abstract base for a transport binding. Concrete subclasses (RestFlavor, MessagingFlavor, \u2026) add transport-specific defaults. Operation-level bindings live in operationFlavors. Extended by third-party flavor plugins."
 		   });
 		addAnnotation
 		  (getServiceFlavor_Kind(),
@@ -6381,7 +6251,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getServiceFlavor_OperationFlavors(),
 		   source,
 		   new String[] {
-			   "documentation", "Per-operation transport bindings (HTTP method+path for REST, request/response topic for MQTT, \u2026). Empty = the flavor\'s interface-level defaults apply to every operation."
+			   "documentation", "Per-operation transport bindings (HTTP method+path for REST, request/reply channel for a messaging broker, \u2026). Empty = the flavor\'s interface-level defaults apply to every operation."
 		   });
 		addAnnotation
 		  (getServiceFlavor_Capabilities(),
@@ -6420,70 +6290,46 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "Default Accept / Content-Type values that operations inherit. Empty = \'application/json\' assumed."
 		   });
 		addAnnotation
-		  (mqttFlavorEClass,
+		  (messagingFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "MQTT pub/sub transport. Operations are addressed via a request topic; responses go either to a response topic, a per-operation override topic, or via correlationId-on-shared-topic depending on configuration."
+			   "documentation", "A transport over a messaging broker, whichever protocol the broker speaks. Over messaging the API is one \u2014 publish to a channel, subscribe to a channel, a request and its answer \u2014 so one flavor describes it: where the broker is, which channel each operation is reached on, and where answers go. The protocol is the flavor\'s kind (MQTT, AMQP) and the scheme of its broker URLs; it decides what a channel is called (a topic with \'/\' levels, a routing key with \'.\' segments) and nothing about the shape of this class."
 		   });
 		addAnnotation
-		  (getMqttFlavor_Brokers(),
+		  (getMessagingFlavor_Brokers(),
 		   source,
 		   new String[] {
-			   "documentation", "One or more broker URLs (mqtt://\u2026 or mqtts://\u2026). Multiple brokers indicate a high-availability cluster; the client picks one and fails over."
+			   "documentation", "One or more broker URLs \u2014 tcp://, ssl://, ws://, wss:// for MQTT, amqp:// or amqps:// (the virtual host as the path) for AMQP. Without user or password: the flavor is announced to every consumer. Multiple brokers indicate a high-availability cluster; the client picks one and fails over."
 		   });
 		addAnnotation
-		  (getMqttFlavor_RequestTopic(),
+		  (getMessagingFlavor_Channel(),
 		   source,
 		   new String[] {
-			   "documentation", "Default topic for incoming requests. Operations can override via MqttOperationFlavor.requestTopic."
+			   "documentation", "Base channel for incoming calls: a topic over MQTT, a routing key over AMQP. An operation is reached on <channel><separator><operation name> \u2014 \'/\' over MQTT, \'.\' over AMQP \u2014 unless its MessagingOperationFlavor.channel says otherwise."
 		   });
 		addAnnotation
-		  (getMqttFlavor_ResponseTopic(),
+		  (getMessagingFlavor_ReplyChannel(),
 		   source,
 		   new String[] {
-			   "documentation", "Default topic for responses. Null = use MQTT v5 response-topic property or correlate via correlationId on the request topic."
+			   "documentation", "Base channel for answers. Set: a consumer listens on a subtree of its own name below it and names the exact channel in each call, which is what lets a broker\'s ACL say who may read which answers. Null: the flavor names no place for answers and the consumer\'s connection provides one \u2014 a reply channel only it reads, named in the call."
 		   });
 		addAnnotation
-		  (getMqttFlavor_DefaultQos(),
+		  (getMessagingFlavor_Exchange(),
 		   source,
 		   new String[] {
-			   "documentation", "Default QoS for operations. Per-operation override possible via MqttOperationFlavor.qos."
+			   "documentation", "The exchange calls are published to, where the protocol has exchanges (AMQP). Null = the topic exchange every AMQP 0-9-1 broker declares, amq.topic. Meaningless over MQTT."
 		   });
 		addAnnotation
-		  (getMqttFlavor_DefaultRetained(),
+		  (getMessagingFlavor_DefaultQos(),
 		   source,
 		   new String[] {
-			   "documentation", "Default retained flag on published messages. Per-operation override possible."
-		   });
-		addAnnotation
-		  (amqpFlavorEClass,
-		   source,
-		   new String[] {
-			   "documentation", "AMQP 0-9-1 transport. A call is published to a topic exchange under a routing key; the answer goes to the reply address the call names in the protocol\'s own reply-to property and is matched by its correlation id. Unlike MQTT there is no response address in the flavor: the consumer declares an exclusive queue of its own, so who may read an answer is enforced by the broker rather than by a naming convention."
-		   });
-		addAnnotation
-		  (getAmqpFlavor_Brokers(),
-		   source,
-		   new String[] {
-			   "documentation", "One or more broker URLs (amqp://\u2026 or amqps://\u2026), including the virtual host. Multiple brokers indicate a high-availability cluster; the client picks one and fails over."
-		   });
-		addAnnotation
-		  (getAmqpFlavor_Exchange(),
-		   source,
-		   new String[] {
-			   "documentation", "The topic exchange calls are published to. The default is the topic exchange every AMQP 0-9-1 broker declares."
-		   });
-		addAnnotation
-		  (getAmqpFlavor_RequestRoutingKey(),
-		   source,
-		   new String[] {
-			   "documentation", "Base routing key for incoming calls, segments separated by \'.\'. An operation is reached under <requestRoutingKey>.<operation name> unless its AmqpOperationFlavor.routingKey says otherwise."
+			   "documentation", "Default QoS for operations. Per-operation override possible via MessagingOperationFlavor.qos."
 		   });
 		addAnnotation
 		  (serviceOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "Abstract transport-binding refinement for a single operation. Concrete subclasses (RestOperationFlavor, MqttOperationFlavor) add transport-specific fields."
+			   "documentation", "Abstract transport-binding refinement for a single operation. Concrete subclasses (RestOperationFlavor, MessagingOperationFlavor) add transport-specific fields."
 		   });
 		addAnnotation
 		  (getServiceOperationFlavor_Operation(),
@@ -6582,58 +6428,28 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "HTTP status this error is answered with, e.g. 409 for a conflict or 404 for something not found. A plain int rather than an enum: the set of codes in use is not ours to close, and a provider that answers with 418 is stating a fact, not asking permission."
 		   });
 		addAnnotation
-		  (mqttOperationFlavorEClass,
+		  (messagingOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "MQTT binding for one operation. Topic/QoS/retained values override the MqttFlavor defaults when set."
+			   "documentation", "How one operation is reached over a messaging broker. Each value overrides the MessagingFlavor default when set."
 		   });
 		addAnnotation
-		  (getMqttOperationFlavor_RequestTopic(),
+		  (getMessagingOperationFlavor_Channel(),
 		   source,
 		   new String[] {
-			   "documentation", "Overrides MqttFlavor.requestTopic for this operation. Null = use the flavor default."
+			   "documentation", "The full channel of this operation. Null = <MessagingFlavor.channel><separator><operation name>."
 		   });
 		addAnnotation
-		  (getMqttOperationFlavor_ResponseTopic(),
+		  (getMessagingOperationFlavor_ReplyChannel(),
 		   source,
 		   new String[] {
-			   "documentation", "Overrides MqttFlavor.responseTopic for this operation."
+			   "documentation", "Overrides MessagingFlavor.replyChannel for this operation."
 		   });
 		addAnnotation
-		  (getMqttOperationFlavor_Qos(),
+		  (getMessagingOperationFlavor_Qos(),
 		   source,
 		   new String[] {
-			   "documentation", "Overrides MqttFlavor.defaultQos for this operation. Unsettable, and that is what makes the override expressible at all (issue #81): without it EMF reports the enum\'s first literal, AT_MOST_ONCE, for an operation that states nothing, so every operation looks like an override and defaultQos can never apply. Ask isSetQos() before getQos(). The XMI is unchanged either way \u2014 an unset attribute is simply absent."
-		   });
-		addAnnotation
-		  (getMqttOperationFlavor_Retained(),
-		   source,
-		   new String[] {
-			   "documentation", "Overrides MqttFlavor.defaultRetained for this operation. Unsettable for the same reason as qos (issue #81): a boolean without it reports false for an operation that states nothing, so defaultRetained could never apply. Ask isSetRetained() before isRetained(). correlation needs none of this \u2014 there is no MqttFlavor.defaultCorrelation, so there is no precedence to express."
-		   });
-		addAnnotation
-		  (getMqttOperationFlavor_Correlation(),
-		   source,
-		   new String[] {
-			   "documentation", "If true, request and response are matched via MQTT v5 correlationId. If false, the framework assumes a one-way / fire-and-forget operation."
-		   });
-		addAnnotation
-		  (getMqttOperationFlavor_ReturnPath(),
-		   source,
-		   new String[] {
-			   "documentation", "Optional alternative convention for asynchronous responses: a topic pattern with placeholders the producer fills in when publishing the response."
-		   });
-		addAnnotation
-		  (amqpOperationFlavorEClass,
-		   source,
-		   new String[] {
-			   "documentation", "How one operation is reached over AMQP."
-		   });
-		addAnnotation
-		  (getAmqpOperationFlavor_RoutingKey(),
-		   source,
-		   new String[] {
-			   "documentation", "The full routing key of this operation. Null = <AmqpFlavor.requestRoutingKey>.<operation name>."
+			   "documentation", "Overrides MessagingFlavor.defaultQos for this operation. Unsettable, and that is what makes the override expressible at all (issue #81): without it EMF reports the enum\'s first literal for an operation that said nothing, and the flavor default could never apply."
 		   });
 		addAnnotation
 		  (securityRequirementEClass,

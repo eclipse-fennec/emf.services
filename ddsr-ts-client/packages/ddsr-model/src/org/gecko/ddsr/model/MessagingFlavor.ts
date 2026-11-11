@@ -7,14 +7,17 @@
 
 import type { EObject, EList, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
 import type { ServiceFlavor } from './ServiceFlavor.js';
+import type { MessagingQos } from './MessagingQos.js';
 
 /**
- * AmqpFlavor
+ * MessagingFlavor
  * @generated
  */
-export interface AmqpFlavor extends ServiceFlavor {
+export interface MessagingFlavor extends ServiceFlavor {
   brokers: EList<string>;
-  exchange: string;
-  requestRoutingKey: string;
+  channel: string;
+  replyChannel?: string;
+  exchange?: string;
+  defaultQos: MessagingQos;
 
 }

@@ -12,7 +12,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Abstract base for a transport binding. Concrete subclasses (RestFlavor, MqttFlavor, …) add transport-specific defaults. Operation-level bindings live in operationFlavors. Extended by third-party flavor plugins.
+ * Abstract base for a transport binding. Concrete subclasses (RestFlavor, MessagingFlavor, …) add transport-specific defaults. Operation-level bindings live in operationFlavors. Extended by third-party flavor plugins.
  * <!-- end-model-doc -->
  *
  * <p>
@@ -65,7 +65,7 @@ public interface ServiceFlavor extends NamedElement {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Per-operation transport bindings (HTTP method+path for REST, request/response topic for MQTT, …). Empty = the flavor's interface-level defaults apply to every operation.
+	 * Per-operation transport bindings (HTTP method+path for REST, request/reply channel for a messaging broker, …). Empty = the flavor's interface-level defaults apply to every operation.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Operation Flavors</em>' containment reference list.
 	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceFlavor_OperationFlavors()

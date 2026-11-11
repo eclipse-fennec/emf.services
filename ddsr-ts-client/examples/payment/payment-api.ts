@@ -13,7 +13,7 @@
 
 import { readFileSync } from 'node:fs';
 import type { EObject } from '@emfts/core';
-import type { MqttFlavor, RestFlavor, ServiceFlavor, ServiceImplementation, ServiceInterface, ServiceProvider } from '@ddsr/model';
+import type { MessagingFlavor, RestFlavor, ServiceFlavor, ServiceImplementation, ServiceInterface, ServiceProvider } from '@ddsr/model';
 import { deserializeFromXmi, toArray } from '@ddsr/client';
 
 /** The provider document this example serves from (#154). */
@@ -57,10 +57,10 @@ export function loadPaymentProvider(
   // The same implementation, a second transport (A2 Etappe 2): announced
   // only where an MQTT broker is configured. Topics follow the frozen
   // request/response convention (mqtt-rpc.ts), per provider.
-  const mqtt = flavorOf<MqttFlavor>(implementation, 'MqttFlavor');
+  const mqtt = flavorOf<MessagingFlavor>(implementation, 'MessagingFlavor');
   if (mqttUrl) {
     mqtt.brokers.push(mqttUrl);
-    mqtt.requestTopic = `ddsr/rpc/${providerName}`;
+    mqtt.channel = `ddsr/rpc/${providerName}`;
   } else {
     implementation.flavors.remove(mqtt);
   }

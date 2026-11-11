@@ -302,19 +302,11 @@ public class ServicesSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
-			case ServicesPackage.MQTT_FLAVOR: {
-				MqttFlavor mqttFlavor = (MqttFlavor)theEObject;
-				T result = caseMqttFlavor(mqttFlavor);
-				if (result == null) result = caseServiceFlavor(mqttFlavor);
-				if (result == null) result = caseNamedElement(mqttFlavor);
-				if (result == null) result = defaultCase(theEObject);
-				return result;
-			}
-			case ServicesPackage.AMQP_FLAVOR: {
-				AmqpFlavor amqpFlavor = (AmqpFlavor)theEObject;
-				T result = caseAmqpFlavor(amqpFlavor);
-				if (result == null) result = caseServiceFlavor(amqpFlavor);
-				if (result == null) result = caseNamedElement(amqpFlavor);
+			case ServicesPackage.MESSAGING_FLAVOR: {
+				MessagingFlavor messagingFlavor = (MessagingFlavor)theEObject;
+				T result = caseMessagingFlavor(messagingFlavor);
+				if (result == null) result = caseServiceFlavor(messagingFlavor);
+				if (result == null) result = caseNamedElement(messagingFlavor);
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
@@ -345,19 +337,11 @@ public class ServicesSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
-			case ServicesPackage.MQTT_OPERATION_FLAVOR: {
-				MqttOperationFlavor mqttOperationFlavor = (MqttOperationFlavor)theEObject;
-				T result = caseMqttOperationFlavor(mqttOperationFlavor);
-				if (result == null) result = caseServiceOperationFlavor(mqttOperationFlavor);
-				if (result == null) result = caseNamedElement(mqttOperationFlavor);
-				if (result == null) result = defaultCase(theEObject);
-				return result;
-			}
-			case ServicesPackage.AMQP_OPERATION_FLAVOR: {
-				AmqpOperationFlavor amqpOperationFlavor = (AmqpOperationFlavor)theEObject;
-				T result = caseAmqpOperationFlavor(amqpOperationFlavor);
-				if (result == null) result = caseServiceOperationFlavor(amqpOperationFlavor);
-				if (result == null) result = caseNamedElement(amqpOperationFlavor);
+			case ServicesPackage.MESSAGING_OPERATION_FLAVOR: {
+				MessagingOperationFlavor messagingOperationFlavor = (MessagingOperationFlavor)theEObject;
+				T result = caseMessagingOperationFlavor(messagingOperationFlavor);
+				if (result == null) result = caseServiceOperationFlavor(messagingOperationFlavor);
+				if (result == null) result = caseNamedElement(messagingOperationFlavor);
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
@@ -1064,32 +1048,17 @@ public class ServicesSwitch<T> extends Switch<T> {
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Mqtt Flavor</em>'.
+	 * Returns the result of interpreting the object as an instance of '<em>Messaging Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
 	 * returning a non-null result will terminate the switch.
 	 * <!-- end-user-doc -->
 	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Mqtt Flavor</em>'.
+	 * @return the result of interpreting the object as an instance of '<em>Messaging Flavor</em>'.
 	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
 	 * @generated
 	 */
-	public T caseMqttFlavor(MqttFlavor object) {
-		return null;
-	}
-
-	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Amqp Flavor</em>'.
-	 * <!-- begin-user-doc -->
-	 * This implementation returns null;
-	 * returning a non-null result will terminate the switch.
-	 * <!-- end-user-doc -->
-	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Amqp Flavor</em>'.
-	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-	 * @generated
-	 */
-	public T caseAmqpFlavor(AmqpFlavor object) {
+	public T caseMessagingFlavor(MessagingFlavor object) {
 		return null;
 	}
 
@@ -1154,32 +1123,17 @@ public class ServicesSwitch<T> extends Switch<T> {
 	}
 
 	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Mqtt Operation Flavor</em>'.
+	 * Returns the result of interpreting the object as an instance of '<em>Messaging Operation Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * This implementation returns null;
 	 * returning a non-null result will terminate the switch.
 	 * <!-- end-user-doc -->
 	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Mqtt Operation Flavor</em>'.
+	 * @return the result of interpreting the object as an instance of '<em>Messaging Operation Flavor</em>'.
 	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
 	 * @generated
 	 */
-	public T caseMqttOperationFlavor(MqttOperationFlavor object) {
-		return null;
-	}
-
-	/**
-	 * Returns the result of interpreting the object as an instance of '<em>Amqp Operation Flavor</em>'.
-	 * <!-- begin-user-doc -->
-	 * This implementation returns null;
-	 * returning a non-null result will terminate the switch.
-	 * <!-- end-user-doc -->
-	 * @param object the target of the switch.
-	 * @return the result of interpreting the object as an instance of '<em>Amqp Operation Flavor</em>'.
-	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
-	 * @generated
-	 */
-	public T caseAmqpOperationFlavor(AmqpOperationFlavor object) {
+	public T caseMessagingOperationFlavor(MessagingOperationFlavor object) {
 		return null;
 	}
 

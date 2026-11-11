@@ -268,22 +268,13 @@ public interface ServicesFactory extends EFactory {
 	RestFlavor createRestFlavor();
 
 	/**
-	 * Returns a new object of class '<em>Mqtt Flavor</em>'.
+	 * Returns a new object of class '<em>Messaging Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Mqtt Flavor</em>'.
+	 * @return a new object of class '<em>Messaging Flavor</em>'.
 	 * @generated
 	 */
-	MqttFlavor createMqttFlavor();
-
-	/**
-	 * Returns a new object of class '<em>Amqp Flavor</em>'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Amqp Flavor</em>'.
-	 * @generated
-	 */
-	AmqpFlavor createAmqpFlavor();
+	MessagingFlavor createMessagingFlavor();
 
 	/**
 	 * Returns a new object of class '<em>Rest Operation Flavor</em>'.
@@ -313,22 +304,13 @@ public interface ServicesFactory extends EFactory {
 	RestExceptionBinding createRestExceptionBinding();
 
 	/**
-	 * Returns a new object of class '<em>Mqtt Operation Flavor</em>'.
+	 * Returns a new object of class '<em>Messaging Operation Flavor</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Mqtt Operation Flavor</em>'.
+	 * @return a new object of class '<em>Messaging Operation Flavor</em>'.
 	 * @generated
 	 */
-	MqttOperationFlavor createMqttOperationFlavor();
-
-	/**
-	 * Returns a new object of class '<em>Amqp Operation Flavor</em>'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return a new object of class '<em>Amqp Operation Flavor</em>'.
-	 * @generated
-	 */
-	AmqpOperationFlavor createAmqpOperationFlavor();
+	MessagingOperationFlavor createMessagingOperationFlavor();
 
 	/**
 	 * Returns a new object of class '<em>Security Requirement</em>'.

@@ -16,8 +16,8 @@ import { randomUUID } from 'node:crypto';
 import type { FlavorPlugin } from '@ddsr/client';
 import { toArray } from '@ddsr/client';
 import type {
-  MqttFlavor,
-  MqttOperationFlavor,
+  MessagingFlavor,
+  MessagingOperationFlavor,
   ServiceFlavor,
   ServiceOperation,
   ServiceOperationFlavor,
@@ -36,7 +36,7 @@ import {
 export interface MqttFlavorPluginOptions {
   /**
    * Broker URL override. Without it the plugin connects to the FIRST
-   * entry of the announced MqttFlavor.brokers list — the provider says
+   * entry of the announced MessagingFlavor.brokers list — the provider says
    * where it listens, exactly like RestFlavor.host says where it
    * serves.
    */
@@ -84,10 +84,16 @@ export class MqttFlavorPlugin implements FlavorPlugin {
   }
 
   canHandle(flavor: ServiceFlavor): boolean {
-    return (
-      flavor.kind === 'MQTT'
-      || (flavor as { eClass?: () => { name?: string } }).eClass?.()?.name === 'MqttFlavor'
-    );
+    // A MessagingFlavor is one class for every protocol; its kind says
+    // which, and for a flavor decoded without one the scheme of its
+    // broker does — the rule the Java side reads it by. This plugin
+    // speaks MQTT: an AMQP flavor is the same class and not for it.
+    const messaging = flavor.kind === 'MQTT' || flavor.kind === 'AMQP'
+      || (flavor as { eClass?: () => { name?: string } }).eClass?.()?.name === 'MessagingFlavor';
+    if (!messaging || flavor.kind === 'AMQP') return false;
+    if (flavor.kind === 'MQTT') return true;
+    const brokers = toArray<string>((flavor as MessagingFlavor).brokers);
+    return !(brokers[0] ?? '').toLowerCase().startsWith('amqp');
   }
 
   async invoke(
@@ -96,8 +102,8 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     flavor: ServiceFlavor,
     operationFlavor: ServiceOperationFlavor
   ): Promise<unknown> {
-    const mqttFlavor = flavor as MqttFlavor;
-    const mqttOp = operationFlavor as MqttOperationFlavor;
+    const mqttFlavor = flavor as MessagingFlavor;
+    const mqttOp = operationFlavor as MessagingOperationFlavor;
     const client = await this.clientFor(mqttFlavor);
 
     const requestTopic = requestTopicFor(mqttFlavor, mqttOp);
@@ -165,11 +171,11 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     this.clientsByUrl.clear();
   }
 
-  private clientFor(flavor: MqttFlavor): Promise<MqttRpcClientLike> {
+  private clientFor(flavor: MessagingFlavor): Promise<MqttRpcClientLike> {
     const brokers = toArray<string>(flavor.brokers);
     const url = this.options.brokerUrl ?? brokers[0];
     if (!url) {
-      throw new Error('MqttFlavor announces no brokers and the plugin has no brokerUrl override');
+      throw new Error('MessagingFlavor announces no brokers and the plugin has no brokerUrl override');
     }
     let clientPromise = this.clientsByUrl.get(url);
     if (!clientPromise) {

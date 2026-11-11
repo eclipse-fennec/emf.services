@@ -46,9 +46,9 @@ what the seven run lists name.
 | `enableFennecServicesClient` | `…services.api`, `…model`, `…runtime`, `…client.java` |
 | `enableFennecServicesRsa` | `org.osgi.service.remoteserviceadmin`, `…services.rsa` |
 | `enableFennecServicesSecurity` | `…services.api` (`TokenSupplier`, `CallPrincipal`), `…security.jwt` (`SecurityNames`) |
-| `enableFennecServicesMqtt` | `…flavor.mqtt` (topics, QoS, message form), for a project that names MQTT placements itself |
+| `enableFennecServicesMqtt` | `…flavor.messaging` (channels, where answers go, QoS), for a project that names placements itself |
 | `enableFennecServicesRsaMqtt` | nothing — the flavor is a configuration |
-| `enableFennecServicesAmqp` | `…flavor.amqp` (exchange and routing keys), for a project that names AMQP placements itself |
+| `enableFennecServicesAmqp` | `…flavor.messaging`, the same rules |
 | `enableFennecServicesRsaAmqp` | nothing — the flavor is a configuration |
 
 A service exported through Remote Service Admin usually needs nothing at

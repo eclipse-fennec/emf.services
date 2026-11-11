@@ -32,8 +32,8 @@ import { fingerprint as sd1, propertyLine, esc, escListElement, sortByName, sort
  * EMF omits wire defaults, the canonical form does not: unset enum and
  * boolean attributes render their MODEL default literal, exactly as the
  * Java generated getters do (FlavorKind → REST, HttpMethod → GET,
- * MqttFlavor.defaultQos → AT_LEAST_ONCE, MqttOperationFlavor.qos →
- * AT_MOST_ONCE, correlation → true, retained/defaultRetained → false).
+ * MessagingFlavor.defaultQos → AT_LEAST_ONCE, MessagingOperationFlavor.qos →
+ * AT_MOST_ONCE).
  */
 export const IMPL_FINGERPRINT_SCHEME = 'im1';
 
@@ -90,19 +90,13 @@ function flavorLine(flavor: Record<string, unknown>): string {
       `|host=${esc(str(flavor.host))}` +
       `|basePath=${esc(str(flavor.basePath))}` +
       `|contentTypes=${list(flavor.contentTypes)}`;
-  } else if (cls === 'MqttFlavor') {
+  } else if (cls === 'MessagingFlavor') {
     line +=
       `|brokers=${list(flavor.brokers)}` +
-      `|requestTopic=${esc(str(flavor.requestTopic))}` +
-      `|responseTopic=${esc(str(flavor.responseTopic))}` +
-      `|defaultQos=${enumText(flavor.defaultQos, 'AT_LEAST_ONCE')}` +
-      `|defaultRetained=${boolWithDefault(flavor.defaultRetained, false)}`;
-  } else if (cls === 'AmqpFlavor') {
-    line +=
-      `|brokers=${list(flavor.brokers)}` +
-      // The model default rendered explicitly, like every default here.
-      `|exchange=${esc(str(flavor.exchange ?? 'amq.topic'))}` +
-      `|requestRoutingKey=${esc(str(flavor.requestRoutingKey))}`;
+      `|channel=${esc(str(flavor.channel))}` +
+      `|replyChannel=${esc(str(flavor.replyChannel))}` +
+      `|exchange=${esc(str(flavor.exchange))}` +
+      `|defaultQos=${enumText(flavor.defaultQos, 'AT_LEAST_ONCE')}`;
   }
   return line;
 }
@@ -203,16 +197,11 @@ function operationFlavorLine(opFlavor: Record<string, unknown>): string {
       `|method=${enumText(opFlavor.method, 'GET')}` +
       `|path=${esc(str(opFlavor.path))}` +
       `|returnCodes=${list(opFlavor.returnCodes)}`;
-  } else if (cls === 'MqttOperationFlavor') {
+  } else if (cls === 'MessagingOperationFlavor') {
     line +=
-      `|requestTopic=${esc(str(opFlavor.requestTopic))}` +
-      `|responseTopic=${esc(str(opFlavor.responseTopic))}` +
-      `|qos=${enumText(opFlavor.qos, 'AT_MOST_ONCE')}` +
-      `|retained=${boolWithDefault(opFlavor.retained, false)}` +
-      `|correlation=${boolWithDefault(opFlavor.correlation, true)}` +
-      `|returnPath=${esc(str(opFlavor.returnPath))}`;
-  } else if (cls === 'AmqpOperationFlavor') {
-    line += `|routingKey=${esc(str(opFlavor.routingKey))}`;
+      `|channel=${esc(str(opFlavor.channel))}` +
+      `|replyChannel=${esc(str(opFlavor.replyChannel))}` +
+      `|qos=${enumText(opFlavor.qos, 'AT_MOST_ONCE')}`;
   }
   return line;
 }

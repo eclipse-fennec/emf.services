@@ -29,11 +29,22 @@ call one trace:
   `ContextPropagators` service it registers is a no-op
 - nothing reads or writes `traceparent`, in either direction
 
-So this bundle brings its own W3C propagators and uses them by
-default. `useRegisteredPropagators=true` switches to the published
-service for the day the integration supplies real ones —
-`ContextPropagators` that silently inject nothing is worse than none,
-because everything looks configured.
+So this bundle registers its own `ContextPropagators` service — W3C
+Trace Context plus Baggage, with the service property
+`fennec.propagators=w3c` — and the tracer binds it. Which propagators
+a node uses is the target of that reference, `propagators.target` in
+the telemetry configuration, by default `(fennec.propagators=w3c)`.
+The reference is mandatory and static: the tracer always has
+propagators, and there is no fallback in code. For the day the
+integration supplies real ones, `(!(fennec.propagators=*))` selects
+every service this bundle did not register — `ContextPropagators`
+that silently inject nothing is worse than none, because everything
+looks configured, so that is a statement a deployment makes and not a
+default.
+
+The service is registered with the lowest ranking, so anyone else who
+asks for `ContextPropagators` without a target gets what they got
+before.
 
 ## Where the context travels
 
@@ -267,7 +278,7 @@ and this bundle's own configuration, if the defaults do not fit:
 ```json
 "org.eclipse.fennec.services.telemetry": {
     "scope": "org.eclipse.fennec.services",
-    "useRegisteredPropagators": false,
+    "propagators.target": "(fennec.propagators=w3c)",
     "relationships": true
 }
 ```
@@ -295,8 +306,8 @@ wiring out without the stack.
   project: `buildPropagators` on the shared base class and a
   `propagators` attribute on both sender configurations, defaulting to
   W3C Trace Context plus Baggage. When that is released,
-  `useRegisteredPropagators` can become the default here and this
-  bundle can stop bringing propagators of its own.
+  the default of `propagators.target` can point at the integration's
+  service and this bundle can stop bringing propagators of its own.
 - **The event stream.** SSE and the MQTT event subscription are
   long-lived streams rather than calls, and a span per stream would
   either last for days or say nothing. The REST extension skips

@@ -29,20 +29,19 @@ final class Configs {
 
 	/** The defaults, which is what most tests want. */
 	static TelemetryConfig defaults() {
-		return of("org.eclipse.fennec.services", true, false);
+		return of("org.eclipse.fennec.services", true);
 	}
 
-	static TelemetryConfig of(String scope, boolean logs, boolean useRegisteredPropagators) {
-		return of(scope, logs, useRegisteredPropagators, true);
+	static TelemetryConfig of(String scope, boolean logs) {
+		return of(scope, logs, true);
 	}
 
 	/** The defaults with the relationship series switched as given. */
 	static TelemetryConfig relationships(boolean relationships) {
-		return of("org.eclipse.fennec.services", true, false, relationships);
+		return of("org.eclipse.fennec.services", true, relationships);
 	}
 
-	static TelemetryConfig of(String scope, boolean logs, boolean useRegisteredPropagators,
-			boolean relationships) {
+	static TelemetryConfig of(String scope, boolean logs, boolean relationships) {
 		return new TelemetryConfig() {
 
 			@Override
@@ -61,8 +60,8 @@ final class Configs {
 			}
 
 			@Override
-			public boolean useRegisteredPropagators() {
-				return useRegisteredPropagators;
+			public String propagators_target() {
+				return W3cPropagators.TARGET;
 			}
 
 			@Override

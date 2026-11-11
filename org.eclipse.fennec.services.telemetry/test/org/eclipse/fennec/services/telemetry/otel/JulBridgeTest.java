@@ -148,6 +148,7 @@ class JulBridgeTest {
 		SdkTracerProvider tracers = SdkTracerProvider.builder().build();
 		OtelCallTracer tracer = new OtelCallTracer();
 		tracer.tracers = tracers;
+		tracer.propagators = new W3cPropagators();
 		tracer.configure(Configs.defaults());
 
 		try (CallSpan span = tracer.calling("Payment/charge", TraceCarrier.over(new HashMap<>()))) {
@@ -173,7 +174,7 @@ class JulBridgeTest {
 		bridge.deactivate();
 		JulBridge off = new JulBridge();
 		off.loggers = loggers;
-		off.activate(Configs.of("org.eclipse.fennec.services", false, false));
+		off.activate(Configs.of("org.eclipse.fennec.services", false));
 
 		julLogger.info("[DDSR] nobody is listening");
 

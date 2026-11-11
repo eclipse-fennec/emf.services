@@ -16,7 +16,6 @@ package org.eclipse.fennec.services.telemetry.otel;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -25,18 +24,14 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.metatype.annotations.Designate;
 
-import io.opentelemetry.api.baggage.propagation.W3CBaggagePropagator;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.ContextPropagators;
@@ -90,53 +85,35 @@ public class OtelCallTracer implements CallTracer {
 	};
 
 	/**
-	 * The propagators the integration publishes, when it publishes any.
-	 * Only consulted when the configuration says to — see
-	 * {@link TelemetryConfig#useRegisteredPropagators()}.
+	 * The propagators the context travels with, chosen by the target of
+	 * this reference — {@code propagators.target} in the configuration.
+	 *
+	 * <p>By default the W3C pair this bundle registers itself
+	 * ({@link W3cPropagators}). The OSGi OpenTelemetry integration builds
+	 * its SDK without {@code setPropagators}, so the
+	 * {@code ContextPropagators} it publishes is a no-op — asking it to
+	 * inject writes nothing, and the second half of every call would
+	 * start its own trace while everything looked configured. A
+	 * deployment that has real ones names them in the target.
 	 */
-	private final AtomicReference<ContextPropagators> registered = new AtomicReference<>();
-
-	@Reference(name = "registered", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	void setRegistered(ContextPropagators propagators) {
-		this.registered.set(propagators);
-	}
-
-	void unsetRegistered(ContextPropagators propagators) {
-		this.registered.compareAndSet(propagators, null);
-	}
+	@Reference(name = "propagators", target = W3cPropagators.TARGET)
+	ContextPropagators propagators;
 
 	@Reference
 	TracerProvider tracers;
 
 	private volatile Tracer tracer;
 
-	private volatile boolean useRegistered;
-
 	@Activate
 	@Modified
 	void configure(TelemetryConfig config) {
 		this.tracer = tracers.get(config.scope());
-		this.useRegistered = config.useRegisteredPropagators();
 		LOG.info("[DDSR] call tracing is on, scope '" + config.scope() + "', propagators "
-				+ (useRegistered ? "from the registered service" : "W3C, supplied here"));
+				+ config.propagators_target());
 	}
 
-	/**
-	 * Whose propagators to use.
-	 *
-	 * <p>Ours unless told otherwise. The OSGi OpenTelemetry integration
-	 * builds its SDK without {@code setPropagators}, so the
-	 * {@code ContextPropagators} it publishes is a no-op — asking it to
-	 * inject writes nothing, and the second half of every call would
-	 * start its own trace while everything looked configured.
-	 */
 	private TextMapPropagator propagator() {
-		ContextPropagators published = registered.get();
-		if (useRegistered && published != null) {
-			return published.getTextMapPropagator();
-		}
-		return TextMapPropagator.composite(W3CTraceContextPropagator.getInstance(),
-				W3CBaggagePropagator.getInstance());
+		return propagators.getTextMapPropagator();
 	}
 
 	@Override
@@ -171,10 +148,19 @@ public class OtelCallTracer implements CallTracer {
 			}
 			Span span = builder.startSpan();
 			Scope scope = span.makeCurrent();
+			OtelSpan started = new OtelSpan(span, scope);
 			if (outbound != null) {
-				propagator().inject(Context.current(), outbound, WRITE);
+				try {
+					propagator().inject(Context.current(), outbound, WRITE);
+				} catch (RuntimeException broken) {
+					// The span is current on this thread by now. Returning
+					// NONE without closing it would leave it current for
+					// whatever this thread does next.
+					started.close();
+					throw broken;
+				}
 			}
-			return new OtelSpan(span, scope);
+			return started;
 		} catch (RuntimeException broken) {
 			// Telemetry must not break a call. Whatever went wrong here,
 			// the call continues untraced.

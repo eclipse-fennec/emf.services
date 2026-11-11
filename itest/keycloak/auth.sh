@@ -40,7 +40,10 @@ secured() { [ "$HARNESS_AUTH" = bearer ]; }
 # container a previous run left behind.
 start_keycloak() {
   secured || return 0
-  if ss -ltn 2>/dev/null | grep -q ":${KEYCLOAK_PORT} "; then
+  # Not `ss | grep -q`: under the callers' pipefail a port that IS taken
+  # could read as free (grep -q leaves at its first match and ss fails
+  # writing the rest).
+  if grep -q ":${KEYCLOAK_PORT} " <<<"$(ss -ltn 2>/dev/null || true)"; then
     podman rm -f ddsr-keycloak >/dev/null 2>&1 || true
     sleep 1
   fi

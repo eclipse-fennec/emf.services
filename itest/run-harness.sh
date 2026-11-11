@@ -83,7 +83,9 @@ start_jar() { # name jar workdir
 }
 
 require_port_free() { # port
-  if ss -ltn 2>/dev/null | grep -q ":$1 "; then
+  # Not `ss | grep -q` under pipefail, for the reason scenario B gives:
+  # a port that IS taken could read as free.
+  if grep -q ":$1 " <<<"$(ss -ltn 2>/dev/null || true)"; then
     echo "port $1 is already in use — a stale process from an earlier run?" >&2
     ss -ltnp 2>/dev/null | grep ":$1 " >&2 || true
     exit 1
@@ -327,7 +329,15 @@ if [ -z "$CONFIRM_LINE" ]; then
   echo "SCENARIO B FAILED: no broker confirmation before endpoint stop"; cat "$WORK/provider-ts.log"; exit 1
 fi
 # the broker must no longer list the TS provider
-if curl_broker -sf "$BROKER_URL/references?interface=Payment" | grep -q 'payments-ts'; then
+# Read the answer first, look into it second — never `curl | grep -q`.
+# grep -q leaves at its first match, curl then fails writing the rest
+# (exit 23), and with pipefail the pipeline fails EXACTLY when the name
+# is there: a check for presence fails on a hit, and a check for absence
+# passes on one. Whether it happens depends on how the answer is
+# chunked, so it shows as a run that is red once in a while.
+LISTED=$(curl_broker -sf "$BROKER_URL/references?interface=Payment") \
+  || { echo "SCENARIO B FAILED: the lookup after the withdraw did not answer"; exit 1; }
+if grep -q 'payments-ts' <<<"$LISTED"; then
   echo "SCENARIO B FAILED: broker still lists payments-ts after withdraw"; exit 1
 fi
 echo "Scenario B OK: withdraw confirmed before endpoint stop; broker no longer lists payments-ts"
@@ -496,8 +506,11 @@ wait_for_broker_contracts "$OPEN_URL"
 OPEN_PROVIDER_PID=$!
 PIDS+=("$OPEN_PROVIDER_PID")
 wait_for_line "$WORK/provider-open.log" "published as reference" 60
-curl -sf "$OPEN_URL/references?interface=Payment" | grep -q 'payments-ts' \
-  || { echo "SCENARIO N FAILED: the open broker does not list the provider"; exit 1; }
+# The answer first, then the look into it (see scenario B).
+LISTED=$(curl -sf "$OPEN_URL/references?interface=Payment") \
+  || { echo "SCENARIO N FAILED: the open broker's lookup did not answer"; exit 1; }
+grep -q 'payments-ts' <<<"$LISTED" \
+  || { echo "SCENARIO N FAILED: the open broker does not list the provider"; echo "$LISTED" | head -c 2000; exit 1; }
 kill "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 wait "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 echo "Scenario N OK: no token anywhere — published, and listed to a caller without one"
@@ -596,8 +609,11 @@ require_port_free 9097
 MTLS_TS_PID=$!
 PIDS+=("$MTLS_TS_PID")
 wait_for_line "$WORK/provider-ts-mtls.log" "published as reference" 60
-curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \
-    "$MTLS_URL/references?interface=Payment" | grep -q 'payments-ts-mtls' \
+# The answer first, then the look into it (see scenario B).
+LISTED=$(curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \
+    "$MTLS_URL/references?interface=Payment") \
+  || { echo "SCENARIO M FAILED: the mtls broker's lookup did not answer"; exit 1; }
+grep -q 'payments-ts-mtls' <<<"$LISTED" \
   || { echo "SCENARIO M FAILED: the mtls broker does not list the TypeScript provider"; tail -20 "$WORK/provider-ts-mtls.log"; exit 1; }
 kill "$MTLS_TS_PID" 2>/dev/null || true
 wait "$MTLS_TS_PID" 2>/dev/null || true
@@ -627,8 +643,11 @@ expect_status 200 "$(as_certificate java-client "$LEDGER_URL/version")" "the led
 expect_status 200 "$(as_certificate java-client "$LEDGER_URL/balance")" "the ledger's balance for java-client (ledger-reader)"
 expect_status 403 "$(as_certificate java-client "$LEDGER_URL/record")" "recording as java-client (no ledger-writer)"
 expect_status 200 "$(as_certificate harness "$LEDGER_URL/record")" "recording as harness (ledger-writer)"
-curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \
-    "$MTLS_URL/references?interface=TsLedger" | grep -q 'MutualTlsScheme' \
+# The answer first, then the look into it (see scenario B).
+LISTED=$(curl -s --cacert "$TLS_DIR/ca.crt" --cert "$TLS_DIR/java-client.crt" --key "$TLS_DIR/java-client.key" \
+    "$MTLS_URL/references?interface=TsLedger") \
+  || { echo "SCENARIO M FAILED: the mtls broker's lookup for TsLedger did not answer"; exit 1; }
+grep -q 'MutualTlsScheme' <<<"$LISTED" \
   || { echo "SCENARIO M FAILED: the TypeScript ledger is announced without its client-certificate scheme"; exit 1; }
 kill "$MTLS_LEDGER_PID" 2>/dev/null || true
 wait "$MTLS_LEDGER_PID" 2>/dev/null || true

@@ -39,6 +39,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
@@ -70,10 +71,21 @@ import jakarta.ws.rs.core.Response;
  * uses (DS-registered there as Jakartars Whiteboard extensions); the
  * OSGi-side DS bindings of those classes are orthogonal to the
  * instance-level registration we do here.
+ *
+ * <p><b>Configured, or not there.</b> Which token supplier this
+ * transport binds is the target of a static reference, and a static
+ * reference whose target changes takes the component down and up
+ * again — with every proxy, the client and discovery above it. A
+ * transport that started on its defaults and was then told its real
+ * target did exactly that on every node configured at runtime (an RSA
+ * role writes its configurations after the framework is up). So it
+ * waits for its configuration: there is one transport, built once,
+ * for the setup the node was given.
  */
 @Component(
 		service = RestTransport.class,
 		configurationPid = "org.eclipse.fennec.services.client.rest",
+		configurationPolicy = ConfigurationPolicy.REQUIRE,
 		immediate = true)
 @Designate(ocd = RestTransport.Config.class)
 public final class RestTransport {

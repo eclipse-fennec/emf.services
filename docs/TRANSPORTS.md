@@ -72,6 +72,12 @@ references are mandatory, so a transport configured for
 `(fennec.tokens=oauth)` exists only once that supplier does
 ([Client framework guide](CLIENT_FRAMEWORK_GUIDE.md) §5.4a).
 
+**The transport needs this configuration to exist at all** — an empty
+one is enough for a node that takes every default. Without it there is
+no transport and so no broker proxies and no client. That is on
+purpose: a transport that started on defaults and was then given its
+real target would be taken down and rebuilt, with everything above it.
+
 `org.eclipse.fennec.services.client.rest.events`
 
 | Property | Default |

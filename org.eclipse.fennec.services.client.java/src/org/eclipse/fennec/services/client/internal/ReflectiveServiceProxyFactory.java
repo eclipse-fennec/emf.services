@@ -17,12 +17,10 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.eclipse.fennec.services.FlavorKind;
@@ -33,14 +31,13 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.InvokerProvider;
 import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
 /**
@@ -60,53 +57,14 @@ import org.osgi.service.component.propertytypes.ServiceDescription;
 public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory {
 
 	/**
-	 * The invokers this runtime has, by the flavor each speaks.
-	 *
-	 * <p>Dynamic and multiple, with method injection: they are the
-	 * audience, not the cast. A runtime with only the REST transport
-	 * installed has one, a runtime with both has two, and a proxy over a
-	 * service that announces a flavor nobody here speaks fails saying
-	 * exactly that instead of calling the wrong way.
+	 * The invokers this runtime has. Mandatory and static, and without a
+	 * target: whether the invokers a node was configured for are all
+	 * there is the client's condition ({@code invokers.target} on
+	 * {@code DdsrClient}), and a proxy needs a locator, which only a
+	 * client hands out.
 	 */
-	private final Map<FlavorKind, ServiceInvoker> invokers = new ConcurrentHashMap<>();
-
-	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
-	void addInvoker(ServiceInvoker invoker, Map<String, Object> properties) {
-		for (FlavorKind kind : flavorsOf(properties)) {
-			invokers.put(kind, invoker);
-		}
-	}
-
-	void removeInvoker(ServiceInvoker invoker, Map<String, Object> properties) {
-		for (FlavorKind kind : flavorsOf(properties)) {
-			invokers.remove(kind, invoker);
-		}
-	}
-
-	/**
-	 * The flavors an invoker speaks: one, or several — the messaging
-	 * invoker speaks every flavor that travels over a messaging broker,
-	 * because there the API is one and the flavor says the rest.
-	 */
-	private static List<FlavorKind> flavorsOf(Map<String, Object> properties) {
-		Object declared = properties == null ? null : properties.get(ServiceInvoker.FLAVOR_PROPERTY);
-		List<Object> names = new ArrayList<>();
-		if (declared instanceof Object[] several) {
-			names.addAll(Arrays.asList(several));
-		} else if (declared instanceof Collection<?> several) {
-			names.addAll(several);
-		} else if (declared != null) {
-			names.add(declared);
-		}
-		List<FlavorKind> kinds = new ArrayList<>();
-		for (Object name : names) {
-			FlavorKind kind = FlavorKind.getByName(String.valueOf(name));
-			if (kind != null) {
-				kinds.add(kind);
-			}
-		}
-		return kinds;
-	}
+	@Reference
+	InvokerProvider invokers;
 
 	/**
 	 * The invoker for a service, by the flavors it announces — in the
@@ -124,7 +82,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 					continue;
 				}
 				announced.add(flavor.getKind().getName());
-				ServiceInvoker invoker = invokers.get(flavor.getKind());
+				ServiceInvoker invoker = invokers.invokerFor(flavor.getKind());
 				if (invoker != null) {
 					return invoker;
 				}
@@ -132,11 +90,12 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		}
 		// Nothing announced at all is the older shape of a locator, and
 		// one invoker is then the only sensible reading of it.
-		if (announced.isEmpty() && invokers.size() == 1) {
-			return invokers.values().iterator().next();
+		Set<FlavorKind> spoken = invokers.flavors();
+		if (announced.isEmpty() && spoken.size() == 1) {
+			return invokers.invokerFor(spoken.iterator().next());
 		}
 		throw new DdsrException("this service is reachable over " + announced
-				+ " and this runtime speaks " + invokers.keySet()
+				+ " and this runtime speaks " + spoken
 				+ " — no transport in common");
 	}
 

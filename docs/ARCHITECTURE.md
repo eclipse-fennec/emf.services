@@ -338,6 +338,15 @@ Hand-written. The `ReflectiveServiceProxyFactory` builds a
 `java.lang.reflect.Proxy` at runtime that translates every method call
 into `ServiceInvoker.invoke(locator, method.getName(), argsMap)`.
 
+Which invoker a proxy calls through is decided per service: the first
+flavor the provider announces that this runtime has an invoker for.
+The factory does not collect invokers itself. It binds the
+`InvokerProvider` — the one whiteboard over every `ServiceInvoker`,
+which publishes the flavors it holds as the service property
+`fennec.invokers` — and the client waits for that property to name
+every flavor it was configured to speak (`invokers.target`, see
+[TRANSPORTS.md](TRANSPORTS.md)).
+
 **Argument names come from the model**, not from Java reflection: the
 proxy fetches `ServiceLocator → RestFlavor → OperationFlavor →
 ServiceOperation → Parameter[].name` and maps `args[i] →
@@ -552,7 +561,7 @@ Currently wired to LAN IPs:
 | broker.rest | `org.eclipse.fennec.services.broker.rest` | `public.url` | `http://192.168.1.6:8887/ddsr/rest` |
 | broker.rest | `org.apache.felix.http~ddsrHttp` | port / host | `8887` / `0.0.0.0` |
 | client.rest | `org.eclipse.fennec.services.client.rest` | `broker.url` | `http://192.168.1.6:8887/ddsr/rest` |
-| client.java | `org.eclipse.fennec.services.client` | `supported.flavors`, `consumer.id` | `REST`, — |
+| client.java | `org.eclipse.fennec.services.client` | `supported.flavors`, `invokers.target`, `consumer.id` | `REST`, `(fennec.invokers=REST)`, — |
 | example.payment | `org.eclipse.fennec.services.examples.payment` | `public.url`, `broker.url`, `provider.name` | `http://192.168.1.6:9091/payments`, `http://192.168.1.6:8887/ddsr/rest`, `payments-java` |
 | example.payment | `org.apache.felix.http~paymentsHttp` | port / context | `9091` / `payments` |
 | provider.rest | `org.eclipse.fennec.services.provider.rest~<name>` (factory) | `ddsr.contract`, `service.filter`, `model.bundle`, `model.entry`, `osgi.jakartars.application.base` | one distribution per contract |

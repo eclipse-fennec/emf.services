@@ -24,6 +24,8 @@
   },
   "org.eclipse.fennec.services.client": {
     "eventSource.target": "(ddsr.event.transport=mqtt)",
+    "supported.flavors": "REST",
+    "invokers.target": "(fennec.invokers=REST)",
     "consumer.id": "$[env:DDSR_CONSUMER_ID;default=$[env:DDSR_OAUTH_CLIENT_ID;default=]]"
   },
   "org.eclipse.fennec.services.security.oauth":

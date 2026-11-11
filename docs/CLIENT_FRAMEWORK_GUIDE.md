@@ -179,7 +179,7 @@ public interface DdsrClient {
 }
 ```
 
-Construction in OSGi: a DS component `DdsrClientComponent` reads `broker.url` from config (default `http://localhost:8887/ddsr/rest`) and registers `DdsrClient` as a service. Outside OSGi: `DdsrClients.connect(URI brokerUrl)` factory.
+Construction in OSGi: a DS component `DdsrClientComponent` reads `broker.url` from config (default `http://localhost:8887/ddsr/rest`) and registers `DdsrClient` as a service. The component requires a configuration (PID `org.eclipse.fennec.services.client`) and is activated only once there is an invoker for every flavor it says it speaks — `supported.flavors` and `invokers.target` name them, see [TRANSPORTS.md](TRANSPORTS.md). Outside OSGi: `DdsrClients.connect(URI brokerUrl)` factory.
 
 ### 5.2 `DdsrProvider`
 

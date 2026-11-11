@@ -28,6 +28,8 @@
   {
     "provider.heartbeat.seconds": "$[env:DDSR_PROVIDER_HEARTBEAT_SECONDS;default=30]",
     "session.interval.seconds": "$[env:DDSR_SESSION_INTERVAL_SECONDS;default=0]",
+    "supported.flavors": "REST",
+    "invokers.target": "(fennec.invokers=REST)",
     "consumer.id": "$[env:DDSR_CONSUMER_ID;default=$[env:DDSR_OAUTH_CLIENT_ID;default=]]"
   },
   "org.eclipse.fennec.services.security.oauth":

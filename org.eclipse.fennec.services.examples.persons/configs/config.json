@@ -10,6 +10,8 @@
     "tls.truststore.password": "$[env:DDSR_TLS_TRUSTSTORE_PASSWORD;default=]"
   },
   "org.eclipse.fennec.services.client": {
+    "supported.flavors": "REST",
+    "invokers.target": "(fennec.invokers=REST)",
     "consumer.id": "$[env:DDSR_CONSUMER_ID;default=$[env:DDSR_OAUTH_CLIENT_ID;default=]]"
   },
   "org.eclipse.fennec.services.security.oauth": {

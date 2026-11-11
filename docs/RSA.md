@@ -253,7 +253,10 @@ silent failure when done by hand:
 - the client's `supported.flavors` follows what the node actually
   speaks. A lookup filters by it, so a node that says REST is never
   shown a service reachable only over MQTT — and nothing reports that,
-  because from the broker's side nothing went wrong.
+  because from the broker's side nothing went wrong. The same list is
+  written a second time as `invokers.target`, the condition the client
+  waits on: there is no client before there is an invoker for each of
+  those flavors.
 
 ## Topology
 

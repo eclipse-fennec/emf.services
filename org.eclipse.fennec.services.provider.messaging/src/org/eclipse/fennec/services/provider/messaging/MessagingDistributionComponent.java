@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceFlavor;
@@ -128,8 +129,18 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 	 * through {@link CallTracer#deferred}, because an export outlives
 	 * the telemetry bundle in both directions.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	private volatile CallTracer tracer;
+	private final AtomicReference<CallTracer> tracer = new AtomicReference<>();
+
+	@Reference(name = "tracer", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setTracer(CallTracer tracer) {
+		this.tracer.set(tracer);
+	}
+
+	void unsetTracer(CallTracer tracer) {
+		// Only the one that is bound: a replacement is set before the one
+		// it replaces is unset.
+		this.tracer.compareAndSet(tracer, null);
+	}
 
 	/** One connection per broker and exchange, and how many exports hold it. */
 	private final Map<String, Connection> connections = new LinkedHashMap<>();
@@ -164,7 +175,7 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 		MessagingLink link = connection.link;
 		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(flavor, service,
 				"/provider/" + (name == null ? flavor.getName() : name), resourceSets,
-				CallTracer.deferred(() -> tracer), config.max_body_bytes());
+				CallTracer.deferred(tracer::get), config.max_body_bytes());
 
 		List<String> channels = new ArrayList<>();
 		List<AutoCloseable> subscriptions = new ArrayList<>();

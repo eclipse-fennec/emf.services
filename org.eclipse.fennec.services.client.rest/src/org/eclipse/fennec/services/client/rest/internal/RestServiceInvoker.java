@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.BearerTokenScheme;
@@ -86,11 +87,21 @@ public final class RestServiceInvoker implements ServiceInvoker {
 	 * dynamic: a deployment without telemetry installs nothing and this
 	 * invoker notices nothing.
 	 */
-	@Reference(policy = ReferencePolicy.DYNAMIC, cardinality = ReferenceCardinality.OPTIONAL)
-	private volatile CallTracer tracer;
+	private final AtomicReference<CallTracer> tracer = new AtomicReference<>();
+
+	@Reference(name = "tracer", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setTracer(CallTracer tracer) {
+		this.tracer.set(tracer);
+	}
+
+	void unsetTracer(CallTracer tracer) {
+		// Only the one that is bound: a replacement is set before the one
+		// it replaces is unset.
+		this.tracer.compareAndSet(tracer, null);
+	}
 
 	private CallTracer tracer() {
-		CallTracer bound = tracer;
+		CallTracer bound = tracer.get();
 		return bound == null ? CallTracer.NONE : bound;
 	}
 

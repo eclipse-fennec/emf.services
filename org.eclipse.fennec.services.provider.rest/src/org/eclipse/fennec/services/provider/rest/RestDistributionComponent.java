@@ -18,6 +18,7 @@ import java.util.Hashtable;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.ws.rs.core.Application;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -109,8 +110,18 @@ public class RestDistributionComponent implements RestDistribution {
 	 * through {@link CallTracer#deferred}, because what this component
 	 * serves outlives the telemetry bundle in both directions.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	private volatile CallTracer tracer;
+	private final AtomicReference<CallTracer> tracer = new AtomicReference<>();
+
+	@Reference(name = "tracer", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setTracer(CallTracer tracer) {
+		this.tracer.set(tracer);
+	}
+
+	void unsetTracer(CallTracer tracer) {
+		// Only the one that is bound: a replacement is set before the one
+		// it replaces is unset.
+		this.tracer.compareAndSet(tracer, null);
+	}
 
 	private BundleContext context;
 
@@ -134,7 +145,7 @@ public class RestDistributionComponent implements RestDistribution {
 		Dictionary<String, Object> properties = new Hashtable<>();
 		boolean enforce = ServedSecurity.enforcedByFlavor(name == null ? base : name, flavor, properties);
 		RestDispatcher dispatcher = new RestDispatcher(flavor, () -> new SingleService(service),
-				name == null ? base : name, resourceSets, CallTracer.deferred(() -> tracer), enforce, maxBodyBytes);
+				name == null ? base : name, resourceSets, CallTracer.deferred(tracer::get), enforce, maxBodyBytes);
 
 		properties.put("osgi.jakartars.application.base", base);
 		properties.put("osgi.jakartars.name", name == null ? base : name);

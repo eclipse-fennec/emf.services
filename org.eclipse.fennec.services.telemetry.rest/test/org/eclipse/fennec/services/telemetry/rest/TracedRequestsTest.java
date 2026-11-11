@@ -103,7 +103,7 @@ class TracedRequestsTest {
 
 	private static TracedRequests filterWith(CallTracer tracer) throws Exception {
 		TracedRequests filter = new TracedRequests();
-		set(filter, "tracer", tracer);
+		filter.setTracer(tracer);
 		ResourceInfo matched = mock(ResourceInfo.class);
 		when(matched.getResourceClass()).thenAnswer(invocation -> PaymentResource.class);
 		when(matched.getResourceMethod())

@@ -102,7 +102,7 @@ class RestTransportTracingTest {
 
 	private static RestTransport transportWith(CallTracer tracer) throws Exception {
 		RestTransport transport = new RestTransport();
-		set(transport, "tracer", tracer);
+		transport.setTracer(tracer);
 		set(transport, "baseUrl", URI.create("http://localhost:9090/ddsr/rest"));
 		set(transport, "origin", ClientOrigin.of("payment-demo", "7f3a"));
 		return transport;

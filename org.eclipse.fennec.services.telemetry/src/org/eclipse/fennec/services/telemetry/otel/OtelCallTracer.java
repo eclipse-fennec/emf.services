@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.telemetry.otel;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -93,8 +94,16 @@ public class OtelCallTracer implements CallTracer {
 	 * Only consulted when the configuration says to — see
 	 * {@link TelemetryConfig#useRegisteredPropagators()}.
 	 */
-	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-	volatile ContextPropagators registered;
+	private final AtomicReference<ContextPropagators> registered = new AtomicReference<>();
+
+	@Reference(name = "registered", cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setRegistered(ContextPropagators propagators) {
+		this.registered.set(propagators);
+	}
+
+	void unsetRegistered(ContextPropagators propagators) {
+		this.registered.compareAndSet(propagators, null);
+	}
 
 	@Reference
 	TracerProvider tracers;
@@ -122,7 +131,7 @@ public class OtelCallTracer implements CallTracer {
 	 * start its own trace while everything looked configured.
 	 */
 	private TextMapPropagator propagator() {
-		ContextPropagators published = registered;
+		ContextPropagators published = registered.get();
 		if (useRegistered && published != null) {
 			return published.getTextMapPropagator();
 		}

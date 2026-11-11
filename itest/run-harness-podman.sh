@@ -227,7 +227,15 @@ if [ "$ts_rc" != "0" ]; then
 fi
 grep -q 'unregistration confirmed by broker' "$WORK/provider-ts.log" \
   || { echo "SCENARIO B FAILED: no broker confirmation before endpoint stop"; cat "$WORK/provider-ts.log"; exit 1; }
-if curl_broker -sf "$BROKER_URL/references?interface=Payment" | grep -q 'payments-ts'; then
+# Read the answer first, look into it second — never `curl | grep -q`.
+# grep -q leaves at its first match, curl then fails writing the rest
+# (exit 23), and with pipefail the pipeline fails EXACTLY when the name
+# is there: a check for presence fails on a hit, and a check for absence
+# passes on one. Whether it happens depends on how the answer is
+# chunked, so it shows as a run that is red once in a while.
+LISTED=$(curl_broker -sf "$BROKER_URL/references?interface=Payment") \
+  || { echo "SCENARIO B FAILED: the lookup after the withdraw did not answer"; exit 1; }
+if grep -q 'payments-ts' <<<"$LISTED"; then
   echo "SCENARIO B FAILED: broker still lists payments-ts after withdraw"; exit 1
 fi
 echo "Scenario B OK: withdraw confirmed before endpoint stop; broker no longer lists payments-ts"

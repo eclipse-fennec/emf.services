@@ -49,6 +49,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
+import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -56,13 +57,13 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 /**
  * OSGi DS adapter that exposes a {@link DdsrBrokerImpl} as a
  * {@link DdsrBroker} service. Thin wrapper: configuration reading
- * and an optional pluggable {@link LookupBackend} binding live here;
+ * and the binding of the pluggable {@link LookupBackend} live here;
  * the actual logic lives in {@link DdsrBrokerImpl}, which has no
  * OSGi imports.
  *
- * <p>If no external {@code LookupBackend} is registered (e.g. the
- * Lucene module is not installed), an {@link InMemoryLookupBackend} is
- * used as the default.
+ * <p>The broker always has a backend: {@link InMemoryLookupBackend} is
+ * registered as the default, and one that outranks it — or is named
+ * through {@code broker.backend.target} — is used instead.
  */
 @Component(
 		service = { DdsrBroker.class, BrokerCatalog.class, BrokerImplementations.class, BrokerLookup.class,
@@ -155,8 +156,16 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 		String domain() default "";
 	}
 
-	@Reference(name="broker.backend")
-	private volatile LookupBackend externalLookup;
+	/**
+	 * The index behind every lookup. Mandatory and static, because the
+	 * broker is built around the one it was activated with: a backend
+	 * swapped underneath it would be bound here and never asked. Greedy,
+	 * because this is the one case greediness is for — a default that is
+	 * always there and a better one that may be installed later; the
+	 * broker is then rebuilt on it and indexes its registrations again.
+	 */
+	@Reference(name = "broker.backend", policyOption = ReferencePolicyOption.GREEDY)
+	private LookupBackend lookup;
 
 	/**
 	 * Event sinks as a whiteboard: every registered {@link EventSink}
@@ -253,7 +262,7 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 					config.liveness_sweep_seconds(),
 					config.cutover_grace_seconds() * 1000L,
 					config.domain());
-			DdsrBrokerImpl broker = new DdsrBrokerImpl(settings, externalLookup, this::fanOut);
+			DdsrBrokerImpl broker = new DdsrBrokerImpl(settings, lookup, this::fanOut);
 			this.delegate = broker;
 			broker.activate();
 			// Registered separately and by hand, because its one property

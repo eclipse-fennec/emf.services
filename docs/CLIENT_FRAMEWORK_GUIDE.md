@@ -332,7 +332,7 @@ Recommended Java HTTP client: `java.net.http.HttpClient` (JDK built-in, no extra
 A broker in mode `bearer` ([Security](SECURITY.md) §7a) answers `401`
 to a call without a valid token. The SDK's seam for that is one
 service, `org.eclipse.fennec.services.common.TokenSupplier`:
-`RestTransport` binds it optionally and puts `Authorization: Bearer …`
+`RestTransport` binds it and puts `Authorization: Bearer …`
 on every call **under the broker URL** — catalog, publish, lookup,
 sessions and the SSE stream — and on nothing else. The same HTTP client
 invokes providers, and a token minted for the broker's audience must
@@ -352,8 +352,32 @@ the environment:
 }
 ```
 
-With an empty `token.uri` there is no supplier and no header — the same
-configuration serves an open broker. The token is cached and renewed
+**Which supplier the transport binds is said in its configuration**, as
+the target of the reference. Every supplier registers with the service
+property `fennec.tokens`, saying what it is — `oauth` for the
+client-credentials supplier, `none` for the supplier of a node that
+shows no token — and the transport names it:
+
+```json
+"org.eclipse.fennec.services.client.rest": {
+  "broker.url": "…",
+  "broker.tokens.target": "(fennec.tokens=oauth)",
+  "provider.tokens.target": "(fennec.tokens=oauth)"
+}
+```
+
+Both references are mandatory. A node configured for tokens has no
+transport — and so no broker proxies, no client, nothing that could
+call — until its supplier is there; it cannot call without the token it
+was configured to show because something else started first. Where
+nothing is said both targets are `(fennec.tokens=none)`: a node that
+shows no token, which is what an open broker takes. A supplier of your
+own — a token mounted into a container, say — registers with its own
+value of `fennec.tokens` and is selected the same way.
+
+With an empty `token.uri` the client-credentials supplier does not
+register; a transport that targets it then waits, visibly
+(`scr:info`), rather than calling bare. The token is cached and renewed
 30 s before it expires; a token endpoint that refuses or cannot be
 reached fails the call with its reason instead of a bare `401` from the
 broker.
@@ -405,9 +429,10 @@ without it. The certificate's CN is the node's name on the broker, so
 
 To prove itself to the broker by certificate and to providers by token
 — discovery over mTLS, calls over OAuth — the node keeps its token
-supplier and says `"broker.authentication": "certificate"`
-(`DDSR_BROKER_AUTHENTICATION`): the broker then gets no token, the
-providers still get one per audience. Give the certificate the CN of
+supplier and points only the provider reference at it:
+`"broker.tokens.target": "(fennec.tokens=none)"`,
+`"provider.tokens.target": "(fennec.tokens=oauth)"`. The broker then
+gets no token, the providers still get one per audience. Give the certificate the CN of
 the node's OAuth client id, so it is one name on both sides
 ([Security](SECURITY.md) §7d).
 

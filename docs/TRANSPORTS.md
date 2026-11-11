@@ -64,6 +64,13 @@ invoker and a proxy factory, all carrying
 | `broker.url` | `http://localhost:8887/ddsr/rest` |
 | `connect.timeout.millis` | `3000` |
 | `read.timeout.millis` | `10000` |
+| `broker.tokens.target` | `(fennec.tokens=none)` — which token supplier calls to the broker take their token from |
+| `provider.tokens.target` | `(fennec.tokens=none)` — the same for calls to providers |
+
+The two targets are how a node says whether it shows a token: both
+references are mandatory, so a transport configured for
+`(fennec.tokens=oauth)` exists only once that supplier does
+([Client framework guide](CLIENT_FRAMEWORK_GUIDE.md) §5.4a).
 
 `org.eclipse.fennec.services.client.rest.events`
 

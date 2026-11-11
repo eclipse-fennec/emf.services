@@ -1,0 +1,22 @@
+Bundle-Name: Fennec Services Client - OSGi Tests
+Bundle-Description: \
+	What Declarative Services does with the client's references, tested \
+	in a framework because that is the only place it happens: a client \
+	that is not there while an invoker for one of its configured flavors \
+	is missing, and that goes when one of them does.
+
+Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.annotation.Testable;CONCRETE}
+
+-library: enableOSGi-Test
+
+# The bundles under test are on the buildpath so Gradle builds their
+# jars before resolve.test and testOSGi run.
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.cm;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot
+
+Private-Package: org.eclipse.fennec.services.client.tests

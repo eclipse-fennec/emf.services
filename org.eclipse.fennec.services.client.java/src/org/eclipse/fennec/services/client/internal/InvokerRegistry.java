@@ -52,8 +52,8 @@ public final class InvokerRegistry implements InvokerProvider {
 	/** The invokers this runtime has, by the flavor each speaks. */
 	private final Map<FlavorKind, ServiceInvoker> invokers = new ConcurrentHashMap<>();
 
-	/** Invokers on their way out: still callable, no longer published. */
-	private final Set<ServiceInvoker> leaving = ConcurrentHashMap.newKeySet();
+	/** Flavors whose invoker is on its way out: still callable, no longer published. */
+	private final Set<FlavorKind> leaving = ConcurrentHashMap.newKeySet();
 
 	private volatile ServiceRegistration<InvokerProvider> registration;
 
@@ -72,14 +72,22 @@ public final class InvokerRegistry implements InvokerProvider {
 	}
 
 	void removeInvoker(ServiceInvoker invoker, Map<String, Object> properties) {
-		leaving.add(invoker);
+		// By flavor, not by invoker: one object may be registered twice,
+		// and only the flavors of this registration are leaving.
+		List<FlavorKind> going = new ArrayList<>();
+		for (FlavorKind kind : flavorsOf(properties)) {
+			if (invokers.get(kind) == invoker) {
+				going.add(kind);
+			}
+		}
+		leaving.addAll(going);
 		try {
 			publish();
-			for (FlavorKind kind : flavorsOf(properties)) {
+			for (FlavorKind kind : going) {
 				invokers.remove(kind, invoker);
 			}
 		} finally {
-			leaving.remove(invoker);
+			leaving.removeAll(going);
 		}
 	}
 
@@ -112,11 +120,8 @@ public final class InvokerRegistry implements InvokerProvider {
 	@Override
 	public Set<FlavorKind> flavors() {
 		Set<FlavorKind> published = new TreeSet<>();
-		invokers.forEach((kind, invoker) -> {
-			if (!leaving.contains(invoker)) {
-				published.add(kind);
-			}
-		});
+		published.addAll(invokers.keySet());
+		published.removeAll(leaving);
 		return published;
 	}
 

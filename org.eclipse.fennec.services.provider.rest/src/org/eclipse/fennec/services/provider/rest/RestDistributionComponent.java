@@ -121,6 +121,11 @@ public class RestDistributionComponent implements RestDistribution {
 
 	@Override
 	public Served serve(RestFlavor flavor, Object service, String name) {
+		return serve(flavor, service, name, 0);
+	}
+
+	@Override
+	public Served serve(RestFlavor flavor, Object service, String name, long maxBodyBytes) {
 		if (flavor == null || service == null) {
 			throw new IllegalArgumentException("a flavor and the service behind it are both needed");
 		}
@@ -129,7 +134,7 @@ public class RestDistributionComponent implements RestDistribution {
 		Dictionary<String, Object> properties = new Hashtable<>();
 		boolean enforce = ServedSecurity.enforcedByFlavor(name == null ? base : name, flavor, properties);
 		RestDispatcher dispatcher = new RestDispatcher(flavor, () -> new SingleService(service),
-				name == null ? base : name, resourceSets, CallTracer.deferred(() -> tracer), enforce);
+				name == null ? base : name, resourceSets, CallTracer.deferred(() -> tracer), enforce, maxBodyBytes);
 
 		properties.put("osgi.jakartars.application.base", base);
 		properties.put("osgi.jakartars.name", name == null ? base : name);

@@ -106,6 +106,11 @@ public class RestDistributionProvider implements FlavorDistribution {
 				description = "Where the verifier reads scopes from: 'scope', or 'realm_access.roles' for roles.")
 		String scope_claim() default "scope";
 
+		@AttributeDefinition(name = "Largest request body",
+				description = "How many bytes of a request body are read before a call is refused with 413. "
+						+ "Zero leaves the default of one megabyte.")
+		long max_body_bytes() default 0;
+
 	}
 
 	@Reference
@@ -186,7 +191,8 @@ public class RestDistributionProvider implements FlavorDistribution {
 			flavor.getSecuritySchemes().add(bearerScheme());
 		}
 
-		RestDistribution.Served served = distribution.serve(flavor, service, provider + ":" + contract.getName());
+		RestDistribution.Served served = distribution.serve(flavor, service, provider + ":" + contract.getName(),
+				config.max_body_bytes());
 
 		// Only now does the flavor say where it is: what was mounted is
 		// this deployment's business, what a consumer dials is the

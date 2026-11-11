@@ -222,6 +222,9 @@ public final class Derivation {
 			rest.put("jwks.uri", identity.jwksUri());
 			rest.put("scope.claim", identity.scopeClaim());
 		}
+		if (settings.maxBodyBytes() > 0) {
+			rest.put(MAX_BODY_BYTES, String.valueOf(settings.maxBodyBytes()));
+		}
 		plan.add(DerivedConfiguration.of(DISTRIBUTION_PID, Map.copyOf(rest)));
 	}
 
@@ -290,14 +293,24 @@ public final class Derivation {
 		NodeIdentity identity = settings.identity();
 		boolean servesOverMessaging = serves && overMessaging(settings.effectiveDistributionFlavor());
 		boolean messaging = overMessaging(settings.flavor()) || settings.hearsOverMqtt() || servesOverMessaging;
-		if (!messaging || !identity.hasTls()) {
+		// What the connections are told beside the certificate: how large
+		// a document they carry (#219). Either is a reason to configure
+		// them; a node with neither leaves both at their defaults.
+		Map<String, Object> connection = new LinkedHashMap<>(mqttTls(identity));
+		if (settings.maxBodyBytes() > 0) {
+			connection.put(MAX_BODY_BYTES, String.valueOf(settings.maxBodyBytes()));
+		}
+		if (!messaging || connection.isEmpty()) {
 			return;
 		}
-		plan.add(DerivedConfiguration.of(INVOKER_MESSAGING_PID, mqttTls(identity)));
+		plan.add(DerivedConfiguration.of(INVOKER_MESSAGING_PID, Map.copyOf(connection)));
 		if (servesOverMessaging) {
-			plan.add(DerivedConfiguration.of(CONNECTION_MESSAGING_PID, mqttTls(identity)));
+			plan.add(DerivedConfiguration.of(CONNECTION_MESSAGING_PID, Map.copyOf(connection)));
 		}
 	}
+
+	/** The largest body a node takes — the same key on every part that reads one. */
+	static final String MAX_BODY_BYTES = "max.body.bytes";
 
 	private static boolean overMessaging(String configType) {
 		return RsaSettings.MQTT.equals(configType) || RsaSettings.AMQP.equals(configType);

@@ -192,6 +192,11 @@ public class GenericRestDistribution extends Application {
 				description = "Mode mtls: the DNs of the authorities this node accepts, announced in the "
 						+ "flavor's client-certificate scheme.")
 		String[] trusted_issuers() default {};
+
+		@AttributeDefinition(name = "Largest request body", required = false,
+				description = "How many bytes of a request body are read before the call is refused "
+						+ "with 413. Zero leaves the default of one megabyte.")
+		long max_body_bytes() default 0;
 	}
 
 	/**
@@ -355,7 +360,7 @@ public class GenericRestDistribution extends Application {
 				componentContext.getProperties().get(ServedSecurity.AUTH));
 		this.dispatcher = new RestDispatcher(flavor,
 				() -> implementation(context, config.service_filter(), self), contract, resourceSets,
-				CallTracer.deferred(() -> tracer), enforce);
+				CallTracer.deferred(() -> tracer), enforce, config.max_body_bytes());
 		LOG.info("[DDSR] serving " + contract + " generically at " + flavor.getBasePath());
 
 		// Under the same monitor announceIfReady takes: a binding on

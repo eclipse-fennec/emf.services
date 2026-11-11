@@ -91,6 +91,8 @@ public final class MessagingOperationDispatcher {
 
 	private final CallTracer tracer;
 
+	private final long maxBodyBytes;
+
 	public MessagingOperationDispatcher(ServiceFlavor flavor, Supplier<Object> service, String source,
 			ComponentServiceObjects<ResourceSet> resourceSets) {
 		this(flavor, service, source, resourceSets, CallTracer.NONE);
@@ -103,6 +105,16 @@ public final class MessagingOperationDispatcher {
 	 */
 	public MessagingOperationDispatcher(ServiceFlavor flavor, Supplier<Object> service, String source,
 			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer) {
+		this(flavor, service, source, resourceSets, tracer, 0);
+	}
+
+	/**
+	 * @param maxBodyBytes how large the document of a call may be (#219);
+	 *        zero or less leaves the codec's megabyte
+	 */
+	public MessagingOperationDispatcher(ServiceFlavor flavor, Supplier<Object> service, String source,
+			ComponentServiceObjects<ResourceSet> resourceSets, CallTracer tracer, long maxBodyBytes) {
+		this.maxBodyBytes = maxBodyBytes;
 		this.tracer = tracer == null ? CallTracer.NONE : tracer;
 		this.route = MessagingRoute.of(flavor);
 		this.service = service;
@@ -251,7 +263,7 @@ public final class MessagingOperationDispatcher {
 
 	private ServiceInvocation invocationOf(byte[] document, String contentType) throws Exception {
 		XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(document), resourceSets,
-				contentType == null ? MessagingRoute.DEFAULT_CONTENT_TYPE : contentType);
+				contentType == null ? MessagingRoute.DEFAULT_CONTENT_TYPE : contentType, maxBodyBytes);
 		for (EObject root : bundle.roots()) {
 			if (root instanceof ServiceInvocation invocation) {
 				return invocation;

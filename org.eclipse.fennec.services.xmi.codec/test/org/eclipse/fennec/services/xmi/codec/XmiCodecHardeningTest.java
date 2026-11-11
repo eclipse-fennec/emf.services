@@ -429,4 +429,49 @@ void aRequiredEnumAttributeIsAlwaysOnTheWire() throws IOException {
 				.as("the prototype ResourceSet must go back to the framework on the error path too")
 				.isZero();
 	}
+
+	// ------------------------------------------------------------------
+	// #219: the megabyte is the default, not the only answer
+	// ------------------------------------------------------------------
+
+	@Test
+	void aDeploymentThatRaisesTheLimitReadsALargerDocument() throws IOException {
+		String xml = paddedProvider(WireBody.MAX_BYTES + 1);
+
+		XmiBundle bundle = XmiCodec.readBundle(utf8(xml), rsObjects, null, 4L * WireBody.MAX_BYTES);
+
+		assertThat(((ServiceProvider) bundle.roots().get(0)).getName()).isEqualTo("payments-java");
+	}
+
+	@Test
+	void aDeploymentThatLowersTheLimitRefusesWhatTheDefaultWouldTake() {
+		String xml = paddedProvider(WireBody.MAX_BYTES / 2);
+
+		assertThatThrownBy(() -> XmiCodec.readBundle(utf8(xml), rsObjects, null, 1024))
+				.isInstanceOf(XmiCodecException.class)
+				.extracting(XmiCodecHardeningTest::reasonOf)
+				.isEqualTo(XmiCodecException.Reason.TOO_LARGE);
+	}
+
+	@Test
+	void noLimitNamedIsTheDefaultAndNeverNoLimit() {
+		assertThat(WireBody.effective(0)).isEqualTo(WireBody.MAX_BYTES);
+		assertThat(WireBody.effective(-1)).isEqualTo(WireBody.MAX_BYTES);
+		assertThat(WireBody.effective(42)).isEqualTo(42);
+
+		byte[] oversized = new byte[WireBody.MAX_BYTES + 1];
+		assertThatThrownBy(() -> WireBody.readFully(new ByteArrayInputStream(oversized), 0))
+				.isInstanceOf(XmiCodecException.class)
+				.extracting(XmiCodecHardeningTest::reasonOf)
+				.isEqualTo(XmiCodecException.Reason.TOO_LARGE);
+	}
+
+	@Test
+	void readFullyHoldsTheLimitItIsGiven() throws IOException {
+		assertThat(WireBody.readFully(new ByteArrayInputStream(new byte[2048]), 2048)).hasSize(2048);
+		assertThatThrownBy(() -> WireBody.readFully(new ByteArrayInputStream(new byte[2049]), 2048))
+				.isInstanceOf(XmiCodecException.class)
+				.extracting(XmiCodecHardeningTest::reasonOf)
+				.isEqualTo(XmiCodecException.Reason.TOO_LARGE);
+	}
 }

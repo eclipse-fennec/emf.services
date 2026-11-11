@@ -47,6 +47,18 @@ public interface RestDistribution {
 	 */
 	Served serve(RestFlavor flavor, Object service, String name);
 
+	/**
+	 * The same, with the deployment's word on how large a request body
+	 * may be (#219).
+	 *
+	 * @param maxBodyBytes how many bytes of a body are read before the
+	 *                     call is refused with 413; zero or less leaves
+	 *                     the default of one megabyte
+	 */
+	default Served serve(RestFlavor flavor, Object service, String name, long maxBodyBytes) {
+		return serve(flavor, service, name);
+	}
+
 	/** A mounted endpoint. */
 	interface Served extends AutoCloseable {
 

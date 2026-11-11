@@ -145,6 +145,11 @@ class RestDistributionProviderSecurityTest {
 			public String scope_claim() {
 				return "realm_access.roles";
 			}
+
+			@Override
+			public long max_body_bytes() {
+				return 0;
+			}
 		};
 	}
 

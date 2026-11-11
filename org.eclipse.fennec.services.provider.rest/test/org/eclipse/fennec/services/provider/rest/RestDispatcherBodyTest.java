@@ -39,6 +39,8 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
+import org.eclipse.fennec.services.telemetry.CallTracer;
+import org.eclipse.fennec.services.xmi.codec.WireBody;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
@@ -276,5 +278,47 @@ class RestDispatcherBodyTest {
 
 		assertThat(response.getStatus()).isEqualTo(503);
 		assertThat(String.valueOf(response.getEntity())).contains("Store");
+	}
+
+	// ---------------------------------------------------------- #219
+
+	private Response post(boolean modelTyped, String body, long maxBodyBytes) {
+		RestDispatcher dispatcher = new RestDispatcher(contract(modelTyped),
+				() -> new OneService(probe), "Store", new ResourceSetObjects(), CallTracer.NONE, false,
+				maxBodyBytes);
+		return dispatcher.dispatch("POST", "/store", name -> List.of(), name -> null,
+				new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)));
+	}
+
+	private static String paddedInterface(int bytes) {
+		return """
+				<?xml version="1.0" encoding="UTF-8"?>
+				<services:ServiceInterface xmlns:services="%s" name="Payment" version="1.0.0" description="%s"/>
+				""".formatted(NS, "x".repeat(bytes));
+	}
+
+	@Test
+	void a_body_over_the_megabyte_is_a_413_where_nobody_says_otherwise() {
+		assertThat(post(true, paddedInterface(WireBody.MAX_BYTES + 1), 0).getStatus()).isEqualTo(413);
+		assertThat(probe.received).as("refused before the operation saw anything").isNull();
+	}
+
+	@Test
+	void a_deployment_that_raises_the_limit_takes_the_larger_body() {
+		Response response = post(true, paddedInterface(WireBody.MAX_BYTES + 1), 4L * WireBody.MAX_BYTES);
+
+		assertThat(response.getStatus()).isEqualTo(200);
+		assertThat(probe.received).isInstanceOf(ServiceInterface.class);
+	}
+
+	@Test
+	void a_deployment_that_lowers_the_limit_refuses_what_the_default_would_take() {
+		assertThat(post(true, paddedInterface(4096), 1024).getStatus()).isEqualTo(413);
+	}
+
+	@Test
+	void a_body_that_is_text_is_held_to_the_same_limit() {
+		assertThat(post(false, "x".repeat(2048), 1024).getStatus()).isEqualTo(413);
+		assertThat(post(false, "x".repeat(512), 1024).getStatus()).isEqualTo(200);
 	}
 }

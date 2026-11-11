@@ -121,7 +121,8 @@ The instances are named `fennec.services.broker.events`,
 `fennec.services.client.events`, `fennec.services.invoker.<id>` and
 `fennec.services.provider.<id>`, and show up under those names in
 `MessageServiceRuntime`. A message is limited to 1 MiB, sent and
-received.
+received, unless the connection's owner names a larger document
+([How large a body may be](#how-large-a-body-may-be)).
 
 One thing follows for a caller: an invoker opens its connection with
 the first call to a broker and waits for it, up to the reply timeout.
@@ -173,6 +174,7 @@ the node is to a broker:
 | Property | Default |
 | --- | --- |
 | `reply.timeout.seconds` | `10` |
+| `max.body.bytes` | `0` — an answer's document up to 1 MiB |
 | `username`, `password` | empty — the broker's default user |
 | `tls.keystore`, `tls.truststore` and their passwords | empty; used on a TLS URL (`ssl://`, `amqps://`) |
 
@@ -209,6 +211,7 @@ the connection's to say:
 | --- | --- |
 | `username`, `password` | empty — the broker's default user |
 | `tls.keystore`, `tls.truststore` and their passwords | empty; used on a TLS URL |
+| `max.body.bytes` | `0` — a call's document up to 1 MiB |
 
 Over AMQP the reply queue is exclusive to the connection that declared
 it, so no other connection can consume from it. The answer is still
@@ -342,6 +345,7 @@ Factory PID `org.eclipse.fennec.services.provider.rest`
 | `public.url` | `""` | the address to announce |
 | `broker.url` | `""` | only used to name the contract in the announcement |
 | `osgi.jakartars.application.base` | `""` | empty takes the flavor's `basePath` |
+| `max.body.bytes` | `0` | how much of a request body is read; `0` is 1 MiB |
 
 It waits for the whiteboard to confirm the application was really
 deployed, up to 10 seconds, and fails loudly with the runtime's own
@@ -354,6 +358,41 @@ shutdown the endpoint stops before the withdrawal is announced, which
 is the opposite of the order [Eventing](EVENTING.md) describes. A
 deployment that needs that order announces from a separate component
 and leaves `publish` off here.
+
+## How large a body may be
+
+A body is attacker input, and how much of it a node holds in memory is
+not the sender's decision. Every inbound document is therefore read
+with a bound, and the bound is **1 MiB** wherever nobody says
+otherwise — which is what broker traffic (catalog, publish, lookup)
+needs and stays at.
+
+A deployment that serves an operation taking a large model raises it
+where it configures the serving part, with `max.body.bytes`:
+
+| Where | What it bounds |
+| --- | --- |
+| `…provider.rest` (factory) | the request body of the contract it serves |
+| `…rsa.distribution.rest` | the request body of every export of this node |
+| `…provider.messaging.connection` | the document of a call, and the messages of the connection |
+| `…client.messaging.invoker` | the document of an answer, and the messages of the connections |
+| the RSA role (`…rsa.provider`, `…rsa.consumer`) | written into the three above ([RSA](RSA.md#two-transports-and-splitting-them)) |
+
+Over REST a body above the limit is refused with **413** before the
+implementation is called; anything else the codec cannot read is 400.
+
+Over a messaging broker two limits are in play. The messaging instance
+bounds the *message*, the configuration names the *document*: a
+document that is not text travels in the envelope as base64, four
+bytes for every three, so the instance is configured with that much
+more plus room for the envelope. And the messaging broker has a limit
+of its own (`message_size_limit` in Mosquitto, `max_message_size` in
+RabbitMQ) that this configuration cannot move.
+
+What this does not cover: an **answer read by the REST client** is
+bounded at 1 MiB and not configurable yet, and the limit is a
+deployment's statement, not the contract's — a consumer cannot read it
+off a flavor before calling.
 
 ## `flavor.rest` — the placement rules
 

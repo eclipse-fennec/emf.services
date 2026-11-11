@@ -157,6 +157,12 @@ public class RsaProvider extends NodeConfiguration {
 						+ "XMI. The launch needs a resource factory registered for it — emf.codec for JSON.")
 		String encoding() default "";
 
+		@AttributeDefinition(name = "Largest body", required = false,
+				description = "How many bytes the body of a call may have before it is refused (413 over REST). Zero "
+						+ "leaves the default of one megabyte. Over a messaging broker the broker has a "
+						+ "limit of its own.")
+		long max_body_bytes() default 0;
+
 		@AttributeDefinition(name = "MQTT topic prefix",
 				description = "Calls served over MQTT arrive under <prefix>/req/… and are answered under "
 						+ "<prefix>/res/…. One prefix per deployment keeps two of them on one broker apart.")
@@ -272,6 +278,7 @@ public class RsaProvider extends NodeConfiguration {
 						config.subject_claim(), config.tls_keystore(), config.tls_keystore_password(),
 						config.tls_truststore(), config.tls_truststore_password(),
 						"certificate".equals(config.broker_authentication().strip())))
-				.withAmqpUrl(config.amqp_url()).withEncoding(config.encoding());
+				.withAmqpUrl(config.amqp_url()).withEncoding(config.encoding())
+				.withMaxBodyBytes(config.max_body_bytes());
 	}
 }

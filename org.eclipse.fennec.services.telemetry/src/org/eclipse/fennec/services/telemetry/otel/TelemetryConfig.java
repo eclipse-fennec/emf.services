@@ -37,27 +37,29 @@ public @interface TelemetryConfig {
 			description = "Reported as the instrumentation scope name of every span and instrument.")
 	String scope() default "org.eclipse.fennec.services";
 
-	/**
-	 * Whether to propagate with the {@code ContextPropagators} service
-	 * that the OpenTelemetry integration publishes, instead of the W3C
-	 * propagators this bundle brings.
-	 *
-	 * <p>Off by default, and that is a statement about the current state
-	 * of the integration rather than a preference: it builds its SDK
-	 * without {@code setPropagators}, so the service it publishes is a
-	 * no-op. Propagation that is configured and silently does nothing is
-	 * worse than propagation that is obviously absent. Turn this on once
-	 * the integration supplies real ones.
-	 */
 	@AttributeDefinition(name = "Bridge JUL logs",
 			description = "Forward this framework's java.util.logging records to OpenTelemetry, "
 					+ "correlated with the span they happened in.")
 	boolean logs() default true;
 
-	@AttributeDefinition(name = "Use the published propagators",
-			description = "Use the registered ContextPropagators service instead of the built-in W3C propagators. "
-					+ "The OSGi OpenTelemetry integration currently publishes a no-op, so this is off by default.")
-	boolean useRegisteredPropagators() default false;
+	/**
+	 * Which {@code ContextPropagators} service the tracer binds, as the
+	 * target of its reference.
+	 *
+	 * <p>The W3C pair of this bundle by default, and that is a statement
+	 * about the current state of the OpenTelemetry integration rather
+	 * than a preference: it builds its SDK without
+	 * {@code setPropagators}, so the service it publishes is a no-op.
+	 * Propagation that is configured and silently does nothing is worse
+	 * than propagation that is obviously absent. Name another service
+	 * here once there is a real one — {@code (!(fennec.propagators=*))}
+	 * is every service this bundle did not register.
+	 */
+	@AttributeDefinition(name = "Propagators",
+			description = "LDAP filter selecting the ContextPropagators service the tracer uses. "
+					+ "The default is the W3C Trace Context and Baggage pair this bundle registers; "
+					+ "the OSGi OpenTelemetry integration currently publishes a no-op.")
+	String propagators_target() default W3cPropagators.TARGET;
 
 	/**
 	 * Whether to report one series per relationship — a binding on the

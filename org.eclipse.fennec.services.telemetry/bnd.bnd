@@ -6,9 +6,9 @@ Bundle-Description: \
 	Optional in both directions — nothing in the call path requires \
 	this bundle, and this bundle requires no part of the call path. \
 	\
-	It supplies its own W3C propagators rather than using the published \
-	ContextPropagators service, which the OSGi OpenTelemetry \
-	integration currently registers as a no-op (#126).
+	It registers its own W3C propagators and binds them by target \
+	(propagators.target), because the ContextPropagators service the \
+	OSGi OpenTelemetry integration publishes is currently a no-op (#126).
 
 -buildpath: \
 	osgi.core;version=latest,\

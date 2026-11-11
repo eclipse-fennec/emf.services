@@ -29,8 +29,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -85,12 +87,45 @@ class OtelCallTracerTest {
 				.build();
 		tracer = new OtelCallTracer();
 		tracer.tracers = provider;
+		tracer.propagators = new W3cPropagators();
 		tracer.configure(Configs.defaults());
 	}
 
 	@AfterEach
 	void tearDown() {
 		provider.close();
+	}
+
+	@Test
+	@DisplayName("the tracer travels with the propagators it was bound to, and brings none of its own")
+	void theBoundPropagatorsDecide() {
+		// What the integration publishes today. Selecting it by target is
+		// a deployment's statement, and the tracer does not second-guess it.
+		tracer.propagators = ContextPropagators.noop();
+		Map<String, String> wire = new HashMap<>();
+
+		try (CallSpan calling = tracer.calling("Payment/charge", TraceCarrier.over(wire))) {
+			// the call
+		}
+
+		assertThat(wire).isEmpty();
+		assertThat(collected.spans).as("the call is still traced, only not joined").hasSize(1);
+	}
+
+	@Test
+	@DisplayName("propagators that fail cost the trace, not the call — and leave no span behind on the thread")
+	void brokenPropagatorsLeaveNothingCurrent() {
+		tracer.propagators = () -> {
+			throw new IllegalStateException("no propagator today");
+		};
+
+		try (CallSpan calling = tracer.calling("Payment/charge", TraceCarrier.over(new HashMap<>()))) {
+			assertThat(calling).isSameAs(CallSpan.NONE);
+		}
+
+		assertThat(Span.current().getSpanContext().isValid())
+			.as("a span left current would become the parent of whatever this thread does next")
+			.isFalse();
 	}
 
 	@Test

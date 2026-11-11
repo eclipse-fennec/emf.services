@@ -7,9 +7,10 @@
     <implementations name="binding-probe-java-mqtt" version="1.0.0"
         implementationId="binding-probe:java:mqtt:1.0.0"
         serviceInterfaces="/1">
-      <flavors xsi:type="services:MqttFlavor" name="binding-probe-mqtt" kind="MQTT"
-          requestTopic="ddsr/rpc/binding-probe" defaultQos="AT_LEAST_ONCE">
-        <operationFlavors xsi:type="services:MqttOperationFlavor" name="echo"
+      <flavors xsi:type="services:MessagingFlavor" name="binding-probe-mqtt" kind="MQTT"
+          channel="ddsr/rpc/binding-probe" defaultQos="AT_LEAST_ONCE">
+        <operationFlavors xsi:type="services:MessagingOperationFlavor" name="echo"
+            replyChannel="ddsr/rpc/binding-probe/echo/reply"
             operation="/1/@operations.0"/>
       </flavors>
     </implementations>

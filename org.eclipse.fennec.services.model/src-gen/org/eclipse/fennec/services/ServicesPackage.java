@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:2991499dcb70fa795b15340b73eeb175ded59d636ff51d027d4e71fe4e2fcb52", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:f245c95a18e3210058833722e82c07b532b6af3dff4b5b0a28c58711e47e108c", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -2182,14 +2182,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int REST_FLAVOR_OPERATION_COUNT = SERVICE_FLAVOR_OPERATION_COUNT + 0;
 
 	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.MqttFlavorImpl <em>Mqtt Flavor</em>}' class.
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.MessagingFlavorImpl <em>Messaging Flavor</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.services.impl.MqttFlavorImpl
-	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMqttFlavor()
+	 * @see org.eclipse.fennec.services.impl.MessagingFlavorImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingFlavor()
 	 * @generated
 	 */
-	int MQTT_FLAVOR = 32;
+	int MESSAGING_FLAVOR = 32;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2198,7 +2198,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__NAME = SERVICE_FLAVOR__NAME;
+	int MESSAGING_FLAVOR__NAME = SERVICE_FLAVOR__NAME;
 
 	/**
 	 * The feature id for the '<em><b>Kind</b></em>' attribute.
@@ -2207,7 +2207,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__KIND = SERVICE_FLAVOR__KIND;
+	int MESSAGING_FLAVOR__KIND = SERVICE_FLAVOR__KIND;
 
 	/**
 	 * The feature id for the '<em><b>Operation Flavors</b></em>' containment reference list.
@@ -2216,7 +2216,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__OPERATION_FLAVORS = SERVICE_FLAVOR__OPERATION_FLAVORS;
+	int MESSAGING_FLAVOR__OPERATION_FLAVORS = SERVICE_FLAVOR__OPERATION_FLAVORS;
 
 	/**
 	 * The feature id for the '<em><b>Capabilities</b></em>' containment reference list.
@@ -2225,7 +2225,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__CAPABILITIES = SERVICE_FLAVOR__CAPABILITIES;
+	int MESSAGING_FLAVOR__CAPABILITIES = SERVICE_FLAVOR__CAPABILITIES;
 
 	/**
 	 * The feature id for the '<em><b>Security Schemes</b></em>' containment reference list.
@@ -2234,7 +2234,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__SECURITY_SCHEMES = SERVICE_FLAVOR__SECURITY_SCHEMES;
+	int MESSAGING_FLAVOR__SECURITY_SCHEMES = SERVICE_FLAVOR__SECURITY_SCHEMES;
 
 	/**
 	 * The feature id for the '<em><b>Brokers</b></em>' attribute list.
@@ -2243,125 +2243,25 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__BROKERS = SERVICE_FLAVOR_FEATURE_COUNT + 0;
+	int MESSAGING_FLAVOR__BROKERS = SERVICE_FLAVOR_FEATURE_COUNT + 0;
 
 	/**
-	 * The feature id for the '<em><b>Request Topic</b></em>' attribute.
+	 * The feature id for the '<em><b>Channel</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__REQUEST_TOPIC = SERVICE_FLAVOR_FEATURE_COUNT + 1;
+	int MESSAGING_FLAVOR__CHANNEL = SERVICE_FLAVOR_FEATURE_COUNT + 1;
 
 	/**
-	 * The feature id for the '<em><b>Response Topic</b></em>' attribute.
+	 * The feature id for the '<em><b>Reply Channel</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_FLAVOR__RESPONSE_TOPIC = SERVICE_FLAVOR_FEATURE_COUNT + 2;
-
-	/**
-	 * The feature id for the '<em><b>Default Qos</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MQTT_FLAVOR__DEFAULT_QOS = SERVICE_FLAVOR_FEATURE_COUNT + 3;
-
-	/**
-	 * The feature id for the '<em><b>Default Retained</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MQTT_FLAVOR__DEFAULT_RETAINED = SERVICE_FLAVOR_FEATURE_COUNT + 4;
-
-	/**
-	 * The number of structural features of the '<em>Mqtt Flavor</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MQTT_FLAVOR_FEATURE_COUNT = SERVICE_FLAVOR_FEATURE_COUNT + 5;
-
-	/**
-	 * The number of operations of the '<em>Mqtt Flavor</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MQTT_FLAVOR_OPERATION_COUNT = SERVICE_FLAVOR_OPERATION_COUNT + 0;
-
-	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.AmqpFlavorImpl <em>Amqp Flavor</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.services.impl.AmqpFlavorImpl
-	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getAmqpFlavor()
-	 * @generated
-	 */
-	int AMQP_FLAVOR = 33;
-
-	/**
-	 * The feature id for the '<em><b>Name</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_FLAVOR__NAME = SERVICE_FLAVOR__NAME;
-
-	/**
-	 * The feature id for the '<em><b>Kind</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_FLAVOR__KIND = SERVICE_FLAVOR__KIND;
-
-	/**
-	 * The feature id for the '<em><b>Operation Flavors</b></em>' containment reference list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_FLAVOR__OPERATION_FLAVORS = SERVICE_FLAVOR__OPERATION_FLAVORS;
-
-	/**
-	 * The feature id for the '<em><b>Capabilities</b></em>' containment reference list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_FLAVOR__CAPABILITIES = SERVICE_FLAVOR__CAPABILITIES;
-
-	/**
-	 * The feature id for the '<em><b>Security Schemes</b></em>' containment reference list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_FLAVOR__SECURITY_SCHEMES = SERVICE_FLAVOR__SECURITY_SCHEMES;
-
-	/**
-	 * The feature id for the '<em><b>Brokers</b></em>' attribute list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_FLAVOR__BROKERS = SERVICE_FLAVOR_FEATURE_COUNT + 0;
+	int MESSAGING_FLAVOR__REPLY_CHANNEL = SERVICE_FLAVOR_FEATURE_COUNT + 2;
 
 	/**
 	 * The feature id for the '<em><b>Exchange</b></em>' attribute.
@@ -2370,34 +2270,34 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int AMQP_FLAVOR__EXCHANGE = SERVICE_FLAVOR_FEATURE_COUNT + 1;
+	int MESSAGING_FLAVOR__EXCHANGE = SERVICE_FLAVOR_FEATURE_COUNT + 3;
 
 	/**
-	 * The feature id for the '<em><b>Request Routing Key</b></em>' attribute.
+	 * The feature id for the '<em><b>Default Qos</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int AMQP_FLAVOR__REQUEST_ROUTING_KEY = SERVICE_FLAVOR_FEATURE_COUNT + 2;
+	int MESSAGING_FLAVOR__DEFAULT_QOS = SERVICE_FLAVOR_FEATURE_COUNT + 4;
 
 	/**
-	 * The number of structural features of the '<em>Amqp Flavor</em>' class.
+	 * The number of structural features of the '<em>Messaging Flavor</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int AMQP_FLAVOR_FEATURE_COUNT = SERVICE_FLAVOR_FEATURE_COUNT + 3;
+	int MESSAGING_FLAVOR_FEATURE_COUNT = SERVICE_FLAVOR_FEATURE_COUNT + 5;
 
 	/**
-	 * The number of operations of the '<em>Amqp Flavor</em>' class.
+	 * The number of operations of the '<em>Messaging Flavor</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int AMQP_FLAVOR_OPERATION_COUNT = SERVICE_FLAVOR_OPERATION_COUNT + 0;
+	int MESSAGING_FLAVOR_OPERATION_COUNT = SERVICE_FLAVOR_OPERATION_COUNT + 0;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.ServiceOperationFlavorImpl <em>Service Operation Flavor</em>}' class.
@@ -2407,7 +2307,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceOperationFlavor()
 	 * @generated
 	 */
-	int SERVICE_OPERATION_FLAVOR = 34;
+	int SERVICE_OPERATION_FLAVOR = 33;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2471,7 +2371,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRestOperationFlavor()
 	 * @generated
 	 */
-	int REST_OPERATION_FLAVOR = 35;
+	int REST_OPERATION_FLAVOR = 34;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2580,7 +2480,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRestParameterBinding()
 	 * @generated
 	 */
-	int REST_PARAMETER_BINDING = 36;
+	int REST_PARAMETER_BINDING = 35;
 
 	/**
 	 * The feature id for the '<em><b>Parameter</b></em>' reference.
@@ -2635,7 +2535,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRestExceptionBinding()
 	 * @generated
 	 */
-	int REST_EXCEPTION_BINDING = 37;
+	int REST_EXCEPTION_BINDING = 36;
 
 	/**
 	 * The feature id for the '<em><b>Exception</b></em>' reference.
@@ -2674,14 +2574,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int REST_EXCEPTION_BINDING_OPERATION_COUNT = 0;
 
 	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.MqttOperationFlavorImpl <em>Mqtt Operation Flavor</em>}' class.
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.MessagingOperationFlavorImpl <em>Messaging Operation Flavor</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.services.impl.MqttOperationFlavorImpl
-	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMqttOperationFlavor()
+	 * @see org.eclipse.fennec.services.impl.MessagingOperationFlavorImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingOperationFlavor()
 	 * @generated
 	 */
-	int MQTT_OPERATION_FLAVOR = 38;
+	int MESSAGING_OPERATION_FLAVOR = 37;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2690,7 +2590,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__NAME = SERVICE_OPERATION_FLAVOR__NAME;
+	int MESSAGING_OPERATION_FLAVOR__NAME = SERVICE_OPERATION_FLAVOR__NAME;
 
 	/**
 	 * The feature id for the '<em><b>Operation</b></em>' reference.
@@ -2699,7 +2599,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__OPERATION = SERVICE_OPERATION_FLAVOR__OPERATION;
+	int MESSAGING_OPERATION_FLAVOR__OPERATION = SERVICE_OPERATION_FLAVOR__OPERATION;
 
 	/**
 	 * The feature id for the '<em><b>Consumes</b></em>' attribute list.
@@ -2708,7 +2608,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__CONSUMES = SERVICE_OPERATION_FLAVOR__CONSUMES;
+	int MESSAGING_OPERATION_FLAVOR__CONSUMES = SERVICE_OPERATION_FLAVOR__CONSUMES;
 
 	/**
 	 * The feature id for the '<em><b>Produces</b></em>' attribute list.
@@ -2717,25 +2617,25 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__PRODUCES = SERVICE_OPERATION_FLAVOR__PRODUCES;
+	int MESSAGING_OPERATION_FLAVOR__PRODUCES = SERVICE_OPERATION_FLAVOR__PRODUCES;
 
 	/**
-	 * The feature id for the '<em><b>Request Topic</b></em>' attribute.
+	 * The feature id for the '<em><b>Channel</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__REQUEST_TOPIC = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 0;
+	int MESSAGING_OPERATION_FLAVOR__CHANNEL = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 0;
 
 	/**
-	 * The feature id for the '<em><b>Response Topic</b></em>' attribute.
+	 * The feature id for the '<em><b>Reply Channel</b></em>' attribute.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 1;
+	int MESSAGING_OPERATION_FLAVOR__REPLY_CHANNEL = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 1;
 
 	/**
 	 * The feature id for the '<em><b>Qos</b></em>' attribute.
@@ -2744,125 +2644,25 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__QOS = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 2;
+	int MESSAGING_OPERATION_FLAVOR__QOS = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 2;
 
 	/**
-	 * The feature id for the '<em><b>Retained</b></em>' attribute.
+	 * The number of structural features of the '<em>Messaging Operation Flavor</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__RETAINED = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 3;
+	int MESSAGING_OPERATION_FLAVOR_FEATURE_COUNT = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 3;
 
 	/**
-	 * The feature id for the '<em><b>Correlation</b></em>' attribute.
+	 * The number of operations of the '<em>Messaging Operation Flavor</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int MQTT_OPERATION_FLAVOR__CORRELATION = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 4;
-
-	/**
-	 * The feature id for the '<em><b>Return Path</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MQTT_OPERATION_FLAVOR__RETURN_PATH = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 5;
-
-	/**
-	 * The number of structural features of the '<em>Mqtt Operation Flavor</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MQTT_OPERATION_FLAVOR_FEATURE_COUNT = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 6;
-
-	/**
-	 * The number of operations of the '<em>Mqtt Operation Flavor</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int MQTT_OPERATION_FLAVOR_OPERATION_COUNT = SERVICE_OPERATION_FLAVOR_OPERATION_COUNT + 0;
-
-	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.AmqpOperationFlavorImpl <em>Amqp Operation Flavor</em>}' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.services.impl.AmqpOperationFlavorImpl
-	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getAmqpOperationFlavor()
-	 * @generated
-	 */
-	int AMQP_OPERATION_FLAVOR = 39;
-
-	/**
-	 * The feature id for the '<em><b>Name</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_OPERATION_FLAVOR__NAME = SERVICE_OPERATION_FLAVOR__NAME;
-
-	/**
-	 * The feature id for the '<em><b>Operation</b></em>' reference.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_OPERATION_FLAVOR__OPERATION = SERVICE_OPERATION_FLAVOR__OPERATION;
-
-	/**
-	 * The feature id for the '<em><b>Consumes</b></em>' attribute list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_OPERATION_FLAVOR__CONSUMES = SERVICE_OPERATION_FLAVOR__CONSUMES;
-
-	/**
-	 * The feature id for the '<em><b>Produces</b></em>' attribute list.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_OPERATION_FLAVOR__PRODUCES = SERVICE_OPERATION_FLAVOR__PRODUCES;
-
-	/**
-	 * The feature id for the '<em><b>Routing Key</b></em>' attribute.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_OPERATION_FLAVOR__ROUTING_KEY = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 0;
-
-	/**
-	 * The number of structural features of the '<em>Amqp Operation Flavor</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_OPERATION_FLAVOR_FEATURE_COUNT = SERVICE_OPERATION_FLAVOR_FEATURE_COUNT + 1;
-
-	/**
-	 * The number of operations of the '<em>Amqp Operation Flavor</em>' class.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 * @ordered
-	 */
-	int AMQP_OPERATION_FLAVOR_OPERATION_COUNT = SERVICE_OPERATION_FLAVOR_OPERATION_COUNT + 0;
+	int MESSAGING_OPERATION_FLAVOR_OPERATION_COUNT = SERVICE_OPERATION_FLAVOR_OPERATION_COUNT + 0;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.SecurityRequirementImpl <em>Security Requirement</em>}' class.
@@ -2872,7 +2672,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecurityRequirement()
 	 * @generated
 	 */
-	int SECURITY_REQUIREMENT = 40;
+	int SECURITY_REQUIREMENT = 38;
 
 	/**
 	 * The feature id for the '<em><b>Authenticated</b></em>' attribute.
@@ -2918,7 +2718,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecurityScheme()
 	 * @generated
 	 */
-	int SECURITY_SCHEME = 41;
+	int SECURITY_SCHEME = 39;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2964,7 +2764,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getBearerTokenScheme()
 	 * @generated
 	 */
-	int BEARER_TOKEN_SCHEME = 42;
+	int BEARER_TOKEN_SCHEME = 40;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3046,7 +2846,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMutualTlsScheme()
 	 * @generated
 	 */
-	int MUTUAL_TLS_SCHEME = 43;
+	int MUTUAL_TLS_SCHEME = 41;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3101,7 +2901,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConnectionScheme()
 	 * @generated
 	 */
-	int CONNECTION_SCHEME = 44;
+	int CONNECTION_SCHEME = 42;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3147,7 +2947,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPrincipal()
 	 * @generated
 	 */
-	int PRINCIPAL = 45;
+	int PRINCIPAL = 43;
 
 	/**
 	 * The feature id for the '<em><b>Subject</b></em>' attribute.
@@ -3202,7 +3002,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceReference()
 	 * @generated
 	 */
-	int SERVICE_REFERENCE = 46;
+	int SERVICE_REFERENCE = 44;
 
 	/**
 	 * The feature id for the '<em><b>Id</b></em>' attribute.
@@ -3284,7 +3084,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceRegistration()
 	 * @generated
 	 */
-	int SERVICE_REGISTRATION = 47;
+	int SERVICE_REGISTRATION = 45;
 
 	/**
 	 * The feature id for the '<em><b>Reference</b></em>' reference.
@@ -3411,7 +3211,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConsumerSession()
 	 * @generated
 	 */
-	int CONSUMER_SESSION = 48;
+	int CONSUMER_SESSION = 46;
 
 	/**
 	 * The feature id for the '<em><b>Consumer Id</b></em>' attribute.
@@ -3502,7 +3302,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getComponentConfiguration()
 	 * @generated
 	 */
-	int COMPONENT_CONFIGURATION = 49;
+	int COMPONENT_CONFIGURATION = 47;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3611,7 +3411,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSatisfiedReference()
 	 * @generated
 	 */
-	int SATISFIED_REFERENCE = 50;
+	int SATISFIED_REFERENCE = 48;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3666,7 +3466,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getUnsatisfiedReference()
 	 * @generated
 	 */
-	int UNSATISFIED_REFERENCE = 51;
+	int UNSATISFIED_REFERENCE = 49;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3721,7 +3521,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDiagnostic()
 	 * @generated
 	 */
-	int DIAGNOSTIC = 52;
+	int DIAGNOSTIC = 50;
 
 	/**
 	 * The feature id for the '<em><b>Severity</b></em>' attribute.
@@ -3803,7 +3603,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceEvent()
 	 * @generated
 	 */
-	int SERVICE_EVENT = 53;
+	int SERVICE_EVENT = 51;
 
 	/**
 	 * The feature id for the '<em><b>Type</b></em>' attribute.
@@ -3867,7 +3667,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceListener()
 	 * @generated
 	 */
-	int SERVICE_LISTENER = 54;
+	int SERVICE_LISTENER = 52;
 
 	/**
 	 * The feature id for the '<em><b>Filter</b></em>' attribute.
@@ -3913,7 +3713,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceRegistry()
 	 * @generated
 	 */
-	int SERVICE_REGISTRY = 55;
+	int SERVICE_REGISTRY = 53;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4031,7 +3831,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLocalServiceRegistry()
 	 * @generated
 	 */
-	int LOCAL_SERVICE_REGISTRY = 56;
+	int LOCAL_SERVICE_REGISTRY = 54;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4239,7 +4039,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRemoteServiceRegistry()
 	 * @generated
 	 */
-	int REMOTE_SERVICE_REGISTRY = 57;
+	int REMOTE_SERVICE_REGISTRY = 55;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4438,7 +4238,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCapability()
 	 * @generated
 	 */
-	int CAPABILITY = 58;
+	int CAPABILITY = 56;
 
 	/**
 	 * The feature id for the '<em><b>Namespace</b></em>' attribute.
@@ -4484,7 +4284,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRequirement()
 	 * @generated
 	 */
-	int REQUIREMENT = 59;
+	int REQUIREMENT = 57;
 
 	/**
 	 * The feature id for the '<em><b>Namespace</b></em>' attribute.
@@ -4539,7 +4339,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConsumerCapability()
 	 * @generated
 	 */
-	int CONSUMER_CAPABILITY = 60;
+	int CONSUMER_CAPABILITY = 58;
 
 	/**
 	 * The feature id for the '<em><b>Consumer Id</b></em>' attribute.
@@ -4603,7 +4403,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPublishHook()
 	 * @generated
 	 */
-	int PUBLISH_HOOK = 61;
+	int PUBLISH_HOOK = 59;
 
 	/**
 	 * The number of structural features of the '<em>Publish Hook</em>' class.
@@ -4649,7 +4449,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDiscoveryHook()
 	 * @generated
 	 */
-	int DISCOVERY_HOOK = 62;
+	int DISCOVERY_HOOK = 60;
 
 	/**
 	 * The number of structural features of the '<em>Discovery Hook</em>' class.
@@ -4704,7 +4504,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDistributionHook()
 	 * @generated
 	 */
-	int DISTRIBUTION_HOOK = 63;
+	int DISTRIBUTION_HOOK = 61;
 
 	/**
 	 * The number of structural features of the '<em>Distribution Hook</em>' class.
@@ -4750,7 +4550,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLanguageBinding()
 	 * @generated
 	 */
-	int LANGUAGE_BINDING = 64;
+	int LANGUAGE_BINDING = 62;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4832,7 +4632,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeMapping()
 	 * @generated
 	 */
-	int TYPE_MAPPING = 65;
+	int TYPE_MAPPING = 63;
 
 	/**
 	 * The feature id for the '<em><b>Neutral Type</b></em>' attribute.
@@ -4887,7 +4687,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPackageMapping()
 	 * @generated
 	 */
-	int PACKAGE_MAPPING = 66;
+	int PACKAGE_MAPPING = 64;
 
 	/**
 	 * The feature id for the '<em><b>Ns URI</b></em>' attribute.
@@ -4933,7 +4733,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getJavaBinding()
 	 * @generated
 	 */
-	int JAVA_BINDING = 67;
+	int JAVA_BINDING = 65;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -5024,7 +4824,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeScriptBinding()
 	 * @generated
 	 */
-	int TYPE_SCRIPT_BINDING = 68;
+	int TYPE_SCRIPT_BINDING = 66;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -5106,7 +4906,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPythonBinding()
 	 * @generated
 	 */
-	int PYTHON_BINDING = 69;
+	int PYTHON_BINDING = 67;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -5188,7 +4988,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getArgument()
 	 * @generated
 	 */
-	int ARGUMENT = 70;
+	int ARGUMENT = 68;
 
 	/**
 	 * The feature id for the '<em><b>Parameter</b></em>' reference.
@@ -5234,7 +5034,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceInvocation()
 	 * @generated
 	 */
-	int SERVICE_INVOCATION = 71;
+	int SERVICE_INVOCATION = 69;
 
 	/**
 	 * The feature id for the '<em><b>Operation</b></em>' reference.
@@ -5280,7 +5080,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceInvocationResult()
 	 * @generated
 	 */
-	int SERVICE_INVOCATION_RESULT = 72;
+	int SERVICE_INVOCATION_RESULT = 70;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' containment reference.
@@ -5326,7 +5126,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceScope()
 	 * @generated
 	 */
-	int SERVICE_SCOPE = 73;
+	int SERVICE_SCOPE = 71;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferenceCardinality <em>Reference Cardinality</em>}' enum.
@@ -5336,7 +5136,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferenceCardinality()
 	 * @generated
 	 */
-	int REFERENCE_CARDINALITY = 74;
+	int REFERENCE_CARDINALITY = 72;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferencePolicy <em>Reference Policy</em>}' enum.
@@ -5346,7 +5146,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferencePolicy()
 	 * @generated
 	 */
-	int REFERENCE_POLICY = 75;
+	int REFERENCE_POLICY = 73;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferencePolicyOption <em>Reference Policy Option</em>}' enum.
@@ -5356,7 +5156,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferencePolicyOption()
 	 * @generated
 	 */
-	int REFERENCE_POLICY_OPTION = 76;
+	int REFERENCE_POLICY_OPTION = 74;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConfigurationPolicy <em>Configuration Policy</em>}' enum.
@@ -5366,7 +5166,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConfigurationPolicy()
 	 * @generated
 	 */
-	int CONFIGURATION_POLICY = 77;
+	int CONFIGURATION_POLICY = 75;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ComponentState <em>Component State</em>}' enum.
@@ -5376,7 +5176,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getComponentState()
 	 * @generated
 	 */
-	int COMPONENT_STATE = 78;
+	int COMPONENT_STATE = 76;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ServiceEventType <em>Service Event Type</em>}' enum.
@@ -5386,7 +5186,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceEventType()
 	 * @generated
 	 */
-	int SERVICE_EVENT_TYPE = 79;
+	int SERVICE_EVENT_TYPE = 77;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.FieldOption <em>Field Option</em>}' enum.
@@ -5396,7 +5196,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getFieldOption()
 	 * @generated
 	 */
-	int FIELD_OPTION = 80;
+	int FIELD_OPTION = 78;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CollectionType <em>Collection Type</em>}' enum.
@@ -5406,7 +5206,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCollectionType()
 	 * @generated
 	 */
-	int COLLECTION_TYPE = 81;
+	int COLLECTION_TYPE = 79;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.LifecycleHookKind <em>Lifecycle Hook Kind</em>}' enum.
@@ -5416,7 +5216,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLifecycleHookKind()
 	 * @generated
 	 */
-	int LIFECYCLE_HOOK_KIND = 82;
+	int LIFECYCLE_HOOK_KIND = 80;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferenceBindingKind <em>Reference Binding Kind</em>}' enum.
@@ -5426,7 +5226,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferenceBindingKind()
 	 * @generated
 	 */
-	int REFERENCE_BINDING_KIND = 83;
+	int REFERENCE_BINDING_KIND = 81;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.DiagnosticSeverity <em>Diagnostic Severity</em>}' enum.
@@ -5436,7 +5236,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDiagnosticSeverity()
 	 * @generated
 	 */
-	int DIAGNOSTIC_SEVERITY = 84;
+	int DIAGNOSTIC_SEVERITY = 82;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.FlavorKind <em>Flavor Kind</em>}' enum.
@@ -5446,7 +5246,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getFlavorKind()
 	 * @generated
 	 */
-	int FLAVOR_KIND = 85;
+	int FLAVOR_KIND = 83;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.HttpMethod <em>Http Method</em>}' enum.
@@ -5456,7 +5256,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getHttpMethod()
 	 * @generated
 	 */
-	int HTTP_METHOD = 86;
+	int HTTP_METHOD = 84;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ParameterBinding <em>Parameter Binding</em>}' enum.
@@ -5466,17 +5266,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getParameterBinding()
 	 * @generated
 	 */
-	int PARAMETER_BINDING = 87;
+	int PARAMETER_BINDING = 85;
 
 	/**
-	 * The meta object id for the '{@link org.eclipse.fennec.services.MqttQos <em>Mqtt Qos</em>}' enum.
+	 * The meta object id for the '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @see org.eclipse.fennec.services.MqttQos
-	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMqttQos()
+	 * @see org.eclipse.fennec.services.MessagingQos
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingQos()
 	 * @generated
 	 */
-	int MQTT_QOS = 88;
+	int MESSAGING_QOS = 86;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.RegistryKind <em>Registry Kind</em>}' enum.
@@ -5486,7 +5286,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRegistryKind()
 	 * @generated
 	 */
-	int REGISTRY_KIND = 89;
+	int REGISTRY_KIND = 87;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ExpressionLanguage <em>Expression Language</em>}' enum.
@@ -5496,7 +5296,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getExpressionLanguage()
 	 * @generated
 	 */
-	int EXPRESSION_LANGUAGE = 90;
+	int EXPRESSION_LANGUAGE = 88;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CatalogStatus <em>Catalog Status</em>}' enum.
@@ -5506,7 +5306,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCatalogStatus()
 	 * @generated
 	 */
-	int CATALOG_STATUS = 91;
+	int CATALOG_STATUS = 89;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.UpdatePolicy <em>Update Policy</em>}' enum.
@@ -5516,7 +5316,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getUpdatePolicy()
 	 * @generated
 	 */
-	int UPDATE_POLICY = 92;
+	int UPDATE_POLICY = 90;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConnectionState <em>Connection State</em>}' enum.
@@ -5526,7 +5326,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConnectionState()
 	 * @generated
 	 */
-	int CONNECTION_STATE = 93;
+	int CONNECTION_STATE = 91;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.SecuritySchemeKind <em>Security Scheme Kind</em>}' enum.
@@ -5536,7 +5336,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecuritySchemeKind()
 	 * @generated
 	 */
-	int SECURITY_SCHEME_KIND = 94;
+	int SECURITY_SCHEME_KIND = 92;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ApiType <em>Api Type</em>}' enum.
@@ -5546,7 +5346,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiType()
 	 * @generated
 	 */
-	int API_TYPE = 95;
+	int API_TYPE = 93;
 
 
 	/**
@@ -7003,112 +6803,69 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getRestFlavor_ContentTypes();
 
 	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.services.MqttFlavor <em>Mqtt Flavor</em>}'.
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.MessagingFlavor <em>Messaging Flavor</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Mqtt Flavor</em>'.
-	 * @see org.eclipse.fennec.services.MqttFlavor
+	 * @return the meta object for class '<em>Messaging Flavor</em>'.
+	 * @see org.eclipse.fennec.services.MessagingFlavor
 	 * @generated
 	 */
-	EClass getMqttFlavor();
+	EClass getMessagingFlavor();
 
 	/**
-	 * Returns the meta object for the attribute list '{@link org.eclipse.fennec.services.MqttFlavor#getBrokers <em>Brokers</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute list '<em>Brokers</em>'.
-	 * @see org.eclipse.fennec.services.MqttFlavor#getBrokers()
-	 * @see #getMqttFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttFlavor_Brokers();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttFlavor#getRequestTopic <em>Request Topic</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Request Topic</em>'.
-	 * @see org.eclipse.fennec.services.MqttFlavor#getRequestTopic()
-	 * @see #getMqttFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttFlavor_RequestTopic();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttFlavor#getResponseTopic <em>Response Topic</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Response Topic</em>'.
-	 * @see org.eclipse.fennec.services.MqttFlavor#getResponseTopic()
-	 * @see #getMqttFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttFlavor_ResponseTopic();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttFlavor#getDefaultQos <em>Default Qos</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Default Qos</em>'.
-	 * @see org.eclipse.fennec.services.MqttFlavor#getDefaultQos()
-	 * @see #getMqttFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttFlavor_DefaultQos();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttFlavor#isDefaultRetained <em>Default Retained</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Default Retained</em>'.
-	 * @see org.eclipse.fennec.services.MqttFlavor#isDefaultRetained()
-	 * @see #getMqttFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttFlavor_DefaultRetained();
-
-	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.services.AmqpFlavor <em>Amqp Flavor</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Amqp Flavor</em>'.
-	 * @see org.eclipse.fennec.services.AmqpFlavor
-	 * @generated
-	 */
-	EClass getAmqpFlavor();
-
-	/**
-	 * Returns the meta object for the attribute list '{@link org.eclipse.fennec.services.AmqpFlavor#getBrokers <em>Brokers</em>}'.
+	 * Returns the meta object for the attribute list '{@link org.eclipse.fennec.services.MessagingFlavor#getBrokers <em>Brokers</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @return the meta object for the attribute list '<em>Brokers</em>'.
-	 * @see org.eclipse.fennec.services.AmqpFlavor#getBrokers()
-	 * @see #getAmqpFlavor()
+	 * @see org.eclipse.fennec.services.MessagingFlavor#getBrokers()
+	 * @see #getMessagingFlavor()
 	 * @generated
 	 */
-	EAttribute getAmqpFlavor_Brokers();
+	EAttribute getMessagingFlavor_Brokers();
 
 	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.AmqpFlavor#getExchange <em>Exchange</em>}'.
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MessagingFlavor#getChannel <em>Channel</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Channel</em>'.
+	 * @see org.eclipse.fennec.services.MessagingFlavor#getChannel()
+	 * @see #getMessagingFlavor()
+	 * @generated
+	 */
+	EAttribute getMessagingFlavor_Channel();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MessagingFlavor#getReplyChannel <em>Reply Channel</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Reply Channel</em>'.
+	 * @see org.eclipse.fennec.services.MessagingFlavor#getReplyChannel()
+	 * @see #getMessagingFlavor()
+	 * @generated
+	 */
+	EAttribute getMessagingFlavor_ReplyChannel();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MessagingFlavor#getExchange <em>Exchange</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @return the meta object for the attribute '<em>Exchange</em>'.
-	 * @see org.eclipse.fennec.services.AmqpFlavor#getExchange()
-	 * @see #getAmqpFlavor()
+	 * @see org.eclipse.fennec.services.MessagingFlavor#getExchange()
+	 * @see #getMessagingFlavor()
 	 * @generated
 	 */
-	EAttribute getAmqpFlavor_Exchange();
+	EAttribute getMessagingFlavor_Exchange();
 
 	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.AmqpFlavor#getRequestRoutingKey <em>Request Routing Key</em>}'.
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MessagingFlavor#getDefaultQos <em>Default Qos</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Request Routing Key</em>'.
-	 * @see org.eclipse.fennec.services.AmqpFlavor#getRequestRoutingKey()
-	 * @see #getAmqpFlavor()
+	 * @return the meta object for the attribute '<em>Default Qos</em>'.
+	 * @see org.eclipse.fennec.services.MessagingFlavor#getDefaultQos()
+	 * @see #getMessagingFlavor()
 	 * @generated
 	 */
-	EAttribute getAmqpFlavor_RequestRoutingKey();
+	EAttribute getMessagingFlavor_DefaultQos();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.services.ServiceOperationFlavor <em>Service Operation Flavor</em>}'.
@@ -7294,101 +7051,47 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getRestExceptionBinding_Status();
 
 	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.services.MqttOperationFlavor <em>Mqtt Operation Flavor</em>}'.
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.MessagingOperationFlavor <em>Messaging Operation Flavor</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Mqtt Operation Flavor</em>'.
-	 * @see org.eclipse.fennec.services.MqttOperationFlavor
+	 * @return the meta object for class '<em>Messaging Operation Flavor</em>'.
+	 * @see org.eclipse.fennec.services.MessagingOperationFlavor
 	 * @generated
 	 */
-	EClass getMqttOperationFlavor();
+	EClass getMessagingOperationFlavor();
 
 	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttOperationFlavor#getRequestTopic <em>Request Topic</em>}'.
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MessagingOperationFlavor#getChannel <em>Channel</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Request Topic</em>'.
-	 * @see org.eclipse.fennec.services.MqttOperationFlavor#getRequestTopic()
-	 * @see #getMqttOperationFlavor()
+	 * @return the meta object for the attribute '<em>Channel</em>'.
+	 * @see org.eclipse.fennec.services.MessagingOperationFlavor#getChannel()
+	 * @see #getMessagingOperationFlavor()
 	 * @generated
 	 */
-	EAttribute getMqttOperationFlavor_RequestTopic();
+	EAttribute getMessagingOperationFlavor_Channel();
 
 	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttOperationFlavor#getResponseTopic <em>Response Topic</em>}'.
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MessagingOperationFlavor#getReplyChannel <em>Reply Channel</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Response Topic</em>'.
-	 * @see org.eclipse.fennec.services.MqttOperationFlavor#getResponseTopic()
-	 * @see #getMqttOperationFlavor()
+	 * @return the meta object for the attribute '<em>Reply Channel</em>'.
+	 * @see org.eclipse.fennec.services.MessagingOperationFlavor#getReplyChannel()
+	 * @see #getMessagingOperationFlavor()
 	 * @generated
 	 */
-	EAttribute getMqttOperationFlavor_ResponseTopic();
+	EAttribute getMessagingOperationFlavor_ReplyChannel();
 
 	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttOperationFlavor#getQos <em>Qos</em>}'.
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MessagingOperationFlavor#getQos <em>Qos</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @return the meta object for the attribute '<em>Qos</em>'.
-	 * @see org.eclipse.fennec.services.MqttOperationFlavor#getQos()
-	 * @see #getMqttOperationFlavor()
+	 * @see org.eclipse.fennec.services.MessagingOperationFlavor#getQos()
+	 * @see #getMessagingOperationFlavor()
 	 * @generated
 	 */
-	EAttribute getMqttOperationFlavor_Qos();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttOperationFlavor#isRetained <em>Retained</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Retained</em>'.
-	 * @see org.eclipse.fennec.services.MqttOperationFlavor#isRetained()
-	 * @see #getMqttOperationFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttOperationFlavor_Retained();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttOperationFlavor#isCorrelation <em>Correlation</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Correlation</em>'.
-	 * @see org.eclipse.fennec.services.MqttOperationFlavor#isCorrelation()
-	 * @see #getMqttOperationFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttOperationFlavor_Correlation();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.MqttOperationFlavor#getReturnPath <em>Return Path</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Return Path</em>'.
-	 * @see org.eclipse.fennec.services.MqttOperationFlavor#getReturnPath()
-	 * @see #getMqttOperationFlavor()
-	 * @generated
-	 */
-	EAttribute getMqttOperationFlavor_ReturnPath();
-
-	/**
-	 * Returns the meta object for class '{@link org.eclipse.fennec.services.AmqpOperationFlavor <em>Amqp Operation Flavor</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for class '<em>Amqp Operation Flavor</em>'.
-	 * @see org.eclipse.fennec.services.AmqpOperationFlavor
-	 * @generated
-	 */
-	EClass getAmqpOperationFlavor();
-
-	/**
-	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.AmqpOperationFlavor#getRoutingKey <em>Routing Key</em>}'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @return the meta object for the attribute '<em>Routing Key</em>'.
-	 * @see org.eclipse.fennec.services.AmqpOperationFlavor#getRoutingKey()
-	 * @see #getAmqpOperationFlavor()
-	 * @generated
-	 */
-	EAttribute getAmqpOperationFlavor_RoutingKey();
+	EAttribute getMessagingOperationFlavor_Qos();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.services.SecurityRequirement <em>Security Requirement</em>}'.
@@ -9189,14 +8892,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EEnum getParameterBinding();
 
 	/**
-	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.MqttQos <em>Mqtt Qos</em>}'.
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
-	 * @return the meta object for enum '<em>Mqtt Qos</em>'.
-	 * @see org.eclipse.fennec.services.MqttQos
+	 * @return the meta object for enum '<em>Messaging Qos</em>'.
+	 * @see org.eclipse.fennec.services.MessagingQos
 	 * @generated
 	 */
-	EEnum getMqttQos();
+	EEnum getMessagingQos();
 
 	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.RegistryKind <em>Registry Kind</em>}'.
@@ -10436,14 +10139,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EAttribute REST_FLAVOR__CONTENT_TYPES = eINSTANCE.getRestFlavor_ContentTypes();
 
 		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.MqttFlavorImpl <em>Mqtt Flavor</em>}' class.
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.MessagingFlavorImpl <em>Messaging Flavor</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.services.impl.MqttFlavorImpl
-		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMqttFlavor()
+		 * @see org.eclipse.fennec.services.impl.MessagingFlavorImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingFlavor()
 		 * @generated
 		 */
-		EClass MQTT_FLAVOR = eINSTANCE.getMqttFlavor();
+		EClass MESSAGING_FLAVOR = eINSTANCE.getMessagingFlavor();
 
 		/**
 		 * The meta object literal for the '<em><b>Brokers</b></em>' attribute list feature.
@@ -10451,57 +10154,23 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute MQTT_FLAVOR__BROKERS = eINSTANCE.getMqttFlavor_Brokers();
+		EAttribute MESSAGING_FLAVOR__BROKERS = eINSTANCE.getMessagingFlavor_Brokers();
 
 		/**
-		 * The meta object literal for the '<em><b>Request Topic</b></em>' attribute feature.
+		 * The meta object literal for the '<em><b>Channel</b></em>' attribute feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute MQTT_FLAVOR__REQUEST_TOPIC = eINSTANCE.getMqttFlavor_RequestTopic();
+		EAttribute MESSAGING_FLAVOR__CHANNEL = eINSTANCE.getMessagingFlavor_Channel();
 
 		/**
-		 * The meta object literal for the '<em><b>Response Topic</b></em>' attribute feature.
+		 * The meta object literal for the '<em><b>Reply Channel</b></em>' attribute feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute MQTT_FLAVOR__RESPONSE_TOPIC = eINSTANCE.getMqttFlavor_ResponseTopic();
-
-		/**
-		 * The meta object literal for the '<em><b>Default Qos</b></em>' attribute feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute MQTT_FLAVOR__DEFAULT_QOS = eINSTANCE.getMqttFlavor_DefaultQos();
-
-		/**
-		 * The meta object literal for the '<em><b>Default Retained</b></em>' attribute feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute MQTT_FLAVOR__DEFAULT_RETAINED = eINSTANCE.getMqttFlavor_DefaultRetained();
-
-		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.AmqpFlavorImpl <em>Amqp Flavor</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.services.impl.AmqpFlavorImpl
-		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getAmqpFlavor()
-		 * @generated
-		 */
-		EClass AMQP_FLAVOR = eINSTANCE.getAmqpFlavor();
-
-		/**
-		 * The meta object literal for the '<em><b>Brokers</b></em>' attribute list feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute AMQP_FLAVOR__BROKERS = eINSTANCE.getAmqpFlavor_Brokers();
+		EAttribute MESSAGING_FLAVOR__REPLY_CHANNEL = eINSTANCE.getMessagingFlavor_ReplyChannel();
 
 		/**
 		 * The meta object literal for the '<em><b>Exchange</b></em>' attribute feature.
@@ -10509,15 +10178,15 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute AMQP_FLAVOR__EXCHANGE = eINSTANCE.getAmqpFlavor_Exchange();
+		EAttribute MESSAGING_FLAVOR__EXCHANGE = eINSTANCE.getMessagingFlavor_Exchange();
 
 		/**
-		 * The meta object literal for the '<em><b>Request Routing Key</b></em>' attribute feature.
+		 * The meta object literal for the '<em><b>Default Qos</b></em>' attribute feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute AMQP_FLAVOR__REQUEST_ROUTING_KEY = eINSTANCE.getAmqpFlavor_RequestRoutingKey();
+		EAttribute MESSAGING_FLAVOR__DEFAULT_QOS = eINSTANCE.getMessagingFlavor_DefaultQos();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.ServiceOperationFlavorImpl <em>Service Operation Flavor</em>}' class.
@@ -10664,30 +10333,30 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EAttribute REST_EXCEPTION_BINDING__STATUS = eINSTANCE.getRestExceptionBinding_Status();
 
 		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.MqttOperationFlavorImpl <em>Mqtt Operation Flavor</em>}' class.
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.MessagingOperationFlavorImpl <em>Messaging Operation Flavor</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.services.impl.MqttOperationFlavorImpl
-		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMqttOperationFlavor()
+		 * @see org.eclipse.fennec.services.impl.MessagingOperationFlavorImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingOperationFlavor()
 		 * @generated
 		 */
-		EClass MQTT_OPERATION_FLAVOR = eINSTANCE.getMqttOperationFlavor();
+		EClass MESSAGING_OPERATION_FLAVOR = eINSTANCE.getMessagingOperationFlavor();
 
 		/**
-		 * The meta object literal for the '<em><b>Request Topic</b></em>' attribute feature.
+		 * The meta object literal for the '<em><b>Channel</b></em>' attribute feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute MQTT_OPERATION_FLAVOR__REQUEST_TOPIC = eINSTANCE.getMqttOperationFlavor_RequestTopic();
+		EAttribute MESSAGING_OPERATION_FLAVOR__CHANNEL = eINSTANCE.getMessagingOperationFlavor_Channel();
 
 		/**
-		 * The meta object literal for the '<em><b>Response Topic</b></em>' attribute feature.
+		 * The meta object literal for the '<em><b>Reply Channel</b></em>' attribute feature.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute MQTT_OPERATION_FLAVOR__RESPONSE_TOPIC = eINSTANCE.getMqttOperationFlavor_ResponseTopic();
+		EAttribute MESSAGING_OPERATION_FLAVOR__REPLY_CHANNEL = eINSTANCE.getMessagingOperationFlavor_ReplyChannel();
 
 		/**
 		 * The meta object literal for the '<em><b>Qos</b></em>' attribute feature.
@@ -10695,49 +10364,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * <!-- end-user-doc -->
 		 * @generated
 		 */
-		EAttribute MQTT_OPERATION_FLAVOR__QOS = eINSTANCE.getMqttOperationFlavor_Qos();
-
-		/**
-		 * The meta object literal for the '<em><b>Retained</b></em>' attribute feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute MQTT_OPERATION_FLAVOR__RETAINED = eINSTANCE.getMqttOperationFlavor_Retained();
-
-		/**
-		 * The meta object literal for the '<em><b>Correlation</b></em>' attribute feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute MQTT_OPERATION_FLAVOR__CORRELATION = eINSTANCE.getMqttOperationFlavor_Correlation();
-
-		/**
-		 * The meta object literal for the '<em><b>Return Path</b></em>' attribute feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute MQTT_OPERATION_FLAVOR__RETURN_PATH = eINSTANCE.getMqttOperationFlavor_ReturnPath();
-
-		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.AmqpOperationFlavorImpl <em>Amqp Operation Flavor</em>}' class.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.services.impl.AmqpOperationFlavorImpl
-		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getAmqpOperationFlavor()
-		 * @generated
-		 */
-		EClass AMQP_OPERATION_FLAVOR = eINSTANCE.getAmqpOperationFlavor();
-
-		/**
-		 * The meta object literal for the '<em><b>Routing Key</b></em>' attribute feature.
-		 * <!-- begin-user-doc -->
-		 * <!-- end-user-doc -->
-		 * @generated
-		 */
-		EAttribute AMQP_OPERATION_FLAVOR__ROUTING_KEY = eINSTANCE.getAmqpOperationFlavor_RoutingKey();
+		EAttribute MESSAGING_OPERATION_FLAVOR__QOS = eINSTANCE.getMessagingOperationFlavor_Qos();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.SecurityRequirementImpl <em>Security Requirement</em>}' class.
@@ -12196,14 +11823,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EEnum PARAMETER_BINDING = eINSTANCE.getParameterBinding();
 
 		/**
-		 * The meta object literal for the '{@link org.eclipse.fennec.services.MqttQos <em>Mqtt Qos</em>}' enum.
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}' enum.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
-		 * @see org.eclipse.fennec.services.MqttQos
-		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMqttQos()
+		 * @see org.eclipse.fennec.services.MessagingQos
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingQos()
 		 * @generated
 		 */
-		EEnum MQTT_QOS = eINSTANCE.getMqttQos();
+		EEnum MESSAGING_QOS = eINSTANCE.getMessagingQos();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.RegistryKind <em>Registry Kind</em>}' enum.

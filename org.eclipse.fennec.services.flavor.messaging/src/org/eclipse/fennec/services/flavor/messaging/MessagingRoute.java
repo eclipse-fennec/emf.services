@@ -16,78 +16,79 @@ package org.eclipse.fennec.services.flavor.messaging;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.AmqpOperationFlavor;
-import org.eclipse.fennec.services.MqttFlavor;
-import org.eclipse.fennec.services.MqttOperationFlavor;
+import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.MessagingOperationFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
-import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.cloudevents.CloudEventException;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
-import org.eclipse.fennec.services.flavor.amqp.AmqpFlavors;
-import org.eclipse.fennec.services.flavor.mqtt.MqttFlavors;
-import org.eclipse.fennec.services.flavor.mqtt.MqttMessages;
 
 import io.cloudevents.model.ce.CloudEvent;
 
 /**
- * Where a call travels over a messaging broker — read from a flavor,
- * whichever messaging flavor it is.
+ * Where a call travels over a messaging broker — a
+ * {@link MessagingFlavor}, read once.
  *
- * <p>Over messaging the API is one: publish to a channel, subscribe to
- * a channel, a request and its answer. What a protocol changes is what
- * a channel is called, where the broker is and how an answer finds its
- * way back — and those are exactly the facts a flavor states. This
- * class reads them into one shape, so that everything behind it is
- * written once. The rules themselves stay in the flavor's own bundle
- * ({@code MqttFlavors}, {@code AmqpFlavors}); nothing here decides a
- * topic or a routing key.
+ * <p>Every operation placed: the channel it is reached on, its QoS,
+ * what it is encoded in, and where its answer goes. Everything behind
+ * this class — the invoker, the dispatcher, the distribution — works on
+ * these and never looks at the protocol again. The rules that produce
+ * them are {@link MessagingFlavors}.
  *
- * <p>Two ways back exist, and the route says which applies:
+ * <p>Where an answer goes is the flavor's statement, per operation:
  * <ul>
- * <li><b>in the envelope</b> (MQTT 3.1.1): the protocol carries no
- * reply address, so the call names a topic in its envelope and the
- * consumer listens on a subtree of its own name;</li>
- * <li><b>the protocol's own</b> (AMQP): reply-to and correlation id are
- * message properties, and the connection handles both.</li>
+ * <li>it names a place ({@code replyChannel}): the consumer listens on
+ * a subtree of its own name below it and names the exact channel in
+ * each call — a place a broker's ACL can be written against;</li>
+ * <li>it names none: the consumer's connection provides a reply channel
+ * only it reads.</li>
  * </ul>
+ * The provider side does not care which: every call says where it wants
+ * its answer.
  */
 public final class MessagingRoute {
 
-	/** One operation of the flavor, placed. */
-	public record Operation(ServiceOperationFlavor flavor, ServiceOperation operation, String channel,
-			int qos, String consumes, String produces) {
+	/**
+	 * One operation of the flavor, placed.
+	 *
+	 * @param replyBase where answers to this operation go, or null when
+	 *                  the flavor names no place for them
+	 */
+	public record Operation(MessagingOperationFlavor flavor, ServiceOperation operation, String channel,
+			int qos, String consumes, String produces, String replyBase) {
 
 		/** The operation's name, or the flavor's when it binds none. */
 		public String name() {
 			return operation != null && operation.getName() != null ? operation.getName() : flavor.getName();
 		}
+
+		/** Whether the flavor says where answers to this operation go. */
+		public boolean namesReplyChannel() {
+			return replyBase != null;
+		}
 	}
 
-	private final ServiceFlavor flavor;
+	private final MessagingFlavor flavor;
 
 	private final List<Operation> operations = new ArrayList<>();
 
-	private MessagingRoute(ServiceFlavor flavor) {
+	private MessagingRoute(MessagingFlavor flavor) {
 		this.flavor = flavor;
 		for (ServiceOperationFlavor candidate : flavor.getOperationFlavors()) {
-			if (flavor instanceof MqttFlavor mqtt && candidate instanceof MqttOperationFlavor operation) {
+			if (candidate instanceof MessagingOperationFlavor operation) {
 				operations.add(new Operation(operation, operation.getOperation(),
-						MqttFlavors.requestTopic(mqtt, operation), MqttFlavors.qos(mqtt, operation),
-						MqttFlavors.consumes(operation), MqttFlavors.produces(operation)));
-			} else if (flavor instanceof AmqpFlavor amqp && candidate instanceof AmqpOperationFlavor operation) {
-				operations.add(new Operation(operation, operation.getOperation(),
-						AmqpFlavors.routingKey(amqp, operation), AmqpFlavors.QOS,
-						AmqpFlavors.consumes(operation), AmqpFlavors.produces(operation)));
+						MessagingFlavors.channel(flavor, operation), MessagingFlavors.qos(flavor, operation),
+						MessagingFlavors.consumes(operation), MessagingFlavors.produces(operation),
+						MessagingFlavors.replyBase(flavor, operation)));
 			}
 		}
 	}
 
 	/** Whether a flavor travels over a messaging broker at all. */
 	public static boolean speaks(ServiceFlavor flavor) {
-		return flavor instanceof MqttFlavor || flavor instanceof AmqpFlavor;
+		return flavor instanceof MessagingFlavor;
 	}
 
 	/**
@@ -98,11 +99,11 @@ public final class MessagingRoute {
 	 *                                  be placed
 	 */
 	public static MessagingRoute of(ServiceFlavor flavor) {
-		if (!speaks(flavor)) {
+		if (!(flavor instanceof MessagingFlavor messaging)) {
 			throw new IllegalArgumentException((flavor == null ? "no flavor" : flavor.eClass().getName())
 					+ " does not travel over a messaging broker");
 		}
-		return new MessagingRoute(flavor);
+		return new MessagingRoute(messaging);
 	}
 
 	/**
@@ -112,8 +113,8 @@ public final class MessagingRoute {
 	public static MessagingRoute of(ServiceImplementation implementation) {
 		if (implementation != null) {
 			for (ServiceFlavor candidate : implementation.getFlavors()) {
-				if (speaks(candidate)) {
-					return new MessagingRoute(candidate);
+				if (candidate instanceof MessagingFlavor messaging) {
+					return new MessagingRoute(messaging);
 				}
 			}
 		}
@@ -121,33 +122,23 @@ public final class MessagingRoute {
 	}
 
 	/** The flavor this route was read from. */
-	public ServiceFlavor flavor() {
+	public MessagingFlavor flavor() {
 		return flavor;
 	}
 
-	/** What the flavor is called where people read it: {@code MQTT}, {@code AMQP}. */
+	/** What the flavor's protocol is called where people read it: {@code MQTT}, {@code AMQP}. */
 	public String protocol() {
-		return flavor instanceof AmqpFlavor ? "AMQP" : "MQTT";
+		return MessagingFlavors.isAmqp(flavor) ? "AMQP" : "MQTT";
 	}
 
 	/** The broker a call is sent to — the first the flavor announces — or null. */
 	public String broker() {
-		List<String> brokers = flavor instanceof AmqpFlavor amqp ? amqp.getBrokers()
-				: ((MqttFlavor) flavor).getBrokers();
-		return brokers.isEmpty() ? null : brokers.get(0);
+		return flavor.getBrokers().isEmpty() ? null : flavor.getBrokers().get(0);
 	}
 
 	/** The exchange calls are published to, where the protocol has exchanges; else null. */
 	public String exchange() {
-		return flavor instanceof AmqpFlavor amqp ? AmqpFlavors.exchange(amqp) : null;
-	}
-
-	/**
-	 * Whether the protocol carries the reply address and the correlation
-	 * itself. Where it does not, both travel in the envelope.
-	 */
-	public boolean repliesNatively() {
-		return flavor instanceof AmqpFlavor;
+		return MessagingFlavors.exchange(flavor);
 	}
 
 	/** Every operation of the flavor, placed, in the flavor's order. */
@@ -183,45 +174,46 @@ public final class MessagingRoute {
 		return null;
 	}
 
-	/** A name as one level of a channel of this protocol. */
-	public String segment(String name) {
-		return flavor instanceof AmqpFlavor ? AmqpFlavors.segment(name) : MqttFlavors.topicSegment(name);
-	}
-
 	/**
-	 * Where a consumer listens for its answers, when the way back is in
-	 * the envelope: a subtree of its own name, which is what a broker's
-	 * ACL can be written against.
+	 * The subtree a consumer listens on for the answers to one
+	 * operation.
 	 *
-	 * @throws IllegalStateException on a route that replies natively
+	 * @throws IllegalStateException for an operation whose flavor names
+	 *                               no place for answers
 	 */
 	public String replySubtree(Operation operation, String consumer) {
-		return MqttFlavors.replySubtree(envelopeFlavor(), (MqttOperationFlavor) operation.flavor(), consumer);
+		return MessagingFlavors.replySubtree(flavor, replyBaseOf(operation), consumer);
 	}
 
-	/** The topic one call's answer goes to, when the way back is in the envelope. */
-	public String replyTopic(Operation operation, String consumer, String requestId) {
-		return MqttFlavors.replyTopic(envelopeFlavor(), (MqttOperationFlavor) operation.flavor(), consumer,
-				requestId);
+	/** The filter a consumer subscribes to cover that subtree. */
+	public String replyFilter(Operation operation, String consumer) {
+		return MessagingFlavors.subtreeFilter(flavor, replySubtree(operation, consumer));
 	}
 
-	private MqttFlavor envelopeFlavor() {
-		if (flavor instanceof MqttFlavor mqtt) {
-			return mqtt;
+	/** The channel one call's answer goes to. */
+	public String replyChannel(Operation operation, String consumer, String requestId) {
+		return MessagingFlavors.replyChannel(flavor, replyBaseOf(operation), consumer, requestId);
+	}
+
+	private static String replyBaseOf(Operation operation) {
+		if (operation.replyBase() == null) {
+			throw new IllegalStateException("the flavor names no place for answers to " + operation.name()
+					+ " — the connection provides one");
 		}
-		throw new IllegalStateException("over " + protocol() + " the reply address is the protocol's own");
+		return operation.replyBase();
 	}
 
 	// ---------------------------------------------------------- messages
 
 	/** What a call is written in when the contract does not say. */
-	public static final String DEFAULT_CONTENT_TYPE = MqttFlavors.DEFAULT_CONTENT_TYPE;
+	public static final String DEFAULT_CONTENT_TYPE = MessagingFlavors.DEFAULT_CONTENT_TYPE;
 
 	/**
 	 * The envelope of a call: a CloudEvent, the same on every protocol.
 	 *
-	 * @param replyTo the topic the answer goes to, when the way back is
-	 *                in the envelope; null where the protocol carries it
+	 * @param replyTo the channel the answer goes to, when the flavor
+	 *                names a place for answers; null where the
+	 *                connection provides one
 	 */
 	public static CloudEvent request(String source, String subject, String contentType, String replyTo) {
 		CloudEvent envelope = CloudEvents.newEnvelope(CloudEvents.TYPE_INVOKE, source, contentType);
@@ -232,28 +224,29 @@ public final class MessagingRoute {
 		return envelope;
 	}
 
-	/** The envelope of the answer to a call. */
+	/**
+	 * The envelope of the answer to a call. Its subject is the call's:
+	 * an answer says what was asked.
+	 */
 	public static CloudEvent reply(CloudEvent request, String source, String contentType) {
-		return MqttMessages.reply(request, source, contentType);
-	}
-
-	/** One message: the envelope and the document it carries. */
-	public static byte[] write(CloudEvent envelope, byte[] document) {
-		return MqttMessages.write(envelope, document);
-	}
-
-	/** Read a message of the expected kind; anything else is refused. */
-	public static CloudEventCodec.Message read(byte[] payload, String expectedType) {
-		return MqttMessages.read(payload, expectedType);
+		CloudEvent envelope = CloudEvents.replyTo(request, source, contentType);
+		if (request.getSubject() != null) {
+			envelope.setSubject(request.getSubject());
+		}
+		return envelope;
 	}
 
 	/** The reply address a call's envelope names; refused when it names none. */
 	public static String replyAddressOf(CloudEvent request) {
-		return MqttMessages.replyTopicOf(request);
+		String replyTo = request.getExtensions().get(CloudEvents.EXTENSION_REPLY_TO);
+		if (replyTo == null || replyTo.isBlank()) {
+			throw new CloudEventException("a call without a reply address cannot be answered");
+		}
+		return replyTo;
 	}
 
 	/** The call an answer's envelope names, or null. */
 	public static String correlationOf(CloudEvent reply) {
-		return MqttMessages.correlationOf(reply);
+		return reply.getExtensions().get(CloudEvents.EXTENSION_CORRELATION_ID);
 	}
 }

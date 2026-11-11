@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.MqttFlavor;
-import org.eclipse.fennec.services.MqttOperationFlavor;
+import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.MessagingOperationFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -227,7 +227,7 @@ public class MqttDistributionProvider implements FlavorDistribution {
 		// answers under the request topic would make those one rule.
 		String requestTopic = topicPrefix() + "/req/" + where;
 		String responseTopic = topicPrefix() + "/res/" + where;
-		MqttFlavor flavor = flavorFor(contract, requestTopic, responseTopic, brokerFor(properties),
+		MessagingFlavor flavor = flavorFor(contract, requestTopic, responseTopic, brokerFor(properties),
 				config.content_type());
 
 		MessagingDistribution.Served served = distribution.serve(flavor, service,
@@ -240,16 +240,16 @@ public class MqttDistributionProvider implements FlavorDistribution {
 	}
 
 	/** A flavor whose topics say where each operation answers. */
-	private static MqttFlavor flavorFor(ServiceInterface contract, String requestTopic,
+	private static MessagingFlavor flavorFor(ServiceInterface contract, String requestTopic,
 			String responseTopic, String broker, String contentType) {
-		MqttFlavor flavor = ServicesFactory.eINSTANCE.createMqttFlavor();
+		MessagingFlavor flavor = ServicesFactory.eINSTANCE.createMessagingFlavor();
 		flavor.setName(contract.getName() + "-mqtt");
 		flavor.setKind(FlavorKind.MQTT);
 		flavor.getBrokers().add(broker);
-		flavor.setRequestTopic(requestTopic);
-		flavor.setResponseTopic(responseTopic);
+		flavor.setChannel(requestTopic);
+		flavor.setReplyChannel(responseTopic);
 		for (ServiceOperation operation : contract.getOperations()) {
-			MqttOperationFlavor operationFlavor = ServicesFactory.eINSTANCE.createMqttOperationFlavor();
+			MessagingOperationFlavor operationFlavor = ServicesFactory.eINSTANCE.createMessagingOperationFlavor();
 			operationFlavor.setName(operation.getName());
 			operationFlavor.setOperation(operation);
 			// The encoding only where the deployment named one. On this
@@ -306,7 +306,7 @@ public class MqttDistributionProvider implements FlavorDistribution {
 		return "rsa-" + frameworkTag + (serviceId == null ? "" : "-" + serviceId);
 	}
 
-	private static ServiceImplementation implementationOf(ServiceInterface contract, MqttFlavor flavor,
+	private static ServiceImplementation implementationOf(ServiceInterface contract, MessagingFlavor flavor,
 			String provider) {
 		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
 		implementation.setName(provider + "-" + contract.getName());
@@ -349,7 +349,7 @@ public class MqttDistributionProvider implements FlavorDistribution {
 
 		@Override
 		public Map<String, Object> properties() {
-			MqttFlavor flavor = (MqttFlavor) implementation.getFlavors().get(0);
+			MessagingFlavor flavor = (MessagingFlavor) implementation.getFlavors().get(0);
 			return Map.of(TOPIC_PROPERTY, requestTopic, BROKER_PROPERTY, flavor.getBrokers().get(0));
 		}
 

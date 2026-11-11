@@ -33,8 +33,8 @@ import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.MqttFlavor;
-import org.eclipse.fennec.services.MqttQos;
+import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.MessagingQos;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
@@ -151,10 +151,10 @@ final class RestTestSupport {
 		for (FlavorKind kind : flavors) {
 			ServiceFlavor flavor;
 			if (kind == FlavorKind.MQTT) {
-				MqttFlavor mqtt = ServicesFactory.eINSTANCE.createMqttFlavor();
+				MessagingFlavor mqtt = ServicesFactory.eINSTANCE.createMessagingFlavor();
 				mqtt.getBrokers().add("tcp://localhost:1883");
-				mqtt.setRequestTopic("payments/req");
-				mqtt.setDefaultQos(MqttQos.AT_LEAST_ONCE);
+				mqtt.setChannel("payments/req");
+				mqtt.setDefaultQos(MessagingQos.AT_LEAST_ONCE);
 				flavor = mqtt;
 			} else {
 				RestFlavor rest = ServicesFactory.eINSTANCE.createRestFlavor();

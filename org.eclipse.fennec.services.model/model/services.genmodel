@@ -97,10 +97,10 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/HEADER"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/PATH"/>
     </genEnums>
-    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//MqttQos">
-      <genEnumLiterals ecoreEnumLiteral="services.ecore#//MqttQos/AT_MOST_ONCE"/>
-      <genEnumLiterals ecoreEnumLiteral="services.ecore#//MqttQos/AT_LEAST_ONCE"/>
-      <genEnumLiterals ecoreEnumLiteral="services.ecore#//MqttQos/EXACTLY_ONCE"/>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//MessagingQos">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//MessagingQos/AT_MOST_ONCE"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//MessagingQos/AT_LEAST_ONCE"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//MessagingQos/EXACTLY_ONCE"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//RegistryKind">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//RegistryKind/LOCAL"/>
@@ -298,17 +298,12 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestFlavor/basePath"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestFlavor/contentTypes"/>
     </genClasses>
-    <genClasses ecoreClass="services.ecore#//MqttFlavor">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttFlavor/brokers"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttFlavor/requestTopic"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttFlavor/responseTopic"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttFlavor/defaultQos"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttFlavor/defaultRetained"/>
-    </genClasses>
-    <genClasses ecoreClass="services.ecore#//AmqpFlavor">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpFlavor/brokers"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpFlavor/exchange"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpFlavor/requestRoutingKey"/>
+    <genClasses ecoreClass="services.ecore#//MessagingFlavor">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingFlavor/brokers"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingFlavor/channel"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingFlavor/replyChannel"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingFlavor/exchange"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingFlavor/defaultQos"/>
     </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//ServiceOperationFlavor">
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperationFlavor/operation"/>
@@ -331,16 +326,10 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//RestExceptionBinding/exception"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//RestExceptionBinding/status"/>
     </genClasses>
-    <genClasses ecoreClass="services.ecore#//MqttOperationFlavor">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/requestTopic"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/responseTopic"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/qos"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/retained"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/correlation"/>
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MqttOperationFlavor/returnPath"/>
-    </genClasses>
-    <genClasses ecoreClass="services.ecore#//AmqpOperationFlavor">
-      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//AmqpOperationFlavor/routingKey"/>
+    <genClasses ecoreClass="services.ecore#//MessagingOperationFlavor">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingOperationFlavor/channel"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingOperationFlavor/replyChannel"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MessagingOperationFlavor/qos"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//SecurityRequirement">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//SecurityRequirement/authenticated"/>

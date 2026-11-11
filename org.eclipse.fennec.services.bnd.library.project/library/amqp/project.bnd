@@ -5,4 +5,4 @@
 fennec.services.range: [0.1.0,0.2.0)
 
 -buildpath.fennec.services.amqp: \
-	org.eclipse.fennec.services.flavor.amqp;version='${fennec.services.range}'
+	org.eclipse.fennec.services.flavor.messaging;version='${fennec.services.range}'

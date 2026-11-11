@@ -18,7 +18,7 @@ export type { MqttFlavorPluginOptions } from './mqtt-flavor-plugin.js';
 export { MqttOperationServer } from './mqtt-operation-server.js';
 export type { MqttOperationServerOptions, OperationHandlers } from './mqtt-operation-server.js';
 export {
-  requestTopicFor, replyBaseFor, qosFor,
+  requestTopicFor, replyBaseFor, namedReplyBaseFor, OWN_REPLY_BASE, qosFor,
   encodeRequest, decodeRequest, encodeResponse, decodeResponse, connectMqtt,
 } from './mqtt-rpc.js';
 export type { MqttRpcRequest, MqttRpcResponse, MqttRpcClientLike } from './mqtt-rpc.js';

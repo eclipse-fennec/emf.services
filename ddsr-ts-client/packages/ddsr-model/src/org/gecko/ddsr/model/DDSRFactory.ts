@@ -62,20 +62,16 @@ import type { ServiceImplementation } from './ServiceImplementation.js';
 import { ServiceImplementationImpl } from './ServiceImplementationImpl.js';
 import type { RestFlavor } from './RestFlavor.js';
 import { RestFlavorImpl } from './RestFlavorImpl.js';
-import type { MqttFlavor } from './MqttFlavor.js';
-import { MqttFlavorImpl } from './MqttFlavorImpl.js';
-import type { AmqpFlavor } from './AmqpFlavor.js';
-import { AmqpFlavorImpl } from './AmqpFlavorImpl.js';
+import type { MessagingFlavor } from './MessagingFlavor.js';
+import { MessagingFlavorImpl } from './MessagingFlavorImpl.js';
 import type { RestOperationFlavor } from './RestOperationFlavor.js';
 import { RestOperationFlavorImpl } from './RestOperationFlavorImpl.js';
 import type { RestParameterBinding } from './RestParameterBinding.js';
 import { RestParameterBindingImpl } from './RestParameterBindingImpl.js';
 import type { RestExceptionBinding } from './RestExceptionBinding.js';
 import { RestExceptionBindingImpl } from './RestExceptionBindingImpl.js';
-import type { MqttOperationFlavor } from './MqttOperationFlavor.js';
-import { MqttOperationFlavorImpl } from './MqttOperationFlavorImpl.js';
-import type { AmqpOperationFlavor } from './AmqpOperationFlavor.js';
-import { AmqpOperationFlavorImpl } from './AmqpOperationFlavorImpl.js';
+import type { MessagingOperationFlavor } from './MessagingOperationFlavor.js';
+import { MessagingOperationFlavorImpl } from './MessagingOperationFlavorImpl.js';
 import type { SecurityRequirement } from './SecurityRequirement.js';
 import { SecurityRequirementImpl } from './SecurityRequirementImpl.js';
 import type { BearerTokenScheme } from './BearerTokenScheme.js';
@@ -339,17 +335,10 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
-   * Create a new MqttFlavor instance
+   * Create a new MessagingFlavor instance
    */
-  createMqttFlavor(): MqttFlavor {
-    return new MqttFlavorImpl();
-  }
-
-  /**
-   * Create a new AmqpFlavor instance
-   */
-  createAmqpFlavor(): AmqpFlavor {
-    return new AmqpFlavorImpl();
+  createMessagingFlavor(): MessagingFlavor {
+    return new MessagingFlavorImpl();
   }
 
   /**
@@ -374,17 +363,10 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
-   * Create a new MqttOperationFlavor instance
+   * Create a new MessagingOperationFlavor instance
    */
-  createMqttOperationFlavor(): MqttOperationFlavor {
-    return new MqttOperationFlavorImpl();
-  }
-
-  /**
-   * Create a new AmqpOperationFlavor instance
-   */
-  createAmqpOperationFlavor(): AmqpOperationFlavor {
-    return new AmqpOperationFlavorImpl();
+  createMessagingOperationFlavor(): MessagingOperationFlavor {
+    return new MessagingOperationFlavorImpl();
   }
 
   /**
@@ -628,20 +610,16 @@ export class DDSRFactory extends BasicEFactory {
         return this.createServiceImplementation();
       case 'RestFlavor':
         return this.createRestFlavor();
-      case 'MqttFlavor':
-        return this.createMqttFlavor();
-      case 'AmqpFlavor':
-        return this.createAmqpFlavor();
+      case 'MessagingFlavor':
+        return this.createMessagingFlavor();
       case 'RestOperationFlavor':
         return this.createRestOperationFlavor();
       case 'RestParameterBinding':
         return this.createRestParameterBinding();
       case 'RestExceptionBinding':
         return this.createRestExceptionBinding();
-      case 'MqttOperationFlavor':
-        return this.createMqttOperationFlavor();
-      case 'AmqpOperationFlavor':
-        return this.createAmqpOperationFlavor();
+      case 'MessagingOperationFlavor':
+        return this.createMessagingOperationFlavor();
       case 'SecurityRequirement':
         return this.createSecurityRequirement();
       case 'BearerTokenScheme':

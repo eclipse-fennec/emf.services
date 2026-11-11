@@ -303,28 +303,33 @@ events is normal, not an error.
 ## MQTT invocation (request/response)
 
 Peer-to-peer between consumer and provider over the MQTT broker
-announced in `MqttFlavor.brokers` — the DDSR broker is not involved
+announced in `MessagingFlavor.brokers` — the DDSR broker is not involved
 (discovery/acquisition only). A call is **two events**: the request and
 its answer, held together by `correlationid` rather than by a
 connection.
 
 ```
-request topic:   MqttOperationFlavor.requestTopic,
-                 else <MqttFlavor.requestTopic>/<operation.name>
-reply topic:     <base>/<consumer>/<request id>, with base =
-                 MqttOperationFlavor.responseTopic
-                 | MqttFlavor.responseTopic
-                 | <requestTopic>/reply
+request channel: MessagingOperationFlavor.channel,
+                 else <MessagingFlavor.channel><sep><operation.name>
+                 (<sep> is "/" over MQTT, "." over AMQP)
+reply channel:   named by the consumer in every call.
+                 The flavor names a place for answers
+                 (MessagingOperationFlavor.replyChannel
+                 | MessagingFlavor.replyChannel):
+                     <that><sep><consumer><sep><request id>
+                 The flavor names none:
+                     a channel only the consumer reads, provided by
+                     its connection
 request:         CloudEvent, structured mode
                  type = org.eclipse.fennec.services.invoke
-                 replyto = the reply topic
+                 replyto = the reply channel
                  data = a ServiceInvocation document
 response:        CloudEvent, structured mode
                  type = org.eclipse.fennec.services.invoke.reply
                  correlationid = the request's id
                  data = a ServiceInvocationResult document
-qos:             MqttOperationFlavor.qos | MqttFlavor.defaultQos
-                 | AT_LEAST_ONCE;   retained: never
+qos:             MessagingOperationFlavor.qos | MessagingFlavor.defaultQos
+                 | AT_LEAST_ONCE, at most 1 over AMQP;   retained: never
 ```
 
 The payload is the model, not a bag of JSON values.
@@ -371,9 +376,12 @@ Requests and answers live in **separate trees** for the same reason —
 "may call this provider" and "may read what it answered" are two
 permissions, and nesting the answers under the request topic would make
 them one. The RSA distribution names both (`<prefix>/req/…`,
-`<prefix>/res/…`); a hand-written flavor that names only a request
-topic gets `<requestTopic>/reply` as before, which works and cannot be
-separated by an ACL.
+`<prefix>/res/…`). A flavor that names no place for answers leaves the
+reply channel to the consumer's connection: a Java node lets its
+messaging instance provide one, the TypeScript track listens under
+`ddsr/reply/<consumer>`. That works on any broker and cannot be
+separated by an ACL written against the contract — a deployment that
+wants one names the place in the flavor.
 
 A name is sanitised before it becomes a topic level: `/`, `+` and `#`
 are replaced, so a consumer calling itself `a/#` cannot name a subtree

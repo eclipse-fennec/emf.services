@@ -153,7 +153,7 @@ java -Dgosh.args=--nointeractive \
 ```
 
 With `MQTT_URL` set, the TS provider announces a **second flavor on
-the same implementation** — `MqttFlavor` beside `RestFlavor` — and
+the same implementation** — `MessagingFlavor` beside `RestFlavor` — and
 serves both transports from the same state. A consumer with the
 `MqttFlavorPlugin` invokes operations over topics; the request/response
 convention is specified in [WIRE_FORMAT.md](WIRE_FORMAT.md).

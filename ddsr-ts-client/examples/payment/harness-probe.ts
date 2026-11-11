@@ -31,7 +31,7 @@
 
 import { RestFlavorPlugin } from '@ddsr/flavor-rest';
 import { MqttFlavorPlugin } from '@ddsr/transport-mqtt';
-import type { MqttFlavor, MqttOperationFlavor, ServiceOperation } from '@ddsr/model';
+import type { MessagingFlavor, MessagingOperationFlavor, ServiceOperation } from '@ddsr/model';
 import {
   BrokerHttp,
   DdsrClientImpl,
@@ -45,7 +45,7 @@ import { brokerTokens, consumerId, nodeFetch, nodeTls } from './broker-auth';
 
 const BROKER_URL = process.env.BROKER_URL ?? 'http://localhost:8887/ddsr/rest';
 const EXPECTED_LANG = process.env.EXPECT_LANG ?? 'java';
-// When set, the provider announces an MqttFlavor and the probe invokes
+// When set, the provider announces an MessagingFlavor and the probe invokes
 // over it (A2 Etappe 2) — the value is unused beyond being truthy, the
 // broker address comes from the ANNOUNCED flavor.
 const EXPECT_MQTT = process.env.EXPECT_MQTT === '1';
@@ -156,14 +156,14 @@ async function main(): Promise<void> {
   // where it listens; nothing here is configured out of band.
   if (EXPECT_MQTT) {
     const flavors = locator.flavors() as Array<{ eClass?: () => { name?: string } }>;
-    const mqttFlavor = flavors.find(f => f.eClass?.()?.name === 'MqttFlavor') as MqttFlavor | undefined;
+    const mqttFlavor = flavors.find(f => f.eClass?.()?.name === 'MessagingFlavor') as MessagingFlavor | undefined;
     check('mqtt-flavor-announced', mqttFlavor !== undefined,
       `${flavors.map(f => f.eClass?.()?.name).join(',')}`);
     if (mqttFlavor) {
       const plugin = new MqttFlavorPlugin({ timeoutMs: 15000, tls: nodeTls(), consumer: consumerId('harness-probe-ts') });
       const operations = [...locator.serviceInterface.operations] as ServiceOperation[];
       const getBalanceOp = operations.find(o => o.name === 'getBalance')!;
-      const opFlavors = [...mqttFlavor.operationFlavors] as MqttOperationFlavor[];
+      const opFlavors = [...mqttFlavor.operationFlavors] as MessagingOperationFlavor[];
       const getBalanceFlavor = opFlavors.find(of => (of.operation?.name ?? of.name) === 'getBalance')!;
       try {
         const viaMqtt = Number(await plugin.invoke(
@@ -189,7 +189,7 @@ async function main(): Promise<void> {
     }
     if (!probeLocator) fail('no BindingProbe locator within 30s');
     const probeFlavors = probeLocator.flavors() as Array<{ eClass?: () => { name?: string } }>;
-    const probeMqtt = probeFlavors.find(f => f.eClass?.()?.name === 'MqttFlavor') as MqttFlavor | undefined;
+    const probeMqtt = probeFlavors.find(f => f.eClass?.()?.name === 'MessagingFlavor') as MessagingFlavor | undefined;
     check('mqtt-probe-flavor-announced', probeMqtt !== undefined,
       `${probeFlavors.map(f => f.eClass?.()?.name).join(',')} on ${probeMqtt ? toArray<string>(probeMqtt.brokers).join(',') : '-'}`);
     if (probeMqtt) {

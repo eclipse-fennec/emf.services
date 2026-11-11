@@ -24,7 +24,7 @@
 
 import { createServer } from 'node:http';
 import { DdsrClientImpl, attachShutdownHooks, fingerprint, toArray } from '@ddsr/client';
-import type { MqttFlavor, RestFlavor } from '@ddsr/model';
+import type { MessagingFlavor, RestFlavor } from '@ddsr/model';
 import { MqttOperationServer, operationHandlers } from '@ddsr/transport-mqtt';
 import { restDispatcher } from '@ddsr/flavor-rest';
 import { BROKER_URL, MQTT_URL, PROVIDER_NAME, SERVICE_URL, loadPaymentProvider } from './payment-api';
@@ -126,8 +126,8 @@ async function main(): Promise<void> {
   // endpoint). Both transports share the same balances state.
   let mqttServer: MqttOperationServer | undefined;
   if (MQTT_URL) {
-    const mqttFlavor = toArray<MqttFlavor>(implementation.flavors)
-      .find(f => (f as { eClass?: () => { name?: string } }).eClass?.()?.name === 'MqttFlavor')!;
+    const mqttFlavor = toArray<MessagingFlavor>(implementation.flavors)
+      .find(f => (f as { eClass?: () => { name?: string } }).eClass?.()?.name === 'MessagingFlavor')!;
     // The same object as over REST, and no handler written per
     // operation: the contract says what they are called and in which
     // order their arguments come (#154).

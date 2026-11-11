@@ -1,12 +1,12 @@
-Bundle-Name: Fennec Services Messaging Flavor Route
+Bundle-Name: Fennec Services Messaging Flavor Rules
 Bundle-Description: \
-	What a flavor that travels over a messaging broker says, whichever \
-	flavor it is: the broker, the channel of each operation, the \
-	encoding, and how an answer finds its way back. The MQTT and the \
-	AMQP flavor rules stay where they are; this bundle reads either into \
-	one route, so that one invoker and one distribution serve both and a \
-	further protocol is a further reading rather than a further \
-	transport.
+	Where a call travels over a messaging broker, whichever protocol the \
+	broker speaks: the rules both ends read a MessagingFlavor by — which \
+	channel an operation is reached on, where its answer goes, what it \
+	is encoded in — and the route they make of them. What a protocol \
+	changes is what a channel is called (a topic with '/' levels, a \
+	routing key with '.' segments); the rest is the same, and is written \
+	once. No client: this bundle decides, it does not connect.
 
 -library: enableEMF
 
@@ -14,9 +14,7 @@ Bundle-Description: \
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
-	io.cloudevents.model;version=latest,\
-	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
-	org.eclipse.fennec.services.flavor.amqp;version=snapshot
+	io.cloudevents.model;version=latest
 
 -testpath: \
 	${junit},\

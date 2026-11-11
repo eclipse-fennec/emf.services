@@ -8,35 +8,35 @@
 import { createBasicEList } from '@emfts/core';
 import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
 import type { ServiceFlavor } from './ServiceFlavor.js';
-import { MqttQos } from './MqttQos.js';
+import { MessagingQos } from './MessagingQos.js';
 import { ServiceFlavorImpl } from './ServiceFlavorImpl.js';
-import type { MqttFlavor } from './MqttFlavor.js';
+import type { MessagingFlavor } from './MessagingFlavor.js';
 import { DDSRPackage } from './DDSRPackage.js';
 
 /**
- * Implementation of MqttFlavor
+ * Implementation of MessagingFlavor
  * @generated
  */
-export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
+export class MessagingFlavorImpl extends ServiceFlavorImpl implements MessagingFlavor {
   // Feature ID Constants (eLiterals)
   static readonly BROKERS: number = 5;
-  static readonly REQUEST_TOPIC: number = 6;
-  static readonly RESPONSE_TOPIC: number = 7;
-  static readonly DEFAULT_QOS: number = 8;
-  static readonly DEFAULT_RETAINED: number = 9;
+  static readonly CHANNEL: number = 6;
+  static readonly REPLY_CHANNEL: number = 7;
+  static readonly EXCHANGE: number = 8;
+  static readonly DEFAULT_QOS: number = 9;
 
   // Private fields
   private _brokers!: EList<string>;
-  private _requestTopic: string = "";
-  private _responseTopic?: string;
-  private _defaultQos: MqttQos = MqttQos.AT_LEAST_ONCE;
-  private _defaultRetained: boolean = false;
+  private _channel: string = "";
+  private _replyChannel?: string;
+  private _exchange?: string;
+  private _defaultQos: MessagingQos = MessagingQos.AT_LEAST_ONCE;
 
   /**
    * Returns the EClass of this object
    */
   override eClass(): EClass {
-    return DDSRPackage.Literals.MQTT_FLAVOR;
+    return DDSRPackage.Literals.MESSAGING_FLAVOR;
   }
 
   // Getters and Setters
@@ -47,97 +47,97 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
     return this._brokers;
   }
 
-  get requestTopic(): string {
-    return this._requestTopic!;
+  get channel(): string {
+    return this._channel!;
   }
 
-  set requestTopic(value: string) {
-    const oldValue = this._requestTopic;
-    this._requestTopic = value;
+  set channel(value: string) {
+    const oldValue = this._channel;
+    this._channel = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(MqttFlavorImpl.REQUEST_TOPIC),
+        getFeature: () => this.eClass().getEStructuralFeature(MessagingFlavorImpl.CHANNEL),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => MqttFlavorImpl.REQUEST_TOPIC,
+        getFeatureID: () => MessagingFlavorImpl.CHANNEL,
         merge: () => false
       });
     }
   }
 
-  get responseTopic(): string {
-    return this._responseTopic!;
+  get replyChannel(): string {
+    return this._replyChannel!;
   }
 
-  set responseTopic(value: string) {
-    const oldValue = this._responseTopic;
-    this._responseTopic = value;
+  set replyChannel(value: string) {
+    const oldValue = this._replyChannel;
+    this._replyChannel = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(MqttFlavorImpl.RESPONSE_TOPIC),
+        getFeature: () => this.eClass().getEStructuralFeature(MessagingFlavorImpl.REPLY_CHANNEL),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => MqttFlavorImpl.RESPONSE_TOPIC,
+        getFeatureID: () => MessagingFlavorImpl.REPLY_CHANNEL,
         merge: () => false
       });
     }
   }
 
-  get defaultQos(): MqttQos {
+  get exchange(): string {
+    return this._exchange!;
+  }
+
+  set exchange(value: string) {
+    const oldValue = this._exchange;
+    this._exchange = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(MessagingFlavorImpl.EXCHANGE),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => MessagingFlavorImpl.EXCHANGE,
+        merge: () => false
+      });
+    }
+  }
+
+  get defaultQos(): MessagingQos {
     return this._defaultQos!;
   }
 
-  set defaultQos(value: MqttQos) {
+  set defaultQos(value: MessagingQos) {
     const oldValue = this._defaultQos;
     this._defaultQos = value;
     if (this.eDeliver()) {
       this.eNotify({
         getNotifier: () => this,
         getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(MqttFlavorImpl.DEFAULT_QOS),
+        getFeature: () => this.eClass().getEStructuralFeature(MessagingFlavorImpl.DEFAULT_QOS),
         getOldValue: () => oldValue,
         getNewValue: () => value,
         getPosition: () => -1,
         wasSet: () => true,
         isTouch: () => false,
         isReset: () => false,
-        getFeatureID: () => MqttFlavorImpl.DEFAULT_QOS,
-        merge: () => false
-      });
-    }
-  }
-
-  get defaultRetained(): boolean {
-    return this._defaultRetained!;
-  }
-
-  set defaultRetained(value: boolean) {
-    const oldValue = this._defaultRetained;
-    this._defaultRetained = value;
-    if (this.eDeliver()) {
-      this.eNotify({
-        getNotifier: () => this,
-        getEventType: () => 1, // SET
-        getFeature: () => this.eClass().getEStructuralFeature(MqttFlavorImpl.DEFAULT_RETAINED),
-        getOldValue: () => oldValue,
-        getNewValue: () => value,
-        getPosition: () => -1,
-        wasSet: () => true,
-        isTouch: () => false,
-        isReset: () => false,
-        getFeatureID: () => MqttFlavorImpl.DEFAULT_RETAINED,
+        getFeatureID: () => MessagingFlavorImpl.DEFAULT_QOS,
         merge: () => false
       });
     }
@@ -151,16 +151,16 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
   override eGet(feature: EStructuralFeature): unknown {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case MqttFlavorImpl.BROKERS:
+      case MessagingFlavorImpl.BROKERS:
         return this.brokers;
-      case MqttFlavorImpl.REQUEST_TOPIC:
-        return this.requestTopic;
-      case MqttFlavorImpl.RESPONSE_TOPIC:
-        return this.responseTopic;
-      case MqttFlavorImpl.DEFAULT_QOS:
+      case MessagingFlavorImpl.CHANNEL:
+        return this.channel;
+      case MessagingFlavorImpl.REPLY_CHANNEL:
+        return this.replyChannel;
+      case MessagingFlavorImpl.EXCHANGE:
+        return this.exchange;
+      case MessagingFlavorImpl.DEFAULT_QOS:
         return this.defaultQos;
-      case MqttFlavorImpl.DEFAULT_RETAINED:
-        return this.defaultRetained;
       default:
         return super.eGet(feature);
     }
@@ -172,25 +172,25 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
   override eSet(feature: EStructuralFeature, newValue: unknown): void {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case MqttFlavorImpl.BROKERS:
+      case MessagingFlavorImpl.BROKERS:
         this.brokers.clear();
         this.brokers.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
-      case MqttFlavorImpl.REQUEST_TOPIC:
-        this.requestTopic = newValue as string;
+      case MessagingFlavorImpl.CHANNEL:
+        this.channel = newValue as string;
         super.eSet(feature, newValue);
         break;
-      case MqttFlavorImpl.RESPONSE_TOPIC:
-        this.responseTopic = newValue as string;
+      case MessagingFlavorImpl.REPLY_CHANNEL:
+        this.replyChannel = newValue as string;
         super.eSet(feature, newValue);
         break;
-      case MqttFlavorImpl.DEFAULT_QOS:
-        this.defaultQos = newValue as MqttQos;
+      case MessagingFlavorImpl.EXCHANGE:
+        this.exchange = newValue as string;
         super.eSet(feature, newValue);
         break;
-      case MqttFlavorImpl.DEFAULT_RETAINED:
-        this.defaultRetained = newValue as boolean;
+      case MessagingFlavorImpl.DEFAULT_QOS:
+        this.defaultQos = newValue as MessagingQos;
         super.eSet(feature, newValue);
         break;
       default:
@@ -204,16 +204,16 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
   override eIsSet(feature: EStructuralFeature): boolean {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case MqttFlavorImpl.BROKERS:
+      case MessagingFlavorImpl.BROKERS:
         return this._brokers !== undefined && !this._brokers.isEmpty();
-      case MqttFlavorImpl.REQUEST_TOPIC:
-        return this._requestTopic !== "";
-      case MqttFlavorImpl.RESPONSE_TOPIC:
-        return this._responseTopic !== undefined;
-      case MqttFlavorImpl.DEFAULT_QOS:
-        return this._defaultQos !== MqttQos.AT_LEAST_ONCE;
-      case MqttFlavorImpl.DEFAULT_RETAINED:
-        return this._defaultRetained !== false;
+      case MessagingFlavorImpl.CHANNEL:
+        return this._channel !== "";
+      case MessagingFlavorImpl.REPLY_CHANNEL:
+        return this._replyChannel !== undefined;
+      case MessagingFlavorImpl.EXCHANGE:
+        return this._exchange !== undefined;
+      case MessagingFlavorImpl.DEFAULT_QOS:
+        return this._defaultQos !== MessagingQos.AT_LEAST_ONCE;
       default:
         return super.eIsSet(feature);
     }
@@ -225,20 +225,20 @@ export class MqttFlavorImpl extends ServiceFlavorImpl implements MqttFlavor {
   override eUnset(feature: EStructuralFeature): void {
     const featureID = this.eClass().getFeatureID(feature);
     switch (featureID) {
-      case MqttFlavorImpl.BROKERS:
+      case MessagingFlavorImpl.BROKERS:
         if (this._brokers) this._brokers.clear();
         return;
-      case MqttFlavorImpl.REQUEST_TOPIC:
-        this._requestTopic = "";
+      case MessagingFlavorImpl.CHANNEL:
+        this._channel = "";
         return;
-      case MqttFlavorImpl.RESPONSE_TOPIC:
-        this._responseTopic = undefined;
+      case MessagingFlavorImpl.REPLY_CHANNEL:
+        this._replyChannel = undefined;
         return;
-      case MqttFlavorImpl.DEFAULT_QOS:
-        this._defaultQos = MqttQos.AT_LEAST_ONCE;
+      case MessagingFlavorImpl.EXCHANGE:
+        this._exchange = undefined;
         return;
-      case MqttFlavorImpl.DEFAULT_RETAINED:
-        this._defaultRetained = false;
+      case MessagingFlavorImpl.DEFAULT_QOS:
+        this._defaultQos = MessagingQos.AT_LEAST_ONCE;
         return;
       default:
         super.eUnset(feature);

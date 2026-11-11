@@ -7,18 +7,15 @@
 
 import type { EObject, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
 import type { ServiceOperationFlavor } from './ServiceOperationFlavor.js';
-import type { MqttQos } from './MqttQos.js';
+import type { MessagingQos } from './MessagingQos.js';
 
 /**
- * MqttOperationFlavor
+ * MessagingOperationFlavor
  * @generated
  */
-export interface MqttOperationFlavor extends ServiceOperationFlavor {
-  requestTopic?: string;
-  responseTopic?: string;
-  qos?: MqttQos;
-  retained?: boolean;
-  correlation: boolean;
-  returnPath?: string;
+export interface MessagingOperationFlavor extends ServiceOperationFlavor {
+  channel?: string;
+  replyChannel?: string;
+  qos?: MessagingQos;
 
 }

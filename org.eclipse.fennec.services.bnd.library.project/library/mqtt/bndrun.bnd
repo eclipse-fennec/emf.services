@@ -20,8 +20,6 @@ fennec.services.range: [0.1.0,0.2.0)
 	org.eclipse.fennec.services.client.messaging;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.provider.messaging;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.flavor.messaging;version='${fennec.services.range}',\
-	org.eclipse.fennec.services.flavor.mqtt;version='${fennec.services.range}',\
-	org.eclipse.fennec.services.flavor.amqp;version='${fennec.services.range}',\
 	org.eclipse.fennec.services.messaging;version='${fennec.services.range}',\
 	org.gecko.messaging.api;version='[2.0.0,2.1.0)',\
 	org.gecko.messaging.core;version='[2.0.0,2.1.0)',\

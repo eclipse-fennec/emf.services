@@ -150,9 +150,9 @@
     <eLiterals name="HEADER" value="2"/>
     <eLiterals name="PATH" value="3"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="MqttQos">
+  <eClassifiers xsi:type="ecore:EEnum" name="MessagingQos">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="MQTT quality-of-service level. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, ack-with-redelivery — DDSR default); EXACTLY_ONCE (2, four-way handshake)."/>
+      <details key="documentation" value="Quality-of-service level of a message. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, acknowledged, redelivered — the default); EXACTLY_ONCE (2, where the protocol has it: MQTT does, AMQP 0-9-1 does not and refuses it)."/>
     </eAnnotations>
     <eLiterals name="AT_MOST_ONCE"/>
     <eLiterals name="AT_LEAST_ONCE" value="1"/>
@@ -909,7 +909,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ServiceFlavor" abstract="true" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Abstract base for a transport binding. Concrete subclasses (RestFlavor, MqttFlavor, …) add transport-specific defaults. Operation-level bindings live in operationFlavors. Extended by third-party flavor plugins."/>
+      <details key="documentation" value="Abstract base for a transport binding. Concrete subclasses (RestFlavor, MessagingFlavor, …) add transport-specific defaults. Operation-level bindings live in operationFlavors. Extended by third-party flavor plugins."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//FlavorKind">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -919,7 +919,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="operationFlavors" upperBound="-1"
         eType="#//ServiceOperationFlavor" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Per-operation transport bindings (HTTP method+path for REST, request/response topic for MQTT, …). Empty = the flavor's interface-level defaults apply to every operation."/>
+        <details key="documentation" value="Per-operation transport bindings (HTTP method+path for REST, request/reply channel for a messaging broker, …). Empty = the flavor's interface-level defaults apply to every operation."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="capabilities" upperBound="-1"
@@ -957,67 +957,43 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="MqttFlavor" eSuperTypes="#//ServiceFlavor">
+  <eClassifiers xsi:type="ecore:EClass" name="MessagingFlavor" eSuperTypes="#//ServiceFlavor">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="MQTT pub/sub transport. Operations are addressed via a request topic; responses go either to a response topic, a per-operation override topic, or via correlationId-on-shared-topic depending on configuration."/>
+      <details key="documentation" value="A transport over a messaging broker, whichever protocol the broker speaks. Over messaging the API is one — publish to a channel, subscribe to a channel, a request and its answer — so one flavor describes it: where the broker is, which channel each operation is reached on, and where answers go. The protocol is the flavor's kind (MQTT, AMQP) and the scheme of its broker URLs; it decides what a channel is called (a topic with '/' levels, a routing key with '.' segments) and nothing about the shape of this class."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="brokers" lowerBound="1"
         upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="One or more broker URLs (mqtt://… or mqtts://…). Multiple brokers indicate a high-availability cluster; the client picks one and fails over."/>
+        <details key="documentation" value="One or more broker URLs — tcp://, ssl://, ws://, wss:// for MQTT, amqp:// or amqps:// (the virtual host as the path) for AMQP. Without user or password: the flavor is announced to every consumer. Multiple brokers indicate a high-availability cluster; the client picks one and fails over."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requestTopic" lowerBound="1"
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="channel" lowerBound="1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Default topic for incoming requests. Operations can override via MqttOperationFlavor.requestTopic."/>
+        <details key="documentation" value="Base channel for incoming calls: a topic over MQTT, a routing key over AMQP. An operation is reached on &lt;channel>&lt;separator>&lt;operation name> — '/' over MQTT, '.' over AMQP — unless its MessagingOperationFlavor.channel says otherwise."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="responseTopic" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="replyChannel" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Default topic for responses. Null = use MQTT v5 response-topic property or correlate via correlationId on the request topic."/>
+        <details key="documentation" value="Base channel for answers. Set: a consumer listens on a subtree of its own name below it and names the exact channel in each call, which is what lets a broker's ACL say who may read which answers. Null: the flavor names no place for answers and the consumer's connection provides one — a reply channel only it reads, named in the call."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="exchange" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The exchange calls are published to, where the protocol has exchanges (AMQP). Null = the topic exchange every AMQP 0-9-1 broker declares, amq.topic. Meaningless over MQTT."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultQos" lowerBound="1"
-        eType="#//MqttQos" defaultValueLiteral="AT_LEAST_ONCE">
+        eType="#//MessagingQos" defaultValueLiteral="AT_LEAST_ONCE">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Default QoS for operations. Per-operation override possible via MqttOperationFlavor.qos."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="defaultRetained" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Default retained flag on published messages. Per-operation override possible."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AmqpFlavor" eSuperTypes="#//ServiceFlavor">
-    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="AMQP 0-9-1 transport. A call is published to a topic exchange under a routing key; the answer goes to the reply address the call names in the protocol's own reply-to property and is matched by its correlation id. Unlike MQTT there is no response address in the flavor: the consumer declares an exclusive queue of its own, so who may read an answer is enforced by the broker rather than by a naming convention."/>
-    </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="brokers" lowerBound="1"
-        upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="One or more broker URLs (amqp://… or amqps://…), including the virtual host. Multiple brokers indicate a high-availability cluster; the client picks one and fails over."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="exchange" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString" defaultValueLiteral="amq.topic">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="The topic exchange calls are published to. The default is the topic exchange every AMQP 0-9-1 broker declares."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requestRoutingKey" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Base routing key for incoming calls, segments separated by '.'. An operation is reached under &lt;requestRoutingKey>.&lt;operation name> unless its AmqpOperationFlavor.routingKey says otherwise."/>
+        <details key="documentation" value="Default QoS for operations. Per-operation override possible via MessagingOperationFlavor.qos."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ServiceOperationFlavor" abstract="true"
       eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Abstract transport-binding refinement for a single operation. Concrete subclasses (RestOperationFlavor, MqttOperationFlavor) add transport-specific fields."/>
+      <details key="documentation" value="Abstract transport-binding refinement for a single operation. Concrete subclasses (RestOperationFlavor, MessagingOperationFlavor) add transport-specific fields."/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EReference" name="operation" lowerBound="1"
         eType="#//ServiceOperation">
@@ -1121,51 +1097,24 @@
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="MqttOperationFlavor" eSuperTypes="#//ServiceOperationFlavor">
+  <eClassifiers xsi:type="ecore:EClass" name="MessagingOperationFlavor" eSuperTypes="#//ServiceOperationFlavor">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="MQTT binding for one operation. Topic/QoS/retained values override the MqttFlavor defaults when set."/>
+      <details key="documentation" value="How one operation is reached over a messaging broker. Each value overrides the MessagingFlavor default when set."/>
     </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requestTopic" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="channel" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Overrides MqttFlavor.requestTopic for this operation. Null = use the flavor default."/>
+        <details key="documentation" value="The full channel of this operation. Null = &lt;MessagingFlavor.channel>&lt;separator>&lt;operation name>."/>
       </eAnnotations>
     </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="responseTopic" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="replyChannel" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Overrides MqttFlavor.responseTopic for this operation."/>
+        <details key="documentation" value="Overrides MessagingFlavor.replyChannel for this operation."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="qos" unsettable="true"
-        eType="#//MqttQos">
+        eType="#//MessagingQos">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Overrides MqttFlavor.defaultQos for this operation. Unsettable, and that is what makes the override expressible at all (issue #81): without it EMF reports the enum's first literal, AT_MOST_ONCE, for an operation that states nothing, so every operation looks like an override and defaultQos can never apply. Ask isSetQos() before getQos(). The XMI is unchanged either way — an unset attribute is simply absent."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retained" unsettable="true"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Overrides MqttFlavor.defaultRetained for this operation. Unsettable for the same reason as qos (issue #81): a boolean without it reports false for an operation that states nothing, so defaultRetained could never apply. Ask isSetRetained() before isRetained(). correlation needs none of this — there is no MqttFlavor.defaultCorrelation, so there is no precedence to express."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="correlation" lowerBound="1"
-        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="true">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="If true, request and response are matched via MQTT v5 correlationId. If false, the framework assumes a one-way / fire-and-forget operation."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="returnPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Optional alternative convention for asynchronous responses: a topic pattern with placeholders the producer fills in when publishing the response."/>
-      </eAnnotations>
-    </eStructuralFeatures>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AmqpOperationFlavor" eSuperTypes="#//ServiceOperationFlavor">
-    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="How one operation is reached over AMQP."/>
-    </eAnnotations>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="routingKey" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
-      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="The full routing key of this operation. Null = &lt;AmqpFlavor.requestRoutingKey>.&lt;operation name>."/>
+        <details key="documentation" value="Overrides MessagingFlavor.defaultQos for this operation. Unsettable, and that is what makes the override expressible at all (issue #81): without it EMF reports the enum's first literal for an operation that said nothing, and the flavor default could never apply."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>

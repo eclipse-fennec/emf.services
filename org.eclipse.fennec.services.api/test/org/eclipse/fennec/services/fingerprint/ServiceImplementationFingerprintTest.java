@@ -26,11 +26,10 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.ConnectionScheme;
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.AmqpOperationFlavor;
 import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.MqttFlavor;
-import org.eclipse.fennec.services.MqttQos;
+import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.MessagingOperationFlavor;
+import org.eclipse.fennec.services.MessagingQos;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
 import org.eclipse.fennec.services.RestExceptionBinding;
@@ -302,50 +301,57 @@ class ServiceImplementationFingerprintTest {
 	}
 
 	@Test
-	void mqttFlavorFieldsAreCovered() {
+	void messagingFlavorFieldsAreCovered() {
 		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
-		implementation.setName("mqtt-impl");
-		implementation.setImplementationId("fixture:mqtt:1");
-		MqttFlavor mqtt = ServicesFactory.eINSTANCE.createMqttFlavor();
-		mqtt.setName("mqtt");
-		mqtt.setRequestTopic("req/topic");
-		mqtt.setDefaultQos(MqttQos.AT_LEAST_ONCE);
-		mqtt.getBrokers().add("tcp://localhost:1883");
-		implementation.getFlavors().add(mqtt);
+		implementation.setName("messaging-impl");
+		implementation.setImplementationId("fixture:messaging:1");
+		MessagingFlavor flavor = ServicesFactory.eINSTANCE.createMessagingFlavor();
+		flavor.setName("mqtt");
+		flavor.setKind(FlavorKind.MQTT);
+		flavor.setChannel("ddsr/rpc/req/payments");
+		flavor.setReplyChannel("ddsr/rpc/res/payments");
+		flavor.setDefaultQos(MessagingQos.AT_LEAST_ONCE);
+		flavor.getBrokers().add("tcp://localhost:1883");
+		MessagingOperationFlavor charge = ServicesFactory.eINSTANCE.createMessagingOperationFlavor();
+		charge.setName("charge");
+		charge.setChannel("billing/debit");
+		flavor.getOperationFlavors().add(charge);
+		implementation.getFlavors().add(flavor);
 
 		String canonical = ServiceImplementationFingerprint.canonicalForm(implementation);
-		assertThat(canonical).contains("F|MqttFlavor|mqtt|");
-		assertThat(canonical).contains("|brokers=1:tcp://localhost:1883");
-		assertThat(canonical).contains("|requestTopic=req/topic");
-		assertThat(canonical).contains("|defaultQos=" + MqttQos.AT_LEAST_ONCE.getLiteral());
+		// The line both languages pin, character for character.
+		assertThat(canonical).contains("F|MessagingFlavor|mqtt|kind=MQTT|brokers=1:tcp://localhost:1883"
+				+ "|channel=ddsr/rpc/req/payments|replyChannel=ddsr/rpc/res/payments|exchange="
+				+ "|defaultQos=AT_LEAST_ONCE");
+		assertThat(canonical).contains("o|MessagingOperationFlavor|charge|operation=|consumes=0:|produces=0:"
+				+ "|channel=billing/debit|replyChannel=|qos=AT_MOST_ONCE");
 	}
 
 	@Test
-	void amqpFlavorFieldsAreCovered() {
+	void whereACallTravelsIsTheEndpoint() {
 		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
-		implementation.setName("amqp-impl");
-		implementation.setImplementationId("fixture:amqp:1");
-		AmqpFlavor amqp = ServicesFactory.eINSTANCE.createAmqpFlavor();
-		amqp.setName("amqp");
-		amqp.setKind(FlavorKind.AMQP);
-		amqp.setRequestRoutingKey("ddsr.rpc.payments");
-		amqp.getBrokers().add("amqp://localhost:5672");
-		AmqpOperationFlavor charge = ServicesFactory.eINSTANCE.createAmqpOperationFlavor();
-		charge.setName("charge");
-		charge.setRoutingKey("ddsr.rpc.payments.debit");
-		amqp.getOperationFlavors().add(charge);
-		implementation.getFlavors().add(amqp);
-
-		String canonical = ServiceImplementationFingerprint.canonicalForm(implementation);
-		assertThat(canonical).contains("F|AmqpFlavor|amqp|kind=AMQP|brokers=1:amqp://localhost:5672"
-				+ "|exchange=amq.topic|requestRoutingKey=ddsr.rpc.payments");
-		assertThat(canonical).contains("|routingKey=ddsr.rpc.payments.debit");
-
-		// Where a call travels is the endpoint: another exchange is
-		// another implementation fingerprint.
+		implementation.setName("messaging-impl");
+		implementation.setImplementationId("fixture:messaging:2");
+		MessagingFlavor flavor = ServicesFactory.eINSTANCE.createMessagingFlavor();
+		flavor.setName("amqp");
+		flavor.setKind(FlavorKind.AMQP);
+		flavor.setChannel("ddsr.rpc.payments");
+		flavor.getBrokers().add("amqp://localhost:5672");
+		implementation.getFlavors().add(flavor);
 		String before = ServiceImplementationFingerprint.fingerprint(implementation);
-		amqp.setExchange("calls");
-		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isNotEqualTo(before);
+
+		// Another exchange, another place for answers, another protocol:
+		// each is another endpoint, and the fingerprint moves.
+		flavor.setExchange("calls");
+		String otherExchange = ServiceImplementationFingerprint.fingerprint(implementation);
+		assertThat(otherExchange).isNotEqualTo(before);
+
+		flavor.setReplyChannel("ddsr.rpc.answers");
+		String otherReply = ServiceImplementationFingerprint.fingerprint(implementation);
+		assertThat(otherReply).isNotEqualTo(otherExchange);
+
+		flavor.setKind(FlavorKind.MQTT);
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isNotEqualTo(otherReply);
 	}
 
 	@Test

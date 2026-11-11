@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-import type { AmqpFlavor, Diagnostic, MqttFlavor, RestFlavor, ServiceFlavor, ServiceInterface } from '@ddsr/model';
+import type { Diagnostic, MessagingFlavor, RestFlavor, ServiceFlavor, ServiceInterface } from '@ddsr/model';
 import type { BindingDTO, ClientRuntime, ClientRuntimeDTO, PublishedDTO } from '../api/client-runtime.js';
 import type { DdsrConsumerImpl } from './consumer-impl.js';
 import type { DdsrProviderImpl } from './provider-impl.js';
@@ -123,15 +123,10 @@ function addressOf(flavors: ServiceFlavor[]): string | undefined {
       const rest = flavor as RestFlavor;
       return (rest.host ?? '') + (rest.basePath ?? '');
     }
-    if (kind === 'MQTT' || kind === 'MqttFlavor') {
-      const mqtt = flavor as MqttFlavor;
-      const brokers = toArray<string>(mqtt.brokers);
-      if (brokers.length > 0) return `${brokers[0]} ${mqtt.requestTopic}`;
-    }
-    if (kind === 'AMQP' || kind === 'AmqpFlavor') {
-      const amqp = flavor as AmqpFlavor;
-      const brokers = toArray<string>(amqp.brokers);
-      if (brokers.length > 0) return `${brokers[0]} ${amqp.requestRoutingKey}`;
+    if (kind === 'MQTT' || kind === 'AMQP' || kind === 'MessagingFlavor') {
+      const messaging = flavor as MessagingFlavor;
+      const brokers = toArray<string>(messaging.brokers);
+      if (brokers.length > 0) return `${brokers[0]} ${messaging.channel}`;
     }
   }
   return undefined;

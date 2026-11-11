@@ -21,8 +21,6 @@ Bundle-Description: \
 	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
 	io.cloudevents.model;version=latest,\
-	org.eclipse.fennec.services.flavor.mqtt;version=snapshot,\
-	org.eclipse.fennec.services.flavor.amqp;version=snapshot,\
 	org.eclipse.fennec.services.flavor.messaging;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\

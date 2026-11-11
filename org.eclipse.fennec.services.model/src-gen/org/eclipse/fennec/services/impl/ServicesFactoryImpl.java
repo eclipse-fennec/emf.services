@@ -84,13 +84,11 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.SERVICE_PROVIDER: return createServiceProvider();
 			case ServicesPackage.SERVICE_IMPLEMENTATION: return createServiceImplementation();
 			case ServicesPackage.REST_FLAVOR: return createRestFlavor();
-			case ServicesPackage.MQTT_FLAVOR: return createMqttFlavor();
-			case ServicesPackage.AMQP_FLAVOR: return createAmqpFlavor();
+			case ServicesPackage.MESSAGING_FLAVOR: return createMessagingFlavor();
 			case ServicesPackage.REST_OPERATION_FLAVOR: return createRestOperationFlavor();
 			case ServicesPackage.REST_PARAMETER_BINDING: return createRestParameterBinding();
 			case ServicesPackage.REST_EXCEPTION_BINDING: return createRestExceptionBinding();
-			case ServicesPackage.MQTT_OPERATION_FLAVOR: return createMqttOperationFlavor();
-			case ServicesPackage.AMQP_OPERATION_FLAVOR: return createAmqpOperationFlavor();
+			case ServicesPackage.MESSAGING_OPERATION_FLAVOR: return createMessagingOperationFlavor();
 			case ServicesPackage.SECURITY_REQUIREMENT: return createSecurityRequirement();
 			case ServicesPackage.BEARER_TOKEN_SCHEME: return createBearerTokenScheme();
 			case ServicesPackage.MUTUAL_TLS_SCHEME: return createMutualTlsScheme();
@@ -160,8 +158,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createHttpMethodFromString(eDataType, initialValue);
 			case ServicesPackage.PARAMETER_BINDING:
 				return createParameterBindingFromString(eDataType, initialValue);
-			case ServicesPackage.MQTT_QOS:
-				return createMqttQosFromString(eDataType, initialValue);
+			case ServicesPackage.MESSAGING_QOS:
+				return createMessagingQosFromString(eDataType, initialValue);
 			case ServicesPackage.REGISTRY_KIND:
 				return createRegistryKindFromString(eDataType, initialValue);
 			case ServicesPackage.EXPRESSION_LANGUAGE:
@@ -219,8 +217,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertHttpMethodToString(eDataType, instanceValue);
 			case ServicesPackage.PARAMETER_BINDING:
 				return convertParameterBindingToString(eDataType, instanceValue);
-			case ServicesPackage.MQTT_QOS:
-				return convertMqttQosToString(eDataType, instanceValue);
+			case ServicesPackage.MESSAGING_QOS:
+				return convertMessagingQosToString(eDataType, instanceValue);
 			case ServicesPackage.REGISTRY_KIND:
 				return convertRegistryKindToString(eDataType, instanceValue);
 			case ServicesPackage.EXPRESSION_LANGUAGE:
@@ -543,20 +541,9 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	@Override
-	public MqttFlavor createMqttFlavor() {
-		MqttFlavorImpl mqttFlavor = new MqttFlavorImpl();
-		return mqttFlavor;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public AmqpFlavor createAmqpFlavor() {
-		AmqpFlavorImpl amqpFlavor = new AmqpFlavorImpl();
-		return amqpFlavor;
+	public MessagingFlavor createMessagingFlavor() {
+		MessagingFlavorImpl messagingFlavor = new MessagingFlavorImpl();
+		return messagingFlavor;
 	}
 
 	/**
@@ -598,20 +585,9 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	@Override
-	public MqttOperationFlavor createMqttOperationFlavor() {
-		MqttOperationFlavorImpl mqttOperationFlavor = new MqttOperationFlavorImpl();
-		return mqttOperationFlavor;
-	}
-
-	/**
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	@Override
-	public AmqpOperationFlavor createAmqpOperationFlavor() {
-		AmqpOperationFlavorImpl amqpOperationFlavor = new AmqpOperationFlavorImpl();
-		return amqpOperationFlavor;
+	public MessagingOperationFlavor createMessagingOperationFlavor() {
+		MessagingOperationFlavorImpl messagingOperationFlavor = new MessagingOperationFlavorImpl();
+		return messagingOperationFlavor;
 	}
 
 	/**
@@ -1205,8 +1181,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public MqttQos createMqttQosFromString(EDataType eDataType, String initialValue) {
-		MqttQos result = MqttQos.get(initialValue);
+	public MessagingQos createMessagingQosFromString(EDataType eDataType, String initialValue) {
+		MessagingQos result = MessagingQos.get(initialValue);
 		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
 		return result;
 	}
@@ -1216,7 +1192,7 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	public String convertMqttQosToString(EDataType eDataType, Object instanceValue) {
+	public String convertMessagingQosToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

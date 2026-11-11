@@ -25,12 +25,14 @@
  * `ServiceInvocationResult` coming back — which is what gives a
  * message-only transport typed arguments and modelled ones at all.
  *
- * - request topic:  MqttOperationFlavor.requestTopic, else
- *                   `<MqttFlavor.requestTopic>/<operation.name>`
+ * - request topic:  MessagingOperationFlavor.channel, else
+ *                   `<MessagingFlavor.channel>/<operation.name>`
  * - reply topic:    `<base>/<consumer>/<event id>` with base =
- *                   MqttOperationFlavor.responseTopic, else
- *                   MqttFlavor.responseTopic, else
- *                   `<requestTopic>/reply`. The CONSUMER segment is what
+ *                   MessagingOperationFlavor.replyChannel, else
+ *                   MessagingFlavor.replyChannel. A flavor that names
+ *                   neither leaves the reply channel to the consumer,
+ *                   and this track then listens under `ddsr/reply`.
+ *                   The CONSUMER segment is what
  *                   makes the separation writable: a broker ACL can
  *                   grant `subscribe <base>/<me>/#` and nothing wider,
  *                   where a topic separated only by an unguessable id
@@ -42,7 +44,7 @@
  * - response:       CloudEvent, `type` …invoke.reply, `correlationid` =
  *                   the request's id, data = the result (a value, or a
  *                   Diagnostic that says why there is none)
- * - qos:            MqttOperationFlavor.qos, else MqttFlavor.defaultQos,
+ * - qos:            MessagingOperationFlavor.qos, else MessagingFlavor.defaultQos,
  *                   else AT_LEAST_ONCE (the model default)
  * - retained:       never — a request/response is a transition, not a
  *                   state (same argument as for lifecycle events)
@@ -116,13 +118,13 @@ export interface MqttRpcResponse {
 
 /** Small model slices — the TS model types the enums as plain strings. */
 interface FlavorLike {
-  requestTopic?: string;
-  responseTopic?: string;
+  channel?: string;
+  replyChannel?: string;
   defaultQos?: string;
 }
 interface OperationFlavorLike {
-  requestTopic?: string;
-  responseTopic?: string;
+  channel?: string;
+  replyChannel?: string;
   qos?: string;
   name?: string;
   operation?: { name?: string };
@@ -131,19 +133,36 @@ interface OperationFlavorLike {
 }
 
 export function requestTopicFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): string {
-  if (opFlavor.requestTopic) return opFlavor.requestTopic;
+  if (opFlavor.channel) return opFlavor.channel;
   const operationName = opFlavor.operation?.name ?? opFlavor.name ?? '';
-  const base = (flavor.requestTopic ?? '').replace(/\/+$/, '');
-  if (!base) throw new Error('MqttFlavor carries no requestTopic and the operation flavor none either');
+  const base = (flavor.channel ?? '').replace(/\/+$/, '');
+  if (!base) throw new Error('the MessagingFlavor carries no channel and the operation flavor none either');
   return `${base}/${operationName}`;
 }
 
+/**
+ * Where a consumer listens when the flavor names no place for answers.
+ * The flavor then leaves the reply channel to the consumer's
+ * connection; a Java node lets its messaging instance provide one, and
+ * this track — which talks to the broker itself — takes a tree of its
+ * own. Either way the call names the exact channel, so the provider
+ * needs to know nothing about it.
+ */
+export const OWN_REPLY_BASE = 'ddsr/reply';
+
+/**
+ * Where answers to one operation go, or undefined when the flavor names
+ * no place for them — which is a statement, not a gap.
+ */
+export function namedReplyBaseFor(
+  flavor: FlavorLike, opFlavor: OperationFlavorLike,
+): string | undefined {
+  const named = (opFlavor.replyChannel || flavor.replyChannel || '').replace(/\/+$/, '');
+  return named || undefined;
+}
+
 export function replyBaseFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): string {
-  return (
-    opFlavor.responseTopic
-    ?? flavor.responseTopic
-    ?? `${requestTopicFor(flavor, opFlavor)}/reply`
-  ).replace(/\/+$/, '');
+  return namedReplyBaseFor(flavor, opFlavor) ?? OWN_REPLY_BASE;
 }
 
 /**
@@ -173,7 +192,7 @@ export function replyTopicFor(
 /**
  * The QoS of one operation: its own, or the flavor's default.
  *
- * The model makes `MqttOperationFlavor.qos` unsettable (#81), and that
+ * The model makes `MessagingOperationFlavor.qos` unsettable (#81), and that
  * is what makes the precedence expressible at all: without unset state
  * an operation reads back as `AT_MOST_ONCE` — the enum's first literal
  * — so every operation looks like an override and `defaultQos` could

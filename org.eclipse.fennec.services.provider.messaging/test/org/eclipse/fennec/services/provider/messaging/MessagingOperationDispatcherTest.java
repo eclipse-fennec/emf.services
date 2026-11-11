@@ -28,10 +28,9 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.AmqpOperationFlavor;
-import org.eclipse.fennec.services.MqttFlavor;
-import org.eclipse.fennec.services.MqttOperationFlavor;
+import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.MessagingOperationFlavor;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceInvocation;
@@ -105,7 +104,7 @@ class MessagingOperationDispatcherTest {
 
 	private final ResourceSetObjects resourceSets = new ResourceSetObjects();
 
-	private MqttFlavor payments() {
+	private MessagingFlavor payments() {
 		Parameter amount = F.createParameter();
 		amount.setName("amount");
 		amount.setType("double");
@@ -117,22 +116,22 @@ class MessagingOperationDispatcherTest {
 		contract.setName("Payment");
 		contract.getOperations().add(charge);
 
-		MqttFlavor flavor = F.createMqttFlavor();
+		MessagingFlavor flavor = F.createMessagingFlavor();
 		flavor.setName("payments-mqtt");
 		flavor.getBrokers().add("tcp://fake:1883");
-		flavor.setRequestTopic("ddsr/rpc/payments");
-		MqttOperationFlavor operationFlavor = F.createMqttOperationFlavor();
+		flavor.setChannel("ddsr/rpc/payments");
+		MessagingOperationFlavor operationFlavor = F.createMessagingOperationFlavor();
 		operationFlavor.setName("charge");
 		operationFlavor.setOperation(charge);
 		flavor.getOperationFlavors().add(operationFlavor);
 		return flavor;
 	}
 
-	private MessagingOperationDispatcher dispatcher(MqttFlavor flavor) {
+	private MessagingOperationDispatcher dispatcher(MessagingFlavor flavor) {
 		return new MessagingOperationDispatcher(flavor, Payments::new, "/provider/Payment", resourceSets);
 	}
 
-	private MessagingOperationDispatcher dispatcher(MqttFlavor flavor, CallTracer tracer) {
+	private MessagingOperationDispatcher dispatcher(MessagingFlavor flavor, CallTracer tracer) {
 		return new MessagingOperationDispatcher(flavor, Payments::new, "/provider/Payment", resourceSets,
 				tracer);
 	}
@@ -182,9 +181,9 @@ class MessagingOperationDispatcherTest {
 	}
 
 	/** The same call, with a caller's trace context in the envelope. */
-	private CloudEventCodec.Message tracedCall(MqttFlavor flavor, String replyTo, double amount, String traceparent)
+	private CloudEventCodec.Message tracedCall(MessagingFlavor flavor, String replyTo, double amount, String traceparent)
 			throws Exception {
-		ServiceOperation operation = ((MqttOperationFlavor) flavor.getOperationFlavors().get(0))
+		ServiceOperation operation = ((MessagingOperationFlavor) flavor.getOperationFlavors().get(0))
 				.getOperation();
 		ServiceInvocation invocation = Invocations.invocation(operation, Map.of("amount", amount));
 		ByteArrayOutputStream document = new ByteArrayOutputStream();
@@ -196,7 +195,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void the_callers_trace_travels_in_the_envelope() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 		Watching watching = new Watching();
 
 		dispatcher(flavor, watching).onRequest("ddsr/rpc/payments/charge", tracedCall(flavor, "ddsr/rpc/payments/charge/reply/11", 12.5,
@@ -218,7 +217,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void a_failing_call_is_marked_on_the_span_as_well_as_answered() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 		Watching watching = new Watching();
 
 		dispatcher(flavor, watching).onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/12", 500), sent::add);
@@ -230,8 +229,8 @@ class MessagingOperationDispatcherTest {
 	}
 
 	/** A call, as a consumer would put it on the wire. */
-	private CloudEventCodec.Message call(MqttFlavor flavor, String replyTo, double amount) throws Exception {
-		ServiceOperation operation = ((MqttOperationFlavor) flavor.getOperationFlavors().get(0)).getOperation();
+	private CloudEventCodec.Message call(MessagingFlavor flavor, String replyTo, double amount) throws Exception {
+		ServiceOperation operation = ((MessagingOperationFlavor) flavor.getOperationFlavors().get(0)).getOperation();
 		ServiceInvocation invocation = Invocations.invocation(operation, Map.of("amount", amount));
 		ByteArrayOutputStream document = new ByteArrayOutputStream();
 		XmiCodec.write(document, resourceSets, Invocations.roots(invocation));
@@ -252,7 +251,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void a_call_is_answered_on_the_way_back_it_came_with() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 		MessagingOperationDispatcher dispatcher = dispatcher(flavor);
 
 		assertThat(dispatcher.channels()).containsExactly("ddsr/rpc/payments/charge");
@@ -268,7 +267,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void the_answer_names_the_call_it_answers() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 		CloudEventCodec.Message request = call(flavor, "ddsr/rpc/payments/charge/reply/9", 1);
 		String requestId = request.attributes().getEventId();
 
@@ -283,7 +282,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void a_failing_service_answers_with_a_diagnostic_rather_than_silence() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 
 		dispatcher(flavor).onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/3", 500), sent::add);
 
@@ -297,7 +296,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void a_message_that_is_not_a_call_is_dropped() {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 		CloudEventCodec.Message foreign = new CloudEventCodec.Message(
 				CloudEvents.newEnvelope("com.example.something.happened", "/elsewhere", "application/xml"),
 				"<x/>".getBytes(StandardCharsets.UTF_8));
@@ -314,7 +313,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void a_service_that_is_not_there_is_an_answer_too() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(flavor, () -> null,
 				"/provider/Payment", resourceSets);
 
@@ -326,7 +325,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void a_way_back_that_fails_does_not_escape() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 
 		// The subscription is shared by every caller of the operation:
 		// one answer that cannot be sent must not end it.
@@ -337,13 +336,14 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void an_amqp_flavor_is_dispatched_by_its_routing_key_and_nothing_else_differs() throws Exception {
-		MqttFlavor mqtt = payments();
-		ServiceOperation charge = ((MqttOperationFlavor) mqtt.getOperationFlavors().get(0)).getOperation();
-		AmqpFlavor flavor = F.createAmqpFlavor();
+		MessagingFlavor mqtt = payments();
+		ServiceOperation charge = ((MessagingOperationFlavor) mqtt.getOperationFlavors().get(0)).getOperation();
+		MessagingFlavor flavor = F.createMessagingFlavor();
 		flavor.setName("payments-amqp");
+		flavor.setKind(FlavorKind.AMQP);
 		flavor.getBrokers().add("amqp://fake:5672");
-		flavor.setRequestRoutingKey("ddsr.rpc.payments");
-		AmqpOperationFlavor operationFlavor = F.createAmqpOperationFlavor();
+		flavor.setChannel("ddsr.rpc.payments");
+		MessagingOperationFlavor operationFlavor = F.createMessagingOperationFlavor();
 		operationFlavor.setName("charge");
 		operationFlavor.setOperation(charge);
 		flavor.getOperationFlavors().add(operationFlavor);
@@ -362,7 +362,7 @@ class MessagingOperationDispatcherTest {
 
 	@Test
 	void a_topic_this_contract_does_not_answer_on_is_ignored() throws Exception {
-		MqttFlavor flavor = payments();
+		MessagingFlavor flavor = payments();
 
 		dispatcher(flavor).onRequest("ddsr/rpc/payments/refund", call(flavor, "ddsr/rpc/payments/charge/reply/1", 1), sent::add);
 

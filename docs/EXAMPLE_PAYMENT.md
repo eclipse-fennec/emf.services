@@ -40,7 +40,7 @@ java -Dgosh.args=--nointeractive \
 
 `ddsr-ts-client/examples/payment/provider.ts` serves the same contract
 over HTTP, and — when `MQTT_URL` is set — **additionally announces an
-`MqttFlavor` on the same implementation** and serves the operations
+`MessagingFlavor` on the same implementation** and serves the operations
 over topics (`MqttOperationServer`), both transports sharing one
 balance state. That is the DoD scenario's "same interface, different
 transports" in one process.
@@ -62,7 +62,7 @@ confirmation, then stop the MQTT dispatcher and the HTTP server.
   invocation through the `RestFlavorPlugin`; with the
   `MqttFlavorPlugin` configured, the same `locator.invoke()` call runs
   over topics instead (the plugin reads the broker address from the
-  announced `MqttFlavor.brokers`).
+  announced `MessagingFlavor.brokers`).
 - **Java:** the client launch registers a typed `PaymentRemote` proxy
   per discovered provider (`PaymentProxyRegistrar` +
   `ServiceProxyFactory`) — application code calls

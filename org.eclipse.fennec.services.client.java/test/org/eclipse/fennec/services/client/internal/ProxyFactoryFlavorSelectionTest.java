@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.MqttFlavor;
+import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -130,11 +130,11 @@ class ProxyFactoryFlavorSelectionTest {
 				rest.setBasePath("/payments");
 				implementation.getFlavors().add(rest);
 			} else {
-				MqttFlavor mqtt = F.createMqttFlavor();
+				MessagingFlavor mqtt = F.createMessagingFlavor();
 				mqtt.setKind(FlavorKind.MQTT);
 				mqtt.setName("payments-mqtt");
 				mqtt.getBrokers().add("tcp://localhost:1883");
-				mqtt.setRequestTopic("ddsr/rpc/payments");
+				mqtt.setChannel("ddsr/rpc/payments");
 				implementation.getFlavors().add(mqtt);
 			}
 		}

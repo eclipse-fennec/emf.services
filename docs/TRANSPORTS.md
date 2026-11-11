@@ -32,20 +32,22 @@ travels as.
 Without bindings the older convention still applies: a single model
 object is the body, anything else is a query parameter.
 
-**`MqttFlavor`**: one or more `brokers`, a `requestTopic`, an optional
-`responseTopic`, and defaults for QoS and the retained flag. Per
-operation, an `MqttOperationFlavor` may override those and says whether
-correlation is used.
+**`MessagingFlavor`** — one flavor for everything that travels over a
+messaging broker, whichever protocol the broker speaks. Its `kind`
+(`MQTT`, `AMQP`) and the scheme of its `brokers` say which; the
+protocol decides how a channel is spelled and nothing about the shape
+of the flavor.
 
-**`AmqpFlavor`** (AMQP 0-9-1): one or more `brokers` (`amqp://…` or
-`amqps://…`, the virtual host as the path), the topic `exchange` calls
-are published to — `amq.topic` unless said otherwise — and a
-`requestRoutingKey`. An operation is reached under
-`<requestRoutingKey>.<operation>`, or under the `routingKey` of its
-`AmqpOperationFlavor`. There is no response address in the flavor, and
-that is the point: a call names its reply address in the protocol's own
-`reply-to`, the address is a queue only the caller can read, and the
-answer is matched by the protocol's `correlation-id`.
+| Field | Meaning |
+| --- | --- |
+| `brokers` | one or more broker URLs — `tcp://`, `ssl://` for MQTT, `amqp://`, `amqps://` (the virtual host as the path) for AMQP. Never with user or password: the flavor is announced to everyone |
+| `channel` | the base channel for calls: a topic over MQTT, a routing key over AMQP. An operation is reached on `<channel>/<operation>` or `<channel>.<operation>` |
+| `replyChannel` | where answers go. **Set:** a consumer listens on a subtree of its own name below it and names the exact channel in each call — a place a broker's ACL can be written against. **Empty:** the flavor names no place, and the consumer's connection provides a channel only it reads |
+| `exchange` | the exchange calls are published to, where the protocol has exchanges (AMQP); empty is `amq.topic` |
+| `defaultQos` | `AT_LEAST_ONCE` unless said otherwise; AMQP has no exactly-once and caps at 1 |
+
+Per operation, a `MessagingOperationFlavor` may override `channel`,
+`replyChannel` and `qos`.
 
 ## `client.rest` — talking to the broker over REST
 
@@ -231,7 +233,7 @@ Factory PID `org.eclipse.fennec.services.provider.messaging`
 
 Topics, routing keys and QoS are **not** in that table, and that is the
 point: they are the contract's, read from the same document that is
-announced — whether it carries an `MqttFlavor` or an `AmqpFlavor`. What
+announced, whichever protocol its `MessagingFlavor` speaks. What
 a deployment states is where it runs.
 
 Unlike the REST twin it goes down in the right order by construction:

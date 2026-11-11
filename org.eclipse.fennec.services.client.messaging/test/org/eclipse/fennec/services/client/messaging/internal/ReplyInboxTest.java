@@ -50,13 +50,13 @@ class ReplyInboxTest {
 
 	@Test
 	void the_filter_covers_this_consumer_and_nothing_wider() {
-		assertThat(new ReplyInbox("ddsr/rpc/payments/charge/reply/me").filter())
+		assertThat(new ReplyInbox("ddsr/rpc/payments/charge/reply/me", "ddsr/rpc/payments/charge/reply/me/#").filter())
 			.isEqualTo("ddsr/rpc/payments/charge/reply/me/#");
 	}
 
 	@Test
 	void answers_reach_the_call_they_name_whatever_order_they_arrive_in() throws Exception {
-		ReplyInbox inbox = new ReplyInbox("reply/me");
+		ReplyInbox inbox = new ReplyInbox("reply/me", "reply/me/#");
 		inbox.expect("call-1");
 		inbox.expect("call-2");
 
@@ -71,7 +71,7 @@ class ReplyInboxTest {
 
 	@Test
 	void an_answer_nobody_waits_for_is_dropped_and_not_given_to_the_next_caller() throws Exception {
-		ReplyInbox inbox = new ReplyInbox("reply/me");
+		ReplyInbox inbox = new ReplyInbox("reply/me", "reply/me/#");
 		inbox.expect("call-1");
 		inbox.forget("call-1");
 
@@ -85,7 +85,7 @@ class ReplyInboxTest {
 
 	@Test
 	void a_message_that_is_not_an_answer_does_not_take_the_subscription_down() throws Exception {
-		ReplyInbox inbox = new ReplyInbox("reply/me");
+		ReplyInbox inbox = new ReplyInbox("reply/me", "reply/me/#");
 		inbox.expect("call-1");
 
 		assertThatCode(() -> {
@@ -108,7 +108,7 @@ class ReplyInboxTest {
 
 	@Test
 	void a_wait_that_runs_out_says_so_rather_than_hanging() throws Exception {
-		ReplyInbox inbox = new ReplyInbox("reply/me");
+		ReplyInbox inbox = new ReplyInbox("reply/me", "reply/me/#");
 		inbox.expect("call-1");
 
 		assertThat(inbox.await("call-1", 30, TimeUnit.MILLISECONDS)).isNull();

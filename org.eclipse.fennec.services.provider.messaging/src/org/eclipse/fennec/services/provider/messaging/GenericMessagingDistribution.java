@@ -22,14 +22,12 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.MqttFlavor;
+import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
-import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
 import org.osgi.framework.Bundle;
@@ -66,8 +64,8 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * <p>What a deployment states here is what is deployment: which broker
  * to listen on. The channels, the QoS and the operations are the
  * contract's, read from the document that is also announced — nothing
- * says the same thing twice. Whether that document carries an MQTT or
- * an AMQP flavor makes no difference to this component.
+ * says the same thing twice. Which protocol the document's flavor speaks makes no difference to
+ * this component.
  *
  * <p>Serving and announcing stay separable, as they are on the REST
  * side: with {@code publish} off this listens and tells nobody, which
@@ -193,9 +191,9 @@ public class GenericMessagingDistribution {
 		// the dispatcher.
 		this.publishedFrom = resourceSets.getService();
 		ServiceImplementation implementation = load(context, config, publishedFrom);
-		ServiceFlavor flavor = listenOn(messagingFlavorOf(implementation), config.messaging_broker());
+		MessagingFlavor flavor = listenOn(messagingFlavorOf(implementation), config.messaging_broker());
 		String contract = implementation.getServiceInterfaces().get(0).getName();
-		if (brokersOf(flavor).isEmpty()) {
+		if (flavor.getBrokers().isEmpty()) {
 			// Nothing to connect to, said plainly and once. A document
 			// that leaves the broker to the deployment is the normal
 			// case here, and a deployment that has not named one yet is
@@ -278,7 +276,7 @@ public class GenericMessagingDistribution {
 			this.registration = client.provider().publish(
 					(ServiceProvider) implementation.eContainer(), implementation);
 			LOG.info("[DDSR] published " + contract.getName() + " on "
-					+ brokersOf(messagingFlavorOf(implementation)) + " (contract → " + entryUrl + ")");
+					+ messagingFlavorOf(implementation).getBrokers() + " (contract → " + entryUrl + ")");
 		} catch (RuntimeException failure) {
 			LOG.log(Level.WARNING, "[DDSR] publishing " + config.ddsr_contract()
 					+ " failed — the subscription keeps answering", failure);
@@ -330,24 +328,18 @@ public class GenericMessagingDistribution {
 	 * implementation is reachable on", and a deployment that has moved
 	 * is not also still at the old address.
 	 */
-	static ServiceFlavor listenOn(ServiceFlavor flavor, String configured) {
+	static MessagingFlavor listenOn(MessagingFlavor flavor, String configured) {
 		if (configured != null && !configured.isBlank()) {
-			List<String> brokers = brokersOf(flavor);
-			brokers.clear();
-			brokers.add(configured);
+			flavor.getBrokers().clear();
+			flavor.getBrokers().add(configured);
 		}
 		return flavor;
 	}
 
-	/** The brokers a messaging flavor announces — the list itself, which is what a deployment replaces. */
-	static List<String> brokersOf(ServiceFlavor flavor) {
-		return flavor instanceof AmqpFlavor amqp ? amqp.getBrokers() : ((MqttFlavor) flavor).getBrokers();
-	}
-
-	static ServiceFlavor messagingFlavorOf(ServiceImplementation implementation) {
+	static MessagingFlavor messagingFlavorOf(ServiceImplementation implementation) {
 		for (ServiceFlavor flavor : implementation.getFlavors()) {
-			if (MessagingRoute.speaks(flavor)) {
-				return flavor;
+			if (flavor instanceof MessagingFlavor messaging) {
+				return messaging;
 			}
 		}
 		throw new IllegalStateException("the implementation " + implementation.getName()

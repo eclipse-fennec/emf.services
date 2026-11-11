@@ -14,21 +14,22 @@
 import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
 import { dataAsText, readStructured } from '@ddsr/client';
-import type { MqttFlavor, MqttOperationFlavor, ServiceOperation } from '@ddsr/model';
+import type { MessagingFlavor, MessagingOperationFlavor, ServiceOperation } from '@ddsr/model';
 import { MqttFlavorPlugin } from '../src/mqtt-flavor-plugin';
 import { MqttOperationServer } from '../src/mqtt-operation-server';
 import type { MqttRpcClientLike } from '../src/mqtt-rpc';
 import {
   qosFor,
   replyBaseFor,
+  namedReplyBaseFor,
   requestTopicFor,
   topicSegment,
   tlsConnectOptions,
 } from '../src/mqtt-rpc';
 
-function firstOpFlavor(flavor: MqttFlavor): MqttOperationFlavor {
+function firstOpFlavor(flavor: MessagingFlavor): MessagingOperationFlavor {
   const list = flavor.operationFlavors as unknown as
-    { get?: (i: number) => MqttOperationFlavor } & Iterable<MqttOperationFlavor>;
+    { get?: (i: number) => MessagingOperationFlavor } & Iterable<MessagingOperationFlavor>;
   if (typeof list.get === 'function') return list.get(0);
   return [...list][0];
 }
@@ -132,7 +133,7 @@ class FakeClient implements MqttRpcClientLike {
 
 const factory = DDSRFactory.eINSTANCE;
 
-function paymentMqttFlavor(): { flavor: MqttFlavor; charge: ServiceOperation } {
+function paymentMqttFlavor(): { flavor: MessagingFlavor; charge: ServiceOperation } {
   const charge = factory.createServiceOperation();
   charge.name = 'charge';
   const chargeResult = factory.createParameter();
@@ -140,14 +141,17 @@ function paymentMqttFlavor(): { flavor: MqttFlavor; charge: ServiceOperation } {
   chargeResult.type = 'double';
   charge.returnValue = chargeResult;
 
-  const flavor = factory.createMqttFlavor();
+  const flavor = factory.createMessagingFlavor();
   flavor.name = 'payments-mqtt';
   flavor.brokers.push('tcp://fake:1883');
-  flavor.requestTopic = 'ddsr/rpc/payments';
+  flavor.channel = 'ddsr/rpc/payments';
 
-  const chargeFlavor = factory.createMqttOperationFlavor();
+  const chargeFlavor = factory.createMessagingOperationFlavor();
   chargeFlavor.name = 'charge';
   chargeFlavor.operation = charge;
+  // The flavor names where answers to this operation go — a tree a
+  // broker's ACL can be written against.
+  chargeFlavor.replyChannel = 'ddsr/rpc/payments/charge/reply';
   flavor.operationFlavors.push(chargeFlavor);
 
   return { flavor, charge };
@@ -165,6 +169,7 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     const opFlavor = firstOpFlavor(flavor);
     expect(requestTopicFor(flavor, opFlavor)).toBe('ddsr/rpc/payments/charge');
     expect(replyBaseFor(flavor, opFlavor)).toBe('ddsr/rpc/payments/charge/reply');
+    expect(namedReplyBaseFor(flavor, opFlavor)).toBe('ddsr/rpc/payments/charge/reply');
     // The operation states no QoS, so the flavor's default applies —
     // and since #81 that is real unset state rather than a value that
     // happens to look like silence.
@@ -335,12 +340,35 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     await plugin.close();
   });
 
-  it('canHandle answers by flavor kind', () => {
+  it('canHandle answers by the protocol the flavor speaks', () => {
     const plugin = new MqttFlavorPlugin({ log: () => undefined });
     const { flavor } = paymentMqttFlavor();
     expect(plugin.canHandle(flavor)).toBe(true);
     const rest = factory.createRestFlavor();
     expect(plugin.canHandle(rest)).toBe(false);
+
+    // One class for every protocol: an AMQP flavor is a MessagingFlavor
+    // too, and not this plugin's — by its kind, or by where it says its
+    // broker is.
+    const amqp = factory.createMessagingFlavor();
+    amqp.brokers.push('amqp://rabbit:5672');
+    expect(plugin.canHandle(amqp)).toBe(false);
+    (amqp as Record<string, unknown>).kind = 'AMQP';
+    expect(plugin.canHandle(amqp)).toBe(false);
+  });
+
+  it('listens on a tree of its own where the flavor names no place for answers', () => {
+    const { flavor } = paymentMqttFlavor();
+    const opFlavor = firstOpFlavor(flavor);
+    opFlavor.replyChannel = undefined as unknown as string;
+
+    // A statement, not a gap: the flavor leaves the reply channel to the
+    // consumer, and the call names it — so the provider needs no rule.
+    expect(namedReplyBaseFor(flavor, opFlavor)).toBeUndefined();
+    expect(replyBaseFor(flavor, opFlavor)).toBe('ddsr/reply');
+
+    flavor.replyChannel = 'ddsr/rpc/answers/';
+    expect(replyBaseFor(flavor, opFlavor)).toBe('ddsr/rpc/answers');
   });
 });
 

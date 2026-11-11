@@ -85,7 +85,7 @@ Three model types carry the weight:
   contracts. It carries the **flavors**.
 - **A flavor** — how to reach it. `RestFlavor` has a host, a base path
   and one operation flavor per operation, with its own path and HTTP
-  method. `MqttFlavor` names brokers and topics instead. The contract
+  method. `MessagingFlavor` names brokers and topics instead. The contract
   says *what*, the flavor says *where and how*.
 
 A provider publishes an implementation; the broker mints a

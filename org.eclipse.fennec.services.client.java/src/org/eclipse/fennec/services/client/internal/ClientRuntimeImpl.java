@@ -21,8 +21,7 @@ import java.util.function.Supplier;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.FlavorKind;
-import org.eclipse.fennec.services.AmqpFlavor;
-import org.eclipse.fennec.services.MqttFlavor;
+import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
@@ -182,11 +181,8 @@ final class ClientRuntimeImpl implements ClientRuntime {
 				return (rest.getHost() == null ? "" : rest.getHost())
 						+ (rest.getBasePath() == null ? "" : rest.getBasePath());
 			}
-			if (flavor instanceof MqttFlavor mqtt && !mqtt.getBrokers().isEmpty()) {
-				return mqtt.getBrokers().get(0) + " " + mqtt.getRequestTopic();
-			}
-			if (flavor instanceof AmqpFlavor amqp && !amqp.getBrokers().isEmpty()) {
-				return amqp.getBrokers().get(0) + " " + amqp.getRequestRoutingKey();
+			if (flavor instanceof MessagingFlavor messaging && !messaging.getBrokers().isEmpty()) {
+				return messaging.getBrokers().get(0) + " " + messaging.getChannel();
 			}
 		}
 		return null;

@@ -579,12 +579,15 @@ matter of roles per operation and of audiences, which only a token
 carries. So the broker runs in `mtls`, the providers in `bearer`, and a
 node holds both credentials:
 
-- the client says `broker.authentication=certificate`
-  (`DDSR_BROKER_AUTHENTICATION`): the broker gets the certificate and
-  **no** token — it would ignore it, and a credential sent where it is
-  not needed is one more place it can leak from;
+- the client binds the token supplier that has none for the broker
+  (`broker.tokens.target=(fennec.tokens=none)` on the Java REST
+  transport; `DDSR_BROKER_AUTHENTICATION=certificate` in the TypeScript
+  examples): the broker gets the certificate and **no** token — it
+  would ignore it, and a credential sent where it is not needed is one
+  more place it can leak from;
 - the token supplier stays, and serves the providers per audience
-  exactly as before (`TokenSupplier.token(audience)`); its own `scope`
+  exactly as before (`provider.tokens.target=(fennec.tokens=oauth)`,
+  `TokenSupplier.token(audience)`); its own `scope`
   for the broker can stay empty;
 - a contract served in a mode from configuration announces the scheme
   its document cannot carry — the issuer and audiences the node trusts
@@ -611,7 +614,8 @@ and the client finds the store by certificate and calls it with a token
 of that audience.
 
 RSA nodes take the same through their role configuration
-(`broker.authentication`, `tls.keystore`, `tls.truststore`, see
+(`broker.authentication`, `tls.keystore`, `tls.truststore` — the role
+derives the two targets from it, see
 [Remote Service Admin](RSA.md)); the harness runs scenario K's Ledger
 over the mtls broker that way.
 

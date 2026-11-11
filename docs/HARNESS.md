@@ -83,7 +83,10 @@ session id is its client id, and a provider can only withdraw what it
 published itself. The processes get their identity from the same
 environment variables in both languages (`DDSR_OAUTH_TOKEN_URI`,
 `DDSR_OAUTH_CLIENT_ID`, `DDSR_OAUTH_CLIENT_SECRET`, `DDSR_OAUTH_SCOPE`;
-the consumer id falls back to the client id); `itest/keycloak/auth.sh`
+the consumer id falls back to the client id). A Java node is also told
+which token supplier its REST transport binds — `DDSR_TOKENS=oauth`,
+written into the target of the reference, and `DDSR_BROKER_TOKENS=none`
+where it shows the broker a certificate instead; `itest/keycloak/auth.sh`
 hands them out, and `provider_args` the verifier side of a node that
 serves guarded contracts (`DDSR_JWT_*`, roles from `realm_access.roles`).
 

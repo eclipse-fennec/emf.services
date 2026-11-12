@@ -30,6 +30,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.common.Contracts;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
@@ -332,6 +333,9 @@ public class GenericRestDistribution extends Application {
 		ServiceImplementation implementation = load(context, config, publishedFrom);
 		RestFlavor flavor = restFlavorOf(implementation);
 		String contract = implementation.getServiceInterfaces().get(0).getName();
+		// A contract may say a slot is a stream; this distribution answers
+		// a request once. Refused here, by name, instead of on a call.
+		Contracts.requireNoStreams(implementation.getServiceInterfaces().get(0), "the generic REST distribution");
 
 		// The mode comes with the configuration — Declarative Services puts
 		// it on this application too, together with the selector that keeps

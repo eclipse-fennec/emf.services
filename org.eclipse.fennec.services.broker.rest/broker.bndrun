@@ -74,7 +74,7 @@ jersey.deps:
 	org.apache.felix.gogo.shell;version='[1.1.4,1.1.5)',\
 	org.apache.felix.http.jetty12;version='[1.1.0,1.1.1)',\
 	org.apache.felix.http.servlet-api;version='[6.1.0,6.1.1)',\
-	org.apache.felix.scr;version='[2.2.12,2.2.13)',\
+	org.apache.felix.scr;version='[2.3.0,2.3.1)',\
 	org.eclipse.emf.common;version='[2.44.0,2.44.1)',\
 	org.eclipse.emf.ecore;version='[2.41.0,2.41.1)',\
 	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\

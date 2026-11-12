@@ -72,7 +72,7 @@ org.apache.felix:org.apache.felix.http.jetty12:1.0.34
 org.apache.felix:org.apache.felix.http.servlet-api:6.1.0
 org.apache.felix:org.apache.felix.log.extension:1.0.0
 org.apache.felix:org.apache.felix.metatype:1.2.4
-org.apache.felix:org.apache.felix.scr:2.2.12
+org.apache.felix:org.apache.felix.scr:2.3.0
 org.apache.felix:org.apache.felix.shell.remote:1.2.0
 org.apache.felix:org.apache.felix.threaddump:1.0.0
 org.apache.felix:org.apache.felix.useradmin:1.0.4

@@ -57,6 +57,7 @@ maven/mavencentral/org.apache.felix/org.apache.felix.http.servlet-api/3.0.0, Apa
 maven/mavencentral/org.apache.felix/org.apache.felix.http.servlet-api/6.1.0, Apache-2.0, approved, #22241
 maven/mavencentral/org.apache.felix/org.apache.felix.scr/2.2.12, Apache-2.0, approved, #15367
 maven/mavencentral/org.apache.felix/org.apache.felix.scr/2.2.6, Apache-2.0, approved, #15367
+maven/mavencentral/org.apache.felix/org.apache.felix.scr/2.3.0, Apache-2.0, approved, #32907
 maven/mavencentral/org.apache.servicemix.bundles/org.apache.servicemix.bundles.junit/4.13.2_1, EPL-1.0 AND Apache-2.0, approved, #17673
 maven/mavencentral/org.apiguardian/apiguardian-api/1.1.2, Apache-2.0, approved, #17641
 maven/mavencentral/org.assertj/assertj-core/3.27.7, Apache-2.0, approved, #17980

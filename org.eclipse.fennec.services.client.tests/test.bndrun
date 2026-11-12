@@ -27,7 +27,7 @@
 	junit-platform-launcher;version='[1.14.2,1.14.3)',\
 	net.bytebuddy.byte-buddy;version='[1.18.4,1.18.5)',\
 	org.apache.felix.configadmin;version='[1.9.26,1.9.27)',\
-	org.apache.felix.scr;version='[2.2.12,2.2.13)',\
+	org.apache.felix.scr;version='[2.3.0,2.3.1)',\
 	org.eclipse.emf.common;version='[2.44.0,2.44.1)',\
 	org.eclipse.emf.ecore;version='[2.41.0,2.41.1)',\
 	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\

@@ -280,6 +280,73 @@ class RestDispatcherBodyTest {
 		assertThat(String.valueOf(response.getEntity())).contains("Store");
 	}
 
+	/** Service objects whose service comes and goes as the test says. */
+	private static final class Flaky implements ServiceObjects<Object> {
+		private final Object service;
+		private final RuntimeException onReturn;
+
+		Flaky(Object service, RuntimeException onReturn) {
+			this.service = service;
+			this.onReturn = onReturn;
+		}
+
+		@Override
+		public Object getService() {
+			return service;
+		}
+
+		@Override
+		public void ungetService(Object returned) {
+			if (onReturn != null) {
+				throw onReturn;
+			}
+		}
+
+		@Override
+		public ServiceReference<Object> getServiceReference() {
+			throw new UnsupportedOperationException("not needed for these tests");
+		}
+	}
+
+	/**
+	 * Found, and gone before it could be taken — what a delayed component
+	 * being disposed of looks like to the second of two calls. That used
+	 * to be a 500 with a NullPointerException for a text.
+	 */
+	@Test
+	void an_implementation_that_left_between_lookup_and_use_is_a_503_too() {
+		RestDispatcher dispatcher = new RestDispatcher(contract(false), () -> new Flaky(null, null), "Store",
+				new ResourceSetObjects());
+
+		Response response = dispatcher.dispatch("POST", "/store", name -> List.of(), name -> null,
+				new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
+
+		assertThat(response.getStatus()).isEqualTo(503);
+		assertThat(String.valueOf(response.getEntity())).contains("Store");
+	}
+
+	/**
+	 * The framework refuses to take back a use it no longer counts. The
+	 * call was made and answered; that refusal must not turn its answer
+	 * into a failure.
+	 */
+	@Test
+	void an_answer_stands_when_the_implementation_cannot_be_returned() {
+		Object stored = new Object() {
+			@SuppressWarnings("unused")
+			public Object store(Object payload) {
+				return "kept";
+			}
+		};
+		RestDispatcher dispatcher = new RestDispatcher(contract(false),
+				() -> new Flaky(stored, new IllegalArgumentException()), "Store", new ResourceSetObjects());
+
+		Response response = dispatcher.dispatch("POST", "/store", name -> List.of(), name -> null,
+				new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
+
+		assertThat(response.getStatus()).isBetween(200, 299);
+	}
+
 	// ---------------------------------------------------------- #219
 
 	private Response post(boolean modelTyped, String body, long maxBodyBytes) {

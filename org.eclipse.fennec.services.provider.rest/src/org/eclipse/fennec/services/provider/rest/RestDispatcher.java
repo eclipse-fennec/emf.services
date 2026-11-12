@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
@@ -102,6 +103,8 @@ import jakarta.ws.rs.core.UriInfo;
  */
 @Path("/")
 public class RestDispatcher {
+
+	private static final Logger LOG = Logger.getLogger(RestDispatcher.class.getName());
 
 	private final RestFlavor flavor;
 	private final Supplier<ServiceObjects<Object>> implementations;
@@ -351,6 +354,11 @@ public class RestDispatcher {
 			return Response.status(503).entity("no service implements " + contract + " here").build();
 		}
 		Object service = serviceObjects.getService();
+		if (service == null) {
+			// Found and gone again before it could be taken: the same
+			// answer as not being there, which is what it is.
+			return Response.status(503).entity("no service implements " + contract + " here").build();
+		}
 		try {
 			Object result = invoke(service, operation, arguments);
 			return answer(operationFlavor, result);
@@ -359,7 +367,15 @@ public class RestDispatcher {
 		} catch (ReflectiveOperationException | RuntimeException failure) {
 			return Response.serverError().entity(String.valueOf(failure.getMessage())).build();
 		} finally {
-			serviceObjects.ungetService(service);
+			try {
+				serviceObjects.ungetService(service);
+			} catch (IllegalArgumentException | IllegalStateException notCounted) {
+				// The framework no longer counts this use — the service or
+				// this bundle is on its way out. The call was made and its
+				// answer stands; failing it now would report a problem the
+				// caller did not have.
+				LOG.fine(() -> "[DDSR] the implementation of " + contract + " was gone before it was returned");
+			}
 		}
 	}
 

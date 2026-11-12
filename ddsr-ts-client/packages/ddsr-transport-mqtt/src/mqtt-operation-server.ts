@@ -13,7 +13,7 @@
 
 import type { TlsOptions } from '@ddsr/client';
 import { randomUUID } from 'node:crypto';
-import { toArray } from '@ddsr/client';
+import { declaredCode, declaredRaisedBy, toArray } from '@ddsr/client';
 import type { MessagingFlavor, MessagingOperationFlavor, ServiceOperationFlavor } from '@ddsr/model';
 import {
   MqttRpcClientLike,
@@ -129,7 +129,15 @@ export class MqttOperationServer {
       // operation's declared result, so `produces` does not describe
       // it, and a consumer that learns why beats one that learns
       // nothing until its timer runs out.
-      answer = encodeResponse(request.id, source, undefined, String(error));
+      //
+      // An error the contract declares travels under its code - over
+      // MQTT that code is all a declared error is, and the caller
+      // recognises it by it (#185). Anything else has no code.
+      const declared = declaredRaisedBy(opFlavor?.operation, error);
+      answer = declared
+        ? encodeResponse(request.id, source, undefined,
+            (error as Error).message || declared.name || 'declared error', {}, declaredCode(declared) ?? 0)
+        : encodeResponse(request.id, source, undefined, String(error));
     }
     try {
       await client.publishAsync(request.replyTo, answer, { retain: false });

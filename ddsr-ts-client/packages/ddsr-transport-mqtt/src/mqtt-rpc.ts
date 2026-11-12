@@ -114,6 +114,8 @@ export interface MqttRpcResponse {
   correlationId: string;
   value?: unknown;
   error?: string;
+  /** The code of the failure's Diagnostic - which declared error it is, if any. */
+  code?: number;
 }
 
 /** Small model slices — the TS model types the enums as plain strings. */
@@ -274,13 +276,13 @@ export function decodeRequest(payload: Uint8Array): MqttRpcRequest {
 /** The answer to a call: a second event, correlated by the request's id. */
 export function encodeResponse(
   requestId: string, source: string, value: unknown, failure?: string,
-  opFlavor: OperationFlavorLike = {},
+  opFlavor: OperationFlavorLike = {}, failureCode = 0,
 ): Uint8Array {
   const envelope = newEnvelope(CE_TYPE_INVOKE_REPLY, source,
       declaredContentType(opFlavor, 'produces'));
   envelope.dataschema = DDSRPackage.eNS_URI;
   envelope.extensions[CE_EXTENSION_CORRELATION_ID] = requestId;
-  const document = failure !== undefined ? encodeFailure(failure) : encodeResult(value);
+  const document = failure !== undefined ? encodeFailure(failure, failureCode) : encodeResult(value);
   return writeStructured(envelope, document);
 }
 

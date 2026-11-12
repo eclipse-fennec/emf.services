@@ -13,7 +13,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
-import { dataAsText, readStructured } from '@ddsr/client';
+import { DdsrServiceError, dataAsText, readStructured } from '@ddsr/client';
 import type { MessagingFlavor, MessagingOperationFlavor, ServiceOperation } from '@ddsr/model';
 import { MqttFlavorPlugin } from '../src/mqtt-flavor-plugin';
 import { MqttOperationServer } from '../src/mqtt-operation-server';
@@ -298,6 +298,64 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
 
     await expect(plugin.invoke(charge, { amount: 1 }, flavor, opFlavor))
       .rejects.toThrow(/insufficient funds/);
+    await plugin.close();
+    await server.stop();
+  });
+
+  // #185: MQTT has no status to bind an error to. The answer carries a
+  // Diagnostic, and its code is the declared error it is.
+  it('a declared error travels under its code and is told to the caller', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const declared = factory.createServiceException();
+    declared.name = 'InsufficientFunds';
+    declared.type = 'payment.InsufficientFunds';
+    const code = factory.createIntProperty();
+    code.name = 'code';
+    code.value = 402;
+    declared.properties.push(code);
+    charge.exceptions.push(declared);
+
+    class InsufficientFundsException extends Error {}
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, {
+      charge: () => { throw new InsufficientFundsException('only 3.50 left'); },
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+    const failure = await plugin.invoke(charge, { amount: 5 }, flavor, firstOpFlavor(flavor))
+      .then(() => undefined, (error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(DdsrServiceError);
+    expect((failure as DdsrServiceError).exception).toBe(declared);
+    expect((failure as DdsrServiceError).message).toBe('only 3.50 left');
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('an error the contract does not declare stays a plain failure', async () => {
+    const { flavor, charge } = paymentMqttFlavor();
+    const declared = factory.createServiceException();
+    declared.name = 'InsufficientFunds';
+    declared.type = 'payment.InsufficientFunds';
+    const code = factory.createIntProperty();
+    code.name = 'code';
+    code.value = 402;
+    declared.properties.push(code);
+    charge.exceptions.push(declared);
+
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, {
+      charge: () => { throw new RangeError('boom'); },
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+    const failure = await plugin.invoke(charge, { amount: 5 }, flavor, firstOpFlavor(flavor))
+      .then(() => undefined, (error: unknown) => error);
+
+    expect(failure).not.toBeInstanceOf(DdsrServiceError);
+    expect(String(failure)).toMatch(/boom/);
     await plugin.close();
     await server.stop();
   });

@@ -190,10 +190,11 @@ instance runs, which document to read, and what it supersedes.
 Not built yet, part of the open issue #25:
 
 - **TypeScript stubs** exist (see above). A declared error travels over
-  REST in both directions: a TypeScript provider answers it with the
-  status its flavor binds, as `RestDispatcher` does, and the client
-  recognises that status. MQTT still reports a failure as a plain
-  `Error`.
+  REST and over MQTT in both directions: over REST under the status its
+  flavor binds, as `RestDispatcher` does, over MQTT under its `code` in
+  the answer's `Diagnostic` (see
+  [Transports](TRANSPORTS.md#declared-errors)); the client recognises
+  it either way and the generated stub throws the generated class.
 - **No MQTT template.** There is no generated MQTT handler, and since
   the generic MQTT distribution arrived there is less reason for one:
   serving a contract over topics is a factory configuration.

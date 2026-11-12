@@ -57,6 +57,8 @@ export interface DecodedInvocation {
 export interface DecodedResult {
   value?: unknown;
   error?: string;
+  /** The code of the failure's Diagnostic - which declared error it is, if any. */
+  code?: number;
 }
 
 /** Whether this is a model object rather than a plain value. */
@@ -200,13 +202,16 @@ export function encodeFailure(message: string, code = 0): string {
   return serializeToXmi(result as unknown as EObject);
 }
 
-/** The inverse of both: a value, or the message of the failure. */
+/** The inverse of both: a value, or the message and the code of the failure. */
 export function decodeResult(document: string): DecodedResult {
   const result = firstOfClass<ServiceInvocationResult>(
     asRoots(deserializeFromXmi(document)), 'ServiceInvocationResult');
   if (!result) throw new Error('the message carries no ServiceInvocationResult');
   if (result.diagnostic) {
-    return { error: result.diagnostic.message ?? 'the call failed without a message' };
+    return {
+      error: result.diagnostic.message ?? 'the call failed without a message',
+      code: Number(result.diagnostic.code ?? 0),
+    };
   }
   return { value: valueOf(result.value) };
 }

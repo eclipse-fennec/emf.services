@@ -30,6 +30,7 @@ import org.eclipse.fennec.m2x.ocl.engine.internal.OclSettingDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclValidationDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;
 import org.eclipse.fennec.services.BearerTokenScheme;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.ConsumerSession;
@@ -252,6 +253,44 @@ class DdsrBrokerOclTest {
 		p.setUpperBound(-1);
 		assertThat(Diagnostician.INSTANCE.validate(p).getSeverity())
 				.as("-1 is unbounded, not a smaller upper bound")
+				.isEqualTo(Diagnostic.OK);
+	}
+
+	/** Parameter.delivery: how many values a stream has is exactly what it does not say in advance. */
+	@Test
+	void aStreamIsUnbounded() {
+		Parameter readings = ServicesFactory.eINSTANCE.createParameter();
+		readings.setName("result");
+		readings.setType("double");
+		readings.setDelivery(Delivery.STREAM);
+
+		assertThat(Diagnostician.INSTANCE.validate(readings).toString()).contains("streamIsUnbounded");
+
+		readings.setUpperBound(-1);
+		assertThat(Diagnostician.INSTANCE.validate(readings).getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	/** A promise is something that comes back; an argument is handed over, and is there when it is. */
+	@Test
+	void onlyAReturnValueIsPromised() {
+		ServiceOperation later = ServicesFactory.eINSTANCE.createServiceOperation();
+		later.setName("greetLater");
+		Parameter name = ServicesFactory.eINSTANCE.createParameter();
+		name.setName("name");
+		name.setType("string");
+		name.setDelivery(Delivery.PROMISE);
+		later.getParameters().add(name);
+		Parameter greeting = ServicesFactory.eINSTANCE.createParameter();
+		greeting.setName("result");
+		greeting.setType("string");
+		greeting.setDelivery(Delivery.PROMISE);
+		later.setReturnValue(greeting);
+
+		assertThat(Diagnostician.INSTANCE.validate(later).toString()).contains("onlyAReturnValueIsPromised");
+
+		name.setDelivery(Delivery.VALUE);
+		assertThat(Diagnostician.INSTANCE.validate(later).getSeverity())
+				.as("the promised return value is what the literal is for")
 				.isEqualTo(Diagnostic.OK);
 	}
 

@@ -33,6 +33,7 @@ import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
@@ -182,12 +183,20 @@ public final class JavaContracts {
         // synchronous and an asynchronous interface describe one contract.
         Class<?> returned = method.getReturnType();
         Type generic = method.getGenericReturnType();
-        if (AsyncReturns.isHolder(returned)) {
+        boolean promised = AsyncReturns.isHolder(returned);
+        if (promised) {
             generic = AsyncReturns.valueType(generic);
             returned = AsyncReturns.rawOf(generic);
         }
         if (returned != void.class) {
             Parameter result = slot("result", returned, generic, method, types);
+            if (promised && result.getDelivery() == Delivery.VALUE) {
+                // Said in the contract, and not part of its identity: a
+                // reader may still take the value synchronously (sd1
+                // leaves PROMISE out), but one that generates code or
+                // sets a timeout knows the answer is an event.
+                result.setDelivery(Delivery.PROMISE);
+            }
             operation.setReturnValue(result);
         }
         for (Class<?> raised : sorted(method.getExceptionTypes())) {
@@ -306,7 +315,20 @@ public final class JavaContracts {
         slot.setName(name);
 
         Class<?> element = raw;
-        if (raw.isArray()) {
+        if (AsyncReturns.isStream(raw)) {
+            // A stream of T: any number of values over time. Unbounded by
+            // definition, and another contract than a list of T — which
+            // arrives complete.
+            Type carried = AsyncReturns.valueType(generic);
+            if (!(carried instanceof Class<?> streamed) || streamed == void.class) {
+                throw new IllegalArgumentException(method.getDeclaringClass().getSimpleName() + "."
+                        + method.getName() + ": slot '" + name + "' is a stream without a single element type — "
+                        + "a contract has to say what flows in it.");
+            }
+            element = streamed;
+            slot.setUpperBound(-1);
+            slot.setDelivery(Delivery.STREAM);
+        } else if (raw.isArray()) {
             element = raw.getComponentType();
             slot.setUpperBound(-1);
         } else if (Collection.class.isAssignableFrom(raw)) {

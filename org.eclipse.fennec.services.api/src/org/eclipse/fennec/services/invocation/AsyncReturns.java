@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
 import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 
@@ -58,6 +59,20 @@ public final class AsyncReturns {
 
 	private static boolean isPromise(Class<?> type) {
 		return PROMISE.equals(type.getName());
+	}
+
+	private static final String PUSH_STREAM = "org.osgi.util.pushstream.PushStream";
+
+	/**
+	 * Whether a slot of this Java type is a stream — values that arrive
+	 * one after the other, over time ({@code Delivery.STREAM} in the
+	 * model). Two types say so in Java: the OSGi {@code PushStream} and
+	 * the JDK's {@link Flow.Publisher}, which every reactive library
+	 * adapts to. What they carry is their type argument
+	 * ({@link #valueType}).
+	 */
+	public static boolean isStream(Class<?> type) {
+		return type != null && (type == Flow.Publisher.class || PUSH_STREAM.equals(type.getName()));
 	}
 
 	/**

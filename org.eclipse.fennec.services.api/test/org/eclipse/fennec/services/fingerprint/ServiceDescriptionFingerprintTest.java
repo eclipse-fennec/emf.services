@@ -27,6 +27,7 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
@@ -449,5 +450,53 @@ class ServiceDescriptionFingerprintTest {
 		assertThat(ServiceDescriptionFingerprint.fingerprint(many))
 				.as("the gap issue #41 closes: list and get were indistinguishable")
 				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(one));
+	}
+
+	/** The same slot as a value, as a promise and as a stream — the twin of the TypeScript cases. */
+	private static ServiceInterface sensor(Delivery delivery, boolean asArgument) {
+		ServiceInterface sensor = minimal("Sensor");
+		ServiceOperation readings = ServicesFactory.eINSTANCE.createServiceOperation();
+		readings.setName("readings");
+		Parameter value = ServicesFactory.eINSTANCE.createParameter();
+		value.setName(asArgument ? "samples" : "result");
+		value.setType("double");
+		value.setUpperBound(-1);
+		if (delivery != null) {
+			value.setDelivery(delivery);
+		}
+		if (asArgument) {
+			readings.getParameters().add(value);
+		} else {
+			readings.setReturnValue(value);
+		}
+		sensor.getOperations().add(readings);
+		return sensor;
+	}
+
+	@Test
+	void aStreamIsAnotherContractThanAListOfTheSameType() {
+		assertThat(ServiceDescriptionFingerprint.fingerprint(sensor(Delivery.STREAM, false)))
+				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(sensor(Delivery.VALUE, false)));
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(sensor(Delivery.STREAM, false)))
+				.contains("|returnDelivery=STREAM");
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(sensor(Delivery.STREAM, true)))
+				.contains("|delivery=STREAM");
+	}
+
+	@Test
+	void aPromiseIsTheSameContractAsAValue() {
+		assertThat(ServiceDescriptionFingerprint.fingerprint(sensor(Delivery.PROMISE, false)))
+				.as("it says when the value comes, not what it is")
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(sensor(Delivery.VALUE, false)));
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(sensor(Delivery.PROMISE, false)))
+				.doesNotContain("elivery");
+	}
+
+	@Test
+	void aSlotThatSaysNothingIsAValueAndRendersNothing() {
+		assertThat(ServiceDescriptionFingerprint.fingerprint(sensor(null, false)))
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(sensor(Delivery.VALUE, false)));
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(sensor(Delivery.VALUE, false)))
+				.doesNotContain("elivery");
 	}
 }

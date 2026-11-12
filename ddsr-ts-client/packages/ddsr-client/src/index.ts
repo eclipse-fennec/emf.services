@@ -50,7 +50,7 @@ export {
   describing, isJson, isTextual, lifecycleTypeOf, lifecycleEventTypeOf,
   CE_SPEC_VERSION, CE_STRUCTURED_MEDIA_TYPE, CE_HEADER_PREFIX,
   CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY, CE_TYPE_RESYNC,
-  CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO,
+  CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO, CE_EXTENSION_REPLY_COMPLETE, CE_EXTENSION_REPLY_ERROR,
 } from './cloudevents/cloud-events.js';
 export type { CloudEventEnvelope, CloudEventMessage } from './cloudevents/cloud-events.js';
 export { attachShutdownHooks } from './lifecycle/shutdown-hooks.js';

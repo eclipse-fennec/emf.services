@@ -134,6 +134,13 @@ export class RestFlavorPlugin implements FlavorPlugin {
   ): Promise<unknown> {
     const restFlavor = flavor as RestFlavor;
     const restOpFlavor = operationFlavor as RestOperationFlavor;
+    // A stream (Parameter.delivery) is many answers to one call, and a
+    // REST call has one. Said before anything is sent - a messaging
+    // flavor of the same contract carries it.
+    if (String(operation.returnValue?.delivery ?? '') === 'STREAM') {
+      throw new DdsrClientError(
+        `${operation.name} returns a stream, and REST carries no streams - call it over a messaging flavor`);
+    }
 
     const request = buildRequest(operation, params, restFlavor, restOpFlavor);
     const bearer = await this.bearerFor(flavor, operation);

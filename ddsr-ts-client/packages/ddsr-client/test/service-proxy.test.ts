@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
 import { DdsrServiceError, serviceProxy } from '../src/index';
 import type { ServiceLocator } from '../src/index';
+import type { ServiceInterface, ServiceOperation } from '@ddsr/model';
 
 class PersonNotFoundException extends Error {
   constructor(message: string, readonly cause: DdsrServiceError) {
@@ -63,10 +64,10 @@ describe('serviceProxy and the declared errors of a contract', () => {
 });
 
 describe('serviceProxy and a slot that is a stream', () => {
-  // Parameter.delivery: the contract can say a slot is a stream, and no
-  // flavor plugin carries one yet. The caller is told, by name, instead
-  // of being handed a Promise where it iterates.
-  it('says that nothing carries the stream, and which slot it is', () => {
+  // Parameter.delivery: the contract can say a slot is a stream. One
+  // that comes back is iterated, and nothing is sent before the first
+  // value is asked for.
+  function readingsContract(): { serviceInterface: ServiceInterface; readings: ServiceOperation } {
     const factory = DDSRFactory.eINSTANCE;
     const serviceInterface = factory.createServiceInterface();
     const readings = factory.createServiceOperation();
@@ -78,12 +79,54 @@ describe('serviceProxy and a slot that is a stream', () => {
     result.delivery = 'STREAM';
     readings.returnValue = result;
     serviceInterface.operations.push(readings);
+    return { serviceInterface, readings };
+  }
+
+  it('hands back a stream to iterate, and calls when the first value is asked for', async () => {
+    const { serviceInterface } = readingsContract();
+    let invoked = 0;
+    const locator = {
+      serviceInterface,
+      invoke: async () => {
+        invoked++;
+        return (async function* () { yield 1.5; yield 2.5; })();
+      },
+    } as unknown as ServiceLocator;
+
+    const values = serviceProxy<{ readings(): AsyncIterable<number> }>(locator).readings();
+
+    expect(invoked).toBe(0);
+    const seen: number[] = [];
+    for await (const value of values) seen.push(value);
+    expect(seen).toEqual([1.5, 2.5]);
+    expect(invoked).toBe(1);
+  });
+
+  it('says so where the transport that carried the call carries no streams', async () => {
+    const { serviceInterface } = readingsContract();
+    const locator = { serviceInterface, invoke: async () => [1.5, 2.5] } as unknown as ServiceLocator;
+
+    const values = serviceProxy<{ readings(): AsyncIterable<number> }>(locator).readings();
+
+    await expect((async () => { for await (const value of values) void value; })())
+      .rejects.toThrow(/carries no streams/);
+  });
+
+  it('refuses a stream handed over as an argument, and says which', () => {
+    const { serviceInterface, readings } = readingsContract();
+    const samples = DDSRFactory.eINSTANCE.createParameter();
+    samples.name = 'samples';
+    samples.type = 'double';
+    samples.upperBound = -1;
+    samples.delivery = 'STREAM';
+    readings.parameters.push(samples);
     let invoked = false;
     const locator = { serviceInterface, invoke: async () => { invoked = true; } } as unknown as ServiceLocator;
 
-    const service = serviceProxy<{ readings(): AsyncIterable<number> }>(locator);
+    const service = serviceProxy<{ readings(samples: AsyncIterable<number>): AsyncIterable<number> }>(locator);
 
-    expect(() => service.readings()).toThrow(/readings has stream slots \[return\]/);
+    expect(() => service.readings((async function* () { yield 1; })()))
+      .toThrow(/readings takes streams as arguments \[samples\]/);
     expect(invoked).toBe(false);
   });
 });

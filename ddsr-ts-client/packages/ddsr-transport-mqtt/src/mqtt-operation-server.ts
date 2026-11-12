@@ -20,6 +20,7 @@ import {
   connectMessaging,
   decodeRequest,
   encodeResponse,
+  encodeStreamEnd,
   qosFor,
   requestTopicFor,
 } from './mqtt-rpc.js';
@@ -127,6 +128,14 @@ export class MqttOperationServer {
     let answer: Uint8Array;
     try {
       const result = await this.handlers[operationName](request.args);
+      if (isAsyncIterable(result)) {
+        // A handler that answers with a stream (Parameter.delivery =
+        // STREAM): one answer per value and then the one that ends it.
+        // Each is handed to the broker before the next value is asked
+        // of the handler, so a fast handler is paced by the connection.
+        await this.answerWithStream(client, request, source, opFlavor, result);
+        return;
+      }
       answer = encodeResponse(request.id, source, result, undefined, opFlavor);
     } catch (error) {
       // A failure is an answer: the consumer sees why, instead of
@@ -153,4 +162,38 @@ export class MqttOperationServer {
       this.log(`could not answer ${request.id} on ${request.replyTo}: ${String(error)}`);
     }
   }
+
+  private async answerWithStream(
+    client: MqttRpcClientLike, request: { id: string; replyTo: string }, source: string,
+    opFlavor: ServiceOperationFlavor | undefined, values: AsyncIterable<unknown>,
+  ): Promise<void> {
+    let last: Uint8Array;
+    try {
+      for await (const value of values) {
+        await client.publishAsync(request.replyTo,
+          encodeResponse(request.id, source, value, undefined, opFlavor), { retain: false });
+      }
+      last = encodeStreamEnd(request.id, source);
+    } catch (error) {
+      // The stream broke off - in the handler, or on the way out. The
+      // caller is told with the mark that ends the stream, and a
+      // declared error travels under its code as in a single answer.
+      const declared = declaredRaisedBy(opFlavor?.operation, error);
+      last = declared
+        ? encodeStreamEnd(request.id, source,
+            (error as Error).message || declared.name || 'declared error', declaredCode(declared) ?? 0)
+        : encodeStreamEnd(request.id, source, String(error));
+    }
+    try {
+      await client.publishAsync(request.replyTo, last, { retain: false });
+    } catch (error) {
+      this.log(`could not end the stream answering ${request.id} on ${request.replyTo}: ${String(error)}`);
+    }
+  }
+}
+
+/** Whether a handler's result is a stream to be sent value by value. */
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+  return typeof value === 'object' && value !== null
+    && typeof (value as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] === 'function';
 }

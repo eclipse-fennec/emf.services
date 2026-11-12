@@ -326,3 +326,24 @@ describe('RestFlavorPlugin bearer', () => {
       .rejects.toThrow(/no token supplier/);
   });
 });
+
+// Parameter.delivery = STREAM: many answers to one call. A REST call
+// has one, so the plugin says so before it sends anything.
+describe('RestFlavorPlugin and streams', () => {
+  it('refuses an operation that returns a stream, without calling', async () => {
+    let called = false;
+    const fetchFn = (async () => { called = true; return new Response('[]'); }) as unknown as typeof fetch;
+    const plugin = new RestFlavorPlugin({ fetchFn });
+    const { operation, flavor, opFlavor } = charge();
+    const ticks = DDSRFactory.eINSTANCE.createParameter();
+    ticks.name = 'result';
+    ticks.type = 'int';
+    ticks.upperBound = -1;
+    ticks.delivery = 'STREAM';
+    operation.returnValue = ticks;
+
+    await expect(plugin.invoke(operation, { amount: 1 }, flavor, opFlavor))
+      .rejects.toThrow(/charge returns a stream, and REST carries no streams/);
+    expect(called).toBe(false);
+  });
+});

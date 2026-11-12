@@ -95,6 +95,8 @@ export class MqttFlavorPlugin implements FlavorPlugin {
   private readonly log: (message: string) => void;
   private readonly clientsByUrl = new Map<string, Promise<MqttRpcClientLike>>();
   private readonly pending = new Map<string, (payload: Uint8Array) => void>();
+  /** The calls answered with a stream: every answer of theirs, as it arrives. */
+  private readonly streams = new Map<string, (payload: Uint8Array) => void>();
   private readonly subscribed = new Set<string>();
 
   constructor(options: MqttFlavorPluginOptions = {}) {
@@ -143,6 +145,13 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     // subtree; which answer belongs to which call is the envelope's
     // business, not the topic's.
     await this.listenOn(client, subtree, separatorFor(mqttFlavor), qos);
+    if (String(operation.returnValue?.delivery ?? '') === 'STREAM') {
+      // A stream (Parameter.delivery): the call resolves to something to
+      // iterate, and the request goes out when the first value is asked
+      // for. Each answer is one value; the one marked complete ends it.
+      return this.answers(operation, request, () =>
+        client.publishAsync(requestTopic, request.payload, { qos, retain: false }), timeoutMs, requestTopic);
+    }
     try {
       const answer = new Promise<Uint8Array>((resolve, reject) => {
         this.pending.set(request.id, resolve);
@@ -169,6 +178,54 @@ export class MqttFlavorPlugin implements FlavorPlugin {
       // The subscription stays: it is the consumer's inbox, not this
       // call's. What goes is the expectation of an answer.
       this.pending.delete(request.id);
+    }
+  }
+
+  /**
+   * The answers to one call as an async iterable. A value is handed out
+   * when the caller asks for the next one; what arrives faster waits in
+   * a queue here - mqtt.js and amqplib deliver without being asked, so
+   * unlike the Java side nothing holds the broker back. A stream that
+   * brings nothing for the timeout fails.
+   */
+  private async *answers(
+    operation: ServiceOperation, request: { id: string }, send: () => Promise<unknown>,
+    timeoutMs: number, requestTopic: string,
+  ): AsyncGenerator<unknown> {
+    const arrived: Uint8Array[] = [];
+    let wake: (() => void) | undefined;
+    this.streams.set(request.id, payload => {
+      arrived.push(payload);
+      wake?.();
+    });
+    try {
+      await send();
+      for (;;) {
+        if (arrived.length === 0) {
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const quiet = new Promise<'quiet'>(resolve => { timer = setTimeout(() => resolve('quiet'), timeoutMs); });
+          const more = new Promise<'more'>(resolve => { wake = () => resolve('more'); });
+          const outcome = await Promise.race([more, quiet]);
+          clearTimeout(timer);
+          wake = undefined;
+          if (outcome === 'quiet' && arrived.length === 0) {
+            throw new Error(
+              `the stream of ${operation.name} brought nothing for ${timeoutMs}ms via ${requestTopic}`);
+          }
+        }
+        const response = decodeResponse(arrived.shift()!);
+        if (response.error !== undefined) {
+          const declared = declaredByCode(operation, response.code);
+          if (declared) throw new DdsrServiceError(response.error, declared);
+          throw new Error(`MQTT call failed: ${operation.name} — ${response.error}`);
+        }
+        if (response.complete) return;
+        yield response.value;
+      }
+    } finally {
+      // Left early, failed or over: nothing more is expected. The
+      // provider is not told - it sends to the end.
+      this.streams.delete(request.id);
     }
   }
 
@@ -220,6 +277,11 @@ export class MqttFlavorPlugin implements FlavorPlugin {
   private onMessage(_topic: string, payload: Uint8Array): void {
     try {
       const response = decodeResponse(payload);
+      const stream = this.streams.get(response.correlationId);
+      if (stream) {
+        stream(payload);
+        return;
+      }
       const waiter = this.pending.get(response.correlationId);
       if (waiter) {
         this.pending.delete(response.correlationId);

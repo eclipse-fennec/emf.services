@@ -80,6 +80,13 @@ public final class MqttEventTransport implements EventSource {
 						+ "Given the way MQTT writes it; on AMQP it is the routing key ddsr.events.#.")
 		String topic_prefix() default "ddsr/events";
 
+		@AttributeDefinition(name = "MQTT version", required = false,
+				description = "Which MQTT this connection speaks to an MQTT broker: 3 (MQTT 3.1.1, the "
+						+ "default) or 5. A broker carries messages between the two, so nodes need not "
+						+ "agree; 5 adds the broker's flow control (receiveMaximum) on this connection. "
+						+ "Needs the MQTT 5 binding in the launch. Means nothing with an amqp:// URL.")
+		int mqtt_version() default 3;
+
 		@AttributeDefinition(name = "User name", required = false,
 				description = "Who this node is to a messaging broker that asks for a name and a "
 						+ "password. Never in the URL.")
@@ -141,7 +148,7 @@ public final class MqttEventTransport implements EventSource {
 				LinkSettings.clientId(context, config.client_id(), CLIENT_ROLE), config.tls_keystore(),
 				config.tls_keystore_password(),
 				config.tls_truststore(), config.tls_truststore_password())
-				.as(config.username(), config.password()));
+				.as(config.username(), config.password()).speaking(config.mqtt_version()));
 		Channels channels = Channels.of(config.broker_url());
 		this.source = new MqttEventSource(this::subscribe, rsObjects, config.topic_prefix(), channels);
 		Hashtable<String, Object> properties = new Hashtable<>();

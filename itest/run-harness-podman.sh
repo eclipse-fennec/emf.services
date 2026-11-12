@@ -315,12 +315,17 @@ podman run -d --replace --name ddsr-rabbitmq --network=host \
   docker.io/library/rabbitmq:4.1-alpine >/dev/null
 CONTAINERS+=(ddsr-rabbitmq)
 wait_for_log ddsr-rabbitmq "Server startup complete" 120
+# The broker speaks MQTT 5 to mosquitto, and everything that hears its
+# events from here on speaks 3.1.1 or is TypeScript (#138): a broker
+# carries a message between the two versions, and what an event needs
+# beyond its payload is in the envelope.
 # shellcheck disable=SC2046
 run_container ddsr-broker-mqtt ddsr/broker $(broker_auth_args) \
-  -e DDSR_MQTT_URL=tcp://localhost:1883 -e DDSR_AMQP_URL=amqp://localhost:5672
+  -e DDSR_MQTT_URL=tcp://localhost:1883 -e DDSR_MQTT_VERSION=5 -e DDSR_AMQP_URL=amqp://localhost:5672
 wait_for_url "$BROKER_URL/catalog" 60 ddsr-broker-mqtt
 wait_for_broker_contracts
 wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883" 60
+wait_for_log ddsr-broker-mqtt "→ tcp://localhost:1883 over MQTT 5 connected" 30
 wait_for_log ddsr-broker-mqtt "event transport connected to amqp://localhost:5672" 60
 
 # shellcheck disable=SC2046
@@ -415,7 +420,8 @@ run_container ddsr-rsa-export ddsr/rsa-example $(client_args rsa-example) \
   -e DDSR_BROKER_URL="$BROKER_URL" \
   -e RSA_DISTRIBUTION_FLAVOR=fennec.mqtt \
   -e RSA_EXPORT_CONFIGS=fennec.mqtt \
-  -e RSA_MQTT_URL="tcp://localhost:1883"
+  -e RSA_MQTT_URL="tcp://localhost:1883" \
+  -e RSA_MQTT_VERSION=5
 wait_for_log ddsr-rsa-export "exported .* over MQTT" 150
 
 # shellcheck disable=SC2046
@@ -431,6 +437,16 @@ grep -q "greetings so far, none of them local" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the consumer never got an answer"; cat "$WORK/rsa-import.log"; exit 1; }
 grep -q "ddsr/rpc/req/" "$WORK/rsa-export.log" \
   || { echo "SCENARIO I FAILED: the export did not listen on the request tree"; cat "$WORK/rsa-export.log"; exit 1; }
+# Two MQTT versions on one call (#138): the exporting node serves over
+# MQTT 5, the importing node calls over 3.1.1. The request's reply
+# address and correlation are in the envelope, which is why neither has
+# to know what the other speaks.
+grep -q "fennec.services.provider\..* over MQTT 5 connected" "$WORK/rsa-export.log" \
+  || { echo "SCENARIO I FAILED: the export did not serve over MQTT 5"; grep "DDSR-MSG" "$WORK/rsa-export.log"; exit 1; }
+if grep -q "over MQTT 5" "$WORK/rsa-import.log"; then
+  echo "SCENARIO I FAILED: the importing node was meant to speak MQTT 3.1.1"; exit 1
+fi
+echo "  ✓ mqtt-versions-mixed: served over MQTT 5, called over MQTT 3.1.1"
 # The client of scenario D is still running, on the same mosquitto, and
 # it hears events as this node does. With one client id for both, the
 # broker took the older connection off the wire each time the other

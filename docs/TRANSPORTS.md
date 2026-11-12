@@ -133,6 +133,23 @@ stops. The scheme of the URL says which binding speaks to the broker —
 for the protocols it speaks and the Configuration Admin service, which
 is how an instance comes to be.
 
+**MQTT 3.1.1 or MQTT 5.** The URL cannot say which — `tcp://` is both —
+so each connection has `mqtt.version`: `3` (the default) or `5`, which
+takes the `mqtt` binding (`org.gecko.messaging.mqtt`, with the Paho v5
+client). It is on `…broker.mqtt`, `…client.mqtt`,
+`…client.messaging.invoker` and `…provider.messaging.connection`; the
+RSA role has it once and hands it to every MQTT connection of the
+node; the broker image reads `DDSR_MQTT_VERSION`.
+
+Nodes need not agree. A messaging broker carries a message between a
+3.1.1 client and a 5 client, and what a call needs beyond its payload
+— where the answer goes, which call it answers — is in the envelope on
+either. What version 5 changes is the connection's own: the broker's
+flow control (`receiveMaximum`) bounds what is delivered and not yet
+taken, and the protocol's response topic and correlation data travel
+beside the envelope's. A connection told `5` in a launch without the
+binding never comes up — the instance it waits for is not there.
+
 What the instance gives each of them:
 
 - **The connection is its own.** It reconnects with a backoff of 1 s

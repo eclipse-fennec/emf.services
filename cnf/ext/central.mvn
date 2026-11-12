@@ -226,11 +226,13 @@ org.eclipse.fennec.mcp:org.eclipse.fennec.mcp.gogo.runtime:0.1.0-SNAPSHOT
 org.eclipse.fennec.mcp:org.eclipse.fennec.mcp.gogo.runtime.config:0.1.0-SNAPSHOT
 org.eclipse.fennec.mcp:org.eclipse.fennec.mcp.gogo.tools:0.1.0-SNAPSHOT
 org.geckoprojects.paho:org.eclipse.paho.client.mqttv3:1.3.0
+org.geckoprojects.paho:org.eclipse.paho.mqttv5.client:1.3.0
 # Gecko Messaging 2.0 (branch osgitech): the connection every MQTT part of this workspace
 # goes through. Snapshot only for now; mqtt3 drives the Paho build above.
 org.geckoprojects.messaging:org.gecko.messaging.api:2.0.0-SNAPSHOT
 org.geckoprojects.messaging:org.gecko.messaging.core:2.0.0-SNAPSHOT
 org.geckoprojects.messaging:org.gecko.messaging.mqtt3:2.0.0-SNAPSHOT
+org.geckoprojects.messaging:org.gecko.messaging.mqtt:2.0.0-SNAPSHOT
 # AMQP 0-9-1 (#138): the binding, the RabbitMQ client it drives, and the Netty 4.2 that
 # client has required since 5.27 — only what its imports need, beside the 4.1 of grpc.
 org.geckoprojects.messaging:org.gecko.messaging.amqp:2.0.0-SNAPSHOT

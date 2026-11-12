@@ -119,6 +119,13 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 						+ "when a provider stops answering.")
 		int reply_timeout_seconds() default 10;
 
+		@AttributeDefinition(name = "MQTT version", required = false,
+				description = "Which MQTT this connection speaks to an MQTT broker: 3 (MQTT 3.1.1, the "
+						+ "default) or 5. A broker carries messages between the two, so nodes need not "
+						+ "agree; 5 adds the broker's flow control (receiveMaximum) on this connection. "
+						+ "Needs the MQTT 5 binding in the launch. Means nothing with an amqp:// URL.")
+		int mqtt_version() default 3;
+
 		@AttributeDefinition(name = "User name", required = false,
 				description = "The user this node connects to brokers as. Empty: the broker's default. "
 						+ "Stated here and never in a broker URL — the URL is what a flavor announces.")
@@ -459,7 +466,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 									config.tls_keystore(), config.tls_keystore_password(),
 									config.tls_truststore(), config.tls_truststore_password())
 									.onExchange(route.exchange()).as(config.username(), config.password())
-									.carrying(config.max_body_bytes()));
+									.carrying(config.max_body_bytes()).speaking(config.mqtt_version()));
 					links.put(key, link);
 				}
 				if (link.awaitConnected(config.reply_timeout_seconds(), TimeUnit.SECONDS)) {

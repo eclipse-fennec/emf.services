@@ -75,6 +75,13 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 			description = "Who this node is to the messaging brokers its flavors announce (MQTT, AMQP).")
 	public @interface Config {
 
+		@AttributeDefinition(name = "MQTT version", required = false,
+				description = "Which MQTT this connection speaks to an MQTT broker: 3 (MQTT 3.1.1, the "
+						+ "default) or 5. A broker carries messages between the two, so nodes need not "
+						+ "agree; 5 adds the broker's flow control (receiveMaximum) on this connection. "
+						+ "Needs the MQTT 5 binding in the launch. Means nothing with an amqp:// URL.")
+		int mqtt_version() default 3;
+
 		@AttributeDefinition(name = "User name", required = false,
 				description = "The user this node connects to brokers as. Empty: the broker's default. "
 						+ "Stated here and never in a broker URL — the URL is what a flavor announces.")
@@ -256,7 +263,7 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 									who.tls_keystore(), who.tls_keystore_password(), who.tls_truststore(),
 									who.tls_truststore_password())
 									.onExchange(exchange).as(who.username(), who.password())
-									.carrying(who.max_body_bytes())));
+									.carrying(who.max_body_bytes()).speaking(who.mqtt_version())));
 				} catch (RuntimeException unreachable) {
 					throw new IllegalStateException("cannot connect to the broker at " + url, unreachable);
 				}

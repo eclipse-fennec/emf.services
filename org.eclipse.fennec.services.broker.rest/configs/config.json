@@ -81,6 +81,7 @@
 		"client.id": "$[env:DDSR_MQTT_CLIENT_ID;default=]",
 		"event.source": "$[env:DDSR_MQTT_EVENT_SOURCE;default=/fennec/services/broker]",
 		"qos": "$[env:DDSR_MQTT_QOS;default=0]",
+		"mqtt.version": "$[env:DDSR_MQTT_VERSION;default=3]",
 		"username": "$[env:DDSR_MQTT_USERNAME;default=]",
 		"password": "$[env:DDSR_MQTT_PASSWORD;default=]",
 		"tls.keystore": "$[env:DDSR_MQTT_TLS_KEYSTORE;default=]",

@@ -60,6 +60,12 @@ broker. Requirements and decisions:
   predecessor keeps answering, and after `DELETE /consumers/{id}` the
   policy sweep retires it (`UNREGISTERING/REPLACED` + `RETIRED`) and the
   locator switches over (#45, #58).
+- **MQTT 5 beside 3.1.1 (podman, from D on):** the registry publishes
+  its events over MQTT 5 (`DDSR_MQTT_VERSION=5`) while everything that
+  hears them speaks 3.1.1 or is TypeScript, and in scenario I the
+  exporting node serves over MQTT 5 while the importing node calls over
+  3.1.1 (#138). A broker carries messages between the two; the reply
+  address and the correlation are in the envelope.
 - **I (podman only) — RSA over MQTT:** a plain OSGi service is exported
   over MQTT by one framework and bound with `@Reference` in another —
   no contract document, no endpoint code, and no REST on the

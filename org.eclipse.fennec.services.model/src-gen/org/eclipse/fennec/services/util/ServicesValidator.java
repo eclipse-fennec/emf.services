@@ -257,6 +257,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateHttpMethod((HttpMethod)value, diagnostics, context);
 			case ServicesPackage.PARAMETER_BINDING:
 				return validateParameterBinding((ParameterBinding)value, diagnostics, context);
+			case ServicesPackage.DELIVERY:
+				return validateDelivery((Delivery)value, diagnostics, context);
 			case ServicesPackage.MESSAGING_QOS:
 				return validateMessagingQos((MessagingQos)value, diagnostics, context);
 			case ServicesPackage.REGISTRY_KIND:
@@ -431,7 +433,46 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateServiceOperation(ServiceOperation serviceOperation, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return validate_EveryDefaultConstraint(serviceOperation, diagnostics, context);
+		if (!validate_NoCircularContainment(serviceOperation, diagnostics, context)) return false;
+		boolean result = validate_EveryMultiplicityConforms(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryDataValueConforms(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryReferenceIsContained(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryBidirectionalReferenceIsPaired(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryProxyResolves(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_UniqueID(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryKeyUnique(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceOperation_onlyAReturnValueIsPromised(serviceOperation, diagnostics, context);
+		return result;
+	}
+
+	/**
+	 * The cached validation expression for the onlyAReturnValueIsPromised constraint of '<em>Service Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_OPERATION__ONLY_ARETURN_VALUE_IS_PROMISED__EEXPRESSION = "parameters->forAll(p | p.delivery <> Delivery::PROMISE)";
+
+	/**
+	 * Validates the onlyAReturnValueIsPromised constraint of '<em>Service Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceOperation_onlyAReturnValueIsPromised(ServiceOperation serviceOperation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_OPERATION,
+				 serviceOperation,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "onlyAReturnValueIsPromised",
+				 SERVICE_OPERATION__ONLY_ARETURN_VALUE_IS_PROMISED__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
 	}
 
 	/**
@@ -452,6 +493,7 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateParameter_typeOrEType(parameter, diagnostics, context);
 		if (result || diagnostics != null) result &= validateParameter_boundsOrdered(parameter, diagnostics, context);
 		if (result || diagnostics != null) result &= validateParameter_requiredSlotHasLowerBound(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validateParameter_streamIsUnbounded(parameter, diagnostics, context);
 		return result;
 	}
 
@@ -537,6 +579,35 @@ public class ServicesValidator extends EObjectValidator {
 				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
 				 "requiredSlotHasLowerBound",
 				 PARAMETER__REQUIRED_SLOT_HAS_LOWER_BOUND__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the streamIsUnbounded constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String PARAMETER__STREAM_IS_UNBOUNDED__EEXPRESSION = "delivery <> Delivery::STREAM or upperBound = -1";
+
+	/**
+	 * Validates the streamIsUnbounded constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateParameter_streamIsUnbounded(Parameter parameter, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.PARAMETER,
+				 parameter,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "streamIsUnbounded",
+				 PARAMETER__STREAM_IS_UNBOUNDED__EEXPRESSION,
 				 org.eclipse.emf.common.util.Diagnostic.ERROR,
 				 DIAGNOSTIC_SOURCE,
 				 0);
@@ -2160,6 +2231,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateParameterBinding(ParameterBinding parameterBinding, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateDelivery(Delivery delivery, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

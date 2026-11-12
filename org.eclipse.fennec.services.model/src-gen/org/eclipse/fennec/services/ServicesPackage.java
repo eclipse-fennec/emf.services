@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:f245c95a18e3210058833722e82c07b532b6af3dff4b5b0a28c58711e47e108c", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:34322db49e8efae5a35330678ea7504964102ae3c209d161dd8822ab37cf9074", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -787,13 +787,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int PARAMETER__DESCRIPTION = NAMED_ELEMENT_FEATURE_COUNT + 7;
 
 	/**
+	 * The feature id for the '<em><b>Delivery</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER__DELIVERY = NAMED_ELEMENT_FEATURE_COUNT + 8;
+
+	/**
 	 * The feature id for the '<em><b>Constraints</b></em>' containment reference list.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER__CONSTRAINTS = NAMED_ELEMENT_FEATURE_COUNT + 8;
+	int PARAMETER__CONSTRAINTS = NAMED_ELEMENT_FEATURE_COUNT + 9;
 
 	/**
 	 * The number of structural features of the '<em>Parameter</em>' class.
@@ -802,7 +811,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 9;
+	int PARAMETER_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 10;
 
 	/**
 	 * The number of operations of the '<em>Parameter</em>' class.
@@ -5269,6 +5278,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int PARAMETER_BINDING = 85;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.Delivery <em>Delivery</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.Delivery
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDelivery()
+	 * @generated
+	 */
+	int DELIVERY = 86;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -5276,7 +5295,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingQos()
 	 * @generated
 	 */
-	int MESSAGING_QOS = 86;
+	int MESSAGING_QOS = 87;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.RegistryKind <em>Registry Kind</em>}' enum.
@@ -5286,7 +5305,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRegistryKind()
 	 * @generated
 	 */
-	int REGISTRY_KIND = 87;
+	int REGISTRY_KIND = 88;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ExpressionLanguage <em>Expression Language</em>}' enum.
@@ -5296,7 +5315,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getExpressionLanguage()
 	 * @generated
 	 */
-	int EXPRESSION_LANGUAGE = 88;
+	int EXPRESSION_LANGUAGE = 89;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CatalogStatus <em>Catalog Status</em>}' enum.
@@ -5306,7 +5325,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCatalogStatus()
 	 * @generated
 	 */
-	int CATALOG_STATUS = 89;
+	int CATALOG_STATUS = 90;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.UpdatePolicy <em>Update Policy</em>}' enum.
@@ -5316,7 +5335,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getUpdatePolicy()
 	 * @generated
 	 */
-	int UPDATE_POLICY = 90;
+	int UPDATE_POLICY = 91;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConnectionState <em>Connection State</em>}' enum.
@@ -5326,7 +5345,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConnectionState()
 	 * @generated
 	 */
-	int CONNECTION_STATE = 91;
+	int CONNECTION_STATE = 92;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.SecuritySchemeKind <em>Security Scheme Kind</em>}' enum.
@@ -5336,7 +5355,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecuritySchemeKind()
 	 * @generated
 	 */
-	int SECURITY_SCHEME_KIND = 92;
+	int SECURITY_SCHEME_KIND = 93;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ApiType <em>Api Type</em>}' enum.
@@ -5346,7 +5365,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiType()
 	 * @generated
 	 */
-	int API_TYPE = 93;
+	int API_TYPE = 94;
 
 
 	/**
@@ -5774,6 +5793,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getParameter_Description();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.Parameter#getDelivery <em>Delivery</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Delivery</em>'.
+	 * @see org.eclipse.fennec.services.Parameter#getDelivery()
+	 * @see #getParameter()
+	 * @generated
+	 */
+	EAttribute getParameter_Delivery();
 
 	/**
 	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.services.Parameter#getConstraints <em>Constraints</em>}'.
@@ -8892,6 +8922,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EEnum getParameterBinding();
 
 	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.Delivery <em>Delivery</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Delivery</em>'.
+	 * @see org.eclipse.fennec.services.Delivery
+	 * @generated
+	 */
+	EEnum getDelivery();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -9341,6 +9381,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute PARAMETER__DESCRIPTION = eINSTANCE.getParameter_Description();
+
+		/**
+		 * The meta object literal for the '<em><b>Delivery</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute PARAMETER__DELIVERY = eINSTANCE.getParameter_Delivery();
 
 		/**
 		 * The meta object literal for the '<em><b>Constraints</b></em>' containment reference list feature.
@@ -11821,6 +11869,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum PARAMETER_BINDING = eINSTANCE.getParameterBinding();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.Delivery <em>Delivery</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.Delivery
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDelivery()
+		 * @generated
+		 */
+		EEnum DELIVERY = eINSTANCE.getDelivery();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}' enum.

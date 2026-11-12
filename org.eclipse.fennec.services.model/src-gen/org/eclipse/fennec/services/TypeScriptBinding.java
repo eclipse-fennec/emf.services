@@ -10,7 +10,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * TypeScript rendering: targetPackage is the module path. Carries no language specifics yet — it exists so a template can dispatch on the binding type, and gains attributes when the TypeScript generator does.
+ * TypeScript rendering: targetPackage is the npm name of the generated package. It has no attributes of its own and needs none — targetPackage, fileHeader, typeMappings and packageMappings from LanguageBinding are all the TypeScript generator reads. The class exists so that a binding document says which language it is for.
  * <!-- end-model-doc -->
  *
  *

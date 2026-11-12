@@ -29,6 +29,7 @@ import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.ConnectionState;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.DiscoveryHook;
@@ -725,6 +726,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EEnum deliveryEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EEnum messagingQosEEnum = null;
 
 	/**
@@ -1252,8 +1260,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getParameter_Delivery() {
+		return (EAttribute)parameterEClass.getEStructuralFeatures().get(8);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getParameter_Constraints() {
-		return (EReference)parameterEClass.getEStructuralFeatures().get(8);
+		return (EReference)parameterEClass.getEStructuralFeatures().get(9);
 	}
 
 	/**
@@ -4172,6 +4190,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EEnum getDelivery() {
+		return deliveryEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getMessagingQos() {
 		return messagingQosEEnum;
 	}
@@ -4328,6 +4356,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(parameterEClass, PARAMETER__OPTIONAL);
 		createEAttribute(parameterEClass, PARAMETER__DEFAULT_VALUE);
 		createEAttribute(parameterEClass, PARAMETER__DESCRIPTION);
+		createEAttribute(parameterEClass, PARAMETER__DELIVERY);
 		createEReference(parameterEClass, PARAMETER__CONSTRAINTS);
 
 		parameterConstraintEClass = createEClass(PARAMETER_CONSTRAINT);
@@ -4679,6 +4708,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		flavorKindEEnum = createEEnum(FLAVOR_KIND);
 		httpMethodEEnum = createEEnum(HTTP_METHOD);
 		parameterBindingEEnum = createEEnum(PARAMETER_BINDING);
+		deliveryEEnum = createEEnum(DELIVERY);
 		messagingQosEEnum = createEEnum(MESSAGING_QOS);
 		registryKindEEnum = createEEnum(REGISTRY_KIND);
 		expressionLanguageEEnum = createEEnum(EXPRESSION_LANGUAGE);
@@ -4822,6 +4852,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getParameter_Optional(), ecorePackage.getEBoolean(), "optional", "false", 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getParameter_DefaultValue(), ecorePackage.getEString(), "defaultValue", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getParameter_Description(), ecorePackage.getEString(), "description", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getParameter_Delivery(), this.getDelivery(), "delivery", "VALUE", 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getParameter_Constraints(), this.getParameterConstraint(), null, "constraints", null, 0, -1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(parameterConstraintEClass, ParameterConstraint.class, "ParameterConstraint", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -5310,6 +5341,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.HEADER);
 		addEEnumLiteral(parameterBindingEEnum, ParameterBinding.PATH);
 
+		initEEnum(deliveryEEnum, Delivery.class, "Delivery");
+		addEEnumLiteral(deliveryEEnum, Delivery.VALUE);
+		addEEnumLiteral(deliveryEEnum, Delivery.PROMISE);
+		addEEnumLiteral(deliveryEEnum, Delivery.STREAM);
+
 		initEEnum(messagingQosEEnum, MessagingQos.class, "MessagingQos");
 		addEEnumLiteral(messagingQosEEnum, MessagingQos.AT_MOST_ONCE);
 		addEEnumLiteral(messagingQosEEnum, MessagingQos.AT_LEAST_ONCE);
@@ -5484,6 +5520,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Where a Parameter of a ServiceOperation travels on a REST wire (RestParameterBinding). BODY = part of the request payload; this is the default, so a parameter without an explicit binding is BODY and the literal is omitted from the wire by EMF, which is intended here. QUERY = query parameter, key = wireName or the parameter name. HEADER = HTTP header, name = wireName or the parameter name. PATH = substituted into a \'{name}\' template segment of RestOperationFlavor.path. Transport-specific by design: it lives in the flavor layer (im1), not on the catalog Parameter (sd1), so a binding change never moves a contract address."
+		   });
+		addAnnotation
+		  (deliveryEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint \u2014 the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language\'s: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable."
 		   });
 		addAnnotation
 		  (messagingQosEEnum,
@@ -5699,7 +5741,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getParameter_UpperBound(),
 		   source,
 		   new String[] {
-			   "documentation", "Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded but finite collection. Unbounded streams over time are NOT meant here \u2014 those belong to the interaction-style work in WIRE_CHANNELS.md. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds."
+			   "documentation", "Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded. Whether an unbounded slot is a collection that arrives complete or a stream over time is said by \'delivery\'. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds."
 		   });
 		addAnnotation
 		  (getParameter_Optional(),
@@ -5718,6 +5760,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Doc text; rendered as @param JavaDoc / TSDoc tag / Python docstring entry."
+		   });
+		addAnnotation
+		  (getParameter_Delivery(),
+		   source,
+		   new String[] {
+			   "documentation", "How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot \u2014 a list \u2014 in that a list arrives complete."
 		   });
 		addAnnotation
 		  (getParameter_Constraints(),
@@ -7415,7 +7463,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getLanguageBinding_TypeMappings(),
 		   source,
 		   new String[] {
-			   "documentation", "Overrides for Parameter.type, the language-neutral type name. A generator knows the standard set (\'string\', \'int\', \'double\', \u2026) on its own; only what it cannot know is stated here, e.g. \'money.Money\' to \'com.acme.money.Money\'."
+			   "documentation", "Overrides for Parameter.type, the language-neutral type name, and the names of declared errors (ServiceException.type). A generator knows the standard set (\'string\', \'int\', \'double\', \u2026) on its own; only what it cannot know is stated here, e.g. \'money.Money\' to \'com.acme.money.Money\'. An entry is asked BEFORE the standard set, for a parameter and a return value alike, so it may also say that a standard name is something else in this binding. It decides how a slot is written in the generated code and nothing about how its value travels."
 		   });
 		addAnnotation
 		  (getLanguageBinding_PackageMappings(),
@@ -7439,7 +7487,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getTypeMapping_Target(),
 		   source,
 		   new String[] {
-			   "documentation", "The type name emitted for it, qualified as the target language needs it."
+			   "documentation", "The type name emitted for it, qualified as the target language needs it. Java: the fully qualified class name (\'java.time.Instant\'); the generator imports it and writes the simple name. TypeScript: the type name, with the module in front where it has to be imported (\'@acme/money#Money\'); a name without a module (\'Date\') is written as it stands."
 		   });
 		addAnnotation
 		  (getTypeMapping_Generated(),
@@ -7481,13 +7529,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (typeScriptBindingEClass,
 		   source,
 		   new String[] {
-			   "documentation", "TypeScript rendering: targetPackage is the module path. Carries no language specifics yet \u2014 it exists so a template can dispatch on the binding type, and gains attributes when the TypeScript generator does."
+			   "documentation", "TypeScript rendering: targetPackage is the npm name of the generated package. It has no attributes of its own and needs none \u2014 targetPackage, fileHeader, typeMappings and packageMappings from LanguageBinding are all the TypeScript generator reads. The class exists so that a binding document says which language it is for."
 		   });
 		addAnnotation
 		  (pythonBindingEClass,
 		   source,
 		   new String[] {
-			   "documentation", "Python rendering: targetPackage is the module. Same as TypeScriptBinding \u2014 a discriminator today, attributes when its generator arrives."
+			   "documentation", "Python rendering: targetPackage is the module. There is no Python generator yet; like TypeScriptBinding it says which language a binding document is for, and gains attributes only if that generator turns out to need some."
 		   });
 		addAnnotation
 		  (argumentEClass,
@@ -7567,10 +7615,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "constraints", "validSemver"
 		   });
 		addAnnotation
+		  (serviceOperationEClass,
+		   source,
+		   new String[] {
+			   "constraints", "onlyAReturnValueIsPromised"
+		   });
+		addAnnotation
 		  (parameterEClass,
 		   source,
 		   new String[] {
-			   "constraints", "typeOrEType boundsOrdered requiredSlotHasLowerBound"
+			   "constraints", "typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded"
 		   });
 		addAnnotation
 		  (numericRangeConstraintEClass,
@@ -7661,12 +7715,19 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "validSemver", "version = null or version.matches(\'^\\\\d+\\\\.\\\\d+\\\\.\\\\d+(-[0-9A-Za-z.-]+)?$\')"
 		   });
 		addAnnotation
+		  (serviceOperationEClass,
+		   source,
+		   new String[] {
+			   "onlyAReturnValueIsPromised", "parameters->forAll(p | p.delivery <> Delivery::PROMISE)"
+		   });
+		addAnnotation
 		  (parameterEClass,
 		   source,
 		   new String[] {
 			   "typeOrEType", "type <> null or eType <> null",
 			   "boundsOrdered", "upperBound = -1 or upperBound >= lowerBound",
-			   "requiredSlotHasLowerBound", "optional or lowerBound >= 1"
+			   "requiredSlotHasLowerBound", "optional or lowerBound >= 1",
+			   "streamIsUnbounded", "delivery <> Delivery::STREAM or upperBound = -1"
 		   });
 		addAnnotation
 		  (numericRangeConstraintEClass,

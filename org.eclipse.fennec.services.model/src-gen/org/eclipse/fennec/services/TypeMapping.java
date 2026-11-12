@@ -60,7 +60,7 @@ public interface TypeMapping extends EObject {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * The type name emitted for it, qualified as the target language needs it.
+	 * The type name emitted for it, qualified as the target language needs it. Java: the fully qualified class name ('java.time.Instant'); the generator imports it and writes the simple name. TypeScript: the type name, with the module in front where it has to be imported ('@acme/money#Money'); a name without a module ('Date') is written as it stands.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Target</em>' attribute.
 	 * @see #setTarget(String)

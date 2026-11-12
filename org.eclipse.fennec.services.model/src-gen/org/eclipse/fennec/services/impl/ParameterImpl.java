@@ -19,6 +19,7 @@ import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterConstraint;
 import org.eclipse.fennec.services.ServicesPackage;
@@ -40,6 +41,7 @@ import org.eclipse.fennec.services.ServicesPackage;
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#isOptional <em>Optional</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getDefaultValue <em>Default Value</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getDescription <em>Description</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getDelivery <em>Delivery</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ParameterImpl#getConstraints <em>Constraints</em>}</li>
  * </ul>
  *
@@ -215,6 +217,26 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 	 * @ordered
 	 */
 	protected String description = DESCRIPTION_EDEFAULT;
+
+	/**
+	 * The default value of the '{@link #getDelivery() <em>Delivery</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDelivery()
+	 * @generated
+	 * @ordered
+	 */
+	protected static final Delivery DELIVERY_EDEFAULT = Delivery.VALUE;
+
+	/**
+	 * The cached value of the '{@link #getDelivery() <em>Delivery</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getDelivery()
+	 * @generated
+	 * @ordered
+	 */
+	protected Delivery delivery = DELIVERY_EDEFAULT;
 
 	/**
 	 * The cached value of the '{@link #getConstraints() <em>Constraints</em>}' containment reference list.
@@ -475,6 +497,29 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 	 * @generated
 	 */
 	@Override
+	public Delivery getDelivery() {
+		return delivery;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public void setDelivery(Delivery newDelivery) {
+		Delivery oldDelivery = delivery;
+		delivery = newDelivery == null ? DELIVERY_EDEFAULT : newDelivery;
+		if (eNotificationRequired())
+			eNotify(new ENotificationImpl(this, Notification.SET, ServicesPackage.PARAMETER__DELIVERY, oldDelivery, delivery));
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EList<ParameterConstraint> getConstraints() {
 		if (constraints == null) {
 			constraints = new EObjectContainmentEList<ParameterConstraint>(ParameterConstraint.class, this, ServicesPackage.PARAMETER__CONSTRAINTS);
@@ -523,6 +568,8 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 				return getDefaultValue();
 			case ServicesPackage.PARAMETER__DESCRIPTION:
 				return getDescription();
+			case ServicesPackage.PARAMETER__DELIVERY:
+				return getDelivery();
 			case ServicesPackage.PARAMETER__CONSTRAINTS:
 				return getConstraints();
 		}
@@ -564,6 +611,9 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 				return;
 			case ServicesPackage.PARAMETER__DESCRIPTION:
 				setDescription((String)newValue);
+				return;
+			case ServicesPackage.PARAMETER__DELIVERY:
+				setDelivery((Delivery)newValue);
 				return;
 			case ServicesPackage.PARAMETER__CONSTRAINTS:
 				getConstraints().clear();
@@ -608,6 +658,9 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 			case ServicesPackage.PARAMETER__DESCRIPTION:
 				setDescription(DESCRIPTION_EDEFAULT);
 				return;
+			case ServicesPackage.PARAMETER__DELIVERY:
+				setDelivery(DELIVERY_EDEFAULT);
+				return;
 			case ServicesPackage.PARAMETER__CONSTRAINTS:
 				getConstraints().clear();
 				return;
@@ -641,6 +694,8 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 				return DEFAULT_VALUE_EDEFAULT == null ? defaultValue != null : !DEFAULT_VALUE_EDEFAULT.equals(defaultValue);
 			case ServicesPackage.PARAMETER__DESCRIPTION:
 				return DESCRIPTION_EDEFAULT == null ? description != null : !DESCRIPTION_EDEFAULT.equals(description);
+			case ServicesPackage.PARAMETER__DELIVERY:
+				return delivery != DELIVERY_EDEFAULT;
 			case ServicesPackage.PARAMETER__CONSTRAINTS:
 				return constraints != null && !constraints.isEmpty();
 		}
@@ -673,6 +728,8 @@ public class ParameterImpl extends MinimalEObjectImpl.Container implements Param
 		result.append(defaultValue);
 		result.append(", description: ");
 		result.append(description);
+		result.append(", delivery: ");
+		result.append(delivery);
 		result.append(')');
 		return result.toString();
 	}

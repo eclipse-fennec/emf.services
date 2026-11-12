@@ -97,6 +97,11 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/HEADER"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ParameterBinding/PATH"/>
     </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//Delivery">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//Delivery/VALUE"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//Delivery/PROMISE"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//Delivery/STREAM"/>
+    </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//MessagingQos">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//MessagingQos/AT_MOST_ONCE"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//MessagingQos/AT_LEAST_ONCE"/>
@@ -186,6 +191,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/optional"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/defaultValue"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/description"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/delivery"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//Parameter/constraints"/>
     </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//ParameterConstraint"/>

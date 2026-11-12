@@ -158,6 +158,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createHttpMethodFromString(eDataType, initialValue);
 			case ServicesPackage.PARAMETER_BINDING:
 				return createParameterBindingFromString(eDataType, initialValue);
+			case ServicesPackage.DELIVERY:
+				return createDeliveryFromString(eDataType, initialValue);
 			case ServicesPackage.MESSAGING_QOS:
 				return createMessagingQosFromString(eDataType, initialValue);
 			case ServicesPackage.REGISTRY_KIND:
@@ -217,6 +219,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertHttpMethodToString(eDataType, instanceValue);
 			case ServicesPackage.PARAMETER_BINDING:
 				return convertParameterBindingToString(eDataType, instanceValue);
+			case ServicesPackage.DELIVERY:
+				return convertDeliveryToString(eDataType, instanceValue);
 			case ServicesPackage.MESSAGING_QOS:
 				return convertMessagingQosToString(eDataType, instanceValue);
 			case ServicesPackage.REGISTRY_KIND:
@@ -1173,6 +1177,26 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	public String convertParameterBindingToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public Delivery createDeliveryFromString(EDataType eDataType, String initialValue) {
+		Delivery result = Delivery.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertDeliveryToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

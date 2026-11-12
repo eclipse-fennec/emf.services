@@ -14,7 +14,7 @@ over a real wire.
 # host processes (scenarios A + B + F + G + H + N); podman only for Keycloak
 ./itest/run-harness.sh
 
-# containerized incl. Mosquitto (scenarios A–K, Q) — podman is the
+# containerized incl. Mosquitto and RabbitMQ (scenarios A–K, Q–S, U) — podman is the
 # vehicle, not a requirement
 ./itest/run-harness-podman.sh
 
@@ -160,6 +160,7 @@ version, balance and the refused record come out as in K.
 | **E** | TS provider announces `MessagingFlavor` beside `RestFlavor`; probe invokes over MQTT | the DoD's "same interface, different transports": `getBalance` is invoked over the announced MQTT flavor, broker address taken from `MessagingFlavor.brokers`, request/response via the frozen envelope ([WIRE_FORMAT.md](WIRE_FORMAT.md)) |
 | **R** | one framework exports a plain OSGi service over AMQP 0-9-1, another binds it with `@Reference`, over a RabbitMQ container | the third transport (#138) on the same two SPIs: the call is published to the topic exchange under a routing key, the answer comes back on the protocol's own reply-to into a queue only the caller reads. The importing node hears the registry's events over AMQP as well and is started before the service exists, so it imports on the `REGISTERED` event; the exporting node announces over REST. The guarded `Ledger` is refused, as over MQTT |
 | **S** | scenario R again, with the exporting node configured to encode calls as `application/json` | the payload is whatever `Resource.save` writes for the content type the flavor names — here emf.codec's JSON — and the consumer picks the same resource by reading the flavor. An answer means both ends had the factory: a node without one refuses the document instead of falling back to XMI |
+| **U** | Java provider serves `BindingProbe` over AMQP from a factory configuration; TS probe invokes it over RabbitMQ | scenario J on the other protocol (#138): the same generic distribution, another model document and an `amqp://` broker — nothing written for AMQP on the provider side. The caller is the TypeScript plugin built for AMQP: a routing key instead of a topic, an exclusive queue instead of a subscription, the answer on a key of its own. The first wire proof of AMQP in the TypeScript track |
 
 The MQTT transports ship dormant (`configurationPolicy = REQUIRE`) in
 every launch. Scenario D wakes the broker's the way a deployment does —

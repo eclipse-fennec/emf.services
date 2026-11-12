@@ -24,16 +24,25 @@ import type {
 } from '@ddsr/model';
 import {
   MqttRpcClientLike,
-  connectMqtt,
+  connectMessaging,
   decodeResponse,
+  isAmqpFlavor,
   encodeRequest,
   qosFor,
   replySubtreeFor,
   requestTopicFor,
+  separatorFor,
   topicSegment,
 } from './mqtt-rpc.js';
+import type { AmqpConnectOptions } from './amqp-client.js';
 
 export interface MqttFlavorPluginOptions {
+  /**
+   * Which protocol this plugin calls over: `MQTT` (the default) or
+   * `AMQP`. Nothing but the connection and the spelling of a channel
+   * depends on it.
+   */
+  protocol?: 'MQTT' | 'AMQP';
   /**
    * Broker URL override. Without it the plugin connects to the FIRST
    * entry of the announced MessagingFlavor.brokers list — the provider says
@@ -45,7 +54,11 @@ export interface MqttFlavorPluginOptions {
   /** Reply wait in milliseconds; default 10s. */
   timeoutMs?: number;
   /** Injectable client factory (tests). Defaults to mqtt.js. */
-  clientFactory?: (url: string, clientId: string, tls?: TlsOptions) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  clientFactory?: (url: string, clientId: string, tls?: TlsOptions, amqp?: AmqpConnectOptions)
+    => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  /** Who this node is to a messaging broker that asks; never part of a broker URL. */
+  username?: string;
+  password?: string;
   /** Which system this is, for the CloudEvents `source` of every call (#101). */
   originLabel?: string;
   /**
@@ -70,7 +83,13 @@ export interface MqttFlavorPluginOptions {
  * involved (Discovery/Acquisition only — ACQUISITION.md §1).
  */
 export class MqttFlavorPlugin implements FlavorPlugin {
-  readonly flavorKind = 'MQTT';
+  /**
+   * The flavor kind this plugin announces and calls: `MQTT` unless it
+   * was built for `AMQP`. One kind per plugin, as the SPI has it - a
+   * lookup is filtered by the kinds a consumer says it speaks, so a
+   * node that speaks both registers the plugin twice.
+   */
+  readonly flavorKind: 'MQTT' | 'AMQP';
 
   private readonly options: MqttFlavorPluginOptions;
   private readonly log: (message: string) => void;
@@ -80,20 +99,19 @@ export class MqttFlavorPlugin implements FlavorPlugin {
 
   constructor(options: MqttFlavorPluginOptions = {}) {
     this.options = options;
+    this.flavorKind = options.protocol ?? 'MQTT';
     this.log = options.log ?? ((m) => console.error(`[ddsr-mqtt-rpc] ${m}`));
   }
 
   canHandle(flavor: ServiceFlavor): boolean {
-    // A MessagingFlavor is one class for every protocol; its kind says
-    // which, and for a flavor decoded without one the scheme of its
-    // broker does — the rule the Java side reads it by. This plugin
-    // speaks MQTT: an AMQP flavor is the same class and not for it.
+    // A MessagingFlavor is one class for every protocol. Which one it
+    // travels over is said by its kind, and for a flavor decoded without
+    // one by the scheme of its broker - the rule the Java side reads it
+    // by. The code behind is the same for both (#138); what a plugin
+    // takes is the protocol it was built for and told the broker about.
     const messaging = flavor.kind === 'MQTT' || flavor.kind === 'AMQP'
       || (flavor as { eClass?: () => { name?: string } }).eClass?.()?.name === 'MessagingFlavor';
-    if (!messaging || flavor.kind === 'AMQP') return false;
-    if (flavor.kind === 'MQTT') return true;
-    const brokers = toArray<string>((flavor as MessagingFlavor).brokers);
-    return !(brokers[0] ?? '').toLowerCase().startsWith('amqp');
+    return messaging && isAmqpFlavor(flavor as MessagingFlavor) === (this.flavorKind === 'AMQP');
   }
 
   async invoke(
@@ -118,13 +136,13 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     const subtree = replySubtreeFor(mqttFlavor, mqttOp, consumer);
     const source = `/consumer/${this.options.originLabel ?? 'ts'}`;
     const provisional = randomUUID();
-    const replyTo = `${subtree}/${provisional}`;
+    const replyTo = `${subtree}${separatorFor(mqttFlavor)}${provisional}`;
     const request = encodeRequest(operation, params, replyTo, source, mqttOp);
 
     // Subscribed once for every call this consumer will make on this
     // subtree; which answer belongs to which call is the envelope's
     // business, not the topic's.
-    await this.listenOn(client, subtree, qos);
+    await this.listenOn(client, subtree, separatorFor(mqttFlavor), qos);
     try {
       const answer = new Promise<Uint8Array>((resolve, reject) => {
         this.pending.set(request.id, resolve);
@@ -155,11 +173,13 @@ export class MqttFlavorPlugin implements FlavorPlugin {
   }
 
   /** One subscription per reply subtree, taken the first time it is needed. */
-  private async listenOn(client: MqttRpcClientLike, subtree: string, qos: 0 | 1 | 2): Promise<void> {
+  private async listenOn(
+    client: MqttRpcClientLike, subtree: string, separator: string, qos: 0 | 1 | 2,
+  ): Promise<void> {
     if (this.subscribed.has(subtree)) return;
     this.subscribed.add(subtree);
     try {
-      await client.subscribeAsync(`${subtree}/#`, { qos });
+      await client.subscribeAsync(`${subtree}${separator}#`, { qos });
     } catch (error) {
       this.subscribed.delete(subtree);
       throw error;
@@ -184,9 +204,10 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     }
     let clientPromise = this.clientsByUrl.get(url);
     if (!clientPromise) {
-      const factory = this.options.clientFactory ?? connectMqtt;
+      const factory = this.options.clientFactory ?? connectMessaging;
       clientPromise = Promise.resolve(
-        factory(url, this.options.clientId ?? `ddsr-rpc-${randomUUID().slice(0, 8)}`, this.options.tls)
+        factory(url, this.options.clientId ?? `ddsr-rpc-${randomUUID().slice(0, 8)}`, this.options.tls,
+          { exchange: flavor.exchange || undefined, username: this.options.username, password: this.options.password })
       ).then(client => {
         client.on('message', (topic, payload) => this.onMessage(topic, payload));
         return client;

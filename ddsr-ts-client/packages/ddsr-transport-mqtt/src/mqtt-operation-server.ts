@@ -17,12 +17,13 @@ import { declaredCode, declaredRaisedBy, toArray } from '@ddsr/client';
 import type { MessagingFlavor, MessagingOperationFlavor, ServiceOperationFlavor } from '@ddsr/model';
 import {
   MqttRpcClientLike,
-  connectMqtt,
+  connectMessaging,
   decodeRequest,
   encodeResponse,
   qosFor,
   requestTopicFor,
 } from './mqtt-rpc.js';
+import type { AmqpConnectOptions } from './amqp-client.js';
 
 /** One handler per operation name; receives the named args, returns the result. */
 export type OperationHandlers = Record<string, (args: Record<string, unknown>) => unknown | Promise<unknown>>;
@@ -31,7 +32,11 @@ export interface MqttOperationServerOptions {
   /** Broker to listen on; defaults to the flavor's first brokers entry. */
   brokerUrl?: string;
   clientId?: string;
-  clientFactory?: (url: string, clientId: string, tls?: TlsOptions) => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  clientFactory?: (url: string, clientId: string, tls?: TlsOptions, amqp?: AmqpConnectOptions)
+    => Promise<MqttRpcClientLike> | MqttRpcClientLike;
+  /** Who this node is to a messaging broker that asks; never part of a broker URL. */
+  username?: string;
+  password?: string;
   /** The node's certificate and the authorities it believes, for mqtts:// brokers. */
   tls?: TlsOptions;
   /** Which system this is, for the CloudEvents `source` of every answer (#101). */
@@ -68,9 +73,12 @@ export class MqttOperationServer {
     const brokers = toArray<string>(this.flavor.brokers);
     const url = this.options.brokerUrl ?? brokers[0];
     if (!url) throw new Error('MessagingFlavor announces no brokers and the server has no brokerUrl override');
-    const factory = this.options.clientFactory ?? connectMqtt;
+    // MQTT or AMQP is the scheme of the broker (#138): the same calls,
+    // the same envelope, on a channel spelled the way that broker does.
+    const factory = this.options.clientFactory ?? connectMessaging;
     this.client = await factory(url, this.options.clientId ?? `ddsr-provider-${randomUUID().slice(0, 8)}`,
-      this.options.tls);
+      this.options.tls,
+      { exchange: this.flavor.exchange || undefined, username: this.options.username, password: this.options.password });
     this.client.on('message', (topic, payload) => void this.dispatch(topic, payload));
 
     for (const opFlavor of toArray<ServiceOperationFlavor>(this.flavor.operationFlavors)) {

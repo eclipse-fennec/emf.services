@@ -98,6 +98,13 @@ broker. Requirements and decisions:
   arguments come back in the contract's order — both ends read one
   document the same way (#25). The twin of #84 on this transport: what
   the deployment states is the broker, nothing else.
+- **U (podman only) — AMQP with no provider code, called from
+  TypeScript:** J on the other protocol (#138). The same generic
+  distribution with another model document (`binding-probe-amqp.xmi`)
+  and an `amqp://` broker serves `BindingProbe` over RabbitMQ; the probe
+  is the same TypeScript plugin built for AMQP and calls it under a
+  routing key, with the answer arriving on a key of its own. The first
+  time the TypeScript track speaks AMQP on a real wire.
 - **Q (podman only) — MQTT over mutual TLS:** J's call again, over a
   second mosquitto on 8883 that demands a certificate of the run's CA
   (`itest/tls/make-certs.sh`), takes the CN as the user and holds the
@@ -129,7 +136,7 @@ drain in scenario G.
 
 ```bash
 ./itest/run-harness.sh          # host processes: A + B + F + G + H + T + N (podman only for Keycloak)
-./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + R + S + K + J + Q + F + G + H
+./itest/run-harness-podman.sh   # containers (podman, --network=host): A + B + C + D + E + I + R + S + K + J + U + Q + F + G + H
 HARNESS_AUTH=none ./itest/run-harness.sh   # open broker, no Keycloak, no podman
 ```
 

@@ -52,6 +52,8 @@
 
 import type { TlsOptions } from '@ddsr/client';
 import { DDSRPackage } from '@ddsr/model';
+import { connectAmqp, isAmqpUrl } from './amqp-client.js';
+import type { AmqpConnectOptions } from './amqp-client.js';
 import type { ServiceOperation } from '@ddsr/model';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO, CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
@@ -123,6 +125,8 @@ interface FlavorLike {
   channel?: string;
   replyChannel?: string;
   defaultQos?: string;
+  kind?: string;
+  brokers?: unknown;
 }
 interface OperationFlavorLike {
   channel?: string;
@@ -134,12 +138,40 @@ interface OperationFlavorLike {
   produces?: unknown;
 }
 
+/**
+ * Whether a flavor speaks AMQP: its kind says so, or - for a flavor
+ * without one - the scheme of its first broker. Everything else is
+ * MQTT. The rule the Java side reads a flavor by (MessagingFlavors).
+ */
+export function isAmqpFlavor(flavor: FlavorLike): boolean {
+  if (flavor.kind === 'AMQP') return true;
+  if (flavor.kind === 'MQTT') return false;
+  const brokers = Array.isArray(flavor.brokers) ? flavor.brokers
+    : flavor.brokers && typeof (flavor.brokers as Iterable<unknown>)[Symbol.iterator] === 'function'
+      ? [...(flavor.brokers as Iterable<unknown>)] : [];
+  return String(brokers[0] ?? '').toLowerCase().startsWith('amqp');
+}
+
+/**
+ * What separates the levels of a channel on this flavor's protocol: `/`
+ * between the levels of an MQTT topic, `.` between the words of an AMQP
+ * routing key. The one thing the protocol decides about a channel.
+ */
+export function separatorFor(flavor: FlavorLike): '/' | '.' {
+  return isAmqpFlavor(flavor) ? '.' : '/';
+}
+
+/** A channel without the separators it may end in. */
+function trimmed(channel: string | undefined): string {
+  return (channel ?? '').replace(/[/.]+$/, '');
+}
+
 export function requestTopicFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): string {
   if (opFlavor.channel) return opFlavor.channel;
   const operationName = opFlavor.operation?.name ?? opFlavor.name ?? '';
-  const base = (flavor.channel ?? '').replace(/\/+$/, '');
+  const base = trimmed(flavor.channel);
   if (!base) throw new Error('the MessagingFlavor carries no channel and the operation flavor none either');
-  return `${base}/${operationName}`;
+  return `${base}${separatorFor(flavor)}${operationName}`;
 }
 
 /**
@@ -159,12 +191,13 @@ export const OWN_REPLY_BASE = 'ddsr/reply';
 export function namedReplyBaseFor(
   flavor: FlavorLike, opFlavor: OperationFlavorLike,
 ): string | undefined {
-  const named = (opFlavor.replyChannel || flavor.replyChannel || '').replace(/\/+$/, '');
+  const named = trimmed(opFlavor.replyChannel || flavor.replyChannel);
   return named || undefined;
 }
 
 export function replyBaseFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): string {
-  return namedReplyBaseFor(flavor, opFlavor) ?? OWN_REPLY_BASE;
+  return namedReplyBaseFor(flavor, opFlavor)
+    ?? (isAmqpFlavor(flavor) ? OWN_REPLY_BASE.replaceAll('/', '.') : OWN_REPLY_BASE);
 }
 
 /**
@@ -174,21 +207,23 @@ export function replyBaseFor(flavor: FlavorLike, opFlavor: OperationFlavorLike):
  */
 export function topicSegment(name: string | undefined): string {
   if (!name || !name.trim()) return 'anonymous';
-  return name.replace(/[/+#\s]/g, '_');
+  // The separators and wildcards of both protocols: a name is one level
+  // of a topic and one word of a routing key alike.
+  return name.replace(/[/+#.*\s]/g, '_');
 }
 
 /** Where one consumer's answers arrive: its own subtree under the base. */
 export function replySubtreeFor(
   flavor: FlavorLike, opFlavor: OperationFlavorLike, consumer: string,
 ): string {
-  return `${replyBaseFor(flavor, opFlavor)}/${topicSegment(consumer)}`;
+  return `${replyBaseFor(flavor, opFlavor)}${separatorFor(flavor)}${topicSegment(consumer)}`;
 }
 
 /** The topic one call's answer arrives on. */
 export function replyTopicFor(
   flavor: FlavorLike, opFlavor: OperationFlavorLike, consumer: string, requestId: string,
 ): string {
-  return `${replySubtreeFor(flavor, opFlavor, consumer)}/${topicSegment(requestId)}`;
+  return `${replySubtreeFor(flavor, opFlavor, consumer)}${separatorFor(flavor)}${topicSegment(requestId)}`;
 }
 
 /**
@@ -314,6 +349,19 @@ export interface MqttRpcClientLike {
  * node shows its certificate and believes the given authorities
  * (SECURITY.md §7d) — the same `TlsOptions` a node hands `tlsFetch`.
  */
+/**
+ * The connection a broker URL asks for: AMQP for amqp:// and amqps://,
+ * MQTT for everything else. One factory, because which protocol a
+ * flavor travels over is said by its broker and by nothing else.
+ */
+export async function connectMessaging(
+  brokerUrl: string, clientId: string, tls?: TlsOptions, options: AmqpConnectOptions = {},
+): Promise<MqttRpcClientLike> {
+  return isAmqpUrl(brokerUrl)
+    ? await connectAmqp(brokerUrl, clientId, tls, options)
+    : await connectMqtt(brokerUrl, clientId, tls);
+}
+
 export async function connectMqtt(brokerUrl: string, clientId: string, tls?: TlsOptions): Promise<MqttRpcClientLike> {
   const { connectAsync } = await import('mqtt');
   return await connectAsync(brokerUrl, { clientId, ...tlsConnectOptions(tls) }) as unknown as MqttRpcClientLike;

@@ -240,6 +240,18 @@ launch carries: the `mqtt3` binding with Paho, the `amqp` binding with
 the RabbitMQ client, or both. That is the whole difference between an
 MQTT and an AMQP deployment — configuration and dependencies.
 
+The TypeScript track has the same shape. `@ddsr/transport-mqtt` (the
+package kept its name) speaks both: `MqttFlavorPlugin`,
+`MqttOperationServer` and `MqttEventSource` read the protocol off the
+broker URL or the flavor, spell a channel accordingly and connect with
+mqtt.js or — for `amqp://` and `amqps://` — with amqplib. A consumer
+tells the broker one flavor kind per plugin, so a node that calls over
+AMQP registers `new MqttFlavorPlugin({ protocol: 'AMQP' })`, and one
+that calls over both registers the plugin twice. Where an AMQP flavor
+names no place for answers, a TypeScript consumer listens on a routing
+key of its own, `ddsr.reply.<consumer>.#`, bound to a queue only it
+reads, and names the exact key in each call.
+
 Which transport a proxy uses is not configured at all: the SDK picks by
 the flavors the service announces, in the order it announces them, from
 the invokers this runtime has. A service reachable only over a

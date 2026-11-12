@@ -47,6 +47,7 @@ import org.eclipse.fennec.services.common.CallPrincipal;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.common.SecurityRequirements;
+import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -360,7 +361,11 @@ public class RestDispatcher {
 			return Response.status(503).entity("no service implements " + contract + " here").build();
 		}
 		try {
-			Object result = invoke(service, operation, arguments);
+			// A service that answers later (osgi.async) is waited for here:
+			// an HTTP request is answered once, on the thread that took it.
+			// Its failure comes out as a throw would, so a declared error
+			// is the same error either way.
+			Object result = AsyncReturns.settled(invoke(service, operation, arguments));
 			return answer(operationFlavor, result);
 		} catch (InvocationTargetException failure) {
 			return failed(operationFlavor, failure.getCause());

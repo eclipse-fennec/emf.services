@@ -25,4 +25,6 @@ Bundle-Description: \
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest,\
 	jakarta.annotation-api;version=latest

@@ -71,7 +71,8 @@ class RestDistributionProviderSecurityTest {
 					assertThat(scheme.getAudiences()).containsExactly("rsa-example");
 					assertThat(scheme.getScopeClaim()).isEqualTo("realm_access.roles");
 				});
-		assertThat(provider.supportedIntents()).containsExactly("osgi.basic", FlavorDistribution.BEARER_INTENT);
+		assertThat(provider.supportedIntents()).containsExactly("osgi.basic", FlavorDistribution.ASYNC_INTENT,
+				FlavorDistribution.BEARER_INTENT);
 	}
 
 	@Test
@@ -92,7 +93,7 @@ class RestDistributionProviderSecurityTest {
 
 		assertThat(serving.served.getSecuritySchemes())
 				.as("serving refuses a guarded contract without one — fail closed, not here").isEmpty();
-		assertThat(provider.supportedIntents()).containsExactly("osgi.basic");
+		assertThat(provider.supportedIntents()).containsExactly("osgi.basic", FlavorDistribution.ASYNC_INTENT);
 	}
 
 	private static RestDistributionProvider provider(RestDistribution distribution, String issuer) {

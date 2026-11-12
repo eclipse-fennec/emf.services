@@ -376,7 +376,9 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 			if (implementation.getImplementationId() != null) {
 				properties.put(RsaProperties.IMPLEMENTATION, implementation.getImplementationId());
 			}
-			// What the call is: osgi.basic always, and fennec.bearer where the
+			// What the call is: osgi.basic and osgi.async always — a proxy
+			// answers later for every method that declares a holder — and
+			// fennec.bearer where the
 			// contract demands a caller — reflected so that a consumer can
 			// filter on it like on any specification-conformant endpoint
 			// (SECURITY.md §6). The proxy shows this node's token either way.
@@ -394,8 +396,9 @@ public class ImportWhatIsAskedFor implements ListenerHook {
 		static String[] intentsOf(ServiceImplementation implementation) {
 			boolean guarded = implementation.getServiceInterfaces().stream()
 					.anyMatch(SecurityRequirements::demandsAuthentication);
-			return guarded ? new String[] { "osgi.basic", FlavorDistribution.BEARER_INTENT }
-					: new String[] { "osgi.basic" };
+			return guarded
+					? new String[] { "osgi.basic", FlavorDistribution.ASYNC_INTENT, FlavorDistribution.BEARER_INTENT }
+					: new String[] { "osgi.basic", FlavorDistribution.ASYNC_INTENT };
 		}
 
 		/** Whether this framework is the one that exported it. */

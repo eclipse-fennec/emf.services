@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestFlavor;
@@ -37,6 +39,7 @@ import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
 import org.junit.jupiter.api.Test;
+import org.osgi.util.promise.Promise;
 
 /** #59: a transport failure makes the proxy rebind once and retry once — nothing more. */
 class ReflectiveServiceProxyFactoryRetryTest {
@@ -234,5 +237,69 @@ class ReflectiveServiceProxyFactoryRetryTest {
 		invoker.failures.add(answered);
 
 		assertThatThrownBy(() -> proxy(invoker, new ScriptedLocator()).getBalance("acc-1")).isSameAs(answered);
+	}
+
+	/** The same contract, by a consumer that does not want to wait (osgi.async). */
+	interface LaterPayment {
+		Promise<Double> getBalance(String accountId) throws AccountUnknownException;
+	}
+
+	interface FuturePayment {
+		CompletableFuture<Double> getBalance(String accountId);
+	}
+
+	private static <T> T asyncProxy(Class<T> type, ScriptedInvoker invoker) {
+		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
+		InvokerRegistry invokers = new InvokerRegistry();
+		factory.invokers = invokers;
+		invokers.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+		return factory.newProxy(type, new ScriptedLocator());
+	}
+
+	/**
+	 * A method that returns a holder gets it back at once and the call is
+	 * made elsewhere; what it holds is what the synchronous method would
+	 * have returned.
+	 */
+	@Test
+	void aMethodThatReturnsAPromiseIsAnsweredLater() throws Exception {
+		ScriptedInvoker invoker = new ScriptedInvoker();
+
+		Promise<Double> balance = asyncProxy(LaterPayment.class, invoker).getBalance("acc-1");
+
+		assertThat(balance.getValue()).isEqualTo(42.0);
+		assertThat(invoker.calls).isEqualTo(1);
+	}
+
+	@Test
+	void aCompletableFutureIsAHolderToo() throws Exception {
+		assertThat(asyncProxy(FuturePayment.class, new ScriptedInvoker()).getBalance("acc-1")
+				.get(5, TimeUnit.SECONDS)).isEqualTo(42.0);
+	}
+
+	/** §100.6: the holder fails with the same exception a synchronous call would have thrown. */
+	@Test
+	void theHolderFailsWithTheExceptionTheMethodDeclares() throws Exception {
+		ScriptedInvoker invoker = new ScriptedInvoker();
+		DdsrServiceException answered = accountUnknown();
+		invoker.failures.add(answered);
+
+		Promise<Double> balance = asyncProxy(LaterPayment.class, invoker).getBalance("acc-1");
+
+		assertThat(balance.getFailure())
+				.isInstanceOf(AccountUnknownException.class)
+				.hasMessage("no account acc-1")
+				.hasCause(answered);
+	}
+
+	@Test
+	void anyOtherFailureEndsTheHolderAndNotTheCall() throws Exception {
+		ScriptedInvoker invoker = new ScriptedInvoker();
+		DdsrException down = new DdsrException("HTTP 500 from the provider");
+		invoker.failures.add(down);
+
+		CompletableFuture<Double> balance = asyncProxy(FuturePayment.class, invoker).getBalance("acc-1");
+
+		assertThatThrownBy(() -> balance.get(5, TimeUnit.SECONDS)).hasCause(down);
 	}
 }

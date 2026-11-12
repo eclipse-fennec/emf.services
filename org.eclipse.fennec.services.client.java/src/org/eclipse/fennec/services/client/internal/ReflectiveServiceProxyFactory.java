@@ -21,7 +21,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.Parameter;
@@ -38,7 +44,9 @@ import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
 import org.eclipse.fennec.services.common.DeclaredErrors;
+import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;
 
@@ -101,6 +109,34 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				+ " — no transport in common");
 	}
 
+	/**
+	 * The threads asynchronous calls are made on, created with the first
+	 * such call. An invoker is synchronous — it returns a value — so a
+	 * call that answers later still occupies a thread until it has its
+	 * answer; what the caller gets is its own thread back.
+	 */
+	private ExecutorService asyncCalls;
+
+	private synchronized Executor asyncCalls() {
+		if (asyncCalls == null) {
+			AtomicInteger count = new AtomicInteger();
+			asyncCalls = Executors.newCachedThreadPool(task -> {
+				Thread thread = new Thread(task, "fennec-async-call-" + count.incrementAndGet());
+				thread.setDaemon(true);
+				return thread;
+			});
+		}
+		return asyncCalls;
+	}
+
+	@Deactivate
+	synchronized void deactivate() {
+		if (asyncCalls != null) {
+			asyncCalls.shutdownNow();
+			asyncCalls = null;
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> T newProxy(Class<T> serviceInterface, ServiceLocator locator) {
@@ -110,7 +146,8 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		if (locator == null) {
 			throw new DdsrException("locator must not be null");
 		}
-		InvocationHandler handler = new RemoteCallHandler(this::invokerFor, locator, serviceInterface);
+		InvocationHandler handler = new RemoteCallHandler(this::invokerFor, locator, serviceInterface,
+				this::asyncCalls);
 		return (T) Proxy.newProxyInstance(
 				serviceInterface.getClassLoader(),
 				new Class<?>[] { serviceInterface },
@@ -128,8 +165,12 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		private final ServiceLocator locator;
 		private final Class<?> serviceInterface;
 
+		/** Where calls that answer later are made. */
+		private final Supplier<Executor> calls;
+
 		RemoteCallHandler(Function<ServiceLocator, ServiceInvoker> invokerFor, ServiceLocator locator,
-				Class<?> serviceInterface) {
+				Class<?> serviceInterface, Supplier<Executor> calls) {
+			this.calls = calls;
 			this.invokerFor = invokerFor;
 			this.locator = locator;
 			this.serviceInterface = serviceInterface;
@@ -141,11 +182,47 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				// toString / hashCode / equals on the proxy itself.
 				return handleObjectMethod(method, args);
 			}
+			Class<?> returned = method.getReturnType();
+			if (AsyncReturns.isHolder(returned)) {
+				return later(method, args);
+			}
 			try {
-				return call(method, args);
+				return coerceReturn(method, returned, call(method, args));
 			} catch (DdsrServiceException declared) {
 				throw asDeclared(method, declared);
 			}
+		}
+
+		/**
+		 * A method that answers later (osgi.async): the holder goes back
+		 * at once and the call is made on a thread of this factory's.
+		 *
+		 * <p>The holder fails with the very exception a synchronous call
+		 * would have thrown — the declared error as the class the method
+		 * names for it included — which is what the intent asks for and
+		 * what lets a caller move between the two shapes of one method
+		 * without learning new failures.
+		 */
+		private Object later(Method method, Object[] args) {
+			Class<?> held = AsyncReturns.rawOf(AsyncReturns.valueType(method.getGenericReturnType()));
+			CompletableFuture<Object> outcome = new CompletableFuture<>();
+			try {
+				calls.get().execute(() -> {
+					try {
+						outcome.complete(coerceReturn(method, held, call(method, args)));
+					} catch (DdsrServiceException declared) {
+						outcome.completeExceptionally(asDeclared(method, declared));
+					} catch (Throwable failure) {
+						outcome.completeExceptionally(failure);
+					}
+				});
+			} catch (RuntimeException rejected) {
+				// The factory is going: the call was never made, and the
+				// holder says so instead of the method throwing.
+				outcome.completeExceptionally(new DdsrException("the call was not made: " + rejected.getMessage(),
+						rejected));
+			}
+			return AsyncReturns.holderFor(method.getReturnType(), outcome);
 		}
 
 		/**
@@ -197,7 +274,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				// may be reachable a different way than the one that failed.
 				result = invokerFor.apply(locator).invoke(locator, method.getName(), argMap);
 			}
-			return coerceReturn(method, result);
+			return result;
 		}
 
 		private Object handleObjectMethod(Method method, Object[] args) {
@@ -283,8 +360,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 			return names;
 		}
 
-		private static Object coerceReturn(Method method, Object result) {
-			Class<?> rt = method.getReturnType();
+		private static Object coerceReturn(Method method, Class<?> rt, Object result) {
 			if (rt == void.class || result == null) {
 				return null;
 			}

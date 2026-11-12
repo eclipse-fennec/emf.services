@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -388,6 +389,58 @@ class MessagingOperationDispatcherTest {
 		assertThat(answerIn(sent.get(0)).getDiagnostic().getCode())
 			.as("IllegalStateException is nothing the contract announced")
 			.isZero();
+	}
+
+	/** Answers later, when the test says so (osgi.async). */
+	public static final class LaterPayments {
+
+		static final CompletableFuture<Double> PENDING = new CompletableFuture<>();
+
+		@SuppressWarnings("unused")
+		public CompletableFuture<Double> charge(double amount) {
+			return PENDING.thenApply(left -> left - amount);
+		}
+	}
+
+	/**
+	 * A service that answers later does not hold the subscription's
+	 * thread: the dispatch returns, and the answer goes out when there
+	 * is one. That is the point of a Promise over a messaging broker —
+	 * a slow call no longer holds up every call behind it.
+	 */
+	@Test
+	void a_service_that_answers_later_is_answered_when_it_has_an_answer() throws Exception {
+		MessagingFlavor flavor = payments();
+
+		new MessagingOperationDispatcher(flavor, LaterPayments::new, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/8", 12.5), sent::add);
+
+		assertThat(sent).as("the dispatch came back without an answer, and without waiting for one").isEmpty();
+		LaterPayments.PENDING.complete(1000.0);
+
+		assertThat(sent).hasSize(1);
+		assertThat(Invocations.valueOf(answerIn(sent.get(0)))).isEqualTo(987.5);
+	}
+
+	/** Fails later, with the error the contract declares. */
+	public static final class LaterRefusingPayments {
+
+		@SuppressWarnings("unused")
+		public CompletableFuture<Double> charge(double amount) {
+			return CompletableFuture.failedFuture(new InsufficientFundsException("only 3.50 left"));
+		}
+	}
+
+	@Test
+	void a_holder_that_fails_is_the_error_a_throw_would_have_been() throws Exception {
+		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
+
+		new MessagingOperationDispatcher(flavor, LaterRefusingPayments::new, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/9", 5), sent::add);
+
+		Diagnostic diagnostic = answerIn(sent.get(0)).getDiagnostic();
+		assertThat(diagnostic.getCode()).as("the declared error, under its code").isEqualTo(402);
+		assertThat(diagnostic.getMessage()).isEqualTo("only 3.50 left");
 	}
 
 	@Test

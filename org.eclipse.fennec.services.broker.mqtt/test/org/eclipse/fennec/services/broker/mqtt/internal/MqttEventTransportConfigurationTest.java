@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verify;
 
 import java.lang.annotation.Annotation;
 import java.util.Dictionary;
+import java.util.Map;
 
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.junit.jupiter.api.DisplayName;
@@ -47,7 +48,7 @@ class MqttEventTransportConfigurationTest {
 		BundleContext context = mock(BundleContext.class);
 		MqttEventTransport transport = new MqttEventTransport(context);
 
-		assertThatCode(() -> transport.activate(config("")))
+		assertThatCode(() -> transport.activate(config(""), Map.of()))
 			.as("a REST-only container must not log a failure about a transport nobody asked for")
 			.doesNotThrowAnyException();
 
@@ -62,7 +63,7 @@ class MqttEventTransportConfigurationTest {
 	void blankIsUnconfigured() throws Exception {
 		BundleContext context = mock(BundleContext.class);
 
-		new MqttEventTransport(context).activate(config("   "));
+		new MqttEventTransport(context).activate(config("   "), Map.of());
 
 		// The typed overload, named exactly: BundleContext has three
 		// registerService methods and only this one is the sink.
@@ -95,6 +96,16 @@ class MqttEventTransportConfigurationTest {
 			@Override
 			public String client_id() {
 				return "ddsr-broker";
+			}
+
+			@Override
+			public String username() {
+				return "";
+			}
+
+			@Override
+			public String password() {
+				return "";
 			}
 
 			@Override

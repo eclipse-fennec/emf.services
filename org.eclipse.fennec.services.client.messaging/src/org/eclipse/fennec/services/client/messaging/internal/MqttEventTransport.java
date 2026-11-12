@@ -13,14 +13,17 @@
 
 package org.eclipse.fennec.services.client.messaging.internal;
 
+import java.util.Hashtable;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.client.EventSource;
+import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.messaging.LinkSettings;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -46,10 +49,15 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * deployment that configures a client is describing the setup it
  * expects, not entering a contest.
  */
+// Registers itself rather than letting DS do it, because what it is
+// depends on its configuration (#138): the scheme of the broker URL
+// says whether these are events over MQTT or over AMQP, and
+// ddsr.event.transport — what the client's eventSource.target is
+// written against — has to say the same. A property fixed on the
+// component could only ever say one of them.
 @Component(
-		service = EventSource.class,
+		service = {},
 		configurationPid = "org.eclipse.fennec.services.client.mqtt",
-		property = "ddsr.event.transport=mqtt",
 		configurationPolicy = ConfigurationPolicy.REQUIRE)
 @Designate(ocd = MqttEventTransport.Config.class)
 @RequireMessaging(protocol = "mqtt3")
@@ -61,12 +69,25 @@ public final class MqttEventTransport implements EventSource {
 			description = "Receives lifecycle events over MQTT. Requires configuration to start.")
 	public @interface Config {
 
-		@AttributeDefinition(name = "MQTT broker URL", description = "e.g. tcp://localhost:1883")
+		@AttributeDefinition(name = "Messaging broker URL",
+				description = "e.g. tcp://localhost:1883 for MQTT or amqp://localhost:5672 for AMQP. The "
+						+ "scheme says which, and with it what this source is: ddsr.event.transport=mqtt "
+						+ "or =amqp.")
 		String broker_url() default "tcp://localhost:1883";
 
 		@AttributeDefinition(name = "Topic prefix",
-				description = "Must match the broker-side prefix; the source subscribes to <prefix>/#.")
+				description = "Must match the broker-side prefix; the source subscribes to <prefix>/#. "
+						+ "Given the way MQTT writes it; on AMQP it is the routing key ddsr.events.#.")
 		String topic_prefix() default "ddsr/events";
+
+		@AttributeDefinition(name = "User name", required = false,
+				description = "Who this node is to a messaging broker that asks for a name and a "
+						+ "password. Never in the URL.")
+		String username() default "";
+
+		@AttributeDefinition(name = "Password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of that user.")
+		String password() default "";
 
 		@AttributeDefinition(name = "Client id", required = false,
 				description = "MQTT client identifier of this consumer. Empty: ddsr-consumer- and the first "
@@ -119,10 +140,21 @@ public final class MqttEventTransport implements EventSource {
 		this.link = MessagingLink.open(context, new LinkSettings(INSTANCE, config.broker_url(),
 				LinkSettings.clientId(context, config.client_id(), CLIENT_ROLE), config.tls_keystore(),
 				config.tls_keystore_password(),
-				config.tls_truststore(), config.tls_truststore_password()));
-		this.source = new MqttEventSource(this::subscribe, rsObjects, config.topic_prefix());
-		LOG.info("[DDSR-MQTT] client transport connecting to " + config.broker_url());
+				config.tls_truststore(), config.tls_truststore_password())
+				.as(config.username(), config.password()));
+		Channels channels = Channels.of(config.broker_url());
+		this.source = new MqttEventSource(this::subscribe, rsObjects, config.topic_prefix(), channels);
+		Hashtable<String, Object> properties = new Hashtable<>();
+		properties.put(TRANSPORT, channels.protocol());
+		this.registration = context.registerService(EventSource.class, this, properties);
+		LOG.info("[DDSR-MQTT] client transport connecting to " + config.broker_url()
+				+ " — events over " + channels.protocol());
 	}
+
+	/** What a client's {@code eventSource.target} is written against. */
+	static final String TRANSPORT = "ddsr.event.transport";
+
+	private ServiceRegistration<EventSource> registration;
 
 	private AutoCloseable subscribe(String topicFilter, MqttEventSource.MessageListener onMessage,
 			Runnable onEstablished) {
@@ -148,6 +180,16 @@ public final class MqttEventTransport implements EventSource {
 
 	@Deactivate
 	void deactivate() {
+		// Withdrawn first: whoever is bound to this source is unbound
+		// while it can still close what it opened.
+		if (registration != null) {
+			try {
+				registration.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// The framework got there first.
+			}
+			registration = null;
+		}
 		source = null;
 		if (link != null) {
 			link.close();

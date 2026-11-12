@@ -315,7 +315,11 @@ REST transport, defaults 3 s / 10 s), it asks the locator to rebind away
 from the failed registration and retries exactly once. A second failure,
 an HTTP error answered by the provider, or a locator with nothing else to
 bind to propagate to the caller as `DdsrException`
-(`isTransportFailure()` tells the two apart).
+(`isTransportFailure()` tells the two apart). An answer that is one of
+the errors the contract declares is a `DdsrServiceException` — over
+REST and over messaging alike — and the proxy throws it as the
+exception class the method declares for it
+([Transports](TRANSPORTS.md#declared-errors)).
 
 ### 5.4 `BrokerHttpClient` — the only place that talks HTTP
 

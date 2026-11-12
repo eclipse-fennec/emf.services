@@ -20,7 +20,7 @@ import type {
   ServiceOperation,
 } from '@ddsr/model';
 import { HttpMethod, ParameterBinding } from '@ddsr/model';
-import { bearerScheme, demandsAuthentication, effectiveRequirement, mutualTlsScheme } from '@ddsr/client';
+import { bearerScheme, demandsAuthentication, effectiveRequirement, mutualTlsScheme, raisesDeclared } from '@ddsr/client';
 import type { CertificateVerifier, ClientCertificate, JwtVerifier } from '@ddsr/client';
 
 /**
@@ -293,24 +293,13 @@ function forbidden(operation: ServiceOperation, scopes: readonly string[]): Disp
 /**
  * The status the flavor binds to the declared error this failure is, if
  * it is one - the twin of RestDispatcher.failed(). The contract names an
- * error symbolically, so the match is by name: the error's class name or
- * its `name`, against the last segment of the symbolic type with or
- * without an `Exception` suffix, as RestDispatcher.raises() does. A class
- * a binding generated carries the symbolic type itself and matches by it.
+ * error symbolically, so the match is by name - the rule every transport
+ * shares (raisesDeclared in @ddsr/client).
  */
 function declaredStatus(opFlavor: RestOperationFlavor, failure: unknown): number | undefined {
-  if (!(failure instanceof Error)) return undefined;
-  const generatedType = (failure.constructor as { type?: unknown }).type;
-  const names = new Set([failure.constructor.name, failure.name]);
-  for (const binding of toArray<RestExceptionBinding>(opFlavor.exceptionBindings)) {
-    const symbolic = binding.exception?.type;
-    if (!symbolic) continue;
-    const simple = symbolic.slice(symbolic.lastIndexOf('.') + 1);
-    if (generatedType === symbolic || names.has(simple) || names.has(`${simple}Exception`)) {
-      return Number(binding.status);
-    }
-  }
-  return undefined;
+  const binding = toArray<RestExceptionBinding>(opFlavor.exceptionBindings)
+    .find(entry => raisesDeclared(failure, entry.exception));
+  return binding ? Number(binding.status) : undefined;
 }
 
 /** The path below the mount point, or undefined when the request is elsewhere. */

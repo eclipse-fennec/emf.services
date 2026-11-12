@@ -97,7 +97,9 @@ describe('invocation as a message', () => {
     const document = encodeFailure('account-1 is not known', 404);
 
     expect(document).toContain('severity="ERROR"');
-    expect(decodeResult(document)).toEqual({ error: 'account-1 is not known' });
+    // The code comes back with the message: over a transport without a
+    // status it is what tells a caller which declared error this is (#185).
+    expect(decodeResult(document)).toEqual({ error: 'account-1 is not known', code: 404 });
   });
 
   it('refuses a document that is not a call', () => {

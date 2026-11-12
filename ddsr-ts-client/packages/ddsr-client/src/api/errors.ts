@@ -42,10 +42,11 @@ export class DdsrTransportError extends DdsrClientError {
 
 /**
  * The provider answered, and the answer is one of the errors the
- * contract declares: `exception` is that ServiceException, recognised by
- * the status its flavor binds it to - the twin of what RestDispatcher
- * writes. Not a transport error, so nothing retries it: calling again
- * would get the same answer.
+ * contract declares: `exception` is that ServiceException. Over REST it
+ * is recognised by the status its flavor binds it to - the twin of what
+ * RestDispatcher writes - and over MQTT, which has no status, by the
+ * code of the Diagnostic the answer carries. Not a transport error, so
+ * nothing retries it: calling again would get the same answer.
  *
  * Generated stubs turn it into the class their binding generates for
  * the exception type, so a caller can write `instanceof`.

@@ -14,7 +14,7 @@
 import type { TlsOptions } from '@ddsr/client';
 import { randomUUID } from 'node:crypto';
 import type { FlavorPlugin } from '@ddsr/client';
-import { toArray } from '@ddsr/client';
+import { DdsrServiceError, declaredByCode, toArray } from '@ddsr/client';
 import type {
   MessagingFlavor,
   MessagingOperationFlavor,
@@ -139,6 +139,11 @@ export class MqttFlavorPlugin implements FlavorPlugin {
       const payload = await answer;
       const response = decodeResponse(payload);
       if (response.error !== undefined) {
+        // MQTT has no status to bind an error to, and needs none: the
+        // answer carries the Diagnostic, and its code is the declared
+        // error it is - what the REST plugin reads off the status.
+        const declared = declaredByCode(operation, response.code);
+        if (declared) throw new DdsrServiceError(response.error, declared);
         throw new Error(`MQTT call failed: ${operation.name} — ${response.error}`);
       }
       return response.value;

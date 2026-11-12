@@ -22,6 +22,7 @@ export type { Registration } from './api/registration.js';
 export type { DdsrServiceListener } from './api/service-listener.js';
 export { DiagnosticCode } from './api/diagnostics.js';
 export { DdsrClientError, DdsrServiceError, DdsrTransportError } from './api/errors.js';
+export { declaredByCode, declaredCode, declaredRaisedBy, raisesDeclared } from './declared-errors.js';
 export { DdsrClientImpl } from './internal/ddsr-client-impl.js';
 export type { DdsrClientOptions } from './internal/ddsr-client-impl.js';
 export { ServiceLocatorImpl } from './proxy/service-locator-impl.js';

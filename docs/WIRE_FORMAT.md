@@ -340,6 +340,11 @@ stays an `int`, and a **modelled** argument is possible at all: an
 message. The answer is a `ServiceInvocationResult`: a value, or a
 `Diagnostic` that says why there is none, which is how this registry
 reports failures everywhere else.
+The Diagnostic's `code` is the `code` of the
+declared error it is, where it is one — a messaging flavor binds
+errors to nothing, the code is the whole statement
+([Transports](TRANSPORTS.md#declared-errors)); `0` is an error the
+contract did not announce.
 
 The encoding is the contract's choice here as well (#100):
 `datacontenttype` comes from the operation flavor's `consumes` for the

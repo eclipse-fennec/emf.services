@@ -29,6 +29,32 @@ binding. A `RestParameterBinding` says where an argument travels —
 `RestExceptionBinding` says which HTTP status a declared error
 travels as.
 
+### Declared errors
+
+A contract names the errors an operation can raise, and may give each
+a `code` as a property. That code is what the error is on the wire, on
+every transport:
+
+| | A provider raises it by | It travels as | The caller gets |
+| --- | --- | --- | --- |
+| REST | throwing a class named after the error, or returning a failing `Diagnostic` with the code | the status its `RestExceptionBinding` binds | the declared `ServiceException`, recognised by that status |
+| MQTT, AMQP | the same two ways | the `Diagnostic` of the answer, carrying the code | the declared `ServiceException`, recognised by that code |
+
+A messaging flavor has no exception binding and needs none: the
+answer is a `ServiceInvocationResult` either way, and its `Diagnostic`
+has room for the code. An error declared without a `code` cannot be
+recognised over messaging, and one without a binding is a 500 over
+REST.
+
+In Java the caller gets a `DdsrServiceException` (`declared()` is the
+`ServiceException`, `status()` the HTTP status or 0). A proxy from
+`ServiceProxyFactory` throws it as the exception class the method
+declares for that error — `catch (PersonNotFoundException e)` works,
+and the `DdsrServiceException` is its cause. In TypeScript it is a
+`DdsrServiceError`, which a generated stub turns into the class its
+binding generates. Neither is a transport failure, so nothing retries
+it.
+
 Without bindings the older convention still applies: a single model
 object is the body, anything else is a query parameter.
 

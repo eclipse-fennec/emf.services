@@ -118,9 +118,27 @@ binding's packageMappings), an Ecore EDataType through its instance class. Only
 where no eType is given does the language-neutral 'type' string decide.
 [/comment]
 [query public elementType(binding : JavaBinding, slot : Parameter) : String =
-	if slot.eType.oclIsUndefined() then javaType(slot.type)
+	if slot.eType.oclIsUndefined() then neutralType(binding, slot.type)
 	else if slot.eType.oclIsKindOf(EDataType) then simpleName(slot.eType.instanceClassName)
 	else slot.eType.name endif endif /]
+
+[comment]
+A language-neutral type name in Java. The binding is asked first: its
+typeMappings are overrides for Parameter.type (#185), which is the only way
+a name outside the standard set — 'instant', 'money.Money' — becomes a type
+that exists. The mapped class is written by its simple name and imported
+(qualifiedType below). Without a mapping the standard set applies, and a
+name it does not know is written as it stands.
+[/comment]
+[query public neutralType(binding : JavaBinding, neutral : String) : String =
+	if isMapped(binding, neutral) then simpleName(mappingTarget(binding, neutral))
+	else javaType(neutral) endif /]
+
+[query public isMapped(binding : JavaBinding, neutral : String) : Boolean =
+	binding.typeMappings->exists(m | m.neutralType = neutral) /]
+
+[query public mappingTarget(binding : JavaBinding, neutral : String) : String =
+	binding.typeMappings->select(m | m.neutralType = neutral)->first().target /]
 
 [query public javaType(neutral : String) : String =
 	if neutral = 'string' then 'String'
@@ -180,9 +198,16 @@ its suffix, a string its quotes, a string list becomes List.of(...).
 		->union(service.operations->collect(o | o.returnValue)->reject(s | s.oclIsUndefined()))
 		->asSequence() /]
 
-[comment]Only an EClass needs an import, and only where the binding maps its metamodel.[/comment]
+[comment]
+What a slot needs imported: an EClass where the binding maps its metamodel,
+and a neutral type the binding maps to a qualified class. A target without a
+package is a name that needs no import, and so is everything in the standard
+set.
+[/comment]
 [query public qualifiedType(binding : JavaBinding, slot : Parameter) : String =
-	if slot.eType.oclIsUndefined() then ''
+	if slot.eType.oclIsUndefined() then
+		if isMapped(binding, slot.type) and mappingTarget(binding, slot.type).strstr('.')
+		then mappingTarget(binding, slot.type) else '' endif
 	else if slot.eType.oclIsKindOf(EDataType) then ''
 	else if binding.packageMappings->exists(m | m.nsURI = slot.eType.ePackage.nsURI)
 		then binding.packageMappings->select(m | m.nsURI = slot.eType.ePackage.nsURI)

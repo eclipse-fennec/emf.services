@@ -485,14 +485,15 @@ function buildSlot(local: string, slot: Parameter, at: number): string[] {
  * The TypeScript type of a slot - a parameter, or the return value. The
  * eType wins where it is set, read from the proxy URI as the fingerprint
  * does, since the provider's metamodel is normally not on hand; only
- * without one does the `type` string decide. That precedence is
+ * without one does the `type` string decide, and the binding's
+ * typeMappings are asked before the standard set. That precedence is
  * java-types.mtl's, and the two must not differ. A multi-valued slot is
  * an array, and no slot at all is a void return.
  */
 function slotType(slot: Parameter | undefined, binding: Binding): MappedType {
   if (!slot) return { text: 'void' };
   const uri = eTypeUri(slot.eType);
-  const mapped = uri !== undefined ? mapEType(uri, binding.packageMappings) : mapType(slot.type);
+  const mapped = uri !== undefined ? mapEType(uri, binding.packageMappings) : mapType(slot.type, binding.typeMappings);
   const upper = boundOf(slot.upperBound);
   const many = upper === -1 || upper > 1;
   return many && !mapped.text.endsWith('[]') ? { ...mapped, text: `${mapped.text}[]` } : mapped;

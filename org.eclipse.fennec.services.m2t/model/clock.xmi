@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services:ServiceInterface xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:services="http://eclipse.org/fennec/services/1.0"
+    name="Clock"
+    version="1.0.0"
+    description="Tells the time. Exercises the one thing the other example contracts do not have: a slot whose language-neutral type is outside the standard set, so that what it is in a language is the binding's to say.">
+  <operations name="now" description="The current instant.">
+    <returnValue name="result" type="instant"/>
+  </operations>
+  <operations name="between" description="Milliseconds from one instant to another.">
+    <parameters name="from" type="instant" description="Where to count from."/>
+    <parameters name="to" index="1" type="instant" optional="true" description="Where to count to; now when left out."/>
+    <returnValue name="result" type="long"/>
+  </operations>
+</services:ServiceInterface>

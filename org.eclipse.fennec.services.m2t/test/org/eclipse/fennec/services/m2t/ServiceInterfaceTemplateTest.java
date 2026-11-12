@@ -47,14 +47,15 @@ class ServiceInterfaceTemplateTest {
 	void everyContractOfTheBindingBecomesAnInterface() throws Exception {
 		assertThat(generated("Payment.java")).contains("public interface Payment {");
 		assertThat(generated("PersonDirectory.java")).contains("public interface PersonDirectory {");
+		assertThat(generated("Clock.java")).contains("public interface Clock {");
 	}
 
 	@Test
 	void noSlotRendersAsAnEvaluationError() throws Exception {
 		// An OCL expression that goes wrong renders its result as text instead
 		// of failing the build — 'OclInvalid' in the output is the symptom.
-		for (String name : new String[] { "Payment.java", "PersonDirectory.java", "package-info.java",
-				"PersonNotFoundException.java" }) {
+		for (String name : new String[] { "Payment.java", "PersonDirectory.java", "Clock.java",
+				"package-info.java", "PersonNotFoundException.java" }) {
 			assertThat(generated(name))
 					.as("%s holds no unevaluated expression", name)
 					.doesNotContain("OclInvalid");
@@ -66,6 +67,21 @@ class ServiceInterfaceTemplateTest {
 		assertThat(generated("Payment.java"))
 				.contains("double charge(double amount, String currency);")
 				.contains("double getBalance(String accountId);");
+	}
+
+	/**
+	 * The binding's typeMappings are overrides for Parameter.type (#185):
+	 * 'instant' is in no standard set, and without the mapping it would
+	 * be written as it stands — a type that does not exist.
+	 */
+	@Test
+	void aTypeTheBindingMapsIsWrittenAsItsTargetAndImported() throws Exception {
+		String source = generated("Clock.java");
+
+		assertThat(source)
+				.contains("import java.time.Instant;")
+				.contains("Instant now();")
+				.contains("long between(Instant from, Instant to);");
 	}
 
 	@Test

@@ -17,4 +17,6 @@ export * from './Payment.js';
 export * from './PaymentProvider.js';
 export * from './PersonDirectory.js';
 export * from './PersonDirectoryProvider.js';
+export * from './Clock.js';
+export * from './ClockProvider.js';
 export * from './PersonNotFoundException.js';

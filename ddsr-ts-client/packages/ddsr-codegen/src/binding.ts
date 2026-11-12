@@ -30,7 +30,11 @@ export interface Binding {
   targetPackage?: string;
   /** Header lines without comment markers; the emitter wraps them. */
   fileHeader: string[];
-  /** Symbolic names (exception types) and what they are called here. */
+  /**
+   * Language-neutral names and what they are called here: the type of a
+   * slot (`instant` to `Date`, `money.Money` to `@acme/money#Money`) and
+   * the symbolic type of a declared error.
+   */
   typeMappings: TypeMapping[];
   /** Where the types of a referenced metamodel live: nsURI to module. */
   packageMappings: PackageMapping[];

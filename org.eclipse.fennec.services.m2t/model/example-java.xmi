@@ -7,6 +7,7 @@
     apiType="PROVIDER">
   <serviceInterfaces href="payment.xmi#/"/>
   <serviceInterfaces href="persons.xmi#/"/>
+  <serviceInterfaces href="clock.xmi#/"/>
   <fileHeader>Copyright (c) 2026 Contributors to the Eclipse Foundation.</fileHeader>
   <fileHeader/>
   <fileHeader>This program and the accompanying materials are made</fileHeader>
@@ -17,6 +18,7 @@
   <typeMappings neutralType="fennec.services.example.PersonNotFound"
       target="org.eclipse.fennec.services.m2t.example.PersonNotFoundException"
       generated="true"/>
+  <typeMappings neutralType="instant" target="java.time.Instant"/>
   <packageMappings nsURI="http://geckoprojects.org/ddsr/example"
       target="org.eclipse.fennec.services.examples.model.ddsrexample"/>
 </services:JavaBinding>

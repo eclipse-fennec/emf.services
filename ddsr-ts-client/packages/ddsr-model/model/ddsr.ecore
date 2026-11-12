@@ -2025,7 +2025,7 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="typeMappings" upperBound="-1"
         eType="#//TypeMapping" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Overrides for Parameter.type, the language-neutral type name. A generator knows the standard set ('string', 'int', 'double', …) on its own; only what it cannot know is stated here, e.g. 'money.Money' to 'com.acme.money.Money'."/>
+        <details key="documentation" value="Overrides for Parameter.type, the language-neutral type name, and the names of declared errors (ServiceException.type). A generator knows the standard set ('string', 'int', 'double', …) on its own; only what it cannot know is stated here, e.g. 'money.Money' to 'com.acme.money.Money'. An entry is asked BEFORE the standard set, for a parameter and a return value alike, so it may also say that a standard name is something else in this binding. It decides how a slot is written in the generated code and nothing about how its value travels."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="packageMappings" upperBound="-1"
@@ -2048,7 +2048,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="target" lowerBound="1"
         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="The type name emitted for it, qualified as the target language needs it."/>
+        <details key="documentation" value="The type name emitted for it, qualified as the target language needs it. Java: the fully qualified class name ('java.time.Instant'); the generator imports it and writes the simple name. TypeScript: the type name, with the module in front where it has to be imported ('@acme/money#Money'); a name without a module ('Date') is written as it stands."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="generated" lowerBound="1"
@@ -2087,12 +2087,12 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TypeScriptBinding" eSuperTypes="#//LanguageBinding">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="TypeScript rendering: targetPackage is the module path. Carries no language specifics yet — it exists so a template can dispatch on the binding type, and gains attributes when the TypeScript generator does."/>
+      <details key="documentation" value="TypeScript rendering: targetPackage is the npm name of the generated package. It has no attributes of its own and needs none — targetPackage, fileHeader, typeMappings and packageMappings from LanguageBinding are all the TypeScript generator reads. The class exists so that a binding document says which language it is for."/>
     </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="PythonBinding" eSuperTypes="#//LanguageBinding">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="Python rendering: targetPackage is the module. Same as TypeScriptBinding — a discriminator today, attributes when its generator arrives."/>
+      <details key="documentation" value="Python rendering: targetPackage is the module. There is no Python generator yet; like TypeScriptBinding it says which language a binding document is for, and gains attributes only if that generator turns out to need some."/>
     </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Argument">

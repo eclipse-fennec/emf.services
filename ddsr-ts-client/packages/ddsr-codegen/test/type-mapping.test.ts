@@ -91,3 +91,30 @@ describe('the binding is asked before the standard set (#185)', () => {
     expect(mapType('duration', mappings)).toEqual({ text: 'unknown' });
   });
 });
+
+describe('how a value arrives is said in the signature (Parameter.delivery)', () => {
+  const contract = (delivery: 'VALUE' | 'PROMISE' | 'STREAM') => {
+    const factory = DDSRFactory.eINSTANCE;
+    const serviceInterface = factory.createServiceInterface();
+    serviceInterface.name = 'Sensor';
+    const operation = factory.createServiceOperation();
+    operation.name = 'readings';
+    const result = factory.createParameter();
+    result.name = 'result';
+    result.type = 'double';
+    if (delivery === 'STREAM') result.upperBound = -1;
+    result.delivery = delivery;
+    operation.returnValue = result;
+    serviceInterface.operations.push(operation);
+    return serviceInterface;
+  };
+
+  it('a stream is iterated, not awaited', () => {
+    expect(emitConsumer(contract('STREAM')).content).toContain('readings(): AsyncIterable<number>;');
+  });
+
+  it('a promise is what every call already is in this language', () => {
+    expect(emitConsumer(contract('PROMISE')).content).toContain('readings(): Promise<number>;');
+    expect(emitConsumer(contract('VALUE')).content).toContain('readings(): Promise<number>;');
+  });
+});

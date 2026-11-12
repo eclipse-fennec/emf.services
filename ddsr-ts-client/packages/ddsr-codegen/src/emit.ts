@@ -168,7 +168,12 @@ export function emitConsumer(serviceInterface: ServiceInterface, binding: Bindin
       return `@throws {${className ?? 'DdsrServiceError'}} ${raised.description ?? raised.name ?? ''}`.trimEnd();
     });
 
-    return `${doc(operation.description, '  ', [...parameterDocs(operation), ...throws])}  ${method}(${parameters.join(', ')}): Promise<${returned.text === 'void' ? 'void' : returned.text}>;`;
+    // Every call is a Promise here, a promised return value included -
+    // PROMISE says nothing this language does not already say. A stream
+    // is the one thing that is not awaited: it is iterated.
+    const answer = isStream(operation.returnValue)
+      ? returned.text : `Promise<${returned.text === 'void' ? 'void' : returned.text}>`;
+    return `${doc(operation.description, '  ', [...parameterDocs(operation), ...throws])}  ${method}(${parameters.join(', ')}): ${answer};`;
   });
 
   const classes = [...raisedClasses.values()].sort();
@@ -319,7 +324,8 @@ export function emitProvider(serviceInterface: ServiceInterface, binding: Bindin
       imports.add(mapped);
       return `${identifier(parameter.name, 'arg')}${parameter.optional === true ? '?' : ''}: ${mapped.text}`;
     });
-    const result = returned.text === 'void' ? 'void | Promise<void>' : `${returned.text} | Promise<${returned.text}>`;
+    const result = isStream(operation.returnValue) ? returned.text
+      : returned.text === 'void' ? 'void | Promise<void>' : `${returned.text} | Promise<${returned.text}>`;
     return `${doc(operation.description, '  ', parameterDocs(operation))}  ${method}(${parameters.join(', ')}): ${result};`;
   });
 
@@ -477,6 +483,10 @@ function buildSlot(local: string, slot: Parameter, at: number): string[] {
     ...assign(local, 'defaultValue', slot.defaultValue),
     ...(lower !== 1 ? [`  ${local}.lowerBound = ${lower};`] : []),
     ...(upper !== 1 ? [`  ${local}.upperBound = ${upper};`] : []),
+    // Only where it says something: VALUE is the default, and a contract
+    // rebuilt from this file has to hash to the fingerprint beside it.
+    ...(slot.delivery && String(slot.delivery) !== 'VALUE'
+      ? [`  ${local}.delivery = ${quote(String(slot.delivery))};`] : []),
     ...(uri !== undefined ? [`  ${local}.eType = eTypeProxy(${quote(uri)});`] : []),
   ];
 }
@@ -494,9 +504,19 @@ function slotType(slot: Parameter | undefined, binding: Binding): MappedType {
   if (!slot) return { text: 'void' };
   const uri = eTypeUri(slot.eType);
   const mapped = uri !== undefined ? mapEType(uri, binding.packageMappings) : mapType(slot.type, binding.typeMappings);
+  // A stream (Parameter.delivery) is values one after the other, not an
+  // array that arrives complete: an AsyncIterable of the element type,
+  // which is what a caller writes `for await` over. Where java-types.mtl
+  // writes a stream holder, this writes the language's own.
+  if (isStream(slot)) return { ...mapped, text: `AsyncIterable<${mapped.text}>` };
   const upper = boundOf(slot.upperBound);
   const many = upper === -1 || upper > 1;
   return many && !mapped.text.endsWith('[]') ? { ...mapped, text: `${mapped.text}[]` } : mapped;
+}
+
+/** Whether a slot's values arrive as a stream. */
+function isStream(slot: Parameter | undefined): boolean {
+  return String(slot?.delivery ?? '') === 'STREAM';
 }
 
 /** A bound as a number; absent means the model default of 1. */

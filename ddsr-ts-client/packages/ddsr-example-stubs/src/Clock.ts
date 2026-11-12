@@ -17,16 +17,27 @@ import { serviceProxy } from '@ddsr/client';
 import type { DdsrConsumer } from '@ddsr/client';
 
 /**
- * Tells the time. Exercises the one thing the other example contracts
- * do not have: a slot whose language-neutral type is outside the
- * standard set, so that what it is in a language is the binding's to
- * say.
+ * Tells the time. Exercises what the other example contracts do not
+ * have: a slot whose language-neutral type is outside the standard
+ * set, so that what it is in a language is the binding's to say — and
+ * the three ways a value can arrive: at once, later, and as a stream.
  */
 export interface Clock {
   /**
    * The current instant.
    */
   now(): Promise<Date>;
+
+  /**
+   * The instant at which the clock got round to answering.
+   */
+  soon(): Promise<Date>;
+
+  /**
+   * Every tick, for as long as anyone listens.
+   * @param everyMillis How far apart the ticks are.
+   */
+  ticks(everyMillis: number): AsyncIterable<Date>;
 
   /**
    * Milliseconds from one instant to another.
@@ -48,7 +59,7 @@ export const ClockVersion = '1.0.0';
  * hashes to exactly this - compatibility by identity, so a provider
  * that changed its operations is not called with these signatures.
  */
-export const ClockFingerprint = 'sd1:4b8cfb4583f4d030711e700d2f29155aaba2e10c8682c64d27298c809850cb79';
+export const ClockFingerprint = 'sd1:7d41a49a5c38ca57e35cb235612c6c3c08f2d6be66aa83f996801ee4ddb7809c';
 
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker

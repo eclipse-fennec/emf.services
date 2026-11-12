@@ -49,7 +49,10 @@ function signature(operation: string, rows: Pin[]): string {
   const parameters = rows
     .filter(pin => pin.slot !== 'return' && pin.slot !== 'throws')
     .map(pin => `${pin.slot}${pin.optional ? '?' : ''}: ${pin.typescript}`);
-  return `${operation}(${parameters.join(', ')}): Promise<${returned}>;`;
+  // Every call is a Promise in this language; a stream is the one
+  // return value that is iterated instead of awaited.
+  const answer = returned.startsWith('AsyncIterable<') ? returned : `Promise<${returned}>`;
+  return `${operation}(${parameters.join(', ')}): ${answer};`;
 }
 
 function byOperation(): Pin[][] {

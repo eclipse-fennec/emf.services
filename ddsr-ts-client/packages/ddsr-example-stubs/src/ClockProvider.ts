@@ -17,10 +17,10 @@ import { DDSRFactory } from '@ddsr/model';
 import type { ServiceInterface } from '@ddsr/model';
 
 /**
- * Tells the time. Exercises the one thing the other example contracts
- * do not have: a slot whose language-neutral type is outside the
- * standard set, so that what it is in a language is the binding's to
- * say.
+ * Tells the time. Exercises what the other example contracts do not
+ * have: a slot whose language-neutral type is outside the standard
+ * set, so that what it is in a language is the binding's to say — and
+ * the three ways a value can arrive: at once, later, and as a stream.
  * The implementation side of Clock. Every operation
  * the catalog declares has to be here; a return value may be a
  * promise or not.
@@ -32,6 +32,17 @@ export interface ClockImplementation {
   now(): Date | Promise<Date>;
 
   /**
+   * The instant at which the clock got round to answering.
+   */
+  soon(): Date | Promise<Date>;
+
+  /**
+   * Every tick, for as long as anyone listens.
+   * @param everyMillis How far apart the ticks are.
+   */
+  ticks(everyMillis: number): AsyncIterable<Date>;
+
+  /**
    * Milliseconds from one instant to another.
    * @param from Where to count from.
    * @param to Where to count to; now when left out.
@@ -40,7 +51,7 @@ export interface ClockImplementation {
 }
 
 /** The operation names, for wiring a transport that dispatches by name. */
-export const ClockOperationNames = ['now', 'between'] as const;
+export const ClockOperationNames = ['now', 'soon', 'ticks', 'between'] as const;
 
 /**
  * The contract as a model object, exactly as the catalog has it.
@@ -52,7 +63,7 @@ export function buildClockInterface(): ServiceInterface {
   const serviceInterface = factory.createServiceInterface();
   serviceInterface.name = 'Clock';
   serviceInterface.version = '1.0.0';
-  serviceInterface.description = 'Tells the time. Exercises the one thing the other example contracts do not have: a slot whose language-neutral type is outside the standard set, so that what it is in a language is the binding\'s to say.';
+  serviceInterface.description = 'Tells the time. Exercises what the other example contracts do not have: a slot whose language-neutral type is outside the standard set, so that what it is in a language is the binding\'s to say — and the three ways a value can arrive: at once, later, and as a stream.';
 
   const operation0 = factory.createServiceOperation();
   operation0.name = 'now';
@@ -64,25 +75,51 @@ export function buildClockInterface(): ServiceInterface {
   serviceInterface.operations.push(operation0);
 
   const operation1 = factory.createServiceOperation();
-  operation1.name = 'between';
-  operation1.description = 'Milliseconds from one instant to another.';
+  operation1.name = 'soon';
+  operation1.description = 'The instant at which the clock got round to answering.';
   const operation1Result = factory.createParameter();
   operation1Result.name = 'result';
-  operation1Result.type = 'long';
+  operation1Result.type = 'instant';
+  operation1Result.delivery = 'PROMISE';
   operation1.returnValue = operation1Result;
-  const operation1Parameter0 = factory.createParameter();
-  operation1Parameter0.name = 'from';
-  operation1Parameter0.type = 'instant';
-  operation1Parameter0.description = 'Where to count from.';
-  operation1.parameters.push(operation1Parameter0);
-  const operation1Parameter1 = factory.createParameter();
-  operation1Parameter1.name = 'to';
-  operation1Parameter1.type = 'instant';
-  operation1Parameter1.description = 'Where to count to; now when left out.';
-  operation1Parameter1.index = 1;
-  operation1Parameter1.optional = true;
-  operation1.parameters.push(operation1Parameter1);
   serviceInterface.operations.push(operation1);
+
+  const operation2 = factory.createServiceOperation();
+  operation2.name = 'ticks';
+  operation2.description = 'Every tick, for as long as anyone listens.';
+  const operation2Result = factory.createParameter();
+  operation2Result.name = 'result';
+  operation2Result.type = 'instant';
+  operation2Result.upperBound = -1;
+  operation2Result.delivery = 'STREAM';
+  operation2.returnValue = operation2Result;
+  const operation2Parameter0 = factory.createParameter();
+  operation2Parameter0.name = 'everyMillis';
+  operation2Parameter0.type = 'long';
+  operation2Parameter0.description = 'How far apart the ticks are.';
+  operation2.parameters.push(operation2Parameter0);
+  serviceInterface.operations.push(operation2);
+
+  const operation3 = factory.createServiceOperation();
+  operation3.name = 'between';
+  operation3.description = 'Milliseconds from one instant to another.';
+  const operation3Result = factory.createParameter();
+  operation3Result.name = 'result';
+  operation3Result.type = 'long';
+  operation3.returnValue = operation3Result;
+  const operation3Parameter0 = factory.createParameter();
+  operation3Parameter0.name = 'from';
+  operation3Parameter0.type = 'instant';
+  operation3Parameter0.description = 'Where to count from.';
+  operation3.parameters.push(operation3Parameter0);
+  const operation3Parameter1 = factory.createParameter();
+  operation3Parameter1.name = 'to';
+  operation3Parameter1.type = 'instant';
+  operation3Parameter1.description = 'Where to count to; now when left out.';
+  operation3Parameter1.index = 1;
+  operation3Parameter1.optional = true;
+  operation3.parameters.push(operation3Parameter1);
+  serviceInterface.operations.push(operation3);
   return serviceInterface;
 }
 

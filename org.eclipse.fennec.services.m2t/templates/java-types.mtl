@@ -85,19 +85,50 @@ one, otherwise the last segment of the symbolic name in the target package.
 
 [comment]===================== types =====================[/comment]
 
+[comment]
+A return value that is promised (Parameter.delivery = PROMISE) renders as a
+holder of what it would otherwise be: the method returns at once, the value
+later. A void operation has nothing to promise.
+[/comment]
 [query public returnType(binding : JavaBinding, operation : ServiceOperation) : String =
 	if operation.returnValue.oclIsUndefined() then 'void'
-	else slotType(binding, operation.returnValue) endif /]
+	else if operation.returnValue.delivery = Delivery::PROMISE
+		then simpleName(holderType(binding, 'promise')).concat('<')
+			.concat(boxed(slotType(binding, operation.returnValue))).concat('>')
+	else slotType(binding, operation.returnValue) endif endif /]
 
 [comment]
 A slot renders as its element type, or as a List of it when multi-valued.
 An OPTIONAL slot is one that may be absent, so its Java type has to be able
 to say so: a primitive cannot be null, and the boxed type takes its place.
+
+A slot that is a stream (Parameter.delivery = STREAM) renders as a stream of
+its element type — values one after the other, not a List that arrives
+complete. It applies to an argument as to a return value.
 [/comment]
 [query public slotType(binding : JavaBinding, slot : Parameter) : String =
-	if slot.upperBound <> 1 then 'List<'.concat(boxed(elementType(binding, slot))).concat('>')
+	if slot.delivery = Delivery::STREAM
+		then simpleName(holderType(binding, 'stream')).concat('<').concat(boxed(elementType(binding, slot))).concat('>')
+	else if slot.upperBound <> 1 then 'List<'.concat(boxed(elementType(binding, slot))).concat('>')
 	else if slot.optional then boxed(elementType(binding, slot))
-	else elementType(binding, slot) endif endif /]
+	else elementType(binding, slot) endif endif endif /]
+
+[comment]
+What a promise and a stream are called in this binding. The model says THAT
+a value comes later or over time; which Java type says so is the binding's,
+stated with the mechanism it already has — a typeMapping for the neutral
+names 'promise' and 'stream':
+
+  <typeMappings neutralType="stream"  target="org.osgi.util.pushstream.PushStream"/>
+  <typeMappings neutralType="promise" target="org.osgi.util.promise.Promise"/>
+
+Without one the JDK's own types are used, which need no dependency:
+java.util.concurrent.Flow.Publisher and java.util.concurrent.CompletionStage.
+[/comment]
+[query public holderType(binding : JavaBinding, kind : String) : String =
+	if isMapped(binding, kind) then mappingTarget(binding, kind)
+	else if kind = 'stream' then 'java.util.concurrent.Flow.Publisher'
+	else 'java.util.concurrent.CompletionStage' endif endif /]
 
 [comment]
 The same slot as a transport layer has to read it: always able to be absent,
@@ -191,7 +222,16 @@ its suffix, a string its quotes, a string list becomes List.of(...).
 		->collect(e | exceptionType(binding, e))->asSequence() /]
 
 [query public slotImports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
-	slots(service)->collect(s | qualifiedType(binding, s))->asSequence() /]
+	slots(service)->collect(s | qualifiedType(binding, s))->asSequence()
+		->union(holderImports(binding, service)) /]
+
+[comment]The holder types of the slots that are streams or promised.[/comment]
+[query public holderImports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
+	(if slots(service)->exists(s | s.delivery = Delivery::STREAM)
+		then Sequence{holderType(binding, 'stream')} else Sequence{} endif)
+	->union(if service.operations->collect(o | o.returnValue)->reject(s | s.oclIsUndefined())
+			->exists(s | s.delivery = Delivery::PROMISE)
+		then Sequence{holderType(binding, 'promise')} else Sequence{} endif) /]
 
 [query public slots(service : ServiceInterface) : Sequence(Parameter) =
 	service.operations->collect(o | o.parameters)
@@ -215,7 +255,7 @@ set.
 		else '' endif endif endif /]
 
 [query public listImport(service : ServiceInterface) : Sequence(String) =
-	if slots(service)->exists(s | s.upperBound <> 1)
+	if slots(service)->exists(s | s.upperBound <> 1 and s.delivery <> Delivery::STREAM)
 	then Sequence{'java.util.List'} else Sequence{} endif /]
 
 [query public apiAnnotation(binding : JavaBinding) : String =

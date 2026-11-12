@@ -73,6 +73,28 @@ as it stands. A mapping says how the slot is written, not how its value
 travels: the wire carries what the properties of an invocation can
 carry.
 
+How the value arrives is the contract's to say (`Parameter.delivery`)
+and the binding's to name:
+
+| `delivery` | Java | TypeScript |
+| --- | --- | --- |
+| `VALUE` (default) | the type itself, `List<T>` when multi-valued | `Promise<T>` — every call is one |
+| `PROMISE` (return value only) | `CompletionStage<T>` | `Promise<T>`, as for a value |
+| `STREAM` (return value or argument) | `Flow.Publisher<T>` | `AsyncIterable<T>` |
+
+The Java types are the JDK's and need no dependency. A binding that
+wants others names them with the mechanism it has — a `typeMapping`
+for the neutral names `promise` and `stream`:
+
+```xml
+<typeMappings neutralType="stream"  target="org.osgi.util.pushstream.PushStream"/>
+<typeMappings neutralType="promise" target="org.osgi.util.promise.Promise"/>
+```
+
+Generated code states the signature. No transport carries a stream
+yet, so calling such an operation fails with a message naming the slot
+(see [Remote Service Admin](RSA.md#streams)).
+
 Generation is again a bnd instruction, with the generator `fennecM2T`.
 One caveat worth knowing before you add a second one: the fileset in
 front of the attributes is the *key* of the instruction, so two

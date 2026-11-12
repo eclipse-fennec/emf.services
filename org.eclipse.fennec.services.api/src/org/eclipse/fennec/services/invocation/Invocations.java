@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.Argument;
 import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.Diagnostic;
@@ -163,6 +164,17 @@ public final class Invocations {
 		diagnostic.setMessage(message);
 		diagnostic.setCode(code);
 		result.setDiagnostic(diagnostic);
+		return result;
+	}
+
+	/**
+	 * An answer that failed, with the Diagnostic the operation returned
+	 * for it — its code is what tells a caller which declared error
+	 * this is. A copy: the Diagnostic may belong to whoever returned it.
+	 */
+	public static ServiceInvocationResult failure(Diagnostic diagnostic) {
+		ServiceInvocationResult result = FACTORY.createServiceInvocationResult();
+		result.setDiagnostic(EcoreUtil.copy(diagnostic));
 		return result;
 	}
 

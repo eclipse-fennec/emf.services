@@ -31,11 +31,13 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.DdsrServiceException;
 import org.eclipse.fennec.services.client.InvokerProvider;
 import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
+import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.propertytypes.ServiceDescription;
@@ -139,6 +141,47 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				// toString / hashCode / equals on the proxy itself.
 				return handleObjectMethod(method, args);
 			}
+			try {
+				return call(method, args);
+			} catch (DdsrServiceException declared) {
+				throw asDeclared(method, declared);
+			}
+		}
+
+		/**
+		 * A declared error as the exception the method declares for it.
+		 *
+		 * <p>The contract names its errors symbolically; the interface this
+		 * proxy implements was generated from that contract, so the method
+		 * declares a class named after the error. A caller written against
+		 * the interface catches that class — an unchecked
+		 * {@link DdsrServiceException} would go past its {@code catch}.
+		 * Where the method declares no such class, or the class cannot be
+		 * built from a message, the error stays what it is.
+		 */
+		private static Throwable asDeclared(Method method, DdsrServiceException declared) {
+			for (Class<?> type : method.getExceptionTypes()) {
+				if (!DeclaredErrors.named(type, declared.declared())) {
+					continue;
+				}
+				try {
+					return (Throwable) type.getConstructor(String.class, Throwable.class)
+							.newInstance(declared.getMessage(), declared);
+				} catch (ReflectiveOperationException noSuchConstructor) {
+					try {
+						Throwable built = (Throwable) type.getConstructor(String.class)
+								.newInstance(declared.getMessage());
+						built.initCause(declared);
+						return built;
+					} catch (ReflectiveOperationException | IllegalStateException unbuildable) {
+						return declared;
+					}
+				}
+			}
+			return declared;
+		}
+
+		private Object call(Method method, Object[] args) {
 			Map<String, Object> argMap = buildArgMap(method, args);
 			Object result;
 			try {

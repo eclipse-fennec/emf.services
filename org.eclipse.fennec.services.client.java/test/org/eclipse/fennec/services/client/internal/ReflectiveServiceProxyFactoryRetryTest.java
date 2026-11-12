@@ -27,10 +27,12 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.DdsrServiceException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
@@ -178,5 +180,59 @@ class ReflectiveServiceProxyFactoryRetryTest {
 
 		assertThatThrownBy(() -> proxy(invoker, plain).getBalance("acc-1")).isInstanceOf(DdsrException.class);
 		assertThat(invoker.calls).isEqualTo(1);
+	}
+
+	/** What the generated interface declares for the contract's 'AccountUnknown'. */
+	public static class AccountUnknownException extends Exception {
+		private static final long serialVersionUID = 1L;
+
+		public AccountUnknownException(String message) {
+			super(message);
+		}
+	}
+
+	/** The same contract, as an interface that declares its error. */
+	interface CheckedPayment {
+		double getBalance(String accountId) throws AccountUnknownException;
+	}
+
+	private static DdsrServiceException accountUnknown() {
+		ServiceException declared = ServicesFactory.eINSTANCE.createServiceException();
+		declared.setName("AccountUnknown");
+		declared.setType("payment.AccountUnknown");
+		return new DdsrServiceException("no account acc-1", declared, 404);
+	}
+
+	/**
+	 * #185: a caller written against the interface catches the class the
+	 * method declares — an unchecked exception would go past its catch.
+	 */
+	@Test
+	void aDeclaredErrorIsThrownAsTheExceptionTheMethodDeclares() {
+		ScriptedInvoker invoker = new ScriptedInvoker();
+		DdsrServiceException answered = accountUnknown();
+		invoker.failures.add(answered);
+		ScriptedLocator locator = new ScriptedLocator();
+		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
+		InvokerRegistry invokers = new InvokerRegistry();
+		factory.invokers = invokers;
+		invokers.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+		CheckedPayment payment = factory.newProxy(CheckedPayment.class, locator);
+
+		assertThatThrownBy(() -> payment.getBalance("acc-1"))
+				.isInstanceOf(AccountUnknownException.class)
+				.hasMessage("no account acc-1")
+				.hasCause(answered);
+		assertThat(invoker.calls).as("a declared error is an answer, not a reason to ask again").isEqualTo(1);
+		assertThat(locator.rebindCalls).isEmpty();
+	}
+
+	@Test
+	void whereTheMethodDeclaresNothingTheDeclaredErrorStaysWhatItIs() {
+		ScriptedInvoker invoker = new ScriptedInvoker();
+		DdsrServiceException answered = accountUnknown();
+		invoker.failures.add(answered);
+
+		assertThatThrownBy(() -> proxy(invoker, new ScriptedLocator()).getBalance("acc-1")).isSameAs(answered);
 	}
 }

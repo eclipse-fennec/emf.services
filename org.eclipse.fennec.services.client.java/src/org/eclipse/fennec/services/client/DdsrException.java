@@ -39,6 +39,13 @@ public class DdsrException extends RuntimeException {
 		this.transportFailure = false;
 	}
 
+	/** A failure with words of its own, and the Diagnostic it was read from. */
+	protected DdsrException(String message, Diagnostic diagnostic) {
+		super(message);
+		this.diagnostic = diagnostic;
+		this.transportFailure = false;
+	}
+
 	private DdsrException(String message, Throwable cause, boolean transportFailure) {
 		super(message, cause);
 		this.diagnostic = null;

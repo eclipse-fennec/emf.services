@@ -145,7 +145,9 @@ build). The export jars are deleted before the export: the bnd export
 does not track cross-project bundle changes and would otherwise embed
 stale bundles. Logs land in `itest/work/` and `itest/work-podman/`
 respectively (gitignored); on a timeout a thread dump is additionally
-shot into the saved container log.
+shot into the saved container log (`<container>.timeout.log`), and a
+podman run that fails saves the log of every container it started
+(`<container>.failed.log`) before removing them.
 
 ## Container images (`containers/`)
 

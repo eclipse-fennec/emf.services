@@ -25,6 +25,19 @@ log() { printf '\n=== %s ===\n' "$*"; }
 now_ms() { date +%s%3N; }
 
 cleanup() {
+  local rc=$?
+  # A run that fails takes its containers with it, and with them the one
+  # log that says why. Keep every log before removing anything; a
+  # container a wait already dumped keeps that file (it has the thread
+  # dump in it).
+  if [ "$rc" -ne 0 ] && [ -d "$WORK" ]; then
+    for c in "${CONTAINERS[@]:-}"; do
+      [ -n "$c" ] || continue
+      [ -e "$WORK/$c.timeout.log" ] && continue
+      podman logs "$c" >"$WORK/$c.failed.log" 2>&1 || rm -f "$WORK/$c.failed.log"
+    done
+    echo "container logs of the failed run: $WORK/*.failed.log, *.timeout.log" >&2
+  fi
   for c in "${CONTAINERS[@]:-}"; do
     podman rm -f "$c" >/dev/null 2>&1 || true
   done
@@ -32,8 +45,20 @@ cleanup() {
 }
 trap cleanup EXIT
 
-wait_for_url() { # url timeout_s
-  local url="$1" timeout="${2:-60}" waited=0
+# Thread dump into the container's log, then the log into the work
+# directory and its end onto stderr — the file is gone with a CI runner,
+# its end is what the job log can show.
+dump_container() { # container
+  local container="$1"
+  podman exec "$container" kill -3 1 >/dev/null 2>&1 || true
+  sleep 2
+  podman logs "$container" >"$WORK/$container.timeout.log" 2>&1 || true
+  echo "full log: $WORK/$container.timeout.log" >&2
+  tail -40 "$WORK/$container.timeout.log" >&2 || true
+}
+
+wait_for_url() { # url timeout_s [container that should be answering]
+  local url="$1" timeout="${2:-60}" container="${3:-}" waited=0
   until curl_broker -sf -o /dev/null "$url"; do
     sleep 0.5
     waited=$((waited + 1))
@@ -42,6 +67,9 @@ wait_for_url() { # url timeout_s
     # script exactly when the wait SUCCEEDS.
     if [ "$waited" -ge $((timeout * 2)) ]; then
       echo "TIMEOUT waiting for $url" >&2
+      if [ -n "$container" ]; then
+        dump_container "$container"
+      fi
       return 1
     fi
   done
@@ -63,13 +91,7 @@ wait_for_log() { # container pattern timeout_s
     waited=$((waited + 1))
     if [ "$waited" -ge $((timeout * 2)) ]; then
       echo "TIMEOUT waiting for '$pattern' in $container" >&2
-      # thread dump into the log before capturing it
-      podman exec "$container" kill -3 1 >/dev/null 2>&1 || true
-      sleep 2
-      podman logs "$container" >"$WORK/$container.timeout.log" 2>&1 || true
-      echo "full log: $WORK/$container.timeout.log" >&2
-      # The file is gone with the runner; its end is what a CI log can show.
-      tail -40 "$WORK/$container.timeout.log" >&2 || true
+      dump_container "$container"
       return 1
     fi
   done
@@ -141,7 +163,7 @@ fi
 # one NAME=value per line, none of them with a space.
 # shellcheck disable=SC2046
 run_container ddsr-broker ddsr/broker $(broker_auth_args)
-wait_for_url "$BROKER_URL/catalog" 60
+wait_for_url "$BROKER_URL/catalog" 60 ddsr-broker
 wait_for_broker_contracts
 if secured; then
   ANON_STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$BROKER_URL/catalog")
@@ -280,7 +302,7 @@ log "Scenario D: Java MQTT wire proof (broker sink + client source over mosquitt
 podman rm -f ddsr-client-java ddsr-broker >/dev/null 2>&1 || true
 # shellcheck disable=SC2046
 run_container ddsr-broker-mqtt ddsr/broker $(broker_auth_args) -e DDSR_MQTT_URL=tcp://localhost:1883
-wait_for_url "$BROKER_URL/catalog" 60
+wait_for_url "$BROKER_URL/catalog" 60 ddsr-broker-mqtt
 wait_for_broker_contracts
 wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883" 60
 

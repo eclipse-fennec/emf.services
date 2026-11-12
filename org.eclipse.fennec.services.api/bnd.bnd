@@ -27,4 +27,5 @@ Bundle-Description: \
 	junit-platform-launcher;version=latest,\
 	org.osgi.util.promise;version=latest,\
 	org.osgi.util.function;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
 	jakarta.annotation-api;version=latest

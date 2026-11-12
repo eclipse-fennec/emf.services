@@ -30,6 +30,7 @@ import org.eclipse.fennec.services.DoubleProperty;
 import org.eclipse.fennec.services.FloatProperty;
 import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.LongProperty;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.SecurityRequirement;
@@ -235,7 +236,8 @@ public final class ServiceDescriptionFingerprint {
 
 	static String parameterExtensions(Parameter parameter) {
 		String uri = eTypeUri(parameter.getEType());
-		return (uri != null ? "|eType=" + esc(uri) : "") + boundFields(parameter, "lower", "upper");
+		return (uri != null ? "|eType=" + esc(uri) : "") + boundFields(parameter, "lower", "upper")
+				+ deliveryField(parameter, "delivery");
 	}
 
 	/** The same fields for the return slot, under {@code return…} names. */
@@ -246,7 +248,21 @@ public final class ServiceDescriptionFingerprint {
 		String uri = eTypeUri(returnValue.getEType());
 		return (uri != null ? "|returnEType=" + esc(uri) : "")
 				+ boundFields(returnValue, "returnLower", "returnUpper")
-				+ (returnValue.isOptional() ? "|returnOptional=true" : "");
+				+ (returnValue.isOptional() ? "|returnOptional=true" : "")
+				+ deliveryField(returnValue, "returnDelivery");
+	}
+
+	/**
+	 * How a slot's value arrives, and ONLY where that changes what is
+	 * exchanged: a {@link Delivery#STREAM}. {@code VALUE} is the default
+	 * and renders nothing, by the extension rule. {@code PROMISE} renders
+	 * nothing either, on purpose — it says when one value comes and not
+	 * what it is, so a contract read synchronously and one read as a
+	 * promise are the same contract. The TypeScript twin is
+	 * {@code deliveryField} in service-description-fingerprint.ts.
+	 */
+	static String deliveryField(Parameter slot, String name) {
+		return slot.getDelivery() == Delivery.STREAM ? "|" + name + "=STREAM" : "";
 	}
 
 	/**

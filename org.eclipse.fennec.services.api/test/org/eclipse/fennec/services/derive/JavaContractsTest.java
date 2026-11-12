@@ -18,8 +18,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 import java.util.concurrent.Future;
 
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -27,6 +29,7 @@ import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.junit.jupiter.api.Test;
 import org.osgi.util.promise.Promise;
+import org.osgi.util.pushstream.PushStream;
 
 /**
  * What a Java interface says, read as a contract.
@@ -102,9 +105,56 @@ class JavaContractsTest {
         ServiceInterface later = JavaContracts.contractOf(LaterPayment.class, "1.0.0");
 
         assertThat(operation(later, "charge").getReturnValue().getType()).isEqualTo("double");
+        assertThat(operation(later, "charge").getReturnValue().getDelivery())
+                .as("said in the contract, for whoever generates code or sets a timeout")
+                .isEqualTo(Delivery.PROMISE);
         assertThat(operation(later, "getBalance").getReturnValue().getType()).isEqualTo("double");
         assertThat(operation(later, "cancel").getReturnValue())
                 .as("a holder of Void returns nothing").isNull();
+    }
+
+    /** Values that arrive over time, in both directions. */
+    interface Sensor {
+        PushStream<Double> readings(String sensorId);
+
+        Flow.Publisher<Double> flow(String sensorId);
+
+        void feed(String sensorId, PushStream<Double> samples);
+
+        List<Double> history(String sensorId);
+    }
+
+    interface StreamOfWhat {
+        @SuppressWarnings("rawtypes")
+        PushStream anything();
+    }
+
+    /**
+     * Parameter.delivery: a stream is a slot whose values come one after
+     * the other. PushStream and the JDK's Flow.Publisher both say so, on
+     * a return value and on an argument alike — and a list, which
+     * arrives complete, is not one.
+     */
+    @Test
+    void aStreamIsAStreamInTheContractWhicheverJavaTypeSaysSo() {
+        ServiceInterface sensor = JavaContracts.contractOf(Sensor.class, "1.0.0");
+
+        for (String operation : new String[] { "readings", "flow" }) {
+            Parameter result = operation(sensor, operation).getReturnValue();
+            assertThat(result.getDelivery()).as(operation).isEqualTo(Delivery.STREAM);
+            assertThat(result.getType()).as(operation).isEqualTo("double");
+            assertThat(result.getUpperBound()).as("a stream is unbounded").isEqualTo(-1);
+        }
+        Parameter samples = operation(sensor, "feed").getParameters().get(1);
+        assertThat(samples.getDelivery()).as("a stream the caller hands over").isEqualTo(Delivery.STREAM);
+        assertThat(operation(sensor, "history").getReturnValue().getDelivery())
+                .as("a list arrives complete").isEqualTo(Delivery.VALUE);
+    }
+
+    @Test
+    void aStreamHasToSayWhatFlowsInIt() {
+        assertThatThrownBy(() -> JavaContracts.contractOf(StreamOfWhat.class, "1.0.0"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("stream");
     }
 
     @Test

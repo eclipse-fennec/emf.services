@@ -5,6 +5,11 @@
     "service.exported.configs": "$[env:RSA_EXPORT_CONFIGS;default=fennec.rest]",
     "ddsr.provider.name": "rsa-example"
   },
+  "org.eclipse.fennec.services.examples.rsa.ticker": {
+    "service.exported.interfaces": "*",
+    "service.exported.configs": "$[env:RSA_EXPORT_CONFIGS;default=fennec.rest]",
+    "ddsr.provider.name": "rsa-example"
+  },
   "org.eclipse.fennec.services.examples.rsa.ledger": {
     "service.exported.interfaces": "*",
     "service.exported.configs": "$[env:RSA_EXPORT_CONFIGS;default=fennec.rest]",

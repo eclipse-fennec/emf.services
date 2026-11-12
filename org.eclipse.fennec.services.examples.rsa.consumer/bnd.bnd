@@ -12,4 +12,5 @@ Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
 	org.osgi.service.component.annotations;version=latest,\
 	org.eclipse.fennec.services.examples.rsa.api;version=snapshot,\
 	org.osgi.util.promise;version=latest,\
-	org.osgi.util.function;version=latest
+	org.osgi.util.function;version=latest,\
+	org.osgi.util.pushstream;version=latest

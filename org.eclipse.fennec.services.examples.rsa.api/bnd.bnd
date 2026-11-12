@@ -11,7 +11,8 @@ Bundle-Description: \
 -buildpath: \
 	jakarta.annotation-api;version=latest,\
 	org.osgi.util.promise;version=latest,\
-	org.osgi.util.function;version=latest
+	org.osgi.util.function;version=latest,\
+	org.osgi.util.pushstream;version=latest
 
 Import-Package: \
 	jakarta.annotation.security;version="[2.1,4)",\

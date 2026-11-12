@@ -433,6 +433,10 @@ wait_for_log ddsr-rsa-import "RSA-Consumer" 150
 # The Greeter's third method returns a Promise (osgi.async): the call
 # comes back first, the greeting later.
 wait_for_log ddsr-rsa-import "greeted later:" 60
+# And the Ticker returns a stream (Parameter.delivery = STREAM): five
+# answers to one call and the one that ends them, taken from this
+# consumer's inbox on the reply tree the flavor names.
+wait_for_log ddsr-rsa-import "ticks .* the stream ended" 60
 
 podman logs ddsr-rsa-export >"$WORK/rsa-export.log" 2>&1
 podman logs ddsr-rsa-import >"$WORK/rsa-import.log" 2>&1
@@ -445,6 +449,9 @@ grep -q "asked to be greeted later — the call came back before the greeting" "
 grep -q "greeted later: Hello, RSA consumer, sorry to keep you waiting!" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the Promise never resolved"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
 echo "  ✓ promise-over-mqtt: the call came back before the greeting, and the greeting arrived"
+grep -q "ticks \[1, 2, 3, 4, 5\] — the stream ended" "$WORK/rsa-import.log" \
+  || { echo "SCENARIO I FAILED: the stream did not arrive whole and in order"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
+echo "  ✓ stream-over-mqtt: five values in order, and the end of the stream"
 # Two MQTT versions on one call (#138): the exporting node serves over
 # MQTT 5, the importing node calls over 3.1.1. The request's reply
 # address and correlation are in the envelope, which is why neither has
@@ -508,6 +515,9 @@ run_container ddsr-rsa-export-amqp ddsr/rsa-example $(client_args rsa-example) \
 wait_for_log ddsr-rsa-export-amqp "exported .* over AMQP" 150
 wait_for_log ddsr-rsa-import-amqp "RSA-Consumer" 150
 wait_for_log ddsr-rsa-import-amqp "greeted later:" 60
+# The same stream over AMQP, where the flavor names no place for
+# answers: the connection takes many answers to one request itself.
+wait_for_log ddsr-rsa-import-amqp "ticks .* the stream ended" 60
 
 podman logs ddsr-rsa-export-amqp >"$WORK/rsa-export-amqp.log" 2>&1
 podman logs ddsr-rsa-import-amqp >"$WORK/rsa-import-amqp.log" 2>&1
@@ -516,6 +526,9 @@ grep -q "greetings so far, none of them local" "$WORK/rsa-import-amqp.log" \
 grep -q "asked to be greeted later — the call came back before the greeting" "$WORK/rsa-import-amqp.log" \
   || { echo "SCENARIO R FAILED: the Promise was not returned before its value"; grep "RSA-Consumer" "$WORK/rsa-import-amqp.log"; exit 1; }
 echo "  ✓ promise-over-amqp: the call came back before the greeting, and the greeting arrived"
+grep -q "ticks \[1, 2, 3, 4, 5\] — the stream ended" "$WORK/rsa-import-amqp.log" \
+  || { echo "SCENARIO R FAILED: the stream did not arrive whole and in order"; grep "RSA-Consumer" "$WORK/rsa-import-amqp.log"; exit 1; }
+echo "  ✓ stream-over-amqp: five values in order, and the end of the stream"
 grep -q "under ddsr.rpc\." "$WORK/rsa-export-amqp.log" \
   || { echo "SCENARIO R FAILED: the export did not listen under a routing key"; cat "$WORK/rsa-export-amqp.log"; exit 1; }
 # The guarded Ledger is asked to be exported here too, and for the same

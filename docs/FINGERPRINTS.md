@@ -49,9 +49,9 @@ I|<name>|version=<version>|status=<literal>
   sec|authenticated=<bool>|scopes=<list>   only where the interface declares a requirement
   X|<name>|type=|version=            exceptions, sorted by name
     pr|<tag>|<name>|value=<value>      exception properties, sorted
-  O|<name>|returnType=<type>[|returnEType=][|returnLower=|returnUpper=][|returnOptional=true]
+  O|<name>|returnType=<type>[|returnEType=][|returnLower=|returnUpper=][|returnOptional=true][|returnDelivery=STREAM]
     sec|authenticated=<bool>|scopes=<list>   only where the operation declares one
-    p|<name>|type=|index=|optional=|defaultValue=[|eType=][|lower=|upper=]
+    p|<name>|type=|index=|optional=|defaultValue=[|eType=][|lower=|upper=][|delivery=STREAM]
     x|<exceptionName>                  op exceptions, sorted by name
 ```
 
@@ -93,6 +93,14 @@ moves — which is the reason the tag did not have to become `sd2`:
   either language.
 - `returnOptional=true` renders only for a nullable result; the old model
   had no return-side optionality, so `false` stays silent.
+- `delivery=STREAM` / `returnDelivery=STREAM` render only for a slot
+  whose values arrive as a stream (`Parameter.delivery`). A stream is
+  another exchange than a list of the same type — any number of values
+  over time instead of all of them at once — so it is another contract.
+  `VALUE` is the default and stays silent. **`PROMISE` stays silent as
+  well, on purpose:** it says when one value comes and not what it is,
+  so a contract that promises its answer and one that returns it have
+  the same fingerprint, and a consumer may read either synchronously.
 - The return slot's **name never renders**. `NamedElement` forces one on
   it (`result` by convention in both SDKs), but unlike a parameter name
   it has no wire role — it is not an argument-map key — and emitting it

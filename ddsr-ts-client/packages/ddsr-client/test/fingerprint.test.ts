@@ -198,4 +198,37 @@ describe('ServiceDescriptionFingerprint (sd1) — typed slots and multiplicity (
     };
     expect(fingerprint(build(-1))).not.toBe(fingerprint(build(1)));
   });
+
+  // Parameter.delivery: the same slot as a value, as a promise, as a stream.
+  const slot = (delivery: 'VALUE' | 'PROMISE' | 'STREAM' | undefined, asArgument = false) => {
+    const factory = DDSRFactory.eINSTANCE;
+    const si = factory.createServiceInterface();
+    si.name = 'Sensor';
+    const op = factory.createServiceOperation();
+    op.name = 'readings';
+    const value = factory.createParameter();
+    value.name = asArgument ? 'samples' : 'result';
+    value.type = 'double';
+    value.upperBound = -1;
+    if (delivery) value.delivery = delivery;
+    if (asArgument) op.parameters.push(value); else op.returnValue = value;
+    si.operations.push(op);
+    return si;
+  };
+
+  it('a stream is another contract than a list of the same type', () => {
+    expect(fingerprint(slot('STREAM'))).not.toBe(fingerprint(slot('VALUE')));
+    expect(canonicalForm(slot('STREAM'))).toContain('|returnDelivery=STREAM');
+    expect(canonicalForm(slot('STREAM', true))).toContain('|delivery=STREAM');
+  });
+
+  it('a promise is the same contract as a value - it says when, not what', () => {
+    expect(fingerprint(slot('PROMISE'))).toBe(fingerprint(slot('VALUE')));
+    expect(canonicalForm(slot('PROMISE'))).not.toContain('elivery');
+  });
+
+  it('a slot that says nothing is a value, and renders nothing (extension rule)', () => {
+    expect(fingerprint(slot(undefined))).toBe(fingerprint(slot('VALUE')));
+    expect(canonicalForm(slot('VALUE'))).not.toContain('elivery');
+  });
 });

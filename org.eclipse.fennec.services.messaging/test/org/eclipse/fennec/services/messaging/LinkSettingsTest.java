@@ -15,11 +15,15 @@ package org.eclipse.fennec.services.messaging;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 
 /**
  * What a link asks of the messaging instance behind it. The instance
@@ -39,6 +43,47 @@ class LinkSettingsTest {
 				Map.entry("clientId", "ddsr-broker"),
 				Map.entry("cloudEvents", "structured"),
 				Map.entry("cleanSession", Boolean.TRUE));
+	}
+
+	@Test
+	void aConfiguredClientIdIsTakenAsItIs() {
+		BundleContext framework = frameworkWithUuid("0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0");
+
+		assertThat(LinkSettings.clientId(framework, "billing-node", "ddsr-consumer")).isEqualTo("billing-node");
+	}
+
+	/**
+	 * The reason the default is not a fixed name: a broker disconnects
+	 * the older of two connections with one client id, so two nodes on
+	 * the default kept throwing each other out.
+	 */
+	@Test
+	void withoutOneTwoFrameworksNeverShareAClientId() {
+		BundleContext one = frameworkWithUuid("0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0");
+		BundleContext other = frameworkWithUuid("a1b2c3d4-0000-1111-2222-333344445555");
+
+		assertThat(LinkSettings.clientId(one, "", "ddsr-consumer")).isEqualTo("ddsr-consumer-0f1e2d3c");
+		assertThat(LinkSettings.clientId(one, null, "ddsr-consumer")).isEqualTo("ddsr-consumer-0f1e2d3c");
+		assertThat(LinkSettings.clientId(other, " ", "ddsr-consumer")).isEqualTo("ddsr-consumer-a1b2c3d4");
+		// the same framework, another role: still two ids
+		assertThat(LinkSettings.clientId(one, "", "ddsr-broker")).isEqualTo("ddsr-broker-0f1e2d3c");
+	}
+
+	@Test
+	void aContextWithoutAFrameworkUuidStillGetsAnIdOfItsOwn() {
+		BundleContext bare = frameworkWithUuid(null);
+
+		String first = LinkSettings.clientId(bare, "", "ddsr-consumer");
+		String second = LinkSettings.clientId(bare, "", "ddsr-consumer");
+
+		assertThat(first).matches("ddsr-consumer-[0-9a-f]{8}");
+		assertThat(second).isNotEqualTo(first);
+	}
+
+	private static BundleContext frameworkWithUuid(String uuid) {
+		BundleContext context = mock(BundleContext.class);
+		when(context.getProperty(Constants.FRAMEWORK_UUID)).thenReturn(uuid);
+		return context;
 	}
 
 	@Test

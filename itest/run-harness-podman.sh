@@ -414,6 +414,14 @@ grep -q "greetings so far, none of them local" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the consumer never got an answer"; cat "$WORK/rsa-import.log"; exit 1; }
 grep -q "ddsr/rpc/req/" "$WORK/rsa-export.log" \
   || { echo "SCENARIO I FAILED: the export did not listen on the request tree"; cat "$WORK/rsa-export.log"; exit 1; }
+# The client of scenario D is still running, on the same mosquitto, and
+# it hears events as this node does. With one client id for both, the
+# broker took the older connection off the wire each time the other
+# came back; each now has an id of its framework's.
+if grep -q "client.events → .* lost its connection" "$WORK/rsa-import.log"; then
+  echo "SCENARIO I FAILED: the importing node lost its event connection — two nodes on one MQTT client id?"
+  grep "client.events" "$WORK/rsa-import.log"; exit 1
+fi
 # The same framework also asks to export the Ledger, whose interface says
 # who may call it. Over MQTT a call carries no credential, so a guarded
 # contract is not served there — refused, never served open.

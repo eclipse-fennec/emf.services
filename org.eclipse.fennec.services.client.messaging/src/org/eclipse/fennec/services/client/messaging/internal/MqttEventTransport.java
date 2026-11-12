@@ -68,9 +68,11 @@ public final class MqttEventTransport implements EventSource {
 				description = "Must match the broker-side prefix; the source subscribes to <prefix>/#.")
 		String topic_prefix() default "ddsr/events";
 
-		@AttributeDefinition(name = "Client id",
-				description = "MQTT client identifier of this consumer.")
-		String client_id() default "ddsr-consumer";
+		@AttributeDefinition(name = "Client id", required = false,
+				description = "MQTT client identifier of this consumer. Empty: ddsr-consumer- and the first "
+						+ "characters of the framework's UUID, so that two nodes never share one — a broker "
+						+ "disconnects the older of two connections with the same id.")
+		String client_id() default "";
 
 		@AttributeDefinition(name = "QoS", description = "Subscription quality of service.")
 		int qos() default 0;
@@ -106,13 +108,17 @@ public final class MqttEventTransport implements EventSource {
 	/** The messaging instance behind this transport, by name. */
 	static final String INSTANCE = "fennec.services.client.events";
 
+	/** What this connection is to the broker, where its configuration names no client id. */
+	static final String CLIENT_ROLE = "ddsr-consumer";
+
 	@Activate
 	void activate(BundleContext context, Config config) {
 		this.qos = config.qos();
 		// The node's certificate on an ssl:// connection: its CN is the
 		// user the MQTT broker's ACL names (SECURITY.md §7d).
 		this.link = MessagingLink.open(context, new LinkSettings(INSTANCE, config.broker_url(),
-				config.client_id(), config.tls_keystore(), config.tls_keystore_password(),
+				LinkSettings.clientId(context, config.client_id(), CLIENT_ROLE), config.tls_keystore(),
+				config.tls_keystore_password(),
 				config.tls_truststore(), config.tls_truststore_password()));
 		this.source = new MqttEventSource(this::subscribe, rsObjects, config.topic_prefix());
 		LOG.info("[DDSR-MQTT] client transport connecting to " + config.broker_url());

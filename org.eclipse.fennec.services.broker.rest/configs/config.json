@@ -64,7 +64,7 @@
 	{
 		"broker.url": "$[env:DDSR_MQTT_URL;default=]",
 		"topic.prefix": "$[env:DDSR_MQTT_TOPIC_PREFIX;default=ddsr/events]",
-		"client.id": "$[env:DDSR_MQTT_CLIENT_ID;default=ddsr-broker]",
+		"client.id": "$[env:DDSR_MQTT_CLIENT_ID;default=]",
 		"event.source": "$[env:DDSR_MQTT_EVENT_SOURCE;default=/fennec/services/broker]",
 		"qos": "$[env:DDSR_MQTT_QOS;default=0]",
 		"tls.keystore": "$[env:DDSR_MQTT_TLS_KEYSTORE;default=]",

@@ -157,8 +157,16 @@ kept the protocol's name, because events travel over MQTT only)
 | --- | --- |
 | `broker.url` | `tcp://localhost:1883` |
 | `topic.prefix` | `ddsr/events` — must match the broker side |
-| `client.id` | `ddsr-consumer` |
+| `client.id` | empty — the node is then `ddsr-consumer-` and the first eight characters of its framework's UUID |
 | `qos` | `0` |
+
+Leave `client.id` empty unless your MQTT broker writes its access
+rules against client ids. A broker disconnects the older of two
+connections that show the same id, both reconnect, and two nodes
+given one name throw each other out for as long as both run — which
+looks like an event connection that keeps dropping. The derived id is
+new with every start; nothing depends on it, because the transport
+takes a snapshot on every connect.
 
 Configuring it is not enough. The SDK must be pointed at it:
 
@@ -375,7 +383,7 @@ One `EventSink`, dormant until configured.
 | --- | --- |
 | `broker.url` | `tcp://localhost:1883` |
 | `topic.prefix` | `ddsr/events` |
-| `client.id` | `ddsr-broker` |
+| `client.id` | empty — `ddsr-broker-` and the first eight characters of the framework's UUID, so two brokers on one MQTT broker never share one |
 | `qos` | `0` |
 
 Production launches ship the MQTT bundles unconfigured. See

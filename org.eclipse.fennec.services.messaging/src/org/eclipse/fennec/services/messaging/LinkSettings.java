@@ -15,6 +15,10 @@ package org.eclipse.fennec.services.messaging;
 
 import java.util.Hashtable;
 import java.util.Locale;
+import java.util.UUID;
+
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 
 /**
  * What a {@link MessagingLink} is opened with: everything its owner
@@ -24,7 +28,8 @@ import java.util.Locale;
  *                           framework — what its services are selected by
  * @param url                where the broker is, e.g.
  *                           {@code tcp://localhost:1883} or {@code ssl://…}
- * @param clientId           this node's identity on the broker
+ * @param clientId           this node's identity on the broker — see
+ *                           {@link #clientId(BundleContext, String, String)}
  * @param keystore           the certificate and key this node shows
  *                           (PKCS12), or empty
  * @param keystorePassword   its password, also of the key
@@ -57,6 +62,39 @@ public record LinkSettings(String name, String url, String clientId, String keys
 
 	/** AMQP 0-9-1. */
 	static final String AMQP_FACTORY_PID = "org.gecko.messaging.amqp";
+
+	/**
+	 * The identity a connection shows the broker when its configuration
+	 * names none: the role and the first characters of the framework's
+	 * UUID.
+	 *
+	 * <p>A fixed name is a trap. A broker takes the older of two
+	 * connections with one client id off the wire, the instance
+	 * reconnects, and two nodes that were given the same default throw
+	 * each other out for as long as both run. The framework's UUID is
+	 * new with every start and one framework holds one connection of a
+	 * role, so nothing more random is needed — and nothing is lost by it
+	 * changing: a link has no session to come back to.
+	 *
+	 * <p>A configured id is taken as it is. A deployment whose broker
+	 * writes its access rules against client ids names them.
+	 *
+	 * @param context    the framework this connection is opened in
+	 * @param configured what the configuration says, possibly nothing
+	 * @param role       what the connection is, e.g. {@code ddsr-consumer}
+	 */
+	public static String clientId(BundleContext context, String configured, String role) {
+		if (configured != null && !configured.isBlank()) {
+			return configured;
+		}
+		String framework = context.getProperty(Constants.FRAMEWORK_UUID);
+		if (framework == null || framework.isBlank()) {
+			// Every framework since R4.3 has one; this is for a context
+			// that is not a framework's, such as a test double.
+			framework = UUID.randomUUID().toString();
+		}
+		return role + "-" + framework.substring(0, Math.min(8, framework.length()));
+	}
 
 	/** A link on a broker that has no exchanges to choose from. */
 	public LinkSettings(String name, String url, String clientId, String keystore, String keystorePassword,

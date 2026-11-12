@@ -300,6 +300,9 @@ public final class Derivation {
 		Map<String, Object> events = new LinkedHashMap<>();
 		events.put("broker.url", settings.eventsUrl());
 		events.put("topic.prefix", "ddsr/events");
+		if (settings.mqttVersion() == 5) {
+			events.put(MQTT_VERSION, "5");
+		}
 		events.putAll(mqttTls(settings.identity()));
 		plan.add(DerivedConfiguration.of(CLIENT_MQTT_PID, Map.copyOf(events)));
 		plan.add(DerivedConfiguration.of(settings.hearsOverAmqp() ? DISCOVERY_AMQP_PID : DISCOVERY_MQTT_PID,
@@ -327,6 +330,13 @@ public final class Derivation {
 		if (settings.maxBodyBytes() > 0) {
 			connection.put(MAX_BODY_BYTES, String.valueOf(settings.maxBodyBytes()));
 		}
+		// And which MQTT they speak, where that is not the default (#138).
+		// Said once on the role and here for every connection of the node:
+		// one that hears over MQTT 5 and calls over 3.1.1 would work, and
+		// would be nobody's intention.
+		if (settings.mqttVersion() == 5) {
+			connection.put(MQTT_VERSION, "5");
+		}
 		if (!messaging || connection.isEmpty()) {
 			return;
 		}
@@ -335,6 +345,9 @@ public final class Derivation {
 			plan.add(DerivedConfiguration.of(CONNECTION_MESSAGING_PID, Map.copyOf(connection)));
 		}
 	}
+
+	/** Which MQTT a connection speaks — the same key on every part that opens one. */
+	static final String MQTT_VERSION = "mqtt.version";
 
 	/** The largest body a node takes — the same key on every part that reads one. */
 	static final String MAX_BODY_BYTES = "max.body.bytes";

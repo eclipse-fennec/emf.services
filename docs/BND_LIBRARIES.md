@@ -82,7 +82,7 @@ launch that takes minutes to start.
 | `enableFennecServicesClient` | the SDK and the REST transport, the wire codec, CloudEvents, EMF, protobuf |
 | `enableFennecServicesRsa` | the RSA core, its role configuration, REST distribution and discovery, the topology manager, the generic REST distribution, the EObject registry, the RSA and Event Admin APIs — on top of the client |
 | `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, the client-certificate filter of mode `mtls`, Nimbus JOSE+JWT |
-| `enableFennecServicesMqtt` | the messaging transport (`…client.messaging`, `…provider.messaging`, the flavor rules, the messaging link, Gecko Messaging `api` and `core`) with the `mqtt3` binding and the Paho build it drives — on top of the client |
+| `enableFennecServicesMqtt` | the messaging transport (`…client.messaging`, `…provider.messaging`, the flavor rules, the messaging link, Gecko Messaging `api` and `core`) with the `mqtt3` binding and the Paho build it drives — on top of the client. MQTT 5 (`mqtt.version=5`) is not in it: a launch that wants it adds `org.gecko.messaging.mqtt` and `org.eclipse.paho.mqttv5.client` |
 | `enableFennecServicesRsaMqtt` | `…rsa.distribution.messaging` and the discovery that hears events over MQTT — on top of `…Rsa` and `…Mqtt` |
 | `enableFennecServicesAmqp` | the same messaging transport with the `amqp` binding, the RabbitMQ client and the Netty 4.2 it requires — on top of the client |
 | `enableFennecServicesRsaAmqp` | `…rsa.distribution.messaging` — on top of `…Rsa` and `…Amqp` |

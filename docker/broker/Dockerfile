@@ -80,6 +80,7 @@ ENV APP_HOME=${APP_HOME} \
     DDSR_MQTT_CLIENT_ID= \
     DDSR_MQTT_EVENT_SOURCE=/fennec/services/broker \
     DDSR_MQTT_QOS=0 \
+    DDSR_MQTT_VERSION=3 \
     DDSR_AMQP_URL= \
     DDSR_AMQP_TOPIC_PREFIX=ddsr/events \
     DDSR_AMQP_CLIENT_ID= \

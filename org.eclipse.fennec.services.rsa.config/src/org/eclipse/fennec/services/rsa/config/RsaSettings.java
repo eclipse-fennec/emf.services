@@ -47,6 +47,7 @@ import java.util.Set;
  * @param amqpUrl the AMQP broker a node that serves over {@code fennec.amqp} listens on
  * @param encoding the content type calls served over a messaging broker are encoded in; empty is XMI
  * @param maxBodyBytes how large the body of a call may be, in either direction; 0 is the default of one megabyte
+ * @param mqttVersion which MQTT this node's MQTT connections speak: 3 (3.1.1, the default) or 5
  */
 public record RsaSettings(
 		String brokerUrl,
@@ -72,7 +73,8 @@ public record RsaSettings(
 		NodeIdentity identity,
 		String amqpUrl,
 		String encoding,
-		long maxBodyBytes) {
+		long maxBodyBytes,
+		int mqttVersion) {
 
 	/** Where RabbitMQ listens when nobody says otherwise. */
 	public static final String DEFAULT_AMQP_URL = "amqp://localhost:5672";
@@ -81,6 +83,7 @@ public record RsaSettings(
 		identity = identity == null ? NodeIdentity.NONE : identity;
 		amqpUrl = amqpUrl == null || amqpUrl.isBlank() ? DEFAULT_AMQP_URL : amqpUrl.strip();
 		encoding = encoding == null ? "" : encoding.strip();
+		mqttVersion = mqttVersion == 5 ? 5 : 3;
 	}
 
 	/** A node that does not say where its AMQP broker is — every node before #138. */
@@ -91,7 +94,7 @@ public record RsaSettings(
 			String distributionFlavor, String discoveryFlavor, NodeIdentity identity) {
 		this(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp, httpId, registryName,
 				defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds, sessionIntervalSeconds,
-				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null, null, 0);
+				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null, null, 0, 3);
 	}
 
 	/** The same node, with its AMQP broker named. */
@@ -99,7 +102,7 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, url, encoding, maxBodyBytes);
+				identity, url, encoding, maxBodyBytes, mqttVersion);
 	}
 
 	/**
@@ -111,7 +114,7 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, amqpUrl, contentType, maxBodyBytes);
+				identity, amqpUrl, contentType, maxBodyBytes, mqttVersion);
 	}
 
 	/**
@@ -123,7 +126,18 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, amqpUrl, encoding, Math.max(0, bytes));
+				identity, amqpUrl, encoding, Math.max(0, bytes), mqttVersion);
+	}
+
+	/**
+	 * The same node, speaking this MQTT version on its MQTT connections
+	 * (#138): 3 for MQTT 3.1.1, 5 for MQTT 5. Anything else is 3.
+	 */
+	public RsaSettings withMqttVersion(int version) {
+		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
+				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
+				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
+				identity, amqpUrl, encoding, maxBodyBytes, version == 5 ? 5 : 3);
 	}
 
 	/** A node without an identity — what every node was before SECURITY.md §6. */

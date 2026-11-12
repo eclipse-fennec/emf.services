@@ -99,6 +99,11 @@ class MqttEventTransportConfigurationTest {
 			}
 
 			@Override
+			public int mqtt_version() {
+				return 3;
+			}
+
+			@Override
 			public String username() {
 				return "";
 			}

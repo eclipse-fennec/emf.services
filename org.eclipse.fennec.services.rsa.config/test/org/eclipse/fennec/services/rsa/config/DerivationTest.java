@@ -226,6 +226,30 @@ class DerivationTest {
 	}
 
 	@Test
+	@DisplayName("#138: MQTT 5 is said once on the role and reaches every MQTT connection of the node")
+	void mqttVersionReachesEveryConnection() {
+		RsaSettings speaksMqtt = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095,
+				"0.0.0.0", "services", true, "ddsrHttp", "node-a", "1.0.0", "fennec.mqtt",
+				"promiscuous", "promiscuous", 30, 0, "", "tcp://mosquitto:1883", "ddsr/rpc", "", "");
+
+		List<DerivedConfiguration> five = Derivation.forProvider(speaksMqtt.withMqttVersion(5));
+
+		assertThat(byLabel(five, Derivation.CLIENT_MQTT_PID).properties()).containsEntry("mqtt.version", "5");
+		assertThat(byLabel(five, Derivation.INVOKER_MESSAGING_PID).properties()).containsEntry("mqtt.version", "5");
+		assertThat(byLabel(five, Derivation.CONNECTION_MESSAGING_PID).properties())
+				.containsEntry("mqtt.version", "5");
+
+		List<DerivedConfiguration> three = Derivation.forProvider(speaksMqtt);
+		assertThat(byLabel(three, Derivation.CLIENT_MQTT_PID).properties())
+				.as("3.1.1 is what a connection speaks unless told otherwise, so nothing is said")
+				.doesNotContainKey("mqtt.version");
+		assertThat(three).extracting(DerivedConfiguration::label)
+				.as("and a node with nothing to tell its connections writes no configuration for them")
+				.doesNotContain(Derivation.INVOKER_MESSAGING_PID, Derivation.CONNECTION_MESSAGING_PID);
+		assertThat(speaksMqtt.withMqttVersion(4).mqttVersion()).as("anything else is 3").isEqualTo(3);
+	}
+
+	@Test
 	@DisplayName("#138: a consumer whose one flavor is AMQP hears over AMQP — one event transport, another URL")
 	void amqpConsumerHearsOverAmqp() {
 		RsaSettings speaksAmqp = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",

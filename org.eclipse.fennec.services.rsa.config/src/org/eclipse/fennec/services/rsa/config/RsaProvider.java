@@ -145,6 +145,12 @@ public class RsaProvider extends NodeConfiguration {
 						+ "REST.")
 		String mqtt_url() default "tcp://localhost:1883";
 
+		@AttributeDefinition(name = "MQTT version", required = false,
+				description = "Which MQTT this node's MQTT connections speak: 3 (MQTT 3.1.1, the default) "
+						+ "or 5. Nodes need not agree — a broker carries messages between the two. Needs the "
+						+ "MQTT 5 binding in the launch.")
+		int mqtt_version() default 3;
+
 		@AttributeDefinition(name = "AMQP broker URL",
 				description = "The AMQP broker a node that serves over fennec.amqp listens on, e.g. "
 						+ "amqp://localhost:5672, with the virtual host as its path and without user or "
@@ -279,6 +285,6 @@ public class RsaProvider extends NodeConfiguration {
 						config.tls_truststore(), config.tls_truststore_password(),
 						"certificate".equals(config.broker_authentication().strip())))
 				.withAmqpUrl(config.amqp_url()).withEncoding(config.encoding())
-				.withMaxBodyBytes(config.max_body_bytes());
+				.withMaxBodyBytes(config.max_body_bytes()).withMqttVersion(config.mqtt_version());
 	}
 }

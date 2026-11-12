@@ -94,6 +94,36 @@ class LinkSettingsTest {
 		}
 	}
 
+	/** #138: the URL cannot say which MQTT — tcp:// is both — so the owner of the connection does. */
+	@Test
+	void anMqttLinkSpeaksVersion5WhenItsOwnerSaysSo() {
+		LinkSettings five = LinkSettings.of("n", "tcp://h:1883", "node").speaking(5);
+
+		assertThat(five.factoryPid()).isEqualTo("org.gecko.messaging.mqtt");
+		assertThat(five).as("the one thing its URL does not show").hasToString("n → tcp://h:1883 over MQTT 5");
+		assertThat(five.configuration())
+				.containsEntry("cleanStart", Boolean.TRUE)
+				.containsEntry("cloudEvents", "structured")
+				.doesNotContainKey("cleanSession");
+		assertThat(LinkSettings.of("n", "ssl://h:8883", "node").speaking(3).factoryPid())
+				.isEqualTo("org.gecko.messaging.mqtt3");
+		assertThat(LinkSettings.of("n", "tcp://h:1883", "node").speaking(0).factoryPid())
+				.as("nothing said is 3.1.1, as it always was")
+				.isEqualTo("org.gecko.messaging.mqtt3");
+	}
+
+	@Test
+	void theMqttVersionMeansNothingOnAmqp() {
+		assertThat(LinkSettings.of("n", "amqp://h:5672", "node").speaking(5).factoryPid())
+				.isEqualTo("org.gecko.messaging.amqp");
+	}
+
+	@Test
+	void anMqttVersionNobodySpeaksIsRefused() {
+		assertThatThrownBy(() -> LinkSettings.of("n", "tcp://h:1883", "node").speaking(4))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("4");
+	}
+
 	@Test
 	void aSchemeNoBindingSpeaksIsRefusedBeforeAnythingIsWritten() {
 		assertThatThrownBy(() -> LinkSettings.of("n", "kafka://h:9092", null).factoryPid())

@@ -46,10 +46,13 @@ import org.osgi.framework.Constants;
  * @param maxBodyBytes       the largest document a message of this link
  *                           carries; zero or less leaves the instance's
  *                           own limit
+ * @param mqttVersion        which MQTT this link speaks on an MQTT broker:
+ *                           3 (3.1.1, the default — also for 0) or 5.
+ *                           Means nothing on AMQP
  */
 public record LinkSettings(String name, String url, String clientId, String keystore,
 		String keystorePassword, String truststore, String truststorePassword, String exchange,
-		String username, String password, long maxBodyBytes) {
+		String username, String password, long maxBodyBytes, int mqttVersion) {
 
 	/**
 	 * What an envelope adds around its document, generously: a handful
@@ -57,8 +60,11 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	 */
 	static final long ENVELOPE_BYTES = 16 * 1024;
 
-	/** MQTT 3.1.1 — the wire every MQTT part of this workspace speaks. */
+	/** MQTT 3.1.1 — what an MQTT link speaks unless it is told otherwise. */
 	static final String MQTT3_FACTORY_PID = "org.gecko.messaging.mqtt3";
+
+	/** MQTT 5 (#138). */
+	static final String MQTT5_FACTORY_PID = "org.gecko.messaging.mqtt";
 
 	/** AMQP 0-9-1. */
 	static final String AMQP_FACTORY_PID = "org.gecko.messaging.amqp";
@@ -100,7 +106,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	public LinkSettings(String name, String url, String clientId, String keystore, String keystorePassword,
 			String truststore, String truststorePassword) {
 		this(name, url, clientId, keystore, keystorePassword, truststore, truststorePassword, null, null,
-				null, 0);
+				null, 0, 0);
 	}
 
 	public LinkSettings {
@@ -110,11 +116,14 @@ public record LinkSettings(String name, String url, String clientId, String keys
 		if (url == null || url.isBlank()) {
 			throw new IllegalArgumentException("a link needs a broker URL");
 		}
+		if (mqttVersion != 0 && mqttVersion != 3 && mqttVersion != 5) {
+			throw new IllegalArgumentException("MQTT is spoken as 3 (3.1.1) or as 5, not as " + mqttVersion);
+		}
 	}
 
 	/** A link without a certificate of its own. */
 	public static LinkSettings of(String name, String url, String clientId) {
-		return new LinkSettings(name, url, clientId, null, null, null, null, null, null, null, 0);
+		return new LinkSettings(name, url, clientId, null, null, null, null, null, null, null, 0, 0);
 	}
 
 	/**
@@ -123,7 +132,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	 */
 	public LinkSettings as(String username, String password) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password, maxBodyBytes);
+				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion);
 	}
 
 	/**
@@ -133,13 +142,32 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	 */
 	public LinkSettings carrying(long maxBodyBytes) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password, maxBodyBytes);
+				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion);
+	}
+
+	/**
+	 * The same link, speaking this MQTT version to an MQTT broker (#138).
+	 *
+	 * <p>The URL cannot say it — {@code tcp://} is both — so the owner
+	 * of the connection does. Nothing on the wire depends on two nodes
+	 * agreeing: a broker carries a message between a 3.1.1 and a 5
+	 * client, and what a call needs beyond its payload travels in the
+	 * envelope either way. What version 5 adds is the connection's own:
+	 * the broker's flow control ({@code receiveMaximum}) and the
+	 * protocol's response topic and correlation data beside the
+	 * envelope's.
+	 *
+	 * @param version 3 or 5; 0 leaves the default, 3
+	 */
+	public LinkSettings speaking(int version) {
+		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
+				truststorePassword, exchange, username, password, maxBodyBytes, version);
 	}
 
 	/** The same link, on this exchange. */
 	public LinkSettings onExchange(String exchange) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password, maxBodyBytes);
+				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion);
 	}
 
 	/**
@@ -149,7 +177,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	String factoryPid() {
 		String scheme = scheme();
 		return switch (scheme) {
-		case "tcp", "ssl", "ws", "wss" -> MQTT3_FACTORY_PID;
+		case "tcp", "ssl", "ws", "wss" -> mqttVersion == 5 ? MQTT5_FACTORY_PID : MQTT3_FACTORY_PID;
 		case "amqp", "amqps" -> AMQP_FACTORY_PID;
 		default -> throw new IllegalArgumentException("no messaging binding for a '" + scheme
 				+ "' broker: " + url);
@@ -172,11 +200,15 @@ public record LinkSettings(String name, String url, String clientId, String keys
 		if (clientId != null && !clientId.isBlank()) {
 			configuration.put("clientId", clientId);
 		}
-		if (MQTT3_FACTORY_PID.equals(factoryPid())) {
+		String binding = factoryPid();
+		if (MQTT3_FACTORY_PID.equals(binding)) {
 			// No session to come back to: what a subscriber missed while
 			// it was away it reads again (FR-Sync-Reconnect), and the
 			// instance restores its subscriptions itself.
 			configuration.put("cleanSession", Boolean.TRUE);
+		} else if (MQTT5_FACTORY_PID.equals(binding)) {
+			// The same statement in the words of MQTT 5.
+			configuration.put("cleanStart", Boolean.TRUE);
 		} else {
 			put(configuration, "exchange", exchange);
 		}
@@ -225,7 +257,9 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	/** Never the passwords: this is what a log line prints. */
 	@Override
 	public String toString() {
-		return name + " → " + address();
+		// The MQTT version only where it is not the default: it is the
+		// one thing about a connection its URL does not show.
+		return name + " → " + address() + (MQTT5_FACTORY_PID.equals(factoryPid()) ? " over MQTT 5" : "");
 	}
 
 	/**

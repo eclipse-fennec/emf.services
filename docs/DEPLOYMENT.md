@@ -113,6 +113,7 @@ docker run -d --name ddsr-broker \
 | `DDSR_MQTT_TOPIC_PREFIX` | `ddsr/events` | Events go to `<prefix>/<interface>`. A frozen wire name until #4 — change it only if both sides of your deployment agree. |
 | `DDSR_MQTT_CLIENT_ID` | *(empty)* | MQTT client identifier. Empty means `ddsr-broker-` plus the first eight characters of the framework's UUID — new with every start, and never the same for two brokers, which would otherwise disconnect each other. Name one only if your MQTT broker's access rules are written against client ids. |
 | `DDSR_MQTT_EVENT_SOURCE` | `/fennec/services/broker` | The CloudEvents `source` of every event this broker sends — what a reader uses to tell two brokers apart. |
+| `DDSR_MQTT_VERSION` | `3` | Which MQTT the broker speaks to the MQTT broker: `3` (3.1.1) or `5`. Subscribers need not speak the same. |
 | `DDSR_MQTT_QOS` | `0` | Fits a stream whose consumers re-snapshot on reconnect anyway; raise it if your consumers do not. |
 | `DDSR_MQTT_TLS_KEYSTORE` / `_PASSWORD` | *(empty)* | PKCS12 key store with the certificate the broker shows the MQTT broker — for a messaging broker that demands client certificates ([Security](SECURITY.md) §7d). Used only with an `ssl://` URL. |
 | `DDSR_MQTT_TLS_TRUSTSTORE` / `_PASSWORD` | *(empty)* | PKCS12 trust store with the authorities the broker believes for the MQTT broker's certificate; empty means the JVM's. |

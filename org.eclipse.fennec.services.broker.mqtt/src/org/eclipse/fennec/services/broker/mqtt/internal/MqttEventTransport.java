@@ -81,9 +81,11 @@ public final class MqttEventTransport implements EventSink {
 						+ " deployment running more than one broker gives each its own.")
 		String event_source() default "/fennec/services/broker";
 
-		@AttributeDefinition(name = "Client id",
-				description = "MQTT client identifier of the broker-side publisher.")
-		String client_id() default "ddsr-broker";
+		@AttributeDefinition(name = "Client id", required = false,
+				description = "MQTT client identifier of the broker-side publisher. Empty: ddsr-broker- and "
+						+ "the first characters of the framework's UUID, so that two brokers on one MQTT "
+						+ "broker never share one and disconnect each other.")
+		String client_id() default "";
 
 		@AttributeDefinition(name = "QoS",
 				description = "0 fits a stream whose consumers re-snapshot on reconnect anyway.")
@@ -155,7 +157,8 @@ public final class MqttEventTransport implements EventSink {
 		// The node's certificate on an ssl:// connection: its CN is the
 		// user the MQTT broker's ACL names (SECURITY.md §7d).
 		this.link = MessagingLink.open(context, new LinkSettings(INSTANCE, config.broker_url(),
-				config.client_id(), config.tls_keystore(), config.tls_keystore_password(),
+				LinkSettings.clientId(context, config.client_id(), CLIENT_ROLE), config.tls_keystore(),
+				config.tls_keystore_password(),
 				config.tls_truststore(), config.tls_truststore_password()));
 		// Registered with the first connection, not before: a sink that is
 		// offered before it can deliver is a sink the broker counts on for
@@ -167,6 +170,9 @@ public final class MqttEventTransport implements EventSink {
 
 	/** The messaging instance behind this transport, by name. */
 	static final String INSTANCE = "fennec.services.broker.events";
+
+	/** What this connection is to the MQTT broker, where its configuration names no client id. */
+	static final String CLIENT_ROLE = "ddsr-broker";
 
 	private synchronized void register(Config config) {
 		if (registration != null || link == null) {

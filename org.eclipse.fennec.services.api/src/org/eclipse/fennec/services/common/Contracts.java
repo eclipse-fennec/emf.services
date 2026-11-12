@@ -92,6 +92,25 @@ public final class Contracts {
 	}
 
 	/**
+	 * Refuses a contract whose operations TAKE a stream, on behalf of a
+	 * transport that carries a stream back to the caller and none the
+	 * other way: a stream as an argument is many requests to one
+	 * responder, which is another exchange than many answers to one
+	 * request.
+	 *
+	 * @param carrier who is refusing, for the message
+	 * @throws IllegalArgumentException when an argument is a stream
+	 */
+	public static void requireNoStreamArguments(ServiceInterface contract, String carrier) {
+		List<String> handedOver = streamSlots(contract).stream().filter(slot -> !slot.endsWith(".return")).toList();
+		if (!handedOver.isEmpty()) {
+			throw new IllegalArgumentException((contract.getName() == null ? "the contract" : contract.getName())
+					+ " takes streams as arguments " + handedOver + ", and " + carrier
+					+ " carries a stream to the caller only");
+		}
+	}
+
+	/**
 	 * Refuses a contract with stream slots on behalf of a transport that
 	 * does not carry streams — at the start, with the slots named.
 	 *

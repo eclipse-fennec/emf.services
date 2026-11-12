@@ -190,6 +190,12 @@ public class AmqpDistributionProvider implements FlavorDistribution {
 		}
 	}
 
+	/** A messaging broker delivers many answers to one call. */
+	@Override
+	public boolean carriesStreams() {
+		return true;
+	}
+
 	@Override
 	public String[] supportedConfigs() {
 		return new String[] { CONFIG_TYPE };

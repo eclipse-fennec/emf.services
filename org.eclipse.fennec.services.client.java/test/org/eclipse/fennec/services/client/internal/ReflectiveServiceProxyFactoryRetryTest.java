@@ -23,7 +23,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Flow;
+import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.fennec.services.Parameter;
@@ -42,6 +45,7 @@ import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
 import org.junit.jupiter.api.Test;
 import org.osgi.util.promise.Promise;
+import org.osgi.util.pushstream.PushStream;
 
 /** #59: a transport failure makes the proxy rebind once and retry once — nothing more. */
 class ReflectiveServiceProxyFactoryRetryTest {
@@ -368,5 +372,141 @@ class ReflectiveServiceProxyFactoryRetryTest {
 		assertThat(invoker.asked).as("asked once more after the rebind").hasSize(2);
 		invoker.asked.get(1).complete(7.0);
 		assertThat(balance.get(5, TimeUnit.SECONDS)).isEqualTo(7.0);
+	}
+
+	/** The operation as a stream (Delivery.STREAM), in the two types Java has for one. */
+	interface FlowBalances {
+		Flow.Publisher<Double> getBalance(String accountId);
+	}
+
+	interface PushedBalances {
+		PushStream<Double> getBalance(String accountId);
+	}
+
+	/** And with the stream on the way in. */
+	interface FedBalances {
+		void getBalance(Flow.Publisher<Double> accountIds);
+	}
+
+	/** A transport that carries streams: hands out whatever the test submits. */
+	private static final class StreamingInvoker implements ServiceInvoker {
+		final SubmissionPublisher<Object> values = new SubmissionPublisher<>();
+		int streamsAsked;
+
+		@Override
+		public Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args) {
+			throw new AssertionError("a stream is not asked for the way a value is");
+		}
+
+		@Override
+		public Flow.Publisher<Object> invokeStream(ServiceLocator locator, String operationName,
+				Map<String, Object> args) {
+			streamsAsked++;
+			return values;
+		}
+	}
+
+	private static <T> T streaming(Class<T> type, ServiceInvoker invoker) {
+		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
+		InvokerRegistry invokers = new InvokerRegistry();
+		factory.invokers = invokers;
+		invokers.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+		return factory.newProxy(type, new ScriptedLocator());
+	}
+
+	/** Collects what a stream hands out. */
+	private static final class Collecting implements Flow.Subscriber<Double> {
+		final List<Double> taken = new CopyOnWriteArrayList<>();
+		final CompletableFuture<Throwable> ended = new CompletableFuture<>();
+
+		@Override
+		public void onSubscribe(Flow.Subscription asked) {
+			asked.request(Long.MAX_VALUE);
+		}
+
+		@Override
+		public void onNext(Double value) {
+			taken.add(value);
+		}
+
+		@Override
+		public void onError(Throwable failure) {
+			ended.complete(failure);
+		}
+
+		@Override
+		public void onComplete() {
+			ended.complete(null);
+		}
+	}
+
+	@Test
+	void aMethodThatReturnsAPublisherHandsOutTheValuesOfTheStream() throws Exception {
+		StreamingInvoker invoker = new StreamingInvoker();
+		Collecting collecting = new Collecting();
+
+		streaming(FlowBalances.class, invoker).getBalance("acc-1").subscribe(collecting);
+		for (int i = 0; i < 100 && !invoker.values.hasSubscribers(); i++) {
+			Thread.sleep(20);
+		}
+		invoker.values.submit(1.5);
+		invoker.values.submit("2.5");
+		invoker.values.close();
+
+		assertThat(collecting.ended.get(5, TimeUnit.SECONDS)).isNull();
+		assertThat(collecting.taken).as("a value that came as text is the number the method declares")
+				.containsExactly(1.5, 2.5);
+	}
+
+	@Test
+	void aMethodThatReturnsAPushStreamGetsOneFedFromTheSameStream() throws Exception {
+		StreamingInvoker invoker = new StreamingInvoker();
+		List<Double> taken = new CopyOnWriteArrayList<>();
+
+		Promise<Void> done = streaming(PushedBalances.class, invoker).getBalance("acc-1").forEach(taken::add);
+		for (int i = 0; i < 100 && !invoker.values.hasSubscribers(); i++) {
+			Thread.sleep(20);
+		}
+		invoker.values.submit(1.5);
+		invoker.values.submit(2.5);
+		invoker.values.close();
+
+		done.getValue();
+		assertThat(taken).containsExactly(1.5, 2.5);
+	}
+
+	/** A declared error ends the stream as the class the method would throw; nothing is thrown at the call. */
+	@Test
+	void aStreamThatFailsEndsWithTheFailureAndTheCallItselfDoesNotThrow() throws Exception {
+		StreamingInvoker invoker = new StreamingInvoker();
+		Collecting collecting = new Collecting();
+		DdsrException down = new DdsrException("the provider went away");
+
+		streaming(FlowBalances.class, invoker).getBalance("acc-1").subscribe(collecting);
+		for (int i = 0; i < 100 && !invoker.values.hasSubscribers(); i++) {
+			Thread.sleep(20);
+		}
+		invoker.values.closeExceptionally(down);
+
+		assertThat(collecting.ended.get(5, TimeUnit.SECONDS)).isSameAs(down);
+	}
+
+	@Test
+	void aTransportThatCarriesNoStreamsSaysSoThroughTheStream() throws Exception {
+		Collecting collecting = new Collecting();
+
+		streaming(FlowBalances.class, new ScriptedInvoker()).getBalance("acc-1").subscribe(collecting);
+
+		assertThat(collecting.ended.get(5, TimeUnit.SECONDS))
+				.isInstanceOf(DdsrException.class).hasMessageContaining("carries no streams");
+	}
+
+	@Test
+	void aStreamAsAnArgumentIsRefusedBeforeAnythingIsSent() {
+		StreamingInvoker invoker = new StreamingInvoker();
+
+		assertThatThrownBy(() -> streaming(FedBalances.class, invoker).getBalance(subscriber -> { }))
+				.isInstanceOf(DdsrException.class).hasMessageContaining("takes a stream");
+		assertThat(invoker.streamsAsked).isZero();
 	}
 }

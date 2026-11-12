@@ -281,10 +281,17 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 			// there is one, and derives only otherwise. From here on
 			// nothing can tell which it was.
 			ServiceInterface contract = models.contractFor(exportedAs, effective);
-			// A stream is in the contract now (Parameter.delivery), and no
-			// distribution here carries one yet. Said at the export, with
-			// the slots named, rather than by the first call failing.
-			Contracts.requireNoStreams(contract, "a remote service export");
+			// A stream is in the contract (Parameter.delivery), and whether
+			// it can travel is the transport's to say. Refused at the
+			// export, with the slots named, rather than by the first call
+			// failing.
+			if (distribution.carriesStreams()) {
+				Contracts.requireNoStreamArguments(contract, "the distribution over "
+						+ String.join(", ", distribution.supportedConfigs()));
+			} else {
+				Contracts.requireNoStreams(contract, "the distribution over "
+						+ String.join(", ", distribution.supportedConfigs()));
+			}
 			// Asking for fennec.bearer is the OSGi way to say "only an
 			// authenticated caller" without annotating the interface. A
 			// contract that states nothing of its own is told so; one that

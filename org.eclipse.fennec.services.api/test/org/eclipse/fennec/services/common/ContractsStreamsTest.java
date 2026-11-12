@@ -79,4 +79,16 @@ class ContractsStreamsTest {
 				.hasMessageContaining("readings.return")
 				.hasMessageContaining("the generic REST distribution");
 	}
+
+	/** A stream back to the caller is many answers; one to the provider is another exchange. */
+	@Test
+	void aTransportThatCarriesAStreamBackRefusesOneThatIsHandedOver() {
+		assertThatCode(() -> Contracts.requireNoStreamArguments(sensor(Delivery.STREAM, Delivery.VALUE),
+				"the distribution over fennec.mqtt")).doesNotThrowAnyException();
+		assertThatThrownBy(() -> Contracts.requireNoStreamArguments(sensor(Delivery.STREAM, Delivery.STREAM),
+				"the distribution over fennec.mqtt"))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("readings.samples")
+				.hasMessageNotContaining("readings.return");
+	}
 }

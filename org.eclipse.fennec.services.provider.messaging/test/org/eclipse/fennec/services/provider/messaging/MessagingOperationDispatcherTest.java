@@ -23,6 +23,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.SubmissionPublisher;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -441,6 +443,78 @@ class MessagingOperationDispatcherTest {
 		Diagnostic diagnostic = answerIn(sent.get(0)).getDiagnostic();
 		assertThat(diagnostic.getCode()).as("the declared error, under its code").isEqualTo(402);
 		assertThat(diagnostic.getMessage()).isEqualTo("only 3.50 left");
+	}
+
+	/** Answers with a stream of three values (Delivery.STREAM). */
+	public static final class StreamingPayments {
+
+		@SuppressWarnings("unused")
+		public Flow.Publisher<Double> charge(double amount) {
+			return subscriber -> {
+				SubmissionPublisher<Double> values = new SubmissionPublisher<>(Runnable::run, 8);
+				values.subscribe(subscriber);
+				values.submit(amount);
+				values.submit(amount * 2);
+				values.submit(amount * 3);
+				values.close();
+			};
+		}
+	}
+
+	/**
+	 * A stream is many answers to one call: one per value, each with the
+	 * call's correlation, and one that carries no value and says the
+	 * stream is over. That last one is what lets a reader end its stream
+	 * — the messaging library on the other side, or a TypeScript client.
+	 */
+	@Test
+	void a_stream_is_answered_value_by_value_and_then_ended() throws Exception {
+		MessagingFlavor flavor = payments();
+		CloudEventCodec.Message request = call(flavor, "ddsr/rpc/payments/charge/reply/10", 2);
+
+		new MessagingOperationDispatcher(flavor, StreamingPayments::new, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", request, sent::add);
+
+		assertThat(sent).hasSize(4);
+		assertThat(sent.subList(0, 3)).extracting(message -> Invocations.valueOf(answerIn(message)))
+				.containsExactly(2.0, 4.0, 6.0);
+		for (CloudEventCodec.Message answer : sent) {
+			assertThat(MessagingRoute.correlationOf(answer.attributes())).isEqualTo(request.attributes().getEventId());
+		}
+		CloudEvent last = sent.get(3).attributes();
+		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_COMPLETE)).isEqualTo("true");
+		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_ERROR)).isNull();
+		assertThat(sent.get(3).data()).as("the end carries no value").isNull();
+	}
+
+	/** Fails after one value, with the error the contract declares. */
+	public static final class BreakingPayments {
+
+		@SuppressWarnings("unused")
+		public Flow.Publisher<Double> charge(double amount) {
+			return subscriber -> {
+				SubmissionPublisher<Double> values = new SubmissionPublisher<>(Runnable::run, 8);
+				values.subscribe(subscriber);
+				values.submit(amount);
+				values.closeExceptionally(new InsufficientFundsException("only 3.50 left"));
+			};
+		}
+	}
+
+	@Test
+	void a_stream_that_fails_ends_with_the_error_a_single_answer_would_carry() throws Exception {
+		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
+
+		new MessagingOperationDispatcher(flavor, BreakingPayments::new, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/11", 5), sent::add);
+
+		assertThat(sent).hasSize(2);
+		assertThat(Invocations.valueOf(answerIn(sent.get(0)))).isEqualTo(5.0);
+		CloudEvent last = sent.get(1).attributes();
+		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_COMPLETE)).isEqualTo("true");
+		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_ERROR)).isEqualTo("only 3.50 left");
+		assertThat(answerIn(sent.get(1)).getDiagnostic().getCode())
+				.as("the declared error, under its code — as in a single answer").isEqualTo(402);
 	}
 
 	@Test

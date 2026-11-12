@@ -17,6 +17,9 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Flow;
+
+import org.eclipse.fennec.services.invocation.Flows;
 
 /**
  * Generic remote invocation against a previously discovered
@@ -72,6 +75,21 @@ public interface ServiceInvoker {
 	 * @param blocking where a call that has to wait is made; a
 	 *                 transport that does not wait never uses it
 	 */
+	/**
+	 * A call whose return value is a stream ({@code Delivery.STREAM}):
+	 * values one after the other, as the subscriber asks for them, until
+	 * the stream is over or fails.
+	 *
+	 * <p>Nothing is sent before the publisher has a subscriber. A
+	 * transport that cannot carry a stream says so — which is what this
+	 * default does, through the stream itself.
+	 */
+	default Flow.Publisher<Object> invokeStream(ServiceLocator locator, String operationName,
+			Map<String, Object> args) {
+		return Flows.failed(new DdsrException("'" + operationName + "' returns a stream, and this transport"
+				+ " carries no streams"));
+	}
+
 	default CompletionStage<Object> invokeAsync(ServiceLocator locator, String operationName,
 			Map<String, Object> args, Executor blocking) {
 		CompletableFuture<Object> outcome = new CompletableFuture<>();

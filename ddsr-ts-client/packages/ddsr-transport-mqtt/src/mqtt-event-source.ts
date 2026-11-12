@@ -11,7 +11,10 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
+import { randomUUID } from 'node:crypto';
 import { tlsConnectOptions } from './mqtt-rpc.js';
+import { connectAmqp, isAmqpUrl } from './amqp-client.js';
+import type { AmqpConnectOptions } from './amqp-client.js';
 import type { TlsOptions } from '@ddsr/client';
 import type { ServiceEvent } from '@ddsr/model';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from '@ddsr/client';
@@ -33,14 +36,18 @@ export interface MqttClientLike {
 }
 
 export interface MqttEventSourceOptions {
-  /** MQTT broker URL, e.g. mqtt://localhost:1883 */
+  /** Messaging broker URL: mqtt://localhost:1883, or amqp://localhost:5672 for AMQP. */
   brokerUrl: string;
   /** Topic prefix the DDSR broker publishes under; default ddsr/events. */
   topicPrefix?: string;
   clientId?: string;
   qos?: 0 | 1 | 2;
   /** Injectable client factory (tests). Defaults to mqtt.js connect(). */
-  clientFactory?: (url: string, clientId: string, tls?: TlsOptions) => Promise<MqttClientLike> | MqttClientLike;
+  clientFactory?: (url: string, clientId: string, tls?: TlsOptions, amqp?: AmqpConnectOptions)
+    => Promise<MqttClientLike> | MqttClientLike;
+  /** Who this node is to a messaging broker that asks; never part of the broker URL. */
+  username?: string;
+  password?: string;
   /** The node's certificate and the authorities it believes, for mqtts:// brokers. */
   tls?: TlsOptions;
   log?: (message: string) => void;
@@ -87,15 +94,29 @@ export class MqttEventSource implements DdsrEventSource {
 
   /** Is this the topic on which the broker admits a loss? */
   private isResync(topic: string | undefined): boolean {
-    return typeof topic === 'string' && topic.endsWith(`/${RESYNC_TOPIC_SEGMENT}`);
+    return typeof topic === 'string' && topic.endsWith(`${this.separator()}${RESYNC_TOPIC_SEGMENT}`);
+  }
+
+  /**
+   * `/` on MQTT, `.` on AMQP - said by the scheme of the broker URL
+   * (#138). The prefix is given the way MQTT writes it, because that is
+   * the spelling the wire name has, and is a routing key on AMQP: the
+   * rule the Java event transports follow (Channels).
+   */
+  private separator(): '/' | '.' {
+    return isAmqpUrl(this.options.brokerUrl) ? '.' : '/';
   }
 
   topicFilter(): string {
     const prefix = (this.options.topicPrefix ?? DEFAULT_TOPIC_PREFIX).replace(/\/+$/, '');
-    return `${prefix}/#`;
+    const separator = this.separator();
+    return `${separator === '/' ? prefix : prefix.replaceAll('/', separator)}${separator}#`;
   }
 
-  readonly transport = 'mqtt';
+  /** What this source is, as a client's event transport is named: mqtt or amqp. */
+  get transport(): string {
+    return isAmqpUrl(this.options.brokerUrl) ? 'amqp' : 'mqtt';
+  }
 
   open(handler: EventSourceHandler): EventSubscription {
     let closed = false;
@@ -106,7 +127,12 @@ export class MqttEventSource implements DdsrEventSource {
 
     const connect = async (): Promise<void> => {
       const factory = this.options.clientFactory ?? defaultFactory;
-      client = await factory(this.options.brokerUrl, this.options.clientId ?? 'ddsr-consumer-ts', this.options.tls);
+      // An id of this node's own: a broker takes the older of two
+      // connections with one client id off the wire, so a fixed default
+      // made two consumers throw each other out.
+      client = await factory(this.options.brokerUrl,
+        this.options.clientId ?? `ddsr-consumer-ts-${randomUUID().slice(0, 8)}`, this.options.tls,
+        { username: this.options.username, password: this.options.password });
       client.on('error', (error) => {
         if (!closed) this.log(`mqtt error: ${String(error)}`);
       });
@@ -195,7 +221,10 @@ export class MqttEventSource implements DdsrEventSource {
   }
 }
 
-async function defaultFactory(url: string, clientId: string, tls?: TlsOptions): Promise<MqttClientLike> {
+async function defaultFactory(
+  url: string, clientId: string, tls?: TlsOptions, amqp: AmqpConnectOptions = {},
+): Promise<MqttClientLike> {
+  if (isAmqpUrl(url)) return await connectAmqp(url, clientId, tls, amqp);
   const { connect } = await import('mqtt');
   return connect(url, { clientId, clean: true, ...tlsConnectOptions(tls) }) as unknown as MqttClientLike;
 }

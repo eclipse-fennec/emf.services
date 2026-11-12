@@ -406,13 +406,20 @@ describe('MQTT request/response convention (A2 Etappe 2)', () => {
     expect(plugin.canHandle(rest)).toBe(false);
 
     // One class for every protocol: an AMQP flavor is a MessagingFlavor
-    // too, and not this plugin's — by its kind, or by where it says its
-    // broker is.
+    // too, and not for a plugin built for MQTT — by its kind, or by
+    // where it says its broker is. The same plugin built for AMQP takes
+    // it and leaves the MQTT one (#138); a consumer says the kinds it
+    // speaks, one per plugin.
     const amqp = factory.createMessagingFlavor();
     amqp.brokers.push('amqp://rabbit:5672');
     expect(plugin.canHandle(amqp)).toBe(false);
     (amqp as Record<string, unknown>).kind = 'AMQP';
     expect(plugin.canHandle(amqp)).toBe(false);
+
+    const overAmqp = new MqttFlavorPlugin({ protocol: 'AMQP', log: () => undefined });
+    expect(overAmqp.flavorKind).toBe('AMQP');
+    expect(overAmqp.canHandle(amqp)).toBe(true);
+    expect(overAmqp.canHandle(flavor)).toBe(false);
   });
 
   it('listens on a tree of its own where the flavor names no place for answers', () => {

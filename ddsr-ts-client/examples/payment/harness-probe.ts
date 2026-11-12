@@ -58,6 +58,10 @@ const EXPECT_BINDINGS = process.env.EXPECT_BINDINGS === '1';
 // anywhere (#25). The probe calls it over topics and checks that the
 // three arguments come back in the contract's order.
 const EXPECT_MQTT_PROBE = process.env.EXPECT_MQTT_PROBE === '1';
+// The same over AMQP (#138): the Java provider serves BindingProbe from
+// a configuration whose messaging broker is an amqp:// one, and this
+// consumer calls it with the same plugin built for AMQP.
+const EXPECT_AMQP_PROBE = process.env.EXPECT_AMQP_PROBE === '1';
 const GOLDEN = 'sd1:baafb26e152b76e0e6e713bb86a5e418c2d014d855b24df4d938a517c59807c0';
 
 const failures: string[] = [];
@@ -76,7 +80,12 @@ async function main(): Promise<void> {
   // lookup by: an implementation announced over MQTT alone is invisible
   // to a REST-only consumer, and rightly so. Scenario J is the case
   // where that matters, so the plugin joins only there.
-  const mqttPlugin = EXPECT_MQTT_PROBE ? new MqttFlavorPlugin({ timeoutMs: 15000, tls: nodeTls(), consumer: consumerId('harness-probe-ts') }) : undefined;
+  const mqttPlugin = EXPECT_MQTT_PROBE || EXPECT_AMQP_PROBE
+    ? new MqttFlavorPlugin({
+      protocol: EXPECT_AMQP_PROBE ? 'AMQP' : 'MQTT',
+      timeoutMs: 15000, tls: nodeTls(), consumer: consumerId('harness-probe-ts'),
+    })
+    : undefined;
   const client = DdsrClientImpl.create({
     brokerUrl: BROKER_URL,
     flavorPlugins: mqttPlugin ? [new RestFlavorPlugin(), mqttPlugin] : [new RestFlavorPlugin()],
@@ -181,7 +190,8 @@ async function main(): Promise<void> {
   // proven here is not the transport — scenario E did that — but that
   // the provider side needed no code: an ordinary OSGi service, a model
   // document and a factory configuration.
-  if (EXPECT_MQTT_PROBE) {
+  if (EXPECT_MQTT_PROBE || EXPECT_AMQP_PROBE) {
+    const over = EXPECT_AMQP_PROBE ? 'amqp' : 'mqtt';
     let probeLocator;
     for (let attempt = 0; attempt < 60 && !probeLocator; attempt++) {
       probeLocator = await client.consumer.findOne('BindingProbe').catch(() => undefined);
@@ -190,7 +200,8 @@ async function main(): Promise<void> {
     if (!probeLocator) fail('no BindingProbe locator within 30s');
     const probeFlavors = probeLocator.flavors() as Array<{ eClass?: () => { name?: string } }>;
     const probeMqtt = probeFlavors.find(f => f.eClass?.()?.name === 'MessagingFlavor') as MessagingFlavor | undefined;
-    check('mqtt-probe-flavor-announced', probeMqtt !== undefined,
+    check(`${over}-probe-flavor-announced`, probeMqtt !== undefined
+        && (!EXPECT_AMQP_PROBE || toArray<string>(probeMqtt.brokers).every(broker => broker.startsWith('amqp'))),
       `${probeFlavors.map(f => f.eClass?.()?.name).join(',')} on ${probeMqtt ? toArray<string>(probeMqtt.brokers).join(',') : '-'}`);
     if (probeMqtt) {
       try {
@@ -199,9 +210,9 @@ async function main(): Promise<void> {
         // transport carries it.
         const echoed = String(await probeLocator.invoke('echo',
           { id: 'acct-42', currency: 'EUR', tenant: 'acme' }));
-        check('mqtt-probe-echo', echoed === 'acct-42|EUR|acme', `${echoed}`);
+        check(`${over}-probe-echo`, echoed === 'acct-42|EUR|acme', `${echoed}`);
       } catch (error) {
-        check('mqtt-probe-echo', false, String(error));
+        check(`${over}-probe-echo`, false, String(error));
       }
     }
   }

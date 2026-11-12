@@ -19,8 +19,11 @@ export { MqttOperationServer } from './mqtt-operation-server.js';
 export type { MqttOperationServerOptions, OperationHandlers } from './mqtt-operation-server.js';
 export {
   requestTopicFor, replyBaseFor, namedReplyBaseFor, OWN_REPLY_BASE, qosFor,
-  encodeRequest, decodeRequest, encodeResponse, decodeResponse, connectMqtt,
+  encodeRequest, decodeRequest, encodeResponse, decodeResponse, connectMqtt, connectMessaging,
+  isAmqpFlavor, separatorFor,
 } from './mqtt-rpc.js';
+export { AmqpClient, connectAmqp, isAmqpUrl, DEFAULT_EXCHANGE } from './amqp-client.js';
+export type { AmqpConnectOptions, AmqpChannelLike, AmqpConnectionLike } from './amqp-client.js';
 export type { MqttRpcRequest, MqttRpcResponse, MqttRpcClientLike } from './mqtt-rpc.js';
 export { operationHandlers } from './operation-target.js';
 export type { OperationTarget, HandlersOptions } from './operation-target.js';

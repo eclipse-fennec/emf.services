@@ -112,7 +112,7 @@ podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-clie
   ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
   ddsr-rsa-export ddsr-rsa-import ddsr-rsa-export-amqp ddsr-rsa-import-amqp ddsr-rabbitmq \
   ddsr-rsa-export-json ddsr-rsa-import-json \
-  ddsr-payment-h ddsr-probe-h ddsr-probe-mqtt-config ddsr-probe-j \
+  ddsr-payment-h ddsr-probe-h ddsr-probe-mqtt-config ddsr-probe-j ddsr-probe-amqp-config ddsr-probe-u \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
@@ -539,7 +539,6 @@ if grep -q "no encoding is registered" "$WORK/rsa-export-json.log" "$WORK/rsa-im
 fi
 podman stop -t 20 ddsr-rsa-import-json >/dev/null 2>&1 || true
 podman stop -t 20 ddsr-rsa-export-json >/dev/null 2>&1 || true
-podman stop -t 20 ddsr-rabbitmq >/dev/null 2>&1 || true
 echo "Scenario S OK: a call encoded as JSON by emf.codec, chosen by content type on both ends"
 
 # ============================================================ Scenario K
@@ -622,6 +621,46 @@ grep -q "✓ mqtt-probe-echo" "$WORK/probe-j.log" \
   || { echo "SCENARIO J FAILED: the call over topics did not come back"; cat "$WORK/probe-j.log"; exit 1; }
 echo "Scenario J OK: a contract served and announced over MQTT by configuration alone"
 grep -E '  [✓✗] mqtt-probe' "$WORK/probe-j.log" || true
+
+# ============================================================ Scenario U
+log "Scenario U: AMQP with no provider code — the same configuration, an amqp:// broker, called from TypeScript"
+# Scenario J on the other protocol (#138), and the first time the
+# TypeScript track speaks AMQP on a real wire. The provider side is the
+# same generic distribution with another model document and another
+# broker URL: nothing in it is written for AMQP. The caller is the same
+# TypeScript plugin built for AMQP — a routing key on the topic exchange
+# instead of a topic, an exclusive queue instead of a subscription.
+#
+# The flavor names no place for answers, so the consumer says where it
+# listens: a routing key of its own, bound to a queue only it reads.
+# shellcheck disable=SC2046
+run_container ddsr-probe-amqp-config ddsr/payment-java-mqtt $(client_args payment-java) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e PAYMENTS_PUBLIC_URL="http://localhost:9091/payments" \
+  -e PAYMENTS_PUBLISH_BINDING_PROBE_AMQP=true \
+  -e PAYMENTS_AMQP_URL="amqp://localhost:5672"
+wait_for_log ddsr-probe-amqp-config "serving BindingProbe generically on" 150
+wait_for_log ddsr-probe-amqp-config "published BindingProbe" 60
+
+# shellcheck disable=SC2046
+podman run -d --replace --name ddsr-probe-u --network=host $(client_args harness-probe-ts) \
+  -e BROKER_URL="$BROKER_URL" -e EXPECT_LANG=java -e EXPECT_AMQP_PROBE=1 \
+  ddsr/ts harness-probe.ts >/dev/null
+CONTAINERS+=(ddsr-probe-u)
+wait_for_log ddsr-probe-u "PROBE_READY" 150
+podman stop -t 20 ddsr-probe-amqp-config >/dev/null 2>&1 || true
+probe_u_rc=$(podman wait ddsr-probe-u)
+podman logs ddsr-probe-u >"$WORK/probe-u.log" 2>&1
+if [ "$probe_u_rc" != "0" ]; then
+  echo "SCENARIO U FAILED"; cat "$WORK/probe-u.log"; exit 1
+fi
+grep -q "✓ amqp-probe-flavor-announced" "$WORK/probe-u.log" \
+  || { echo "SCENARIO U FAILED: the configuration announced no AMQP flavor"; cat "$WORK/probe-u.log"; exit 1; }
+grep -q "✓ amqp-probe-echo" "$WORK/probe-u.log" \
+  || { echo "SCENARIO U FAILED: the call over AMQP did not come back"; cat "$WORK/probe-u.log"; exit 1; }
+podman stop -t 20 ddsr-rabbitmq >/dev/null 2>&1 || true
+echo "Scenario U OK: a contract served over AMQP by configuration alone, called from TypeScript"
+grep -E '  [✓✗] amqp-probe' "$WORK/probe-u.log" || true
 grep -E "RSA-Consumer" "$WORK/rsa-import.log" | tail -2
 
 # ============================================================ Scenario Q
@@ -808,4 +847,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + I + R + S + K + J + Q + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + R + S + K + J + U + Q + F + G + H)"

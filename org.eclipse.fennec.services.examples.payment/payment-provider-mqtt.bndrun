@@ -8,6 +8,10 @@
 # — announces it. The deployment names the broker through
 # PAYMENTS_MQTT_URL; without one the configuration serves nothing.
 #
+# The same over AMQP (scenario U): a second configuration with
+# `model/binding-probe-amqp.xmi` and PAYMENTS_AMQP_URL. One distribution
+# for both — what the launch adds for AMQP is the binding and its client.
+#
 # `-include` takes the ordinary launch whole and the three bundles below
 # are added to its list: resolving this file from its requirements alone
 # would drop what that launch carries on purpose.
@@ -26,4 +30,13 @@
 	org.gecko.messaging.api;version='[2.0.0,2.1.0)',\
 	org.gecko.messaging.core;version='[2.0.0,2.1.0)',\
 	org.gecko.messaging.mqtt3;version='[2.0.0,2.1.0)',\
+	org.gecko.messaging.amqp;version='[2.0.0,2.1.0)',\
+	com.rabbitmq.client;version='[5.37.0,5.37.1)',\
+	io.netty.common;version='[4.2.20,4.2.21)',\
+	io.netty.buffer;version='[4.2.20,4.2.21)',\
+	io.netty.resolver;version='[4.2.20,4.2.21)',\
+	io.netty.transport;version='[4.2.20,4.2.21)',\
+	io.netty.transport-native-unix-common;version='[4.2.20,4.2.21)',\
+	io.netty.codec-base;version='[4.2.20,4.2.21)',\
+	io.netty.handler;version='[4.2.20,4.2.21)',\
 	org.osgi.util.pushstream;version='[1.1.0,1.1.1)'

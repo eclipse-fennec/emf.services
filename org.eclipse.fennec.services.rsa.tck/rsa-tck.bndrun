@@ -109,7 +109,7 @@ runbundles.files: ${uniq;\
 	${repo;org.apache.felix.eventadmin;[1.6.4,1.6.5)},\
 	${repo;org.apache.felix.http.jetty12;[1.1.0,1.1.1)},\
 	${repo;org.apache.felix.http.servlet-api;[6.1.0,6.1.1)},\
-	${repo;org.apache.felix.scr;[2.2.12,2.2.13)},\
+	${repo;org.apache.felix.scr;[2.3.0,2.3.1)},\
 	${repo;org.apache.servicemix.bundles.junit;[4.13.2,4.13.3)},\
 	${repo;org.eclipse.emf.common;[2.44.0,2.44.1)},\
 	${repo;org.eclipse.emf.ecore;[2.41.0,2.41.1)},\
@@ -190,7 +190,7 @@ runbundles.files: ${uniq;\
 	org.apache.felix.eventadmin;version='[1.6.4,1.6.5)',\
 	org.apache.felix.http.jetty12;version='[1.1.0,1.1.1)',\
 	org.apache.felix.http.servlet-api;version='[6.1.0,6.1.1)',\
-	org.apache.felix.scr;version='[2.2.12,2.2.13)',\
+	org.apache.felix.scr;version='[2.3.0,2.3.1)',\
 	org.apache.servicemix.bundles.junit;version='[4.13.2,4.13.3)',\
 	org.eclipse.emf.common;version='[2.44.0,2.44.1)',\
 	org.eclipse.emf.ecore;version='[2.41.0,2.41.1)',\

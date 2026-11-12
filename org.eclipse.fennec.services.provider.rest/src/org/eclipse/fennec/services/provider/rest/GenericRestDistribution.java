@@ -233,6 +233,9 @@ public class GenericRestDistribution extends Application {
 
 	private RestDispatcher dispatcher;
 
+	/** The implementation, kept in use between calls. */
+	private HeldImplementation held;
+
 	private ResourceSet publishedFrom;
 
 	private Config config;
@@ -335,8 +338,11 @@ public class GenericRestDistribution extends Application {
 		// a bearer application down without a verifier.
 		boolean enforce = ServedSecurity.enforcedByConfiguration(contract, flavor,
 				componentContext.getProperties().get(ServedSecurity.AUTH));
+		HeldImplementation holding = new HeldImplementation(context);
+		this.held = holding;
 		this.dispatcher = new RestDispatcher(flavor,
-				() -> implementation(context, config.service_filter(), self), contract, resourceSets,
+				() -> holding.holding(implementation(context, config.service_filter(), self)), contract,
+				resourceSets,
 				CallTracer.deferred(tracer::get), enforce, config.max_body_bytes());
 		LOG.info("[DDSR] serving " + contract + " generically at " + flavor.getBasePath());
 
@@ -488,6 +494,12 @@ public class GenericRestDistribution extends Application {
 				}
 				application = null;
 			}
+		}
+		if (held != null) {
+			// After the application is gone: no call is on its way to the
+			// implementation any more.
+			held.release();
+			held = null;
 		}
 		if (publishedFrom != null) {
 			resourceSets.ungetService(publishedFrom);

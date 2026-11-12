@@ -44,6 +44,7 @@ import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.CallOrigin;
 import org.eclipse.fennec.services.common.CallPrincipal;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.invocation.ResultDocument;
@@ -541,27 +542,10 @@ public class RestDispatcher {
 	private static Response failed(RestOperationFlavor operationFlavor, Throwable failure) {
 		for (RestExceptionBinding binding : operationFlavor.getExceptionBindings()) {
 			ServiceException declared = binding.getException();
-			if (declared != null && declared.getType() != null && raises(failure, declared)) {
+			if (DeclaredErrors.raises(failure, declared)) {
 				return Response.status(binding.getStatus()).entity(String.valueOf(failure.getMessage())).build();
 			}
 		}
 		return Response.serverError().entity(String.valueOf(failure.getMessage())).build();
-	}
-
-	/**
-	 * Whether a failure is the declared error. The contract names its
-	 * exceptions symbolically, so the match is by the simple name of the
-	 * Java class — the language binding that would resolve it properly is
-	 * build-time knowledge this component deliberately does not have.
-	 */
-	private static boolean raises(Throwable failure, ServiceException declared) {
-		String symbolic = declared.getType();
-		String simple = symbolic.contains(".") ? symbolic.substring(symbolic.lastIndexOf('.') + 1) : symbolic;
-		for (Class<?> type = failure.getClass(); type != null; type = type.getSuperclass()) {
-			if (type.getSimpleName().equals(simple) || type.getSimpleName().equals(simple + "Exception")) {
-				return true;
-			}
-		}
-		return false;
 	}
 }

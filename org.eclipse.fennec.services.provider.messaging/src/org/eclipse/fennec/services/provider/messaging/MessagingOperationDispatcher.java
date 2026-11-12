@@ -20,13 +20,16 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceInvocation;
@@ -35,6 +38,7 @@ import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -182,10 +186,15 @@ public final class MessagingOperationDispatcher {
 							request.getSource() == null ? ClientOrigin.ANONYMOUS : request.getSource());
 			ServiceInvocationResult result;
 			try {
-				result = Invocations.result(invoke(placed, invocation));
+				Object value = invoke(placed, invocation);
+				// A failure that came back as a value rather than as a throw
+				// is still a failure: the answer carries it as its Diagnostic,
+				// code and all, and not as a value that happens to be one.
+				result = DeclaredErrors.isFailure(value) ? Invocations.failure((Diagnostic) value)
+						: Invocations.result(value);
 			} catch (InvocationTargetException failed) {
 				span.failed(failed.getCause());
-				result = Invocations.failure(String.valueOf(failed.getCause()), 0);
+				result = thrown(placed.operation(), failed.getCause());
 			} catch (Exception failed) {
 				span.failed(failed);
 				result = Invocations.failure(String.valueOf(failed), 0);
@@ -209,6 +218,22 @@ public final class MessagingOperationDispatcher {
 			return contract.getName() + "/" + operation.getName();
 		}
 		return operation.getName();
+	}
+
+	/**
+	 * What a thrown failure answers with. An error the contract declares
+	 * travels under its code — over a messaging broker that code is all
+	 * a declared error is, and the caller recognises it by it
+	 * ({@link DeclaredErrors}). Anything else has no code: the provider
+	 * failed, and saying more would be inventing it.
+	 */
+	private static ServiceInvocationResult thrown(ServiceOperation operation, Throwable failure) {
+		Optional<ServiceException> declared = DeclaredErrors.raisedBy(operation, failure);
+		if (declared.isEmpty()) {
+			return Invocations.failure(String.valueOf(failure), 0);
+		}
+		String message = failure.getMessage() == null ? declared.get().getName() : failure.getMessage();
+		return Invocations.failure(message, DeclaredErrors.codeOf(declared.get()).orElse(0));
 	}
 
 	private Object invoke(MessagingRoute.Operation placed, ServiceInvocation invocation)

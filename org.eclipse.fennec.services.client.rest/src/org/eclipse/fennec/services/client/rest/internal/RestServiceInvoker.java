@@ -25,16 +25,19 @@ import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
+import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.DdsrServiceException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.SecurityRequirements;
+import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -185,7 +188,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 			}
 			span.attribute("http.response.status_code", String.valueOf(response.getStatus()));
 			checkCorrelation(envelope, response, operationName);
-			return readResponse(response);
+			return readResponse(response, op);
 		}
 	}
 
@@ -325,10 +328,19 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		return null;
 	}
 
-	private static Object readResponse(Response response) {
+	static Object readResponse(Response response, RestOperationFlavor operationFlavor) {
 		try {
 			if (response.getStatus() / 100 != 2) {
 				String body = response.hasEntity() ? response.readEntity(String.class) : "";
+				// A status the flavor binds to a declared error is that error:
+				// the reading side of what RestDispatcher answers. Anything
+				// else is a failure nobody announced.
+				Optional<ServiceException> declared = RestErrors.declaredFor(operationFlavor, response.getStatus());
+				if (declared.isPresent()) {
+					throw new DdsrServiceException(body.isBlank()
+							? declared.get().getName() + " (HTTP " + response.getStatus() + ")" : body,
+							declared.get(), response.getStatus());
+				}
 				throw new DdsrException("HTTP " + response.getStatus() + ": " + body);
 			}
 			if (!response.hasEntity()) {

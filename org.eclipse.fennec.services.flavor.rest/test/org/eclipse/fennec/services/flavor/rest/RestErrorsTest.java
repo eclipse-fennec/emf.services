@@ -62,6 +62,17 @@ class RestErrorsTest {
 		return diagnostic;
 	}
 
+	/** The reading side: what a client makes of the status it is answered with. */
+	@Test
+	void aStatusTheFlavorBindsIsTheDeclaredErrorAgain() {
+		RestOperationFlavor flavor = flavorDeclaring(201, 404);
+
+		assertThat(RestErrors.declaredFor(flavor, 404))
+				.containsSame(flavor.getExceptionBindings().get(0).getException());
+		assertThat(RestErrors.declaredFor(flavor, 500)).isEmpty();
+		assertThat(RestErrors.declaredFor(null, 404)).isEmpty();
+	}
+
 	@Test
 	void aFailingDiagnosticIsTheErrorWhoseCodeItCarries() {
 		RestOperationFlavor flavor = flavorDeclaring(201, 404);

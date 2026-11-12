@@ -8,7 +8,8 @@ Bundle-Description: \
 -library: enableEMF
 
 -buildpath: \
-	org.eclipse.fennec.services.model;version=snapshot
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot
 
 -testpath: \
 	${junit},\

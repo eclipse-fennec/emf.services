@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -26,16 +27,20 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.Diagnostic;
+import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceInvocation;
 import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.DdsrServiceException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.common.TlsContexts;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.Invocations;
@@ -287,7 +292,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 				CloudEventCodec.Message answer = placed.namesReplyChannel()
 						? viaInbox(link, route, placed, call, replyTopic, timeout)
 						: link.request(placed.channel(), call, placed.qos(), timeout);
-				return valueOf(answer, request, operationName);
+				return valueOf(answer, request, operation, operationName);
 			} catch (InterruptedException interrupted) {
 				Thread.currentThread().interrupt();
 				DdsrException failed = DdsrException.transport("waiting for the answer to "
@@ -380,9 +385,26 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 		}
 	}
 
+	/**
+	 * What a failing answer is to the caller.
+	 *
+	 * <p>A messaging broker has no status to bind an error to, and needs
+	 * none: the answer carries the Diagnostic, and its code is the
+	 * declared error it is ({@link DeclaredErrors}). Without a declared
+	 * error of that code it is a failure nobody announced.
+	 */
+	static DdsrException failureOf(ServiceOperation operation, Diagnostic diagnostic, String operationName) {
+		Optional<ServiceException> declared = DeclaredErrors.byCode(operation, diagnostic.getCode());
+		if (declared.isPresent()) {
+			return new DdsrServiceException(diagnostic.getMessage() == null
+					? declared.get().getName() : diagnostic.getMessage(), declared.get(), diagnostic);
+		}
+		return new DdsrException(operationName + " failed: " + diagnostic.getMessage());
+	}
+
 	/** What the answer says, or why there is none. */
-	private Object valueOf(CloudEventCodec.Message message, CloudEvent request, String operationName)
-			throws Exception {
+	private Object valueOf(CloudEventCodec.Message message, CloudEvent request, ServiceOperation operation,
+			String operationName) throws Exception {
 		if (!CloudEvents.TYPE_INVOKE_REPLY.equals(message.attributes().getType())) {
 			throw new DdsrException("the answer to " + operationName + " is a '" + message.attributes().getType()
 					+ "' and not an answer");
@@ -402,8 +424,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 		for (EObject root : bundle.roots()) {
 			if (root instanceof ServiceInvocationResult result) {
 				if (result.getDiagnostic() != null) {
-					throw new DdsrException(operationName + " failed: "
-							+ result.getDiagnostic().getMessage());
+					throw failureOf(operation, result.getDiagnostic(), operationName);
 				}
 				return Invocations.valueOf(result);
 			}

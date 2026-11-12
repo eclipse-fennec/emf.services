@@ -13,15 +13,14 @@
 
 package org.eclipse.fennec.services.flavor.rest;
 
+import java.util.Optional;
 import java.util.OptionalInt;
 
 import org.eclipse.fennec.services.Diagnostic;
-import org.eclipse.fennec.services.DiagnosticSeverity;
-import org.eclipse.fennec.services.IntProperty;
-import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceException;
+import org.eclipse.fennec.services.common.DeclaredErrors;
 
 /**
  * Which HTTP status a failure gets, when the failure travels as a
@@ -49,8 +48,7 @@ public final class RestErrors {
 
 	/** Whether this result is a failure at all. */
 	public static boolean isFailure(Object result) {
-		return result instanceof Diagnostic diagnostic
-				&& diagnostic.getSeverity() == DiagnosticSeverity.ERROR;
+		return DeclaredErrors.isFailure(result);
 	}
 
 	/**
@@ -73,20 +71,28 @@ public final class RestErrors {
 	}
 
 	/**
-	 * The {@code code} an error declares, if it declares one. A contract
-	 * may describe an error without giving it a code — it then cannot be
-	 * recognised in a Diagnostic, which is a statement about the
-	 * contract, not a failure here.
+	 * The {@code code} an error declares, if it declares one — the rule
+	 * every transport shares ({@link DeclaredErrors}).
 	 */
 	public static OptionalInt codeOf(ServiceException declared) {
-		if (declared == null || declared.eIsProxy()) {
-			return OptionalInt.empty();
+		return DeclaredErrors.codeOf(declared);
+	}
+
+	/**
+	 * The declared error a status of this operation's flavor stands for —
+	 * the reading side of {@link #statusFor}, and of what a dispatcher
+	 * answers for a thrown one.
+	 */
+	public static Optional<ServiceException> declaredFor(RestOperationFlavor operationFlavor, int status) {
+		if (operationFlavor == null) {
+			return Optional.empty();
 		}
-		for (Property property : declared.getProperties()) {
-			if ("code".equals(property.getName()) && property instanceof IntProperty code) {
-				return OptionalInt.of(code.getValue());
+		for (RestExceptionBinding binding : operationFlavor.getExceptionBindings()) {
+			ServiceException declared = binding.getException();
+			if (binding.getStatus() == status && declared != null && !declared.eIsProxy()) {
+				return Optional.of(declared);
 			}
 		}
-		return OptionalInt.empty();
+		return Optional.empty();
 	}
 }

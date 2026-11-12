@@ -28,10 +28,14 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.Diagnostic;
+import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.MessagingOperationFlavor;
 import org.eclipse.fennec.services.Parameter;
+import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceInvocation;
 import org.eclipse.fennec.services.ServiceInvocationResult;
@@ -292,6 +296,98 @@ class MessagingOperationDispatcherTest {
 		assertThat(Invocations.valueOf(answer))
 			.as("a failure has no value and must not read as one")
 			.isNull();
+	}
+
+	/** What a provider throws for the contract's 'InsufficientFunds'. */
+	public static final class InsufficientFundsException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+
+		public InsufficientFundsException(String message) {
+			super(message);
+		}
+	}
+
+	/** Raises the declared error by throwing it. */
+	public static final class ThrowingPayments {
+
+		@SuppressWarnings("unused")
+		public double charge(double amount) {
+			throw new InsufficientFundsException("only 3.50 left");
+		}
+	}
+
+	/** Raises the declared error the other way: a failing Diagnostic as the result. */
+	public static final class ReportingPayments {
+
+		@SuppressWarnings("unused")
+		public Object charge(double amount) {
+			Diagnostic refused = F.createDiagnostic();
+			refused.setSeverity(DiagnosticSeverity.ERROR);
+			refused.setCode(402);
+			refused.setMessage("only 3.50 left");
+			return refused;
+		}
+	}
+
+	/** The payments contract, with 'InsufficientFunds' (code 402) declared on charge. */
+	private MessagingFlavor paymentsDeclaringInsufficientFunds() {
+		MessagingFlavor flavor = payments();
+		ServiceOperation charge = ((MessagingOperationFlavor) flavor.getOperationFlavors().get(0)).getOperation();
+		ServiceException declared = F.createServiceException();
+		declared.setName("InsufficientFunds");
+		declared.setType("payment.InsufficientFunds");
+		IntProperty code = F.createIntProperty();
+		code.setName("code");
+		code.setValue(402);
+		declared.getProperties().add(code);
+		((ServiceInterface) charge.eContainer()).getExceptions().add(declared);
+		charge.getExceptions().add(declared);
+		return flavor;
+	}
+
+	/**
+	 * Over a messaging broker a declared error is its code and nothing
+	 * else (#185): there is no status to bind it to, and the answer
+	 * carries the Diagnostic anyway.
+	 */
+	@Test
+	void a_declared_error_that_is_thrown_travels_under_its_code() throws Exception {
+		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
+
+		new MessagingOperationDispatcher(flavor, ThrowingPayments::new, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/4", 5), sent::add);
+
+		Diagnostic diagnostic = answerIn(sent.get(0)).getDiagnostic();
+		assertThat(diagnostic.getCode()).isEqualTo(402);
+		assertThat(diagnostic.getMessage())
+			.as("the provider's words, not the name of its exception class")
+			.isEqualTo("only 3.50 left");
+	}
+
+	@Test
+	void a_failure_returned_as_a_diagnostic_is_the_answers_diagnostic_and_not_its_value() throws Exception {
+		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
+
+		new MessagingOperationDispatcher(flavor, ReportingPayments::new, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/5", 5), sent::add);
+
+		ServiceInvocationResult answer = answerIn(sent.get(0));
+		assertThat(answer.getDiagnostic()).isNotNull();
+		assertThat(answer.getDiagnostic().getCode()).isEqualTo(402);
+		assertThat(answer.getValue())
+			.as("a failure must not read as a successful call that returned a Diagnostic")
+			.isNull();
+	}
+
+	@Test
+	void an_error_the_contract_does_not_declare_has_no_code() throws Exception {
+		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
+
+		dispatcher(flavor).onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/6", 500), sent::add);
+
+		assertThat(answerIn(sent.get(0)).getDiagnostic().getCode())
+			.as("IllegalStateException is nothing the contract announced")
+			.isZero();
 	}
 
 	@Test

@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -345,6 +346,46 @@ class RestDispatcherBodyTest {
 				new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
 
 		assertThat(response.getStatus()).isBetween(200, 299);
+	}
+
+	/**
+	 * A service that answers later (osgi.async) is waited for: an HTTP
+	 * request is answered once, with what the holder ends with.
+	 */
+	@Test
+	void a_service_that_answers_later_is_waited_for() {
+		Object later = new Object() {
+			@SuppressWarnings("unused")
+			public CompletableFuture<Object> store(Object payload) {
+				return CompletableFuture.supplyAsync(() -> "kept " + payload);
+			}
+		};
+		RestDispatcher dispatcher = new RestDispatcher(contract(false), () -> new OneService(later), "Store",
+				new ResourceSetObjects());
+
+		Response response = dispatcher.dispatch("POST", "/store", name -> List.of(), name -> null,
+				new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
+
+		assertThat(response.getStatus()).isBetween(200, 299);
+		assertThat(String.valueOf(response.getEntity())).isEqualTo("kept x");
+	}
+
+	@Test
+	void a_holder_that_fails_answers_as_a_throwing_service_does() {
+		Object failing = new Object() {
+			@SuppressWarnings("unused")
+			public CompletableFuture<Object> store(Object payload) {
+				return CompletableFuture.failedFuture(new IllegalStateException("no room"));
+			}
+		};
+		RestDispatcher dispatcher = new RestDispatcher(contract(false), () -> new OneService(failing), "Store",
+				new ResourceSetObjects());
+
+		Response response = dispatcher.dispatch("POST", "/store", name -> List.of(), name -> null,
+				new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
+
+		assertThat(response.getStatus()).as("an error the contract does not declare").isEqualTo(500);
+		assertThat(String.valueOf(response.getEntity())).contains("no room");
 	}
 
 	// ---------------------------------------------------------- #219

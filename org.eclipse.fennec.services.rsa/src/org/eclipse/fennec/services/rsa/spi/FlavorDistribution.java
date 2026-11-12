@@ -56,13 +56,25 @@ public interface FlavorDistribution {
 	/**
 	 * The intents this provider can promise — {@code osgi.basic} for a
 	 * synchronous call with arguments and results carried across and
-	 * exceptions coming back. A service that asks for an intent nobody
-	 * here offers is not exported, which is what the specification wants
-	 * and what a consumer relying on that intent would want too.
+	 * exceptions coming back, and {@code osgi.async} for a method that
+	 * answers later: one returning a {@code Promise}, a {@code Future}, a
+	 * {@code CompletionStage} or a {@code CompletableFuture} is served,
+	 * and proxied, as what its holder holds. A service that asks for an
+	 * intent nobody here offers is not exported, which is what the
+	 * specification wants and what a consumer relying on that intent
+	 * would want too.
 	 */
 	default String[] supportedIntents() {
-		return new String[] { "osgi.basic" };
+		return new String[] { "osgi.basic", ASYNC_INTENT };
 	}
+
+	/**
+	 * The intent of Remote Services §100.6 for methods that answer later.
+	 * Offered by every provider here: the holder is unwrapped where the
+	 * contract is derived and where a call is dispatched, which is above
+	 * any one transport.
+	 */
+	String ASYNC_INTENT = "osgi.async";
 
 	/**
 	 * Make {@code service} reachable, and say in the model what a

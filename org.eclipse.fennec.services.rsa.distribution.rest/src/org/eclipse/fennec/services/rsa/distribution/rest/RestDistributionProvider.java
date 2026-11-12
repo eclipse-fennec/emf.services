@@ -163,11 +163,11 @@ public class RestDistributionProvider implements FlavorDistribution {
 		return FlavorKind.REST;
 	}
 
-	/** {@code osgi.basic}, and {@code fennec.bearer} once there is an issuer to name. */
+	/** {@code osgi.basic} and {@code osgi.async}, and {@code fennec.bearer} once there is an issuer to name. */
 	@Override
 	public String[] supportedIntents() {
-		return config.issuer().isBlank() ? new String[] { "osgi.basic" }
-				: new String[] { "osgi.basic", BEARER_INTENT };
+		return config.issuer().isBlank() ? new String[] { "osgi.basic", ASYNC_INTENT }
+				: new String[] { "osgi.basic", ASYNC_INTENT, BEARER_INTENT };
 	}
 
 	@Override

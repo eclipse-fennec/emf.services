@@ -39,6 +39,7 @@ import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.invocation.AsyncReturns;
 
 /**
  * The contract of a plain Java interface.
@@ -175,8 +176,18 @@ public final class JavaContracts {
         for (int i = 0; i < parameters.length; i++) {
             operation.getParameters().add(parameterOf(parameters[i], i, method, types));
         }
-        if (method.getReturnType() != void.class) {
-            Parameter result = slot("result", method.getReturnType(), method.getGenericReturnType(), method, types);
+        // A method that answers later returns what its holder holds
+        // (osgi.async): Promise<String> is a string to the contract. That
+        // the answer comes later is each end's own business, so a
+        // synchronous and an asynchronous interface describe one contract.
+        Class<?> returned = method.getReturnType();
+        Type generic = method.getGenericReturnType();
+        if (AsyncReturns.isHolder(returned)) {
+            generic = AsyncReturns.valueType(generic);
+            returned = AsyncReturns.rawOf(generic);
+        }
+        if (returned != void.class) {
+            Parameter result = slot("result", returned, generic, method, types);
             operation.setReturnValue(result);
         }
         for (Class<?> raised : sorted(method.getExceptionTypes())) {

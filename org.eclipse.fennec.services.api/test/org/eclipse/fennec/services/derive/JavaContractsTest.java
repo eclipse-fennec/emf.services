@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -24,6 +26,7 @@ import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.junit.jupiter.api.Test;
+import org.osgi.util.promise.Promise;
 
 /**
  * What a Java interface says, read as a contract.
@@ -76,6 +79,32 @@ class JavaContractsTest {
                 .filter(o -> name.equals(o.getName()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("no operation " + name));
+    }
+
+    /** The same contract as {@link Payment}, by a service that answers later (osgi.async). */
+    interface LaterPayment {
+        Promise<Double> charge(double amount, String currency);
+
+        CompletableFuture<Double> getBalance(String accountId);
+
+        Future<Void> cancel(String accountId);
+    }
+
+    /**
+     * That an answer comes later is each end's own business: to a
+     * contract Promise&lt;Double&gt; returns a double. A consumer written
+     * against the synchronous interface and a provider written against
+     * the asynchronous one therefore describe — and find — the same
+     * contract.
+     */
+    @Test
+    void aMethodThatAnswersLaterReturnsWhatItsHolderHolds() {
+        ServiceInterface later = JavaContracts.contractOf(LaterPayment.class, "1.0.0");
+
+        assertThat(operation(later, "charge").getReturnValue().getType()).isEqualTo("double");
+        assertThat(operation(later, "getBalance").getReturnValue().getType()).isEqualTo("double");
+        assertThat(operation(later, "cancel").getReturnValue())
+                .as("a holder of Void returns nothing").isNull();
     }
 
     @Test

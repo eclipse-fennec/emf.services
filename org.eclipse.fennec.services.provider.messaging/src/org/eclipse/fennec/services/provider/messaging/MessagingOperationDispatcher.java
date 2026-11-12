@@ -40,6 +40,7 @@ import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
+import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -187,11 +188,18 @@ public final class MessagingOperationDispatcher {
 			ServiceInvocationResult result;
 			try {
 				Object value = invoke(placed, invocation);
-				// A failure that came back as a value rather than as a throw
-				// is still a failure: the answer carries it as its Diagnostic,
-				// code and all, and not as a value that happens to be one.
-				result = DeclaredErrors.isFailure(value) ? Invocations.failure((Diagnostic) value)
-						: Invocations.result(value);
+				if (AsyncReturns.isPending(value)) {
+					// A service that answers later (osgi.async). The answer is
+					// sent when it has one, from whichever thread settles it:
+					// this one goes back to the subscription, so a slow call
+					// no longer holds up every call behind it. The span ends
+					// with the dispatch — a scope is closed on the thread it
+					// was opened on, and that is this one.
+					AsyncReturns.whenDone(value, (settled, failure) -> answer(request, channel, placed,
+							failure != null ? thrown(placed.operation(), failure) : resultOf(settled), reply));
+					return;
+				}
+				result = resultOf(value);
 			} catch (InvocationTargetException failed) {
 				span.failed(failed.getCause());
 				result = thrown(placed.operation(), failed.getCause());
@@ -218,6 +226,17 @@ public final class MessagingOperationDispatcher {
 			return contract.getName() + "/" + operation.getName();
 		}
 		return operation.getName();
+	}
+
+	/**
+	 * What a returned value answers with. A failure that came back as a
+	 * value rather than as a throw is still a failure: the answer carries
+	 * it as its Diagnostic, code and all, and not as a value that happens
+	 * to be one.
+	 */
+	private static ServiceInvocationResult resultOf(Object value) {
+		return DeclaredErrors.isFailure(value) ? Invocations.failure((Diagnostic) value)
+				: Invocations.result(value);
 	}
 
 	/**

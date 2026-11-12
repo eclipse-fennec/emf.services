@@ -29,4 +29,6 @@ Bundle-Description: \
 # platform-engine version.
 -testpath: \
 	${junit},\
-	junit-platform-launcher;version=latest
+	junit-platform-launcher;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest

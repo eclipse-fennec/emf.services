@@ -15,11 +15,14 @@ package org.eclipse.fennec.services.rsa.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 
+import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.rsa.spi.ExportedEndpoint;
 import org.eclipse.fennec.services.rsa.spi.FlavorDistribution;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +44,31 @@ class EndpointIntentsTest {
 	@Test
 	void anOpenContractDoesNot() {
 		assertThat(FennecRemoteServiceAdmin.intentsOf(contract(false), PROMISED)).containsExactly("osgi.basic");
+	}
+
+	/** osgi.async is what every provider promises, guarded contract or not (§100.6). */
+	@Test
+	void methodsThatAnswerLaterArePromisedByEveryProvider() {
+		List<String> promised = List.of(new FlavorDistribution() {
+			@Override
+			public String[] supportedConfigs() {
+				return new String[] { "fennec.test" };
+			}
+
+			@Override
+			public FlavorKind flavor() {
+				return FlavorKind.REST;
+			}
+
+			@Override
+			public ExportedEndpoint export(Object service, ServiceInterface contract, Map<String, ?> properties) {
+				throw new UnsupportedOperationException("not needed for this test");
+			}
+		}.supportedIntents());
+
+		assertThat(promised).containsExactly("osgi.basic", FlavorDistribution.ASYNC_INTENT);
+		assertThat(FennecRemoteServiceAdmin.intentsOf(contract(false), promised))
+				.containsExactly("osgi.basic", "osgi.async");
 	}
 
 	@Test

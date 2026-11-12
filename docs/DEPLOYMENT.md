@@ -192,6 +192,18 @@ the image name, the variant prefix, the build context and the two jar
 names. The tags that come out are `broker-<label>` and
 `broker-<Bundle-Version>`, in both registries.
 
+A snapshot build can also be started by hand, for a push that did not
+start one — an Actions outage can leave a run queued where it can be
+neither cancelled nor re-run:
+
+```
+gh workflow run snapshot.yml --ref snapshot
+gh workflow run harness.yml --ref snapshot
+```
+
+Started on any other ref, the snapshot workflow does nothing: a
+snapshot is only ever published from the `snapshot` branch.
+
 Prerequisites on the repository:
 
 - secrets `DOCKER_USERNAME` and `DOCKER_API_TOKEN` (Docker Hub); GHCR

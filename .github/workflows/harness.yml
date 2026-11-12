@@ -15,6 +15,9 @@ on:
   pull_request:
     branches:
       - '*'
+  # By hand, for a ref whose push did not start it:
+  # `gh workflow run harness.yml --ref <branch>`.
+  workflow_dispatch:
 
 permissions:
   contents: read

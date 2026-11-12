@@ -215,4 +215,10 @@ Every scenario prints its assertion inline (`✓`/`✗` per probe check,
 `SCENARIO X FAILED: <reason>` with the offending log dumped). The
 timeout path additionally sends the JVM a thread-dump signal before
 capturing the container log — a hung launch shows its stacks in
-`itest/work-podman/<container>.timeout.log`.
+`itest/work-podman/<container>.timeout.log`. That holds for a wait on a
+log line and for the wait on the broker's URL alike.
+
+Whatever the reason, a podman run that fails keeps the log of **every**
+container it started as `itest/work-podman/<container>.failed.log`
+before it removes them. In CI both kinds are in the `harness-logs`
+artifact of the run.

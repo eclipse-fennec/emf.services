@@ -115,6 +115,7 @@ function parameterExtensions(p: Parameter): string {
   const uri = eTypeUri(p.eType);
   if (uri) out += `|eType=${esc(uri)}`;
   out += boundFields(p, 'lower', 'upper');
+  out += deliveryField(p, 'delivery');
   return out;
 }
 
@@ -126,7 +127,20 @@ function returnExtensions(returnValue: Parameter | undefined): string {
   if (uri) out += `|returnEType=${esc(uri)}`;
   out += boundFields(returnValue, 'returnLower', 'returnUpper');
   if (boolText(returnValue.optional) === 'true') out += '|returnOptional=true';
+  out += deliveryField(returnValue, 'returnDelivery');
   return out;
+}
+
+/**
+ * How a slot's value arrives, and ONLY where that changes what is
+ * exchanged: a STREAM. VALUE is the default and renders nothing, by the
+ * extension rule. PROMISE renders nothing either, on purpose - it says
+ * when one value comes and not what it is, so a contract read
+ * synchronously and one read as a promise are the same contract. The
+ * Java twin is ServiceDescriptionFingerprint.deliveryField.
+ */
+function deliveryField(slot: Parameter, name: string): string {
+  return String(slot.delivery ?? '') === 'STREAM' ? `|${name}=STREAM` : '';
 }
 
 /**

@@ -147,14 +147,27 @@ class ReplyInboxTest {
 		return last;
 	}
 
-	/** Collects a stream of answers for the test. */
+	/** Collects a stream of answers for the test; asks for all of them at once, or when told to. */
 	private static final class Collecting implements Flow.Subscriber<CloudEventCodec.Message> {
 		final List<String> bodies = new CopyOnWriteArrayList<>();
 		final CompletableFuture<Throwable> ended = new CompletableFuture<>();
+		final CompletableFuture<Flow.Subscription> subscribed = new CompletableFuture<>();
+		private final boolean eager;
+
+		Collecting() {
+			this(true);
+		}
+
+		Collecting(boolean eager) {
+			this.eager = eager;
+		}
 
 		@Override
 		public void onSubscribe(Flow.Subscription asked) {
-			asked.request(Long.MAX_VALUE);
+			subscribed.complete(asked);
+			if (eager) {
+				asked.request(Long.MAX_VALUE);
+			}
 		}
 
 		@Override
@@ -205,6 +218,43 @@ class ReplyInboxTest {
 		assertThat(failure).isInstanceOf(ReplyInbox.StreamFailed.class).hasMessage("only 3.50 left");
 		assertThat(((ReplyInbox.StreamFailed) failure).last()).isNotNull();
 		assertThat(collecting.bodies).containsExactly("<one/>");
+	}
+
+	/**
+	 * A subscriber behind on the values gets them before the failure that
+	 * ended the stream: the failure must not overtake what is buffered.
+	 */
+	@Test
+	void aFailureDoesNotOvertakeTheValuesASlowSubscriberHasNotTakenYet() throws Exception {
+		ReplyInbox inbox = new ReplyInbox("reply/me", "reply/me/#");
+		Collecting slow = new Collecting(false);
+		inbox.expectMany("call-1", 5_000).subscribe(slow);
+
+		inbox.deliver(answerTo("call-1", "<one/>"));
+		inbox.deliver(answerTo("call-1", "<two/>"));
+		inbox.deliver(lastOf("call-1", "only 3.50 left"));
+		slow.subscribed.get(5, TimeUnit.SECONDS).request(Long.MAX_VALUE);
+
+		assertThat(slow.ended.get(5, TimeUnit.SECONDS)).isInstanceOf(ReplyInbox.StreamFailed.class);
+		assertThat(slow.bodies).containsExactly("<one/>", "<two/>");
+	}
+
+	/** Nor does the silence: a stream is not quiet while its subscriber has values to take. */
+	@Test
+	void aSlowSubscriberIsNotToldOfSilenceBeforeItHasTakenWhatArrived() throws Exception {
+		ReplyInbox inbox = new ReplyInbox("reply/me", "reply/me/#");
+		Collecting slow = new Collecting(false);
+		// An idle time a cold JVM does not spend on the first subscribe.
+		inbox.expectMany("call-1", 1_000).subscribe(slow);
+		inbox.deliver(answerTo("call-1", "<one/>"));
+		Flow.Subscription subscription = slow.subscribed.get(5, TimeUnit.SECONDS);
+
+		Thread.sleep(2_500);
+		assertThat(slow.ended).isNotDone();
+		subscription.request(Long.MAX_VALUE);
+
+		assertThat(slow.ended.get(5, TimeUnit.SECONDS)).isInstanceOf(TimeoutException.class);
+		assertThat(slow.bodies).containsExactly("<one/>");
 	}
 
 	@Test

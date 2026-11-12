@@ -143,6 +143,9 @@ A first call made while a component is being activated by a
 configuration can run into that timeout — the instance is activated on
 the thread that delivers configurations, and that thread is the one
 waiting. Calls from a thread of the application's own are not affected.
+The RSA example's consumers (`GreeterCaller`, `LedgerCaller` in
+`…examples.rsa.consumer`) show the shape: `activate` starts a thread
+that makes the call, `deactivate` interrupts it.
 
 ## `client.messaging` — events over MQTT, calls over MQTT and AMQP
 

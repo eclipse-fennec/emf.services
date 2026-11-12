@@ -47,6 +47,12 @@ in the broker's catalogue instead of a generated one.
 `…examples.rsa` and `…examples.rsa.consumer` are exactly this example,
 runnable.
 
+The one thing a consumer of a possibly remote service should not do is
+call it from `activate`: the call waits for a connection and an answer
+on a thread Declarative Services shares with others (see
+[Transports](TRANSPORTS.md)). The example's consumers start a thread
+of their own for it.
+
 ## How a node is configured
 
 One configuration per role (#109). A node that serves:

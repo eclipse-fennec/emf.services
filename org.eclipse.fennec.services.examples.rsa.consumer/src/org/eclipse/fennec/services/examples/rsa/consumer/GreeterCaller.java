@@ -13,11 +13,13 @@
 
 package org.eclipse.fennec.services.examples.rsa.consumer;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.examples.rsa.api.Greeter;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
@@ -33,6 +35,15 @@ import org.osgi.service.component.annotations.Reference;
  * <p>The filter asks for the import. A {@code @Reference} is a service
  * listener underneath, and the topology manager reads the interface it
  * waits for out of that listener's filter.
+ *
+ * <p>One thing the consumer does have to know, and it is true of any
+ * service that may be remote: <b>it does not call from
+ * {@code activate}</b>. Declarative Services activates a component on
+ * a thread it shares with others — the one delivering configurations,
+ * often — and a remote call waits: for a connection, for an answer.
+ * Over a messaging broker the connection being waited for can be one
+ * that only that very thread would bring up. So {@code activate} hands
+ * the call to a thread of this component's own and returns.
  */
 @Component(immediate = true)
 public class GreeterCaller {
@@ -42,10 +53,29 @@ public class GreeterCaller {
 	@Reference
 	private Greeter greeter;
 
+	private Thread caller;
+
 	@Activate
 	void activate() {
-		String greeting = greeter.greet("RSA consumer");
-		int soFar = greeter.greeted();
-		LOG.info("[RSA-Consumer] " + greeting + " (" + soFar + " greetings so far, none of them local)");
+		caller = new Thread(this::call, "rsa-example-greeter-caller");
+		caller.setDaemon(true);
+		caller.start();
+	}
+
+	@Deactivate
+	void deactivate() {
+		caller.interrupt();
+	}
+
+	private void call() {
+		try {
+			String greeting = greeter.greet("RSA consumer");
+			int soFar = greeter.greeted();
+			LOG.info("[RSA-Consumer] " + greeting + " (" + soFar + " greetings so far, none of them local)");
+		} catch (RuntimeException failed) {
+			// On a thread of our own nobody else reports it: an exception
+			// out of activate would have been DS's to log.
+			LOG.log(Level.WARNING, "[RSA-Consumer] the greeter could not be called", failed);
+		}
 	}
 }

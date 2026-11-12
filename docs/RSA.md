@@ -85,6 +85,10 @@ answer. **Over REST, one thread** of the proxy factory until the
 response is there; the HTTP client underneath waits. A transport of
 your own gets this by implementing `ServiceInvoker.invokeAsync`; the
 default makes the synchronous call on a thread it is given.
+
+The example's `Greeter.greetLater` is this, and the harness runs it
+over MQTT and AMQP.
+
 ### Streams
 
 A slot may be a stream: any number of values, one after the other, over
@@ -101,14 +105,44 @@ void feed(String sensorId, PushStream<Double> in);   // the caller streams to th
 A stream is another exchange than a list of the same type and therefore
 another contract: `STREAM` is part of the fingerprint.
 
-**No transport carries a stream yet.** The contract can say it, the
-generators and the fingerprint read it, and an export of such a service
-is refused at the export with the slots named — rather than accepted
-and failing on the first call. The same holds for a contract document
-served by the generic REST or messaging distribution.
+**A stream a service returns travels over a messaging broker** — MQTT
+and AMQP alike. The provider's stream is consumed as it comes: each
+value is one answer to the call, and a last one says that the stream is
+over, or why it broke off
+([the wire](WIRE_FORMAT.md#a-stream-as-the-answer)). On the other side
+the proxy hands back a stream of the type the method declares —
+`PushStream<T>` (the Push Stream bundle is then needed in the launch;
+the SDK imports it optionally) or `Flow.Publisher<T>` — and makes the
+call when the stream is consumed: a terminal operation on the
+`PushStream`, `subscribe` on the publisher. A failure, a declared error
+included, ends the stream as its error.
 
-The example's `Greeter.greetLater` is this, and the harness runs it
-over MQTT and AMQP.
+What is refused, each time at the export and with the slots named,
+rather than accepted and failing on the first call:
+
+- **a stream over REST** — a request there is answered once;
+- **a stream as an argument**, on every transport: many requests to one
+  responder is another exchange, and nothing carries it yet.
+
+The same holds for a contract document served by the generic REST or
+messaging distribution.
+
+Three limits worth knowing before you build on it:
+
+- **Leaving early stays local.** A consumer that closes its stream
+  stops listening; the provider is not told and sends to the end.
+- **Flow control ends at the broker.** A slow consumer holds back its
+  own connection — over MQTT with a flavor that names a reply tree,
+  that is the delivery of every answer on that tree — and the provider
+  is paced by its connection to the broker, not by the consumer. A
+  TypeScript consumer queues what arrives faster than it iterates.
+- **A stream that brings nothing for the call timeout fails.** The
+  timeout is between two values, not over the whole stream.
+
+The example's `Ticker.count` is this (`PushStream<Integer>`), and the
+harness runs it over MQTT and AMQP — bound by `@Reference` in a second
+framework, and iterated by a TypeScript consumer as an
+`AsyncIterable<number>`.
 
 The one thing a consumer of a possibly remote service should not do is
 call it from `activate`: the call waits for a connection and an answer

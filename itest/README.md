@@ -74,7 +74,11 @@ broker. Requirements and decisions:
   travel over mosquitto (#98).
   The same framework is asked to export the guarded `Ledger` too, and
   the scenario checks that MQTT refuses it — a call there carries no
-  credential.
+  credential. The example's `Ticker` returns a `PushStream`: the
+  importing framework collects its five values and the end of the
+  stream, and a TypeScript consumer (`ticker-probe.ts`) looks the
+  derived contract up and iterates the same stream as an
+  `AsyncIterable`.
 - **R (podman only) — RSA over AMQP:** scenario I on the third
   transport (#138). The same service is exported over AMQP 0-9-1 by one
   framework and bound with `@Reference` in another, over a RabbitMQ
@@ -83,7 +87,9 @@ broker. Requirements and decisions:
   node hears the registry's events over AMQP too and is started first,
   so what makes it import is the `REGISTERED` event on the routing key;
   the exporting node serves over AMQP and announces over REST. The
-  guarded `Ledger` is refused here as it is over MQTT.
+  guarded `Ledger` is refused here as it is over MQTT, and the
+  `Ticker`'s stream arrives here as it does there — in the importing
+  framework and in TypeScript.
 - **S (podman only) — a call encoded as JSON:** scenario R again, with
   the exporting node told `encoding=application/json`. The payload is
   written and read by the resource factory registered for that content

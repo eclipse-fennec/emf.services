@@ -84,6 +84,27 @@ class ServiceInterfaceTemplateTest {
 				.contains("long between(Instant from, Instant to);");
 	}
 
+	/**
+	 * Parameter.delivery: the contract says that a value comes later or
+	 * as a stream, the binding says which Java type says so — and where
+	 * it names none, the JDK's own, which need no dependency.
+	 */
+	@Test
+	void howAValueArrivesIsWrittenIntoTheSignature() throws Exception {
+		String source = generated("Clock.java");
+
+		assertThat(source)
+				.as("PROMISE: a holder of what the method would otherwise return")
+				.contains("CompletionStage<Instant> soon();")
+				.contains("import java.util.concurrent.CompletionStage;");
+		assertThat(source)
+				.as("STREAM: a stream of the element type, not a List that arrives complete")
+				.contains("Publisher<Instant> ticks(long everyMillis);")
+				.contains("import java.util.concurrent.Flow.Publisher;")
+				.doesNotContain("import java.util.List;");
+		assertThat(source).as("VALUE stays what it was").contains("Instant now();");
+	}
+
 	@Test
 	void anEClassTypedSlotIsImportedThroughThePackageMapping() throws Exception {
 		String source = generated("PersonDirectory.java");

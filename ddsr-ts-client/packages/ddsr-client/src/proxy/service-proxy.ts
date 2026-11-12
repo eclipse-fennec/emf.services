@@ -13,7 +13,7 @@
 
 import type { ServiceLocator } from '../api/service-locator.js';
 import { toArray } from '../internal/emf-util.js';
-import { DdsrServiceError } from '../api/errors.js';
+import { DdsrClientError, DdsrServiceError } from '../api/errors.js';
 
 /**
  * A calling surface for a located service: `service.charge(100, 'EUR')`
@@ -39,9 +39,17 @@ export function serviceProxy<T>(locator: ServiceLocator, exceptions: ExceptionCl
     get: (_target, prop) => {
       if (typeof prop !== 'string' || prop === 'then') return undefined;
       return (...args: unknown[]) => {
-        const operation = toArray<{ name?: string; parameters?: unknown }>(
+        const operation = toArray<{ name?: string; parameters?: unknown; returnValue?: unknown }>(
           locator.serviceInterface.operations
         ).find(o => o.name === prop);
+        // The contract may say a slot is a stream (Parameter.delivery),
+        // and no flavor plugin carries one yet. Said here, by name,
+        // instead of by a Promise where the caller iterates.
+        const streams = streamSlots(operation);
+        if (streams.length > 0) {
+          throw new DdsrClientError(
+            `${prop} has stream slots [${streams.join(', ')}], and no transport here carries streams yet`);
+        }
         const params: Record<string, unknown> = {};
         if (operation) {
           const parameters = toArray<{ name?: string }>(operation.parameters);
@@ -61,6 +69,14 @@ export function serviceProxy<T>(locator: ServiceLocator, exceptions: ExceptionCl
       };
     },
   }) as unknown as T;
+}
+
+/** The stream slots of an operation, by name - `return` for the return value. */
+function streamSlots(operation: { parameters?: unknown; returnValue?: unknown } | undefined): string[] {
+  if (!operation) return [];
+  const isStream = (slot: unknown) => String((slot as { delivery?: unknown } | undefined)?.delivery ?? '') === 'STREAM';
+  const names = toArray<{ name?: string }>(operation.parameters).filter(isStream).map(slot => slot.name ?? '?');
+  return isStream(operation.returnValue) ? [...names, 'return'] : names;
 }
 
 /** A generated class per declared error, by its symbolic type. */

@@ -4,9 +4,16 @@
     xmlns:services="http://eclipse.org/fennec/services/1.0"
     name="Clock"
     version="1.0.0"
-    description="Tells the time. Exercises the one thing the other example contracts do not have: a slot whose language-neutral type is outside the standard set, so that what it is in a language is the binding's to say.">
+    description="Tells the time. Exercises what the other example contracts do not have: a slot whose language-neutral type is outside the standard set, so that what it is in a language is the binding's to say — and the three ways a value can arrive: at once, later, and as a stream.">
   <operations name="now" description="The current instant.">
     <returnValue name="result" type="instant"/>
+  </operations>
+  <operations name="soon" description="The instant at which the clock got round to answering.">
+    <returnValue name="result" type="instant" delivery="PROMISE"/>
+  </operations>
+  <operations name="ticks" description="Every tick, for as long as anyone listens.">
+    <parameters name="everyMillis" type="long" description="How far apart the ticks are."/>
+    <returnValue name="result" type="instant" upperBound="-1" delivery="STREAM"/>
   </operations>
   <operations name="between" description="Milliseconds from one instant to another.">
     <parameters name="from" type="instant" description="Where to count from."/>

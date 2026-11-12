@@ -159,10 +159,10 @@ public class GenericMessagingDistribution {
 		ServiceImplementation implementation = load(context, config, publishedFrom);
 		MessagingFlavor flavor = listenOn(messagingFlavorOf(implementation), config.messaging_broker());
 		String contract = implementation.getServiceInterfaces().get(0).getName();
-		// A contract may say a slot is a stream; this distribution sends
-		// one answer per call so far. Refused here, by name, instead of on
-		// a call.
-		Contracts.requireNoStreams(implementation.getServiceInterfaces().get(0),
+		// A stream a service returns travels over a messaging broker as
+		// many answers to one call. One it is handed does not travel yet,
+		// and that is said here, by name, instead of on a call.
+		Contracts.requireNoStreamArguments(implementation.getServiceInterfaces().get(0),
 				"the generic messaging distribution");
 		if (flavor.getBrokers().isEmpty()) {
 			// Nothing to connect to, said plainly and once. A document

@@ -16,6 +16,8 @@ Bundle-Description: \
 	org.osgi.service.component;version=latest,\
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.osgi.util.promise;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
+	org.osgi.util.function;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.runtime;version=snapshot,\
@@ -31,4 +33,16 @@ Bundle-Description: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
 	org.osgi.util.promise;version=latest,\
-	org.osgi.util.function;version=latest
+	org.osgi.util.function;version=latest,\
+	org.osgi.util.pushstream;version=latest
+
+# A proxy hands a caller the stream type its interface declares, and one
+# of the two is the OSGi PushStream. Optional: a client that has no such
+# interface needs no pushstream bundle, and one that has brings the
+# package with the interface — the class that touches it (PushStreamOf)
+# is loaded only then.
+Import-Package: \
+	org.osgi.util.pushstream;resolution:=optional,\
+	org.osgi.util.promise;resolution:=optional,\
+	org.osgi.util.function;resolution:=optional,\
+	*

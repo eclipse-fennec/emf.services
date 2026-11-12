@@ -21,6 +21,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -41,7 +45,9 @@ import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.AsyncReturns;
+import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.messaging.PushStreams;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
@@ -84,6 +90,66 @@ public final class MessagingOperationDispatcher {
 	public interface Reply {
 
 		void send(CloudEventCodec.Message answer) throws Exception;
+
+		/**
+		 * Answer with a stream: every message the publisher hands out,
+		 * one after the other, and then the one that ends it.
+		 *
+		 * <p>The next answer is asked for when the broker has the one
+		 * before — so a service that produces faster than the broker
+		 * takes is slowed down by the broker, not buffered here.
+		 *
+		 * @param answers the answers; asked for one at a time
+		 * @param last    the message that ends the stream, for the
+		 *                failure it ended with or {@code null} for a
+		 *                stream that was simply over
+		 * @return completes when the last message is handed over, and
+		 *         fails when an answer could not be
+		 */
+		default CompletionStage<Void> stream(Flow.Publisher<CloudEventCodec.Message> answers,
+				Function<Throwable, CloudEventCodec.Message> last) {
+			CompletableFuture<Void> done = new CompletableFuture<>();
+			answers.subscribe(new Flow.Subscriber<>() {
+				private Flow.Subscription subscription;
+
+				@Override
+				public void onSubscribe(Flow.Subscription asked) {
+					this.subscription = asked;
+					asked.request(1);
+				}
+
+				@Override
+				public void onNext(CloudEventCodec.Message answer) {
+					try {
+						send(answer);
+						subscription.request(1);
+					} catch (Exception unsent) {
+						subscription.cancel();
+						done.completeExceptionally(unsent);
+					}
+				}
+
+				@Override
+				public void onError(Throwable failure) {
+					end(failure);
+				}
+
+				@Override
+				public void onComplete() {
+					end(null);
+				}
+
+				private void end(Throwable failure) {
+					try {
+						send(last.apply(failure));
+						done.complete(null);
+					} catch (Exception unsent) {
+						done.completeExceptionally(unsent);
+					}
+				}
+			});
+			return done;
+		}
 	}
 
 	private final MessagingRoute route;
@@ -188,6 +254,15 @@ public final class MessagingOperationDispatcher {
 			ServiceInvocationResult result;
 			try {
 				Object value = invoke(placed, invocation);
+				Flow.Publisher<Object> stream = PushStreams.asPublisher(value);
+				if (stream != null) {
+					// A service that answers with a stream (Delivery.STREAM):
+					// one answer per value and then the one that ends it. The
+					// next value is asked for when the broker has the one
+					// before, so a fast service is slowed by the broker.
+					answerWithStream(request, channel, placed, stream, reply);
+					return;
+				}
 				if (AsyncReturns.isPending(value)) {
 					// A service that answers later (osgi.async). The answer is
 					// sent when it has one, from whichever thread settles it:
@@ -302,6 +377,52 @@ public final class MessagingOperationDispatcher {
 			} catch (Exception silence) {
 				LOG.warning("[DDSR-MSG] and could not say why either: " + silence);
 			}
+		}
+	}
+
+	/**
+	 * Many answers to one call. Each carries one value in the encoding
+	 * the flavor declares; the last carries none and says that the
+	 * stream is over ({@code replycomplete}) — and, where it ended with
+	 * a failure, the Diagnostic a single answer would have carried, so
+	 * a declared error is recognised the same way.
+	 */
+	private void answerWithStream(CloudEvent request, String channel, MessagingRoute.Operation placed,
+			Flow.Publisher<Object> values, Reply reply) {
+		String contentType = placed.produces();
+		Flow.Publisher<CloudEventCodec.Message> answers = Flows.map(values, value -> {
+			try {
+				ServiceInvocationResult result = Invocations.result(value);
+				return new CloudEventCodec.Message(
+						CloudEvents.describing(MessagingRoute.reply(request, source, contentType), result),
+						write(List.of(result), contentType));
+			} catch (Exception unwritable) {
+				throw new IllegalStateException("a value of the stream could not be written: " + unwritable.getMessage(),
+						unwritable);
+			}
+		});
+		reply.stream(answers, failure -> last(request, placed, failure)).whenComplete((sent, unsent) -> {
+			if (unsent != null) {
+				LOG.log(Level.WARNING, "[DDSR-MSG] the stream answering a call on " + channel + " broke off", unsent);
+			}
+		});
+	}
+
+	/** The message that ends a stream of answers, for the failure it ended with or null. */
+	private CloudEventCodec.Message last(CloudEvent request, MessagingRoute.Operation placed, Throwable failure) {
+		CloudEvent envelope = MessagingRoute.reply(request, source, MessagingRoute.DEFAULT_CONTENT_TYPE);
+		envelope.getExtensions().put(CloudEvents.EXTENSION_REPLY_COMPLETE, "true");
+		if (failure == null) {
+			return new CloudEventCodec.Message(envelope, null);
+		}
+		ServiceInvocationResult result = thrown(placed.operation(), failure);
+		envelope.getExtensions().put(CloudEvents.EXTENSION_REPLY_ERROR,
+				result.getDiagnostic().getMessage() == null ? "failed" : result.getDiagnostic().getMessage());
+		try {
+			return new CloudEventCodec.Message(CloudEvents.describing(envelope, result),
+					write(List.of(result), MessagingRoute.DEFAULT_CONTENT_TYPE));
+		} catch (Exception unwritable) {
+			return new CloudEventCodec.Message(envelope, null);
 		}
 	}
 

@@ -32,5 +32,8 @@ Bundle-Description: \
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest,\
 	jakarta.json-api;version=latest,\
 	org.eclipse.parsson.jakarta.json;version=latest

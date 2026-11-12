@@ -27,6 +27,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -47,6 +48,7 @@ import org.eclipse.fennec.services.client.ServiceProxyFactory;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
 import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.invocation.AsyncReturns;
+import org.eclipse.fennec.services.invocation.Flows;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
@@ -185,6 +187,19 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				return handleObjectMethod(method, args);
 			}
 			Class<?> returned = method.getReturnType();
+			for (Class<?> handedOver : method.getParameterTypes()) {
+				if (AsyncReturns.isStream(handedOver)) {
+					// A stream as an argument flows from the caller to the
+					// provider: many requests to one responder, which no
+					// transport here carries yet. Said before anything is
+					// sent.
+					throw new DdsrException(method.getName() + " takes a stream, and no transport carries a"
+							+ " stream from the caller to the provider yet");
+				}
+			}
+			if (AsyncReturns.isStream(returned)) {
+				return stream(method, args);
+			}
 			if (AsyncReturns.isHolder(returned)) {
 				return later(method, args);
 			}
@@ -193,6 +208,31 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 			} catch (DdsrServiceException declared) {
 				throw asDeclared(method, declared);
 			}
+		}
+
+		/**
+		 * A method that returns a stream ({@code Delivery.STREAM}): values
+		 * one after the other, as the caller takes them.
+		 *
+		 * <p>The invoker hands over a {@code Flow.Publisher}; the caller
+		 * gets the type its interface declares — that publisher, or a
+		 * PushStream fed from it. Nothing is sent before the stream is
+		 * consumed, and a failure, a declared error included, ends the
+		 * stream instead of being thrown here.
+		 */
+		private Object stream(Method method, Object[] args) {
+			Class<?> element = AsyncReturns.rawOf(AsyncReturns.valueType(method.getGenericReturnType()));
+			Flow.Publisher<Object> answered;
+			try {
+				answered = invokerFor.apply(locator).invokeStream(locator, method.getName(), buildArgMap(method, args));
+			} catch (RuntimeException unstartable) {
+				answered = Flows.failed(unstartable);
+			}
+			Flow.Publisher<Object> values = Flows.mapFailure(
+					Flows.map(answered, value -> coerceReturn(method, element, value)),
+					failure -> unwrapped(failure) instanceof DdsrServiceException declared
+							? asDeclared(method, declared) : unwrapped(failure));
+			return method.getReturnType() == Flow.Publisher.class ? values : PushStreamOf.of(values);
 		}
 
 		/**

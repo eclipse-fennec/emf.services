@@ -69,6 +69,18 @@ public interface FlavorDistribution {
 	}
 
 	/**
+	 * Whether this provider carries a stream a service returns
+	 * ({@code Delivery.STREAM} on a return value) to its caller. A
+	 * transport that answers a request once does not — and then a
+	 * service with such a method is not exported, with the slot named,
+	 * rather than exported and failing on its first call. No provider
+	 * carries a stream the other way yet.
+	 */
+	default boolean carriesStreams() {
+		return false;
+	}
+
+	/**
 	 * The intent of Remote Services §100.6 for methods that answer later.
 	 * Offered by every provider here: the holder is unwrapped where the
 	 * contract is derived and where a call is dispatched, which is above

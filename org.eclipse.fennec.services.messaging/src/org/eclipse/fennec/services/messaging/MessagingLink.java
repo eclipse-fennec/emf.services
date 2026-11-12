@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Flow;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -120,6 +121,7 @@ public final class MessagingLink implements AutoCloseable {
 		 *                   the answer could not be handed over
 		 */
 		void send(CloudEventCodec.Message answer) throws Exception;
+
 	}
 
 	/** How long an answer may take to reach the broker. */
@@ -372,6 +374,65 @@ public final class MessagingLink implements AutoCloseable {
 		} catch (RuntimeException unsendable) {
 			return CompletableFuture.failedFuture(unsendable);
 		}
+	}
+
+	/**
+	 * A request answered with a stream: any number of answers and the
+	 * one that ends them ({@code replycomplete}).
+	 *
+	 * <p>Nothing is published before the publisher has a subscriber —
+	 * the request goes out when the stream is connected. Answers are
+	 * acknowledged to the broker as they are taken, and they are taken
+	 * as the subscriber asks: a slow subscriber slows the responder down
+	 * through the broker's window. The stream fails with a
+	 * {@link TimeoutException} when no answer comes within the timeout
+	 * of the request or of the answer before.
+	 *
+	 * @throws UnsupportedOperationException through the publisher, when
+	 *                                       the instance cannot take
+	 *                                       many answers to one request
+	 */
+	public Flow.Publisher<CloudEventCodec.Message> requestMany(String topic, CloudEventCodec.Message message,
+			int qos, long timeoutMillis) {
+		return subscriber -> {
+			Flow.Publisher<CloudEventCodec.Message> answers;
+			try {
+				Instance current = instance;
+				if (current == null) {
+					throw new IllegalStateException("no connection to " + settings.address() + " yet");
+				}
+				if (current.requests == null) {
+					throw new UnsupportedOperationException("the connection to " + settings.address()
+							+ " offers no request and reply");
+				}
+				MessageContextBuilder builder = current.builders.getService();
+				Message request;
+				try {
+					builder.extensionEntry(MessagingConstants.EXTENSION_REPLY_TIMEOUT, timeoutMillis);
+					request = Envelopes.toMessage(builder, topic, message, qos, message.attributes().getEventId());
+				} finally {
+					current.builders.ungetService(builder);
+				}
+				answers = PushStreams.publisherOf(current.requests.publishWithReplyMany(request)
+						.map(Envelopes::fromMessage).filter(answer -> answer != null));
+			} catch (RuntimeException unsendable) {
+				answers = refused -> {
+					refused.onSubscribe(new Flow.Subscription() {
+						@Override
+						public void request(long n) {
+							// nothing will come
+						}
+
+						@Override
+						public void cancel() {
+							// nothing to stop
+						}
+					});
+					refused.onError(unsendable);
+				};
+			}
+			answers.subscribe(subscriber);
+		};
 	}
 
 	/**

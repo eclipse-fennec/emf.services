@@ -579,3 +579,183 @@ describe('MQTT reply isolation', () => {
     await server.stop();
   });
 });
+
+// Parameter.delivery = STREAM: the answer to one call is many messages -
+// one per value, and one marked complete that ends it. The same names
+// Gecko Messaging's reply-to-many uses, so a Java provider answers a
+// TS consumer and the other way round.
+describe('a stream a service returns travels over the messaging broker', () => {
+  function tickerFlavor(named = true): { flavor: MessagingFlavor; count: ServiceOperation } {
+    const count = factory.createServiceOperation();
+    count.name = 'count';
+    const ticks = factory.createParameter();
+    ticks.name = 'result';
+    ticks.type = 'int';
+    ticks.upperBound = -1;
+    ticks.delivery = 'STREAM';
+    count.returnValue = ticks;
+
+    const flavor = factory.createMessagingFlavor();
+    flavor.name = 'ticker-mqtt';
+    flavor.brokers.push('tcp://fake:1883');
+    flavor.channel = 'ddsr/rpc/ticker';
+    const countFlavor = factory.createMessagingOperationFlavor();
+    countFlavor.name = 'count';
+    countFlavor.operation = count;
+    if (named) countFlavor.replyChannel = 'ddsr/rpc/ticker/count/reply';
+    flavor.operationFlavors.push(countFlavor);
+    return { flavor, count };
+  }
+
+  async function* upTo(n: number): AsyncGenerator<number> {
+    for (let i = 1; i <= n; i++) yield i;
+  }
+
+  async function collect(values: unknown): Promise<unknown[]> {
+    const seen: unknown[] = [];
+    for await (const value of values as AsyncIterable<unknown>) seen.push(value);
+    return seen;
+  }
+
+  for (const named of [true, false]) {
+    it(`hands the caller every value and then ends (${named ? 'the flavor names' : 'the consumer brings'} the reply tree)`,
+      async () => {
+        const { flavor, count } = tickerFlavor(named);
+        const { clientFactory } = testHarness();
+        const server = new MqttOperationServer(flavor, {
+          count: (args) => upTo(Number(args.upTo)),
+        }, { clientFactory, log: () => undefined });
+        await server.start();
+        const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+
+        const values = await plugin.invoke(count, { upTo: 5 }, flavor, firstOpFlavor(flavor));
+
+        expect(await collect(values)).toEqual([1, 2, 3, 4, 5]);
+        await plugin.close();
+        await server.stop();
+      });
+  }
+
+  it('puts one answer per value on the wire and one that ends the stream', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { broker, clientFactory } = testHarness();
+    const answers: Array<Record<string, unknown>> = [];
+    broker.onPublish((topic, payload) => {
+      if (topic.includes('/reply/')) answers.push(JSON.parse(new TextDecoder().decode(payload)));
+    });
+    const server = new MqttOperationServer(flavor, { count: () => upTo(2) }, { clientFactory, log: () => undefined });
+    await server.start();
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+
+    await collect(await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)));
+
+    expect(answers).toHaveLength(3);
+    expect(answers[0].replycomplete).toBeUndefined();
+    expect(answers[1].replycomplete).toBeUndefined();
+    expect(String(answers[2].replycomplete)).toBe('true');
+    expect(answers[2].replyerror).toBeUndefined();
+    expect(new Set(answers.map(answer => answer.correlationid ?? answer.id)).size).toBeGreaterThan(0);
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('sends nothing before the first value is asked for', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { broker, clientFactory } = testHarness();
+    let published = 0;
+    broker.onPublish(() => { published++; });
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+
+    await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor));
+
+    expect(published).toBe(0);
+    await plugin.close();
+  });
+
+  it('ends the iteration with the failure, after the values that came before it', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, {
+      count: async function* () {
+        yield 1;
+        yield 2;
+        throw new Error('the sensor went away');
+      },
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+    const seen: unknown[] = [];
+
+    const values = await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)) as AsyncIterable<unknown>;
+    const failure = await (async () => {
+      for await (const value of values) seen.push(value);
+    })().then(() => undefined, (error: unknown) => error);
+
+    expect(seen).toEqual([1, 2]);
+    expect(String(failure)).toMatch(/the sensor went away/);
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('tells a declared error that ends a stream as the declared error', async () => {
+    const { flavor, count } = tickerFlavor();
+    const declared = factory.createServiceException();
+    declared.name = 'OutOfRange';
+    declared.type = 'ticker.OutOfRange';
+    const code = factory.createIntProperty();
+    code.name = 'code';
+    code.value = 416;
+    declared.properties.push(code);
+    count.exceptions.push(declared);
+    class OutOfRangeException extends Error {}
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, {
+      count: async function* () {
+        yield 1;
+        throw new OutOfRangeException('no more than one');
+      },
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+
+    const failure = await collect(await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)))
+      .then(() => undefined, (error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(DdsrServiceError);
+    expect((failure as DdsrServiceError).exception).toBe(declared);
+    expect((failure as DdsrServiceError).message).toBe('no more than one');
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('fails a stream that brings nothing for the timeout', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { clientFactory } = testHarness();
+    const plugin = new MqttFlavorPlugin({ clientFactory, timeoutMs: 50, log: () => undefined });
+
+    await expect(collect(await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor))))
+      .rejects.toThrow(/brought nothing for 50ms/);
+    await plugin.close();
+  });
+
+  it('keeps two streams of one consumer apart by correlation', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, {
+      count: (args) => upTo(Number(args.upTo)),
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+    const opFlavor = firstOpFlavor(flavor);
+
+    const [three, two] = await Promise.all([
+      plugin.invoke(count, { upTo: 3 }, flavor, opFlavor).then(collect),
+      plugin.invoke(count, { upTo: 2 }, flavor, opFlavor).then(collect),
+    ]);
+
+    expect(three).toEqual([1, 2, 3]);
+    expect(two).toEqual([1, 2]);
+    await plugin.close();
+    await server.stop();
+  });
+});

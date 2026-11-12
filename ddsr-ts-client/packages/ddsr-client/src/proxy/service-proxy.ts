@@ -42,13 +42,16 @@ export function serviceProxy<T>(locator: ServiceLocator, exceptions: ExceptionCl
         const operation = toArray<{ name?: string; parameters?: unknown; returnValue?: unknown }>(
           locator.serviceInterface.operations
         ).find(o => o.name === prop);
-        // The contract may say a slot is a stream (Parameter.delivery),
-        // and no flavor plugin carries one yet. Said here, by name,
-        // instead of by a Promise where the caller iterates.
+        // The contract may say a slot is a stream (Parameter.delivery).
+        // One that comes back is iterated; one the caller hands over is
+        // many requests to one responder, which no flavor plugin
+        // carries yet - said here, by name, before anything is sent.
         const streams = streamSlots(operation);
-        if (streams.length > 0) {
+        const handedOver = streams.filter(slot => slot !== 'return');
+        if (handedOver.length > 0) {
           throw new DdsrClientError(
-            `${prop} has stream slots [${streams.join(', ')}], and no transport here carries streams yet`);
+            `${prop} takes streams as arguments [${handedOver.join(', ')}], and no transport here carries a`
+            + ' stream from the caller to the provider yet');
         }
         const params: Record<string, unknown> = {};
         if (operation) {
@@ -60,15 +63,58 @@ export function serviceProxy<T>(locator: ServiceLocator, exceptions: ExceptionCl
         } else if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
           Object.assign(params, args[0]);
         }
+        const asGenerated = (error: unknown): unknown =>
+          error instanceof DdsrServiceError && exceptions[error.exception.type]
+            ? new exceptions[error.exception.type](error.message, error) : error;
+        if (streams.includes('return')) {
+          // Iterated, not awaited: nothing is sent before the first
+          // value is asked for, and a failure - a declared error as the
+          // generated class included - ends the iteration.
+          return streamOf(() => locator.invoke(prop, params), asGenerated);
+        }
         return locator.invoke(prop, params).catch((error: unknown) => {
-          if (error instanceof DdsrServiceError && exceptions[error.exception.type]) {
-            throw new exceptions[error.exception.type](error.message, error);
-          }
-          throw error;
+          throw asGenerated(error);
         });
       };
     },
   }) as unknown as T;
+}
+
+/**
+ * What a call resolves to, as the stream the caller iterates. The call
+ * is made when the first value is asked for; a transport that carries
+ * streams resolves it to an async iterable, and one that does not
+ * resolves it to something else - which is said instead of iterated.
+ */
+function streamOf(start: () => Promise<unknown>, told: (error: unknown) => unknown): AsyncIterable<unknown> {
+  return {
+    [Symbol.asyncIterator]() {
+      let values: AsyncIterator<unknown> | undefined;
+      const open = async (): Promise<AsyncIterator<unknown>> => {
+        const answered = await start();
+        const iterable = answered as { [Symbol.asyncIterator]?: () => AsyncIterator<unknown> } | null | undefined;
+        if (typeof iterable?.[Symbol.asyncIterator] !== 'function') {
+          throw new DdsrClientError('the operation returns a stream, and the transport that carried the call'
+            + ' carries no streams');
+        }
+        return iterable[Symbol.asyncIterator]!();
+      };
+      return {
+        async next() {
+          try {
+            values ??= await open();
+            return await values.next();
+          } catch (error) {
+            throw told(error);
+          }
+        },
+        async return() {
+          await values?.return?.();
+          return { done: true, value: undefined };
+        },
+      };
+    },
+  };
 }
 
 /** The stream slots of an operation, by name - `return` for the return value. */

@@ -56,7 +56,8 @@ import { connectAmqp, isAmqpUrl } from './amqp-client.js';
 import type { AmqpConnectOptions } from './amqp-client.js';
 import type { ServiceOperation } from '@ddsr/model';
 import {
-  CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO, CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
+  CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_COMPLETE, CE_EXTENSION_REPLY_ERROR, CE_EXTENSION_REPLY_TO,
+  CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
   dataAsText, decodeInvocation, decodeResult, encodeFailure, encodeInvocation, encodeResult,
   newEnvelope, readStructured, writeStructured,
 } from '@ddsr/client';
@@ -114,6 +115,8 @@ export interface MqttRpcRequest {
 /** A decoded answer: which call it answers, and what it says. */
 export interface MqttRpcResponse {
   correlationId: string;
+  /** Whether this message ends a stream of answers (and carries no value of its own). */
+  complete?: boolean;
   value?: unknown;
   error?: string;
   /** The code of the failure's Diagnostic - which declared error it is, if any. */
@@ -321,12 +324,41 @@ export function encodeResponse(
   return writeStructured(envelope, document);
 }
 
+/**
+ * The message that ends a stream of answers: no value, the mark that
+ * the stream is over, and - where it ended with a failure - why, as the
+ * extension a reader of the envelope sees and as the Diagnostic a
+ * single answer would have carried, so a declared error is recognised
+ * by its code either way.
+ */
+export function encodeStreamEnd(
+  requestId: string, source: string, failure?: string, failureCode = 0,
+): Uint8Array {
+  const envelope = newEnvelope(CE_TYPE_INVOKE_REPLY, source, INVOCATION_CONTENT_TYPE);
+  envelope.extensions[CE_EXTENSION_CORRELATION_ID] = requestId;
+  envelope.extensions[CE_EXTENSION_REPLY_COMPLETE] = 'true';
+  if (failure === undefined) return writeStructured(envelope);
+  envelope.dataschema = DDSRPackage.eNS_URI;
+  envelope.extensions[CE_EXTENSION_REPLY_ERROR] = failure;
+  return writeStructured(envelope, encodeFailure(failure, failureCode));
+}
+
 /** The inverse, for the consumer side. */
 export function decodeResponse(payload: Uint8Array): MqttRpcResponse {
   const message = readStructured(payload);
   const correlationId = message.attributes.extensions[CE_EXTENSION_CORRELATION_ID];
   if (!correlationId) {
     throw new Error('an answer that names no call cannot be delivered to one');
+  }
+  if (message.attributes.extensions[CE_EXTENSION_REPLY_COMPLETE] === 'true') {
+    // The end of a stream. It may say why the stream ended; a value it
+    // does not carry.
+    const reason = message.attributes.extensions[CE_EXTENSION_REPLY_ERROR];
+    const text = dataAsText(message);
+    const told = text ? decodeResult(text) : {};
+    return reason === undefined
+      ? { correlationId, complete: true }
+      : { correlationId, complete: true, error: told.error ?? reason, code: told.code };
   }
   return { correlationId, ...decodeResult(dataAsText(message)) };
 }

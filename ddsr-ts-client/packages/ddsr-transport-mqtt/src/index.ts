@@ -19,7 +19,7 @@ export { MqttOperationServer } from './mqtt-operation-server.js';
 export type { MqttOperationServerOptions, OperationHandlers } from './mqtt-operation-server.js';
 export {
   requestTopicFor, replyBaseFor, namedReplyBaseFor, OWN_REPLY_BASE, qosFor,
-  encodeRequest, decodeRequest, encodeResponse, decodeResponse, connectMqtt, connectMessaging,
+  encodeRequest, decodeRequest, encodeResponse, encodeStreamEnd, decodeResponse, connectMqtt, connectMessaging,
   isAmqpFlavor, separatorFor,
 } from './mqtt-rpc.js';
 export { AmqpClient, connectAmqp, isAmqpUrl, DEFAULT_EXCHANGE } from './amqp-client.js';

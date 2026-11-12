@@ -12,17 +12,23 @@
  ********************************************************************/
 package org.eclipse.fennec.services.examples.rsa.consumer;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.examples.rsa.api.Ledger;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
  * Calls the ledger as this node — which holds ledger-reader and not
  * ledger-writer. A plain {@code @Reference}: the token is the node's,
  * shown by the imported proxy, and nothing here knows about it.
+ *
+ * <p>Like {@link GreeterCaller} it calls from a thread of its own, not
+ * from {@code activate}: a remote call waits, and the thread that
+ * activates a component is not this component's to keep waiting.
  */
 @Component(immediate = true)
 public class LedgerCaller {
@@ -32,10 +38,28 @@ public class LedgerCaller {
 	@Reference
 	private Ledger ledger;
 
+	private Thread caller;
+
 	@Activate
 	void activate() {
-		LOG.info("[RSA-Consumer] ledger says " + ledger.version());
-		LOG.info("[RSA-Consumer] ledger balance of demo: " + ledger.balance("demo"));
+		caller = new Thread(this::call, "rsa-example-ledger-caller");
+		caller.setDaemon(true);
+		caller.start();
+	}
+
+	@Deactivate
+	void deactivate() {
+		caller.interrupt();
+	}
+
+	private void call() {
+		try {
+			LOG.info("[RSA-Consumer] ledger says " + ledger.version());
+			LOG.info("[RSA-Consumer] ledger balance of demo: " + ledger.balance("demo"));
+		} catch (RuntimeException failed) {
+			LOG.log(Level.WARNING, "[RSA-Consumer] the ledger could not be read", failed);
+			return;
+		}
 		try {
 			ledger.record("demo", 5.0);
 			LOG.warning("[RSA-Consumer] ledger record went through — this node should not hold ledger-writer");

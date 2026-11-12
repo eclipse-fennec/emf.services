@@ -118,10 +118,18 @@ eclipse-ee4j/jersey#6119, and neither SDK uses that class. Our broker
 never answers 204 on this endpoint, so in practice the 204 comes from a
 proxy or a foreign server.
 
-## MQTT
+## MQTT and AMQP
 
 Publisher `…broker.mqtt`, subscriber `…client.messaging` (configured as `…client.mqtt`). Both are dormant
 until configured — their configuration policy requires a configuration.
+
+The same events travel over an AMQP 0-9-1 broker: give either side an
+`amqp://` URL instead of a `tcp://` one. Nothing else changes but the
+spelling — a topic `ddsr/events/<interfaceName>` is the routing key
+`ddsr.events.<interfaceName>` on the topic exchange `amq.topic`, and a
+subscriber binds `ddsr.events.#`. An interface name with dots in it is
+several words of that key, which the binding hears all the same. What
+follows is written for MQTT and holds for both.
 
 - topic: `ddsr/events/<interfaceName>`, one publish per interface the
   service serves

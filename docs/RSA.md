@@ -208,9 +208,8 @@ That node serves over MQTT and announces over REST — which is the
 pairing that shows the two SPIs are really independent, and what the
 harness runs as scenario I.
 
-`fennec.amqp` is the third configuration type, and it only ever comes
-in that pairing: AMQP carries calls, and the broker's events have no
-AMQP transport. A provider says
+`fennec.amqp` is the third configuration type. A provider that serves
+over AMQP and announces over REST says
 
 ```json
 "org.eclipse.fennec.services.rsa.provider": {
@@ -220,8 +219,13 @@ AMQP transport. A provider says
 }
 ```
 
-and a consumer `"flavor": "fennec.amqp"` — its discovery falls back to
-REST by itself. Calls travel to the topic exchange under
+and a consumer `"flavor": "fennec.amqp"` with its own `amqp.url`. A
+node whose one flavor is AMQP hears the registry's events over AMQP as
+well: the same event transport as over MQTT, given an `amqp://` URL,
+subscribed to the routing key `ddsr.events.#`. That needs a registry
+that publishes there (`DDSR_AMQP_URL`, see
+[Deployment](DEPLOYMENT.md)); where it does not, the node says
+`"discovery.flavor": "fennec.rest"`. Calls travel to the topic exchange under
 `ddsr.rpc.<provider>.<contract>.<op>`; the answer comes back on the
 reply address of the protocol, in a queue only the caller can read, so
 there is no reply tree and no ACL to write for it. A user and password
@@ -362,7 +366,7 @@ without a mapping in between.
 
 - **Three flavors ship**, `fennec.rest`, `fennec.mqtt` and
   `fennec.amqp`, and a node may use one for serving and another for
-  announcing (AMQP serves only) — see
+  announcing — see
   [Two transports](#two-transports-and-splitting-them).
 - **Calls carry the node's identity, not a user's.** An imported proxy
   calls with the importing node's own client credentials. Acting on

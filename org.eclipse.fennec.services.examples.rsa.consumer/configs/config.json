@@ -15,6 +15,7 @@
     "flavor": "$[env:RSA_FLAVOR;default=fennec.rest]",
     "discovery.flavor": "$[env:RSA_DISCOVERY_FLAVOR;default=]",
     "mqtt.url": "$[env:RSA_MQTT_URL;default=tcp://localhost:1883]",
+    "amqp.url": "$[env:RSA_AMQP_URL;default=amqp://localhost:5672]",
     "topic.prefix": "$[env:RSA_TOPIC_PREFIX;default=ddsr/rpc]",
     "consumer.id": "$[env:DDSR_CONSUMER_ID;default=rsa-example-consumer]",
     "provider.heartbeat.seconds": "30",

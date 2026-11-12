@@ -116,6 +116,9 @@ docker run -d --name ddsr-broker \
 | `DDSR_MQTT_QOS` | `0` | Fits a stream whose consumers re-snapshot on reconnect anyway; raise it if your consumers do not. |
 | `DDSR_MQTT_TLS_KEYSTORE` / `_PASSWORD` | *(empty)* | PKCS12 key store with the certificate the broker shows the MQTT broker — for a messaging broker that demands client certificates ([Security](SECURITY.md) §7d). Used only with an `ssl://` URL. |
 | `DDSR_MQTT_TLS_TRUSTSTORE` / `_PASSWORD` | *(empty)* | PKCS12 trust store with the authorities the broker believes for the MQTT broker's certificate; empty means the JVM's. |
+| `DDSR_MQTT_USERNAME` / `_PASSWORD` | *(empty)* | For an MQTT broker that asks for a name and a password. |
+| `DDSR_AMQP_URL` | *(empty)* | The same events over AMQP 0-9-1, e.g. `amqp://rabbit:5672` — published to the topic exchange `amq.topic` under the routing key `ddsr.events.<interface>`. Empty means no AMQP. Independent of `DDSR_MQTT_URL`: a broker publishes on every messaging broker it is given. |
+| `DDSR_AMQP_TOPIC_PREFIX`, `_CLIENT_ID`, `_EVENT_SOURCE`, `_QOS`, `_USERNAME`, `_PASSWORD`, `_TLS_*` | as their `DDSR_MQTT_` twins | The prefix is written the MQTT way (`ddsr/events`) and spelled as a routing key by the transport. The TLS stores are used with an `amqps://` URL. |
 
 Both transports run side by side: a consumer that subscribes over SSE
 and one that subscribes over MQTT see the same events, and

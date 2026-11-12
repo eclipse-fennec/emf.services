@@ -13,6 +13,7 @@
 
 package org.eclipse.fennec.services.broker.mqtt.internal;
 
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -20,10 +21,12 @@ import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.messaging.LinkSettings;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
@@ -65,14 +68,25 @@ public final class MqttEventTransport implements EventSink {
 			description = "Publishes lifecycle events to MQTT. Requires configuration to start.")
 	public @interface Config {
 
-		@AttributeDefinition(name = "MQTT broker URL",
-				description = "e.g. tcp://localhost:1883. Empty means this broker publishes no MQTT "
-						+ "events at all — the deployment did not ask for them.")
+		@AttributeDefinition(name = "Messaging broker URL",
+				description = "e.g. tcp://localhost:1883 for MQTT or amqp://localhost:5672 for AMQP — the "
+						+ "scheme says which. Empty means this broker publishes no events there at all: "
+						+ "the deployment did not ask for them.")
 		String broker_url() default "tcp://localhost:1883";
 
 		@AttributeDefinition(name = "Topic prefix",
-				description = "Events are published to <prefix>/<interface>.")
+				description = "Events are published to <prefix>/<interface>. Given the way MQTT writes "
+						+ "it; on AMQP the same prefix is a routing key, ddsr.events.<interface>.")
 		String topic_prefix() default "ddsr/events";
+
+		@AttributeDefinition(name = "User name", required = false,
+				description = "Who this broker is to a messaging broker that asks for a name and a "
+						+ "password. Never in the URL.")
+		String username() default "";
+
+		@AttributeDefinition(name = "Password", type = AttributeType.PASSWORD, required = false,
+				description = "The password of that user.")
+		String password() default "";
 
 		@AttributeDefinition(name = "Event source",
 				description = "The CloudEvents 'source' attribute of every event this transport"
@@ -142,24 +156,28 @@ public final class MqttEventTransport implements EventSink {
 	}
 
 	@Activate
-	void activate(Config config) throws Exception {
+	void activate(Config config, Map<String, Object> properties) throws Exception {
 		if (config.broker_url() == null || config.broker_url().isBlank()) {
 			// Configured to do nothing, which is a normal state for a
 			// container that speaks REST only. Said once, at INFO,
 			// because silence here reads like a broken transport.
-			LOG.info("[DDSR-MQTT] no broker configured — this broker publishes its events over SSE only");
+			LOG.info("[DDSR-MQTT] no messaging broker configured" + named(properties)
+					+ " — nothing is published there");
 			return;
 		}
 		this.qos = config.qos();
 		this.publishTimeoutMillis = config.publish_timeout_millis();
+		// MQTT or AMQP is the scheme of the URL (#138): the same events,
+		// the same envelope, a channel spelled the way that broker does.
 		this.sink = new MqttEventSink(this::send, broker, rsObjects, config.topic_prefix(),
-				config.event_source());
+				config.event_source(), Channels.of(config.broker_url()));
 		// The node's certificate on an ssl:// connection: its CN is the
 		// user the MQTT broker's ACL names (SECURITY.md §7d).
-		this.link = MessagingLink.open(context, new LinkSettings(INSTANCE, config.broker_url(),
+		this.link = MessagingLink.open(context, new LinkSettings(instanceName(properties), config.broker_url(),
 				LinkSettings.clientId(context, config.client_id(), CLIENT_ROLE), config.tls_keystore(),
 				config.tls_keystore_password(),
-				config.tls_truststore(), config.tls_truststore_password()));
+				config.tls_truststore(), config.tls_truststore_password())
+				.as(config.username(), config.password()));
 		// Registered with the first connection, not before: a sink that is
 		// offered before it can deliver is a sink the broker counts on for
 		// nothing. It stays registered through a later loss — the link
@@ -171,6 +189,36 @@ public final class MqttEventTransport implements EventSink {
 	/** The messaging instance behind this transport, by name. */
 	static final String INSTANCE = "fennec.services.broker.events";
 
+	/**
+	 * The instance of one configuration.
+	 *
+	 * <p>A broker publishes its events on every messaging broker it is
+	 * configured for: the configuration of this component may be given
+	 * once, or as a factory configuration per messaging broker
+	 * ({@code …broker.mqtt~amqp}). Each then has a connection of its
+	 * own, named after its configuration.
+	 */
+	static String instanceName(Map<String, Object> properties) {
+		String name = factoryName(properties);
+		return name.isEmpty() ? INSTANCE : INSTANCE + "." + name;
+	}
+
+	private static String named(Map<String, Object> properties) {
+		String name = factoryName(properties);
+		return name.isEmpty() ? "" : " for '" + name + "'";
+	}
+
+	/** The name after the tilde of a factory configuration, or nothing for the one configuration. */
+	private static String factoryName(Map<String, Object> properties) {
+		Object pid = properties == null ? null : properties.get(Constants.SERVICE_PID);
+		if (properties == null || properties.get("service.factoryPid") == null || pid == null) {
+			return "";
+		}
+		String value = String.valueOf(pid);
+		int tilde = value.indexOf('~');
+		return tilde < 0 ? value.substring(value.lastIndexOf('.') + 1) : value.substring(tilde + 1);
+	}
+
 	/** What this connection is to the MQTT broker, where its configuration names no client id. */
 	static final String CLIENT_ROLE = "ddsr-broker";
 
@@ -180,7 +228,7 @@ public final class MqttEventTransport implements EventSink {
 		}
 		this.registration = context.registerService(EventSink.class, this, null);
 		LOG.info("[DDSR-MQTT] event transport connected to " + config.broker_url()
-				+ ", topic prefix " + config.topic_prefix());
+				+ ", topic prefix " + Channels.of(config.broker_url()).spell(config.topic_prefix()));
 	}
 
 	private void send(String topic, CloudEventCodec.Message payload) throws Exception {

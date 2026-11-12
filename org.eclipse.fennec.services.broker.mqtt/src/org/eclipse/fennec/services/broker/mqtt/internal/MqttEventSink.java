@@ -28,6 +28,7 @@ import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 
@@ -77,8 +78,22 @@ public final class MqttEventSink implements EventSink {
 
 	private final String eventSource;
 
+	private final Channels channels;
+
 	public MqttEventSink(Publisher publisher, BrokerLookup lookup,
 			ComponentServiceObjects<ResourceSet> rsObjects, String topicPrefix, String eventSource) {
+		this(publisher, lookup, rsObjects, topicPrefix, eventSource, Channels.MQTT);
+	}
+
+	/**
+	 * @param channels how the messaging broker spells a channel — the
+	 *                 prefix is given the way MQTT writes it and becomes
+	 *                 a routing key on AMQP (#138)
+	 */
+	public MqttEventSink(Publisher publisher, BrokerLookup lookup,
+			ComponentServiceObjects<ResourceSet> rsObjects, String topicPrefix, String eventSource,
+			Channels channels) {
+		this.channels = channels;
 		this.publisher = publisher;
 		this.lookup = lookup;
 		this.rsObjects = rsObjects;
@@ -106,10 +121,19 @@ public final class MqttEventSink implements EventSink {
 	 * follows.
 	 */
 	static List<String> topicsFor(String prefix, Set<String> interfaceNames) {
+		return topicsFor(Channels.MQTT, prefix, interfaceNames);
+	}
+
+	/**
+	 * The same, as the broker behind this sink spells it. On AMQP an
+	 * interface name with dots in it is several words of the routing
+	 * key, which a subscriber on {@code <prefix>.#} hears all the same.
+	 */
+	static List<String> topicsFor(Channels channels, String prefix, Set<String> interfaceNames) {
 		if (interfaceNames.isEmpty()) {
-			return List.of(prefix + "/" + UNKNOWN_INTERFACE);
+			return List.of(channels.under(prefix, UNKNOWN_INTERFACE));
 		}
-		return interfaceNames.stream().map(name -> prefix + "/" + name).toList();
+		return interfaceNames.stream().map(name -> channels.under(prefix, name)).toList();
 	}
 
 	/** Topic segment for events whose interface is not knowable. */
@@ -127,7 +151,7 @@ public final class MqttEventSink implements EventSink {
 		List<String> topics;
 		try {
 			payload = toMessage(event);
-			topics = topicsFor(topicPrefix, EventDocument.interfaceNamesOf(event, lookup));
+			topics = topicsFor(channels, topicPrefix, EventDocument.interfaceNamesOf(event, lookup));
 		} catch (Exception renderFailure) {
 			// Nothing was put on the wire, and a consumer cannot tell the
 			// difference between an event it never got and one that never
@@ -174,7 +198,7 @@ public final class MqttEventSink implements EventSink {
 		if (!pendingResync.get()) {
 			return;
 		}
-		String topic = topicPrefix + "/" + RESYNC_TOPIC_SEGMENT;
+		String topic = channels.under(topicPrefix, RESYNC_TOPIC_SEGMENT);
 		try {
 			// An envelope with no payload rather than an empty message:
 			// the topic is what subscribers act on, but a message that

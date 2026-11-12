@@ -98,6 +98,12 @@ public class RsaConsumer extends NodeConfiguration {
 						+ "over it, for hearing events, or both. Ignored by a node that speaks only REST.")
 		String mqtt_url() default "tcp://localhost:1883";
 
+		@AttributeDefinition(name = "AMQP broker URL",
+				description = "The AMQP broker the broker's events arrive from, for a node that hears "
+						+ "over fennec.amqp, e.g. amqp://localhost:5672. Where a call goes is said by the "
+						+ "service that is called, not here.")
+		String amqp_url() default "amqp://localhost:5672";
+
 		@AttributeDefinition(name = "MQTT topic prefix",
 				description = "The prefix calls served over MQTT use. It has to match the providers' own.")
 		String topic_prefix() default "ddsr/rpc";
@@ -194,6 +200,6 @@ public class RsaConsumer extends NodeConfiguration {
 						"", "", List.of(), "scope", "sub", config.tls_keystore(), config.tls_keystore_password(),
 						config.tls_truststore(), config.tls_truststore_password(),
 						"certificate".equals(config.broker_authentication().strip())))
-				.withMaxBodyBytes(config.max_body_bytes());
+				.withAmqpUrl(config.amqp_url()).withMaxBodyBytes(config.max_body_bytes());
 	}
 }

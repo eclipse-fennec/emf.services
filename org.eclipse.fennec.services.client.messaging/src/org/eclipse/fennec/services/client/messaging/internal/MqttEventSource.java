@@ -22,6 +22,7 @@ import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -78,8 +79,21 @@ public final class MqttEventSource implements EventSource {
 
 	private final String topicPrefix;
 
+	private final Channels channels;
+
 	public MqttEventSource(Subscriber subscriber, ComponentServiceObjects<ResourceSet> rsObjects,
 			String topicPrefix) {
+		this(subscriber, rsObjects, topicPrefix, Channels.MQTT);
+	}
+
+	/**
+	 * @param channels how the messaging broker spells a channel — the
+	 *                 prefix is given the way MQTT writes it and is a
+	 *                 routing key on AMQP (#138)
+	 */
+	public MqttEventSource(Subscriber subscriber, ComponentServiceObjects<ResourceSet> rsObjects,
+			String topicPrefix, Channels channels) {
+		this.channels = channels;
 		this.subscriber = subscriber;
 		this.rsObjects = rsObjects;
 		this.topicPrefix = topicPrefix != null && !topicPrefix.isBlank() ? topicPrefix : "ddsr/events";
@@ -95,9 +109,9 @@ public final class MqttEventSource implements EventSource {
 			// subscription is in place again, what was published meanwhile
 			// is gone — so each time the consumer re-snapshots
 			// (FR-Sync-Reconnect).
-			AutoCloseable subscription = subscriber.subscribe(topicPrefix + "/#",
+			AutoCloseable subscription = subscriber.subscribe(topicFilter(),
 					(topic, payload) -> deliver(handler, topic, payload), () -> {
-						LOG.info("[DDSR-MQTT] subscribed to " + topicPrefix + "/#");
+						LOG.info("[DDSR-MQTT] subscribed to " + topicFilter());
 						handler.onStreamEstablished();
 					});
 			return subscription;
@@ -105,7 +119,7 @@ public final class MqttEventSource implements EventSource {
 			// Returning null tells the SDK there is no subscription, so a
 			// later attempt can try again. Throwing would surface inside
 			// whatever bound this source and be swallowed there.
-			LOG.warning("[DDSR-MQTT] could not subscribe to " + topicPrefix + "/#: " + failure);
+			LOG.warning("[DDSR-MQTT] could not subscribe to " + topicFilter() + ": " + failure);
 			return null;
 		}
 	}
@@ -119,7 +133,7 @@ public final class MqttEventSource implements EventSource {
 	static final String RESYNC_TOPIC_SEGMENT = "_resync";
 
 	private void deliver(Handler handler, String topic, CloudEventCodec.Message message) {
-		if (topic != null && topic.endsWith("/" + RESYNC_TOPIC_SEGMENT)) {
+		if (channels.endsWith(topic, RESYNC_TOPIC_SEGMENT)) {
 			// Something was lost between the broker and here, and there is
 			// no way to find out what: the broker keeps no per-client
 			// history and the stream carries no sequence numbers. Reading
@@ -160,6 +174,6 @@ public final class MqttEventSource implements EventSource {
 	}
 
 	String topicFilter() {
-		return topicPrefix + "/#";
+		return channels.everythingUnder(topicPrefix);
 	}
 }

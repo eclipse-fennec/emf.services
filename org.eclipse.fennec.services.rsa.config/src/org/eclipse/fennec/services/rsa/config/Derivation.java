@@ -57,7 +57,10 @@ public final class Derivation {
 
 	static final String DISCOVERY_MQTT_PID = "org.eclipse.fennec.services.rsa.discovery.mqtt";
 
-	/** The transport that carries the broker's events to an MQTT-hearing node. */
+	/** The same for a node that hears the broker's events over AMQP (#138). */
+	static final String DISCOVERY_AMQP_PID = "org.eclipse.fennec.services.rsa.discovery.amqp";
+
+	/** The transport that carries the broker's events to a node hearing over MQTT or AMQP. */
 	static final String CLIENT_MQTT_PID = "org.eclipse.fennec.services.client.mqtt";
 
 	/** Where a node that serves over AMQP listens (#138). */
@@ -172,8 +175,7 @@ public final class Derivation {
 		// The same list a second time, as the condition: the client waits
 		// for an invoker for each flavor it is about to say it speaks.
 		client.put("invokers.target", invokersFor(settings.supportedFlavors()));
-		client.put("eventSource.target", "(ddsr.event.transport="
-				+ (settings.hearsOverMqtt() ? "mqtt" : "rest") + ")");
+		client.put("eventSource.target", "(ddsr.event.transport=" + settings.eventTransport() + ")");
 		if (!settings.effectiveConsumerId().isBlank()) {
 			client.put("consumer.id", settings.effectiveConsumerId());
 		}
@@ -287,18 +289,21 @@ public final class Derivation {
 	 * to keep them in step by hand.
 	 */
 	private static void discovery(List<DerivedConfiguration> plan, RsaSettings settings) {
-		if (!settings.hearsOverMqtt()) {
+		if (!settings.hearsOverMessaging()) {
 			plan.add(DerivedConfiguration.of(DISCOVERY_PID, Map.of(
 					"broker.url", settings.brokerUrl())));
 			return;
 		}
+		// One event transport for both protocols (#138): which one it
+		// speaks is the scheme of the URL it is given, and the prefix is
+		// said the way MQTT writes it — the transport spells it for AMQP.
 		Map<String, Object> events = new LinkedHashMap<>();
-		events.put("broker.url", settings.mqttUrl());
+		events.put("broker.url", settings.eventsUrl());
 		events.put("topic.prefix", "ddsr/events");
 		events.putAll(mqttTls(settings.identity()));
 		plan.add(DerivedConfiguration.of(CLIENT_MQTT_PID, Map.copyOf(events)));
-		plan.add(DerivedConfiguration.of(DISCOVERY_MQTT_PID, Map.of(
-				"broker.url", settings.brokerUrl())));
+		plan.add(DerivedConfiguration.of(settings.hearsOverAmqp() ? DISCOVERY_AMQP_PID : DISCOVERY_MQTT_PID,
+				Map.of("broker.url", settings.brokerUrl())));
 	}
 
 	/**
@@ -314,7 +319,7 @@ public final class Derivation {
 			boolean serves) {
 		NodeIdentity identity = settings.identity();
 		boolean servesOverMessaging = serves && overMessaging(settings.effectiveDistributionFlavor());
-		boolean messaging = overMessaging(settings.flavor()) || settings.hearsOverMqtt() || servesOverMessaging;
+		boolean messaging = overMessaging(settings.flavor()) || settings.hearsOverMessaging() || servesOverMessaging;
 		// What the connections are told beside the certificate: how large
 		// a document they carry (#219). Either is a reason to configure
 		// them; a node with neither leaves both at their defaults.

@@ -170,15 +170,14 @@ public record RsaSettings(
 	/**
 	 * @see #effectiveDistributionFlavor()
 	 *
-	 *      <p>AMQP is the exception to the fallback. It carries calls;
-	 *      the broker's events have no AMQP transport, so a node whose
-	 *      one flavor is AMQP announces and hears over REST — said here
-	 *      once, rather than by every deployment that would otherwise
-	 *      point its admin at a discovery that does not exist.
+	 *      <p>No exception for AMQP any more (#138): the broker's events
+	 *      travel over an AMQP broker as they do over an MQTT one, so a
+	 *      node whose one flavor is AMQP hears over AMQP. A deployment
+	 *      whose registry publishes no events there says
+	 *      {@code discovery.flavor=fennec.rest}.
 	 */
 	public String effectiveDiscoveryFlavor() {
-		String chosen = discoveryFlavor == null || discoveryFlavor.isBlank() ? flavor : discoveryFlavor.strip();
-		return AMQP.equals(chosen) ? REST : chosen;
+		return discoveryFlavor == null || discoveryFlavor.isBlank() ? flavor : discoveryFlavor.strip();
 	}
 
 	/** Whether this node serves over HTTP and therefore needs one. */
@@ -189,6 +188,29 @@ public record RsaSettings(
 	/** Whether the broker's events reach this node over MQTT. */
 	public boolean hearsOverMqtt() {
 		return MQTT.equals(effectiveDiscoveryFlavor());
+	}
+
+	/** Whether the broker's events reach this node over AMQP. */
+	public boolean hearsOverAmqp() {
+		return AMQP.equals(effectiveDiscoveryFlavor());
+	}
+
+	/** Whether they reach it over a messaging broker at all. */
+	public boolean hearsOverMessaging() {
+		return hearsOverMqtt() || hearsOverAmqp();
+	}
+
+	/**
+	 * What the client's event source says it is — the value of
+	 * {@code ddsr.event.transport} the client is pointed at.
+	 */
+	public String eventTransport() {
+		return hearsOverMqtt() ? "mqtt" : hearsOverAmqp() ? "amqp" : "rest";
+	}
+
+	/** The messaging broker the events arrive from, for a node that hears over one. */
+	public String eventsUrl() {
+		return hearsOverAmqp() ? amqpUrl : mqttUrl;
 	}
 
 	/**

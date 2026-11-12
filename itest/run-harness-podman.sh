@@ -406,6 +406,25 @@ grep -q "✓ mqtt-invoke-getBalance" "$WORK/probe-e.log" \
 echo "Scenario E OK: Payment invoked over the announced MQTT flavor (request/response via mosquitto)"
 grep -E '  [✓✗] mqtt' "$WORK/probe-e.log" || true
 
+# A TypeScript consumer iterates the stream the exported Ticker returns
+# (scenarios I and R): container name, protocol, and the scenario to
+# blame.
+ticker_from_typescript() {
+  local name="$1" protocol="$2" scenario="$3" rc
+  # shellcheck disable=SC2046
+  podman run -d --replace --name "$name" --network=host $(client_args harness-probe-ts) \
+    -e BROKER_URL="$BROKER_URL" -e TICKER_PROTOCOL="$protocol" \
+    ddsr/ts ticker-probe.ts >/dev/null
+  CONTAINERS+=("$name")
+  rc=$(podman wait "$name")
+  podman logs "$name" >"$WORK/$name.log" 2>&1
+  if [ "$rc" != "0" ]; then
+    echo "$scenario FAILED: the TypeScript consumer did not get the stream"; cat "$WORK/$name.log"; exit 1
+  fi
+  grep -q "ticks \[1, 2, 3\] — the stream ended" "$WORK/$name.log" \
+    || { echo "$scenario FAILED: the stream did not reach TypeScript whole and in order"; cat "$WORK/$name.log"; exit 1; }
+}
+
 # ============================================================ Scenario I
 log "Scenario I: RSA over MQTT — one framework exports, another binds it with @Reference"
 # The proof #98 was written for. A plain OSGi service is exported over
@@ -452,6 +471,11 @@ echo "  ✓ promise-over-mqtt: the call came back before the greeting, and the g
 grep -q "ticks \[1, 2, 3, 4, 5\] — the stream ended" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the stream did not arrive whole and in order"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
 echo "  ✓ stream-over-mqtt: five values in order, and the end of the stream"
+# The same stream across the language border: a TypeScript consumer
+# looks the derived contract up, reads STREAM off its return value and
+# iterates what the Java service's PushStream brings.
+ticker_from_typescript ddsr-ticker-ts MQTT "SCENARIO I"
+echo "  ✓ stream-java-to-ts-over-mqtt: a PushStream iterated as an AsyncIterable"
 # Two MQTT versions on one call (#138): the exporting node serves over
 # MQTT 5, the importing node calls over 3.1.1. The request's reply
 # address and correlation are in the envelope, which is why neither has
@@ -529,6 +553,10 @@ echo "  ✓ promise-over-amqp: the call came back before the greeting, and the g
 grep -q "ticks \[1, 2, 3, 4, 5\] — the stream ended" "$WORK/rsa-import-amqp.log" \
   || { echo "SCENARIO R FAILED: the stream did not arrive whole and in order"; grep "RSA-Consumer" "$WORK/rsa-import-amqp.log"; exit 1; }
 echo "  ✓ stream-over-amqp: five values in order, and the end of the stream"
+# And from TypeScript, where the consumer brings the place for answers:
+# a routing key of its own, bound to a queue only it reads.
+ticker_from_typescript ddsr-ticker-ts-amqp AMQP "SCENARIO R"
+echo "  ✓ stream-java-to-ts-over-amqp: a PushStream iterated as an AsyncIterable"
 grep -q "under ddsr.rpc\." "$WORK/rsa-export-amqp.log" \
   || { echo "SCENARIO R FAILED: the export did not listen under a routing key"; cat "$WORK/rsa-export-amqp.log"; exit 1; }
 # The guarded Ledger is asked to be exported here too, and for the same

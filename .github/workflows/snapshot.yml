@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - snapshot
+  # By hand, for the day a push did not start it: the runs of #236 were
+  # left queued by a GitHub Actions outage and could be neither cancelled
+  # nor re-run. `gh workflow run snapshot.yml --ref snapshot`.
+  workflow_dispatch:
 
 # Workflow-level ceiling for the called reusables. Only the docs deploy needs the
 # pages/id-token scopes; the credential-scoped release step gets its secrets via
@@ -20,6 +24,9 @@ concurrency:
 
 jobs:
   verify:
+    # A manual run can be started on any ref; a snapshot is only ever
+    # published from the snapshot branch. Everything below needs this job.
+    if: github.ref == 'refs/heads/snapshot'
     uses: eclipse-fennec/.github/.github/workflows/reusable-verify.yml@5b25efac2c99c0f88252d1a45302b8a1ae5876ce # v1.4.0
 
   release:

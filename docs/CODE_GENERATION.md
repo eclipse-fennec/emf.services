@@ -91,8 +91,10 @@ for the neutral names `promise` and `stream`:
 <typeMappings neutralType="promise" target="org.osgi.util.promise.Promise"/>
 ```
 
-Generated code states the signature. No transport carries a stream
-yet, so calling such an operation fails with a message naming the slot
+Generated code states the signature; what carries it is the transport.
+A stream that comes back travels over a messaging flavor, in both
+languages. A stream over REST and a stream as an argument are refused
+with a message naming the slot
 (see [Remote Service Admin](RSA.md#streams)).
 
 Generation is again a bnd instruction, with the generator `fennecM2T`.

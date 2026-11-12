@@ -362,6 +362,31 @@ second root describing the operation being called, and the references
 resolve inside it. Self-contained, like every other document on this
 wire.
 
+### A stream as the answer
+
+An operation whose return value is delivered as a stream
+(`Parameter.delivery = STREAM`) is answered with many messages instead
+of one. Nothing changes on the request, and nothing in where answers
+go:
+
+| Message | Envelope | Document |
+| --- | --- | --- |
+| one per value | `invoke.reply`, correlated as a single answer is | a `ServiceInvocationResult` holding that one value |
+| the end | the same, plus the extension `replycomplete` = `true` | none |
+| a failure | `replycomplete` = `true` and `replyerror` = the message | a `ServiceInvocationResult` holding the `Diagnostic`, its `code` as for a single answer |
+
+The two extension names are the ones Gecko Messaging's reply-to-many
+writes, so a consumer whose connection collects the answers itself
+(Java, where the flavor names no reply tree) and one that reads its own
+subscription (Java with a reply tree, TypeScript always) read the same
+messages. On the first of these paths the last message's document is
+not handed on: the consumer learns the failure's text and not its code.
+
+Values arrive in the order they were sent — one publisher, one
+subscription, and QoS 1 where the flavor says so. Nothing travels back
+while a stream runs: a consumer that leaves early stops listening, and
+the provider sends to the end.
+
 ### Who may read what
 
 The consumer's own segment in the reply topic is what makes the

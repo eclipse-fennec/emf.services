@@ -119,6 +119,13 @@ rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/ex
       "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client.jar
 rm -f "$ROOT"/org.eclipse.fennec.services.client.java/generated/distributions/executable/client-mqtt.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider-mqtt.jar
+# The RSA launches as well. The bnd export does not notice that a bundle
+# of another project changed, so an export left over from an earlier
+# run is taken as up to date — and the scenarios below would run the
+# old RSA bundles against the new broker. The host variant has always
+# deleted them; run on its own, this one did not.
+rm -f "$ROOT"/org.eclipse.fennec.services.examples.rsa/generated/distributions/executable/rsa-example.jar \
+      "$ROOT"/org.eclipse.fennec.services.examples.rsa.consumer/generated/distributions/executable/rsa-consumer.jar
 (cd "$ROOT" && ./gradlew build \
   :org.eclipse.fennec.services.broker.rest:export.broker \
   :org.eclipse.fennec.services.examples.payment:export.payment-provider \
@@ -300,11 +307,21 @@ log "Scenario D: Java MQTT wire proof (broker sink + client source over mosquitt
 # JSON"), and JAVA_TOOL_OPTIONS strips the double quotes inline JSON
 # would need.
 podman rm -f ddsr-client-java ddsr-broker >/dev/null 2>&1 || true
+# RabbitMQ before the broker: the broker publishes its events on every
+# messaging broker it is configured for (#138), and the AMQP scenarios
+# further down hear them there. Started here so that the broker finds
+# it on its first attempt.
+podman run -d --replace --name ddsr-rabbitmq --network=host \
+  docker.io/library/rabbitmq:4.1-alpine >/dev/null
+CONTAINERS+=(ddsr-rabbitmq)
+wait_for_log ddsr-rabbitmq "Server startup complete" 120
 # shellcheck disable=SC2046
-run_container ddsr-broker-mqtt ddsr/broker $(broker_auth_args) -e DDSR_MQTT_URL=tcp://localhost:1883
+run_container ddsr-broker-mqtt ddsr/broker $(broker_auth_args) \
+  -e DDSR_MQTT_URL=tcp://localhost:1883 -e DDSR_AMQP_URL=amqp://localhost:5672
 wait_for_url "$BROKER_URL/catalog" 60 ddsr-broker-mqtt
 wait_for_broker_contracts
 wait_for_log ddsr-broker-mqtt "event transport connected to tcp://localhost:1883" 60
+wait_for_log ddsr-broker-mqtt "event transport connected to amqp://localhost:5672" 60
 
 # shellcheck disable=SC2046
 run_container ddsr-client-mqtt ddsr/client-mqtt $(client_args java-client)
@@ -443,12 +460,20 @@ log "Scenario R: RSA over AMQP — the same export and import, over RabbitMQ"
 # routing key; the answer comes back on the protocol's own reply-to, in
 # a queue only the caller can read — no reply tree, no ACL convention.
 #
-# AMQP distribution with REST discovery, as it has to be: AMQP carries
-# calls, the registry's events have no AMQP transport.
-podman run -d --replace --name ddsr-rabbitmq --network=host \
-  docker.io/library/rabbitmq:4.1-alpine >/dev/null
-CONTAINERS+=(ddsr-rabbitmq)
-wait_for_log ddsr-rabbitmq "Server startup complete" 120
+# The importing node speaks AMQP and nothing else, so it hears the
+# registry's events over AMQP as well (#138): the same event transport
+# as over MQTT, with an amqp:// URL. It is started FIRST, and that is
+# the proof — a node that is there before the service has nothing to
+# find in a snapshot, so what makes it import is the REGISTERED event
+# arriving on the routing key. The exporting node keeps the mixed
+# pairing: it serves over AMQP and announces over REST.
+# shellcheck disable=SC2046
+run_container ddsr-rsa-import-amqp ddsr/rsa-consumer $(client_args rsa-example-consumer) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e RSA_FLAVOR=fennec.amqp \
+  -e RSA_AMQP_URL="amqp://localhost:5672"
+wait_for_log ddsr-rsa-import-amqp "AMQP discovery ready" 150
+wait_for_log ddsr-rsa-import-amqp "subscribed to ddsr.events.#" 90
 
 # shellcheck disable=SC2046
 run_container ddsr-rsa-export-amqp ddsr/rsa-example $(client_args rsa-example) \
@@ -457,11 +482,6 @@ run_container ddsr-rsa-export-amqp ddsr/rsa-example $(client_args rsa-example) \
   -e RSA_EXPORT_CONFIGS=fennec.amqp \
   -e RSA_AMQP_URL="amqp://localhost:5672"
 wait_for_log ddsr-rsa-export-amqp "exported .* over AMQP" 150
-
-# shellcheck disable=SC2046
-run_container ddsr-rsa-import-amqp ddsr/rsa-consumer $(client_args rsa-example-consumer) \
-  -e DDSR_BROKER_URL="$BROKER_URL" \
-  -e RSA_FLAVOR=fennec.amqp
 wait_for_log ddsr-rsa-import-amqp "RSA-Consumer" 150
 
 podman logs ddsr-rsa-export-amqp >"$WORK/rsa-export-amqp.log" 2>&1

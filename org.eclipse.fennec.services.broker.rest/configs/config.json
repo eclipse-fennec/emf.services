@@ -60,13 +60,29 @@
 		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
 		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
 	},
-	"org.eclipse.fennec.services.broker.mqtt":
+	"org.eclipse.fennec.services.broker.mqtt~amqp":
+	{
+		"broker.url": "$[env:DDSR_AMQP_URL;default=]",
+		"topic.prefix": "$[env:DDSR_AMQP_TOPIC_PREFIX;default=ddsr/events]",
+		"client.id": "$[env:DDSR_AMQP_CLIENT_ID;default=]",
+		"event.source": "$[env:DDSR_AMQP_EVENT_SOURCE;default=/fennec/services/broker]",
+		"qos": "$[env:DDSR_AMQP_QOS;default=0]",
+		"username": "$[env:DDSR_AMQP_USERNAME;default=]",
+		"password": "$[env:DDSR_AMQP_PASSWORD;default=]",
+		"tls.keystore": "$[env:DDSR_AMQP_TLS_KEYSTORE;default=]",
+		"tls.keystore.password": "$[env:DDSR_AMQP_TLS_KEYSTORE_PASSWORD;default=]",
+		"tls.truststore": "$[env:DDSR_AMQP_TLS_TRUSTSTORE;default=]",
+		"tls.truststore.password": "$[env:DDSR_AMQP_TLS_TRUSTSTORE_PASSWORD;default=]"
+	},
+	"org.eclipse.fennec.services.broker.mqtt~mqtt":
 	{
 		"broker.url": "$[env:DDSR_MQTT_URL;default=]",
 		"topic.prefix": "$[env:DDSR_MQTT_TOPIC_PREFIX;default=ddsr/events]",
 		"client.id": "$[env:DDSR_MQTT_CLIENT_ID;default=]",
 		"event.source": "$[env:DDSR_MQTT_EVENT_SOURCE;default=/fennec/services/broker]",
 		"qos": "$[env:DDSR_MQTT_QOS;default=0]",
+		"username": "$[env:DDSR_MQTT_USERNAME;default=]",
+		"password": "$[env:DDSR_MQTT_PASSWORD;default=]",
 		"tls.keystore": "$[env:DDSR_MQTT_TLS_KEYSTORE;default=]",
 		"tls.keystore.password": "$[env:DDSR_MQTT_TLS_KEYSTORE_PASSWORD;default=]",
 		"tls.truststore": "$[env:DDSR_MQTT_TLS_TRUSTSTORE;default=]",

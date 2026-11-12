@@ -4,9 +4,9 @@ What ships, and what a deployment has to tell it.
 
 Three transports exist: REST with Server-Sent Events, MQTT and AMQP.
 REST is the complete one — discovery, sessions, invocation and events.
-MQTT carries events, and invocation for a flavor that declares it.
-AMQP carries invocation only. The broker itself is only reachable over
-REST.
+MQTT and AMQP carry events, and invocation for a flavor that declares
+it — over a messaging broker they are one transport, spelled two ways.
+The broker itself is only reachable over REST.
 
 ## What a flavor says
 
@@ -173,19 +173,23 @@ The RSA example's consumers (`GreeterCaller`, `LedgerCaller` in
 `…examples.rsa.consumer`) show the shape: `activate` starts a thread
 that makes the call, `deactivate` interrupts it.
 
-## `client.messaging` — events over MQTT, calls over MQTT and AMQP
+## `client.messaging` — events and calls over MQTT and AMQP
 
-Registers one `EventSource` with `ddsr.event.transport=mqtt`, and is
-**dormant until configured**: its configuration policy requires a
-configuration.
+Registers one `EventSource`, and is **dormant until configured**: its
+configuration policy requires a configuration. What it is follows from
+the scheme of its broker URL — `ddsr.event.transport=mqtt` for
+`tcp://`/`ssl://`, `ddsr.event.transport=amqp` for `amqp://`/`amqps://`
+— and so does the spelling of its channels: `ddsr/events/#` on MQTT,
+the routing key `ddsr.events.#` on the topic exchange on AMQP.
 
-`org.eclipse.fennec.services.client.mqtt` (the event transport; its PID
-kept the protocol's name, because events travel over MQTT only)
+`org.eclipse.fennec.services.client.mqtt` (the event transport; the PID
+kept the name it had when events travelled over MQTT only)
 
 | Property | Default |
 | --- | --- |
-| `broker.url` | `tcp://localhost:1883` |
-| `topic.prefix` | `ddsr/events` — must match the broker side |
+| `broker.url` | `tcp://localhost:1883`; `amqp://localhost:5672` for AMQP |
+| `topic.prefix` | `ddsr/events` — must match the broker side. Written the MQTT way on either protocol; the transport spells it `ddsr.events` on AMQP |
+| `username`, `password` | empty — for a messaging broker that asks for them; never in the URL |
 | `client.id` | empty — the node is then `ddsr-consumer-` and the first eight characters of its framework's UUID |
 | `qos` | `0` |
 
@@ -402,20 +406,26 @@ Also configurable: `heartbeat.seconds` on
 `org.eclipse.fennec.services.broker.rest.sse`, default `10`, the SSE
 keepalive.
 
-## `broker.mqtt` — the same events over MQTT
+## `broker.mqtt` — the same events over a messaging broker
 
-One `EventSink`, dormant until configured.
+One `EventSink` per configuration, dormant until configured. The
+scheme of `broker.url` says whether that is MQTT or AMQP; the events,
+the envelope and the document are the same.
 
-`org.eclipse.fennec.services.broker.mqtt`
+`org.eclipse.fennec.services.broker.mqtt` — given once, or as a factory
+configuration per messaging broker (`…broker.mqtt~mqtt`,
+`…broker.mqtt~amqp`), which is how the shipped broker carries both
+and wakes the one whose URL is set. Each has a connection of its own.
 
 | Property | Default |
 | --- | --- |
-| `broker.url` | `tcp://localhost:1883` |
-| `topic.prefix` | `ddsr/events` |
+| `broker.url` | `tcp://localhost:1883`; `amqp://…` for AMQP; empty publishes nothing |
+| `topic.prefix` | `ddsr/events` — on AMQP the routing key prefix `ddsr.events` on `amq.topic` |
+| `username`, `password` | empty |
 | `client.id` | empty — `ddsr-broker-` and the first eight characters of the framework's UUID, so two brokers on one MQTT broker never share one |
 | `qos` | `0` |
 
-Production launches ship the MQTT bundles unconfigured. See
+Production launches ship the MQTT and AMQP bindings unconfigured. See
 [Eventing](EVENTING.md) for the topic layout and what is guaranteed.
 
 ## `provider.rest` — serving a contract with no generated code

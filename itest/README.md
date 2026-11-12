@@ -73,9 +73,11 @@ broker. Requirements and decisions:
   transport (#138). The same service is exported over AMQP 0-9-1 by one
   framework and bound with `@Reference` in another, over a RabbitMQ
   container: the call goes to the topic exchange under a routing key,
-  the answer comes back on the protocol's own reply-to. AMQP
-  distribution with REST discovery, and the guarded `Ledger` is refused
-  here as it is over MQTT.
+  the answer comes back on the protocol's own reply-to. The importing
+  node hears the registry's events over AMQP too and is started first,
+  so what makes it import is the `REGISTERED` event on the routing key;
+  the exporting node serves over AMQP and announces over REST. The
+  guarded `Ledger` is refused here as it is over MQTT.
 - **S (podman only) — a call encoded as JSON:** scenario R again, with
   the exporting node told `encoding=application/json`. The payload is
   written and read by the resource factory registered for that content

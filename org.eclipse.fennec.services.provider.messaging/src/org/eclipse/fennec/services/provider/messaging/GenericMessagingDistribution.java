@@ -23,6 +23,7 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.MessagingFlavor;
+import org.eclipse.fennec.services.common.Contracts;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
@@ -158,6 +159,11 @@ public class GenericMessagingDistribution {
 		ServiceImplementation implementation = load(context, config, publishedFrom);
 		MessagingFlavor flavor = listenOn(messagingFlavorOf(implementation), config.messaging_broker());
 		String contract = implementation.getServiceInterfaces().get(0).getName();
+		// A contract may say a slot is a stream; this distribution sends
+		// one answer per call so far. Refused here, by name, instead of on
+		// a call.
+		Contracts.requireNoStreams(implementation.getServiceInterfaces().get(0),
+				"the generic messaging distribution");
 		if (flavor.getBrokers().isEmpty()) {
 			// Nothing to connect to, said plainly and once. A document
 			// that leaves the broker to the deployment is the normal

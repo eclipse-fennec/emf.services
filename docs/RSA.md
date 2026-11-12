@@ -62,10 +62,12 @@ public interface Greeter {
 ```
 
 - **To the contract it returns what the holder holds.**
-  `Promise<String>` is a string, exactly as `String` is. That an answer
-  comes later is each end's own business and nothing the wire carries,
-  so a provider may answer later while its consumer waits — and the
-  other way round.
+  `Promise<String>` is a string, exactly as `String` is, with
+  `delivery="PROMISE"` on the return value: the contract says that the
+  answer is an event, for whoever generates code from it or sets a
+  timeout. It does not change the contract's identity — `PROMISE` is
+  not part of the fingerprint — so a provider may answer later while
+  its consumer reads synchronously, and the other way round.
 - **The proxy returns the holder at once** and asks the transport for
   the call in the way that does not wait. The holder fails with the
   exception a synchronous call would have thrown; a declared error is
@@ -83,7 +85,27 @@ answer. **Over REST, one thread** of the proxy factory until the
 response is there; the HTTP client underneath waits. A transport of
 your own gets this by implementing `ServiceInvoker.invokeAsync`; the
 default makes the synchronous call on a thread it is given.
-`PushStream` is not part of the intent and is not supported.
+### Streams
+
+A slot may be a stream: any number of values, one after the other, over
+time. In the model that is `delivery="STREAM"` on a return value or on
+an argument (`Parameter.delivery`), and a derived contract says it for a
+method that returns or takes an `org.osgi.util.pushstream.PushStream<T>`
+or a `java.util.concurrent.Flow.Publisher<T>`:
+
+```java
+PushStream<Double> readings(String sensorId);        // the provider streams to the caller
+void feed(String sensorId, PushStream<Double> in);   // the caller streams to the provider
+```
+
+A stream is another exchange than a list of the same type and therefore
+another contract: `STREAM` is part of the fingerprint.
+
+**No transport carries a stream yet.** The contract can say it, the
+generators and the fingerprint read it, and an export of such a service
+is refused at the export with the slots named — rather than accepted
+and failing on the first call. The same holds for a contract document
+served by the generic REST or messaging distribution.
 
 The example's `Greeter.greetLater` is this, and the harness runs it
 over MQTT and AMQP.

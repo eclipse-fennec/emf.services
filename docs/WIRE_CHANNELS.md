@@ -71,6 +71,8 @@ With the channel generalisation, the "style" of an operation strictly follows fr
 - Only a response channel, long lived → `EVENT_STREAM`
 - Both channels, both long lived → `BIDIRECTIONAL_STREAM`
 
+Since `Parameter.delivery` exists (`VALUE`, `PROMISE`, `STREAM`), the style also follows from the **contract**: a `STREAM` return value is what `EVENT_STREAM` describes, a `STREAM` argument what `COMMAND_STREAM` does, both together `BIDIRECTIONAL_STREAM`. That is the part of this design that is in the model today; the channel side below is not built.
+
 `InteractionStyle` as a model property is therefore **redundant with the channel configuration**, and is **kept anyway** for:
 
 - **Readability** — the author says what they mean; a generator or a reader does not have to decode the channel configuration to see the intent.

@@ -36,6 +36,7 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.services.client.DdsrClient;
+import org.eclipse.fennec.services.common.Contracts;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.ServiceProxyFactory;
@@ -280,6 +281,10 @@ public class FennecRemoteServiceAdmin implements RemoteServiceAdmin {
 			// there is one, and derives only otherwise. From here on
 			// nothing can tell which it was.
 			ServiceInterface contract = models.contractFor(exportedAs, effective);
+			// A stream is in the contract now (Parameter.delivery), and no
+			// distribution here carries one yet. Said at the export, with
+			// the slots named, rather than by the first call failing.
+			Contracts.requireNoStreams(contract, "a remote service export");
 			// Asking for fennec.bearer is the OSGi way to say "only an
 			// authenticated caller" without annotating the interface. A
 			// contract that states nothing of its own is told so; one that

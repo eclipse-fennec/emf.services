@@ -63,6 +63,16 @@ sources checked in beside them exist to prove the templates compile.
 | `service-publisher.mtl` | one component per implementation that announces it and withdraws it in the FR-P3 order |
 | `java-types.mtl` | shared: type mapping, imports, file header |
 
+What a slot becomes in Java is decided in this order: its `eType`
+where it has one (an `EClass` by name, imported through the binding's
+`packageMappings`; an Ecore data type by its instance class), otherwise
+its language-neutral `type` — first as the binding's `typeMappings` say
+(`instant` as `java.time.Instant`, imported), then by the standard set
+(`string`, `int`, `long`, `double`, …). A name neither knows is written
+as it stands. A mapping says how the slot is written, not how its value
+travels: the wire carries what the properties of an invocation can
+carry.
+
 Generation is again a bnd instruction, with the generator `fennecM2T`.
 One caveat worth knowing before you add a second one: the fileset in
 front of the attributes is the *key* of the instruction, so two
@@ -116,6 +126,7 @@ module that injects it. From a binding it also takes:
 | `targetPackage` | the npm name of the generated package |
 | `fileHeader` | a block comment on every file |
 | `packageMappings` | imports for eTypes of a mapped metamodel: `Person` from `@ddsr/example-model`, not `unknown` |
+| `typeMappings` | what a language-neutral type name is here, asked before the standard set: `instant` as `Date`, or `money.Money` as `@acme/money#Money` — the module in front of the name where it has to be imported |
 | `typeMappings` with `generated` | a class per declared error; the generated proxy throws it, so a caller catches it by `instanceof` |
 
 The same slot must mean the same type in both languages, and the
@@ -126,7 +137,9 @@ with its Java and its TypeScript type. The table lives in one neutral
 place, `org.eclipse.fennec.services.m2t/model/`, beside the Java
 binding, and both tracks read it: `TypePinsTest` holds the generated
 Java to its column, `type-pins.test.ts` the generated TypeScript to its
-own. A change to a mapping on one side fails a test until the table —
+own. The example contract `Clock` is in the table for the binding's
+`typeMappings`: its `instant` is `Instant` in one column and `Date` in
+the other. A change to a mapping on one side fails a test until the table —
 and with it the other side — agrees. Gradle knows the table as an input
 of the m2t tests, so a change to the table alone re-runs them.
 

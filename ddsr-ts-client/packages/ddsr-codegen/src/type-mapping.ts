@@ -16,12 +16,14 @@
  * language-neutral, so it names types the way both sides can read them.
  * This turns one into TypeScript.
  *
- * Three cases. The primitives map as you would expect. A name the
- * services model defines (ServiceInterface, Diagnostic, …) becomes an
- * import from @ddsr/model, because that type exists on this side
- * already. Anything else is a type this generator has never heard of,
- * and it stays `unknown`: a guess would compile and then be wrong at the
- * one place it matters.
+ * Four cases. A name the binding maps is what the binding says it is —
+ * its typeMappings are overrides for Parameter.type, and they are asked
+ * first, as java-types.mtl asks them (#185). The primitives map as you
+ * would expect. A name the services model defines (ServiceInterface,
+ * Diagnostic, …) becomes an import from @ddsr/model, because that type
+ * exists on this side already. Anything else is a type this generator
+ * has never heard of, and it stays `unknown`: a guess would compile and
+ * then be wrong at the one place it matters.
  */
 const PRIMITIVES: Record<string, string> = {
   string: 'string', String: 'string',
@@ -50,15 +52,21 @@ export interface MappedType {
   module?: string;
 }
 
-export function mapType(ddsrType: string | undefined): MappedType {
+export function mapType(
+  ddsrType: string | undefined,
+  typeMappings: ReadonlyArray<{ neutralType: string; target: string }> = [],
+): MappedType {
   const raw = (ddsrType ?? '').trim();
   if (raw === '') return { text: 'unknown' };
+
+  const mapping = typeMappings.find(entry => entry.neutralType === raw);
+  if (mapping) return mappedTarget(mapping.target);
 
   // list<string>, List<Payment>, string[] — a many-valued parameter.
   const list = /^(?:list|List|array|Array)<(.+)>$/.exec(raw) ?? /^(.+)\[\]$/.exec(raw);
   if (list) {
-    const element = mapType(list[1]);
-    return { text: `${element.text}[]`, modelImport: element.modelImport };
+    const element = mapType(list[1], typeMappings);
+    return { text: `${element.text}[]`, modelImport: element.modelImport, module: element.module };
   }
 
   const primitive = PRIMITIVES[raw];
@@ -70,6 +78,21 @@ export function mapType(ddsrType: string | undefined): MappedType {
   if (MODEL_TYPES.has(simple)) return { text: simple, modelImport: simple };
 
   return { text: 'unknown' };
+}
+
+/**
+ * The target of a typeMapping, "qualified as the target language needs
+ * it". In TypeScript that is a name and, where the name has to be
+ * imported, the module in front of it: `@acme/money#Money` is `Money`
+ * imported from `@acme/money`. A target without a module — `Date`,
+ * `Uint8Array`, a type the package declares itself — is written as it
+ * stands.
+ */
+function mappedTarget(target: string): MappedType {
+  const hash = target.lastIndexOf('#');
+  if (hash < 0) return { text: target };
+  const name = target.slice(hash + 1);
+  return { text: name, modelImport: name, module: target.slice(0, hash) };
 }
 
 const ECORE_NS_URI = 'http://www.eclipse.org/emf/2002/Ecore';

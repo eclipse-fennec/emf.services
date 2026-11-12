@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest';
 import { BasicEClass, URI } from '@emfts/core';
 import { DDSRFactory } from '@ddsr/model';
 import { emitConsumer } from '../src/emit';
-import { mapEType } from '../src/type-mapping';
+import { mapEType, mapType } from '../src/type-mapping';
 
 const ECORE = 'http://www.eclipse.org/emf/2002/Ecore';
 const SERVICES = 'http://eclipse.org/fennec/services/1.0';
@@ -58,5 +58,36 @@ describe('the eType wins over the type string', () => {
     serviceInterface.operations.push(operation);
 
     expect(emitConsumer(serviceInterface).content).toContain('count(): Promise<number>;');
+  });
+});
+
+describe('the binding is asked before the standard set (#185)', () => {
+  const mappings = [
+    { neutralType: 'instant', target: 'Date' },
+    { neutralType: 'money.Money', target: '@acme/money#Money' },
+    { neutralType: 'int', target: 'bigint' },
+  ];
+
+  it('writes a target without a module as it stands', () => {
+    expect(mapType('instant', mappings)).toEqual({ text: 'Date' });
+  });
+
+  it('imports a target that names its module', () => {
+    expect(mapType('money.Money', mappings))
+      .toEqual({ text: 'Money', modelImport: 'Money', module: '@acme/money' });
+  });
+
+  it('lets a mapping override a name the standard set knows', () => {
+    expect(mapType('int', mappings)).toEqual({ text: 'bigint' });
+    expect(mapType('int')).toEqual({ text: 'number' });
+  });
+
+  it('maps the element of a list', () => {
+    expect(mapType('list<money.Money>', mappings))
+      .toEqual({ text: 'Money[]', modelImport: 'Money', module: '@acme/money' });
+  });
+
+  it('leaves a name nobody maps unknown', () => {
+    expect(mapType('duration', mappings)).toEqual({ text: 'unknown' });
   });
 });

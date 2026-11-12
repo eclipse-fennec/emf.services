@@ -20,7 +20,14 @@
 # slot, 'throws' a declared exception. optional: whether the slot may be
 # left out (Java boxes it, TypeScript marks it '?').
 #
+# Clock is there for the binding's typeMappings: 'instant' is not in the
+# standard set, and each binding says what it is in its language.
+#
 # contract	operation	slot	optional	java	typescript
+Clock	now	return	false	Instant	Date
+Clock	between	from	false	Instant	Date
+Clock	between	to	true	Instant	Date
+Clock	between	return	false	long	number
 Payment	charge	amount	false	double	number
 Payment	charge	currency	true	String	string
 Payment	charge	return	false	double	number

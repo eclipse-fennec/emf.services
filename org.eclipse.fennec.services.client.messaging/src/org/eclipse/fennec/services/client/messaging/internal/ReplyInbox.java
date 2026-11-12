@@ -23,11 +23,13 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
+import org.eclipse.fennec.services.invocation.Flows;
 
 import io.cloudevents.model.ce.CloudEvent;
 
@@ -116,7 +118,11 @@ final class ReplyInbox {
 		Answers answers = new Answers(requestId, idleMillis);
 		streams.put(requestId, answers);
 		answers.watch();
-		return answers.publisher;
+		// The message that ends a stream with a failure travels through the
+		// same buffer as the values before it and turns into the failure
+		// only when it is taken: closeExceptionally would overtake them,
+		// and the values still buffered would be lost.
+		return Flows.map(answers.publisher, answers::taken);
 	}
 
 	/** End a stream of answers from this side — the request could not be sent. */
@@ -159,6 +165,9 @@ final class ReplyInbox {
 
 		private volatile long lastSeen = System.nanoTime();
 
+		/** Handed to the publisher and not taken by the subscriber yet. */
+		private final AtomicInteger untaken = new AtomicInteger();
+
 		Answers(String requestId, long idleMillis) {
 			this.requestId = requestId;
 			this.idleMillis = idleMillis;
@@ -169,24 +178,47 @@ final class ReplyInbox {
 			Map<String, String> extensions = message.attributes().getExtensions().map();
 			if (Boolean.parseBoolean(extensions.get(CloudEvents.EXTENSION_REPLY_COMPLETE))) {
 				streams.remove(requestId, this);
-				String reason = extensions.get(CloudEvents.EXTENSION_REPLY_ERROR);
-				if (reason != null) {
-					publisher.closeExceptionally(new StreamFailed(reason, message));
-				} else {
-					publisher.close();
+				if (extensions.get(CloudEvents.EXTENSION_REPLY_ERROR) != null) {
+					// Behind the values still buffered; see taken.
+					untaken.incrementAndGet();
+					publisher.submit(message);
 				}
+				// close() hands on what is buffered before it completes.
+				publisher.close();
 				return;
 			}
 			// Blocks while the subscriber is behind by a buffer: the
 			// back-pressure of this stream.
+			untaken.incrementAndGet();
 			publisher.submit(message);
 		}
 
-		/** Ends a stream that has gone quiet, and looks again while it has not. */
+		/**
+		 * The subscriber takes a message: a value as it is, the message
+		 * that ends the stream with a failure as that failure.
+		 */
+		CloudEventCodec.Message taken(CloudEventCodec.Message message) {
+			untaken.decrementAndGet();
+			String reason = message.attributes().getExtensions().map().get(CloudEvents.EXTENSION_REPLY_ERROR);
+			if (reason != null) {
+				throw new StreamFailed(reason, message);
+			}
+			return message;
+		}
+
+		/**
+		 * Ends a stream that has gone quiet, and looks again while it has
+		 * not. A subscriber still behind on what arrived is not told of the
+		 * silence yet: the failure would overtake what it has not taken.
+		 */
 		void watch() {
 			long quietFor = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastSeen);
 			if (streams.get(requestId) != this) {
 				return;
+			}
+			if (quietFor >= idleMillis && untaken.get() > 0) {
+				lastSeen = System.nanoTime();
+				quietFor = 0;
 			}
 			if (quietFor >= idleMillis) {
 				streams.remove(requestId, this);

@@ -9,7 +9,9 @@ Bundle-Description: \
 -buildpath: \
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.remoteserviceadmin;version=latest,\
-	org.eclipse.fennec.services.examples.rsa.api;version=snapshot
+	org.eclipse.fennec.services.examples.rsa.api;version=snapshot,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest
 
 -includeresource: \
 	OSGI-INF/configurator/=configs/

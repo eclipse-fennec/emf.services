@@ -20,6 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
@@ -232,8 +236,12 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 		}
 	}
 
-	@Override
-	public Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args) {
+	/** One call, written and addressed: what both shapes of a call start from. */
+	private record Prepared(MessagingRoute route, MessagingRoute.Operation placed, ServiceOperation operation,
+			CloudEvent request, byte[] document, String replyTopic) {
+	}
+
+	private Prepared prepare(ServiceLocator locator, String operationName, Map<String, Object> args) {
 		if (locator == null || operationName == null) {
 			throw new DdsrException("locator and operationName must not be null");
 		}
@@ -276,6 +284,18 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 			throw new DdsrException("could not write the call to " + operationName + ": "
 					+ unwritable.getMessage(), unwritable);
 		}
+		return new Prepared(route, placed, operation, request, document, replyTopic);
+	}
+
+	@Override
+	public Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args) {
+		Prepared prepared = prepare(locator, operationName, args);
+		MessagingRoute route = prepared.route();
+		MessagingRoute.Operation placed = prepared.placed();
+		ServiceOperation operation = prepared.operation();
+		CloudEvent request = prepared.request();
+		byte[] document = prepared.document();
+		String replyTopic = prepared.replyTopic();
 
 		MessagingLink link = linkFor(route);
 		long timeout = TimeUnit.SECONDS.toMillis(config.reply_timeout_seconds());
@@ -321,6 +341,161 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 				throw transport;
 			}
 		}
+	}
+
+	/**
+	 * The same call without a thread waiting for it (osgi.async).
+	 *
+	 * <p>Over a messaging broker a call is two messages, and the second
+	 * is delivered: nothing has to wait for it. The connection is told
+	 * when it is there, the request is published, and the stage
+	 * completes on the thread that brings the answer. {@code blocking}
+	 * is never used — that is the point.
+	 *
+	 * <p>The span covers handing the call over, not the answer: a scope
+	 * is closed on the thread it was opened on. What travels in the
+	 * envelope is the trace context of that span all the same, so the
+	 * serving side continues the caller's trace.
+	 */
+	@Override
+	public CompletionStage<Object> invokeAsync(ServiceLocator locator, String operationName,
+			Map<String, Object> args, Executor blocking) {
+		Prepared prepared;
+		try {
+			prepared = prepare(locator, operationName, args);
+		} catch (RuntimeException unpreparable) {
+			return CompletableFuture.failedFuture(unpreparable);
+		}
+		MessagingRoute.Operation placed = prepared.placed();
+		CloudEvent request = prepared.request();
+		long timeout = TimeUnit.SECONDS.toMillis(config.reply_timeout_seconds());
+		try (CallSpan span = tracer().calling(spanNameOf(prepared.operation(), operationName),
+				TraceCarrier.over(request.getExtensions().map()))) {
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("rpc.method", operationName)
+					.attribute("server.address", placed.channel())
+					.attribute("fennec.flavor", prepared.route().protocol())
+					.attribute(ClientOrigin.ATTRIBUTE, source);
+		}
+		CloudEventCodec.Message call = new CloudEventCodec.Message(request, prepared.document());
+		return linkLater(prepared.route())
+				.thenCompose(link -> placed.namesReplyChannel()
+						? viaInboxLater(link, prepared, call, timeout)
+						: link.requestLater(placed.channel(), call, placed.qos(), timeout))
+				.handle((answer, failure) -> {
+					if (failure != null) {
+						throw failed(unwrapped(failure), operationName, prepared);
+					}
+					try {
+						return valueOf(answer, request, prepared.operation(), operationName);
+					} catch (DdsrException alreadyOurs) {
+						throw alreadyOurs;
+					} catch (Exception unreadable) {
+						throw failed(unreadable, operationName, prepared);
+					}
+				});
+	}
+
+	/** What a failure on the way is to the caller — the same words {@link #invoke} throws. */
+	private DdsrException failed(Throwable failure, String operationName, Prepared prepared) {
+		if (failure instanceof DdsrException alreadyOurs) {
+			return alreadyOurs;
+		}
+		if (failure instanceof TimeoutException) {
+			return DdsrException.transport("no answer to " + operationName + " on "
+					+ prepared.placed().channel() + " within " + config.reply_timeout_seconds() + "s", failure);
+		}
+		return DdsrException.transport("calling " + operationName + " over " + prepared.route().protocol()
+				+ " failed: " + failure.getMessage(), failure);
+	}
+
+	private static Throwable unwrapped(Throwable failure) {
+		Throwable current = failure;
+		while (current instanceof CompletionException && current.getCause() != null) {
+			current = current.getCause();
+		}
+		return current;
+	}
+
+	/** The flavor names a place for answers: be told in this consumer's inbox there. */
+	private CompletionStage<CloudEventCodec.Message> viaInboxLater(MessagingLink link, Prepared prepared,
+			CloudEventCodec.Message call, long timeout) {
+		MessagingRoute.Operation placed = prepared.placed();
+		String id = prepared.request().getEventId();
+		ReplyInbox inbox;
+		try {
+			inbox = inboxFor(link, prepared.route().replySubtree(placed, consumer),
+					prepared.route().replyFilter(placed, consumer), placed.qos());
+		} catch (RuntimeException unsubscribable) {
+			return CompletableFuture.failedFuture(unsubscribable);
+		}
+		CompletableFuture<CloudEventCodec.Message> answer = inbox.expect(id);
+		// Never retained: a call is a transition. A request the broker
+		// did not take has no answer to wait for.
+		link.publishLater(placed.channel(), call, placed.qos()).whenComplete((sent, unsent) -> {
+			if (unsent != null) {
+				answer.completeExceptionally(unsent);
+			}
+		});
+		// The subscription stays: it is this consumer's inbox, not this
+		// call's. What goes is the expectation of an answer.
+		return answer.orTimeout(timeout, TimeUnit.MILLISECONDS).whenComplete((arrived, failure) -> inbox.forget(id));
+	}
+
+	/**
+	 * The link to the broker this service announces, told when it is
+	 * connected — {@link #linkFor} without the waiting.
+	 */
+	private CompletionStage<MessagingLink> linkLater(MessagingRoute route) {
+		String url = route.broker();
+		if (url == null) {
+			return CompletableFuture.failedFuture(new DdsrException("the " + route.protocol()
+					+ " flavor of this service announces no broker to call it on"));
+		}
+		String key = linkKey(route);
+		MessagingLink link;
+		try {
+			synchronized (links) {
+				link = links.get(key);
+				if (link == null) {
+					link = open(route);
+					links.put(key, link);
+				}
+			}
+		} catch (RuntimeException unreachable) {
+			return CompletableFuture.failedFuture(DdsrException.transport("cannot reach the broker at " + url
+					+ ": " + unreachable.getMessage(), unreachable));
+		}
+		MessagingLink opened = link;
+		return opened.whenConnected(config.reply_timeout_seconds(), TimeUnit.SECONDS).handle((ready, failure) -> {
+			if (failure == null) {
+				return opened;
+			}
+			// A broker that was never there: its link is taken away again,
+			// as the waiting shape does.
+			if (!opened.hasBeenConnected()) {
+				synchronized (links) {
+					links.remove(key, opened);
+				}
+				opened.close();
+			}
+			throw DdsrException.transport("cannot reach the broker at " + url + " within "
+					+ config.reply_timeout_seconds() + "s", null);
+		});
+	}
+
+	private static String linkKey(MessagingRoute route) {
+		return route.broker() + " " + (route.exchange() == null ? "" : route.exchange());
+	}
+
+	private MessagingLink open(MessagingRoute route) {
+		String id = UUID.randomUUID().toString().substring(0, 8);
+		return MessagingLink.open(context,
+				new LinkSettings("fennec.services.invoker." + id, route.broker(), "ddsr-consumer-" + id,
+						config.tls_keystore(), config.tls_keystore_password(),
+						config.tls_truststore(), config.tls_truststore_password())
+						.onExchange(route.exchange()).as(config.username(), config.password())
+						.carrying(config.max_body_bytes()).speaking(config.mqtt_version()));
 	}
 
 	/** The flavor names a place for answers: wait in this consumer's inbox there for the one that correlates. */
@@ -455,18 +630,12 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 			throw new DdsrException("the " + route.protocol()
 					+ " flavor of this service announces no broker to call it on");
 		}
-		String key = url + " " + (route.exchange() == null ? "" : route.exchange());
+		String key = linkKey(route);
 		synchronized (links) {
 			MessagingLink link = links.get(key);
 			try {
 				if (link == null) {
-					String id = UUID.randomUUID().toString().substring(0, 8);
-					link = MessagingLink.open(context,
-							new LinkSettings("fennec.services.invoker." + id, url, "ddsr-consumer-" + id,
-									config.tls_keystore(), config.tls_keystore_password(),
-									config.tls_truststore(), config.tls_truststore_password())
-									.onExchange(route.exchange()).as(config.username(), config.password())
-									.carrying(config.max_body_bytes()).speaking(config.mqtt_version()));
+					link = open(route);
 					links.put(key, link);
 				}
 				if (link.awaitConnected(config.reply_timeout_seconds(), TimeUnit.SECONDS)) {

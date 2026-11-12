@@ -20,6 +20,8 @@ import java.util.logging.Logger;
 
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.util.promise.Deferred;
+import org.osgi.util.promise.Promise;
 
 /**
  * The service, registered the way the Remote Service Admin specification
@@ -67,5 +69,27 @@ public class GreeterImpl implements Greeter {
 	@Override
 	public int greeted() {
 		return greeted.get();
+	}
+
+	/** How long a greeting that comes later takes. Long enough to be seen to come later. */
+	private static final long LATER_MILLIS = 300;
+
+	@Override
+	public Promise<String> greetLater(String name) {
+		Deferred<String> greeting = new Deferred<>();
+		LOG.info("[RSA-Example] greetLater(" + name + ") — promised");
+		Thread later = new Thread(() -> {
+			try {
+				Thread.sleep(LATER_MILLIS);
+				greeted.incrementAndGet();
+				greeting.resolve("Hello, " + name + ", sorry to keep you waiting!");
+			} catch (InterruptedException interrupted) {
+				Thread.currentThread().interrupt();
+				greeting.fail(interrupted);
+			}
+		}, "rsa-example-greet-later");
+		later.setDaemon(true);
+		later.start();
+		return greeting.getPromise();
 	}
 }

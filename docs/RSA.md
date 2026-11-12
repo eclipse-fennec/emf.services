@@ -47,6 +47,47 @@ in the broker's catalogue instead of a generated one.
 `…examples.rsa` and `…examples.rsa.consumer` are exactly this example,
 runnable.
 
+### Methods that answer later
+
+A method may return `org.osgi.util.promise.Promise`,
+`java.util.concurrent.Future`, `CompletionStage` or `CompletableFuture`
+— the holder types of the `osgi.async` intent (Remote Services §100.6),
+which every distribution provider here promises:
+
+```java
+public interface Greeter {
+    String greet(String name);
+    Promise<String> greetLater(String name);
+}
+```
+
+- **To the contract it returns what the holder holds.**
+  `Promise<String>` is a string, exactly as `String` is. That an answer
+  comes later is each end's own business and nothing the wire carries,
+  so a provider may answer later while its consumer waits — and the
+  other way round.
+- **The proxy returns the holder at once** and asks the transport for
+  the call in the way that does not wait. The holder fails with the
+  exception a synchronous call would have thrown; a declared error is
+  the class the method declares for it.
+- **A provider is answered when its holder settles.** Over a messaging
+  broker the dispatch returns immediately, so a slow call no longer
+  holds up the calls behind it on the same subscription. Over REST the
+  request thread waits — an HTTP request is answered once.
+
+What a call occupies while it waits depends on the transport. **Over a
+messaging broker, nothing**: the request is published, the answer is
+delivered, and the holder settles on the thread that brings it — no
+thread of the consumer waits, for the connection, the hand-over or the
+answer. **Over REST, one thread** of the proxy factory until the
+response is there; the HTTP client underneath waits. A transport of
+your own gets this by implementing `ServiceInvoker.invokeAsync`; the
+default makes the synchronous call on a thread it is given.
+`PushStream` is not part of the intent and is not supported.
+
+The example's `Greeter.greetLater` is this, and the harness runs it
+over MQTT and AMQP.
+
 The one thing a consumer of a possibly remote service should not do is
 call it from `activate`: the call waits for a connection and an answer
 on a thread Declarative Services shares with others (see

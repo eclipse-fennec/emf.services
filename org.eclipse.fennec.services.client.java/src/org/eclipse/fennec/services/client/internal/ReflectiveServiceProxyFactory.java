@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -195,7 +197,11 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 
 		/**
 		 * A method that answers later (osgi.async): the holder goes back
-		 * at once and the call is made on a thread of this factory's.
+		 * at once, and the invoker is asked for the call the way that does
+		 * not wait. Over a messaging broker nothing waits at all — the
+		 * answer is delivered and the holder settles on the thread that
+		 * brings it; a transport that can only wait does so on a thread of
+		 * this factory's.
 		 *
 		 * <p>The holder fails with the very exception a synchronous call
 		 * would have thrown — the declared error as the class the method
@@ -206,23 +212,64 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		private Object later(Method method, Object[] args) {
 			Class<?> held = AsyncReturns.rawOf(AsyncReturns.valueType(method.getGenericReturnType()));
 			CompletableFuture<Object> outcome = new CompletableFuture<>();
+			CompletionStage<Object> answered;
 			try {
-				calls.get().execute(() -> {
-					try {
-						outcome.complete(coerceReturn(method, held, call(method, args)));
-					} catch (DdsrServiceException declared) {
-						outcome.completeExceptionally(asDeclared(method, declared));
-					} catch (Throwable failure) {
-						outcome.completeExceptionally(failure);
-					}
-				});
-			} catch (RuntimeException rejected) {
-				// The factory is going: the call was never made, and the
-				// holder says so instead of the method throwing.
-				outcome.completeExceptionally(new DdsrException("the call was not made: " + rejected.getMessage(),
-						rejected));
+				answered = callLater(method, buildArgMap(method, args), true);
+			} catch (RuntimeException unstartable) {
+				answered = CompletableFuture.failedFuture(unstartable);
 			}
+			answered.whenComplete((result, failure) -> {
+				Throwable cause = unwrapped(failure);
+				if (cause instanceof DdsrServiceException declared) {
+					outcome.completeExceptionally(asDeclared(method, declared));
+				} else if (cause != null) {
+					outcome.completeExceptionally(cause);
+				} else {
+					try {
+						outcome.complete(coerceReturn(method, held, result));
+					} catch (RuntimeException uncoercible) {
+						outcome.completeExceptionally(uncoercible);
+					}
+				}
+			});
 			return AsyncReturns.holderFor(method.getReturnType(), outcome);
+		}
+
+		/**
+		 * The call, asked of the invoker without waiting — and #59 in this
+		 * shape: after a transport failure the locator rebinds away from
+		 * the registration that did not answer and the call is made once
+		 * more. The rebind asks the broker, which waits, so it runs on a
+		 * thread of the factory's and never on the one that delivered the
+		 * failure.
+		 */
+		private CompletionStage<Object> callLater(Method method, Map<String, Object> argMap, boolean mayRetry) {
+			Executor blocking = calls.get();
+			CompletionStage<Object> answered;
+			try {
+				answered = invokerFor.apply(locator).invokeAsync(locator, method.getName(), argMap, blocking);
+			} catch (RuntimeException unstartable) {
+				answered = CompletableFuture.failedFuture(unstartable);
+			}
+			if (!mayRetry) {
+				return answered;
+			}
+			return answered.exceptionallyComposeAsync(failure -> {
+				Throwable cause = unwrapped(failure);
+				if (cause instanceof DdsrException transport && transport.isTransportFailure()
+						&& locator instanceof TrackedServiceLocator tracked && tracked.rebind(true)) {
+					return callLater(method, argMap, false);
+				}
+				return CompletableFuture.failedFuture(cause);
+			}, blocking);
+		}
+
+		private static Throwable unwrapped(Throwable failure) {
+			Throwable current = failure;
+			while (current instanceof CompletionException && current.getCause() != null) {
+				current = current.getCause();
+			}
+			return current;
 		}
 
 		/**

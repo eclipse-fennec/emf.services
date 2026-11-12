@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
@@ -112,5 +113,24 @@ class ReplyInboxTest {
 		inbox.expect("call-1");
 
 		assertThat(inbox.await("call-1", 30, TimeUnit.MILLISECONDS)).isNull();
+	}
+
+	/**
+	 * The same inbox for a call that does not wait (osgi.async): the
+	 * expectation is a future, and the thread that delivers the answer
+	 * completes it.
+	 */
+	@Test
+	void aCallThatDoesNotWaitIsToldWhenItsAnswerArrives() {
+		ReplyInbox inbox = new ReplyInbox("reply/me", "reply/me/#");
+		CompletableFuture<CloudEventCodec.Message> answer = inbox.expect("call-1");
+
+		assertThat(answer).isNotDone();
+		inbox.deliver(answerTo("call-2", "<somebody else's/>"));
+		assertThat(answer).as("an answer to another call is not this one's").isNotDone();
+		inbox.deliver(answerTo("call-1", "<one/>"));
+
+		assertThat(answer).isCompleted();
+		assertThat(bodyOf(answer.join())).isEqualTo("<one/>");
 	}
 }

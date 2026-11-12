@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.fennec.services.Parameter;
@@ -301,5 +303,70 @@ class ReflectiveServiceProxyFactoryRetryTest {
 		CompletableFuture<Double> balance = asyncProxy(FuturePayment.class, invoker).getBalance("acc-1");
 
 		assertThatThrownBy(() -> balance.get(5, TimeUnit.SECONDS)).hasCause(down);
+	}
+
+	/** A transport that is told its answer: it completes the stage itself and waits nowhere. */
+	private static final class ToldInvoker implements ServiceInvoker {
+		final List<CompletableFuture<Object>> asked = new ArrayList<>();
+		boolean usedTheBlockingExecutor;
+
+		@Override
+		public Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args) {
+			throw new AssertionError("a call that answers later must not be made the waiting way");
+		}
+
+		@Override
+		public CompletionStage<Object> invokeAsync(ServiceLocator locator, String operationName,
+				Map<String, Object> args, Executor blocking) {
+			CompletableFuture<Object> answer = new CompletableFuture<>();
+			asked.add(answer);
+			return answer;
+		}
+	}
+
+	/**
+	 * The invoker is asked the way that does not wait. One that has its
+	 * answers delivered — a messaging broker — settles the holder from
+	 * the thread that brings the answer, and no thread of the factory's
+	 * is occupied in between.
+	 */
+	@Test
+	void anInvokerThatIsToldItsAnswerSettlesTheHolderItself() throws Exception {
+		ToldInvoker invoker = new ToldInvoker();
+		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
+		InvokerRegistry invokers = new InvokerRegistry();
+		factory.invokers = invokers;
+		invokers.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+
+		CompletableFuture<Double> balance = factory.newProxy(FuturePayment.class, new ScriptedLocator())
+				.getBalance("acc-1");
+
+		assertThat(balance).as("asked, and not answered yet").isNotDone();
+		assertThat(invoker.asked).hasSize(1);
+		invoker.asked.get(0).complete(42.0);
+
+		assertThat(balance.get(5, TimeUnit.SECONDS)).isEqualTo(42.0);
+	}
+
+	/** #59 in the shape that does not wait: one rebind, one more call. */
+	@Test
+	void aTransportFailureRebindsAndAsksOnceMoreWithoutWaitingEither() throws Exception {
+		ToldInvoker invoker = new ToldInvoker();
+		ScriptedLocator locator = new ScriptedLocator();
+		ReflectiveServiceProxyFactory factory = new ReflectiveServiceProxyFactory();
+		InvokerRegistry invokers = new InvokerRegistry();
+		factory.invokers = invokers;
+		invokers.addInvoker(invoker, Map.of(ServiceInvoker.FLAVOR_PROPERTY, "REST"));
+
+		CompletableFuture<Double> balance = factory.newProxy(FuturePayment.class, locator).getBalance("acc-1");
+		invoker.asked.get(0).completeExceptionally(DdsrException.transport("no answer", null));
+		for (int i = 0; i < 100 && invoker.asked.size() < 2; i++) {
+			Thread.sleep(20);
+		}
+
+		assertThat(locator.rebindCalls).containsExactly(true);
+		assertThat(invoker.asked).as("asked once more after the rebind").hasSize(2);
+		invoker.asked.get(1).complete(7.0);
+		assertThat(balance.get(5, TimeUnit.SECONDS)).isEqualTo(7.0);
 	}
 }

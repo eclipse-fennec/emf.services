@@ -14,6 +14,9 @@
 package org.eclipse.fennec.services.client;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 
 /**
  * Generic remote invocation against a previously discovered
@@ -53,4 +56,37 @@ public interface ServiceInvoker {
 	 *         marshalling shape
 	 */
 	Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args);
+
+	/**
+	 * The same call for a caller that does not wait: the stage completes
+	 * with what {@link #invoke} would have returned and fails with what
+	 * it would have thrown.
+	 *
+	 * <p>What a transport makes of it is its own. One that has an
+	 * answer told to it — a messaging broker delivers it — completes the
+	 * stage from there and occupies no thread in between. One that can
+	 * only wait, as an HTTP client waits for its response, makes the
+	 * synchronous call on {@code blocking}, which is what this default
+	 * does.
+	 *
+	 * @param blocking where a call that has to wait is made; a
+	 *                 transport that does not wait never uses it
+	 */
+	default CompletionStage<Object> invokeAsync(ServiceLocator locator, String operationName,
+			Map<String, Object> args, Executor blocking) {
+		CompletableFuture<Object> outcome = new CompletableFuture<>();
+		try {
+			blocking.execute(() -> {
+				try {
+					outcome.complete(invoke(locator, operationName, args));
+				} catch (Throwable failure) {
+					outcome.completeExceptionally(failure);
+				}
+			});
+		} catch (RuntimeException rejected) {
+			outcome.completeExceptionally(new DdsrException("the call was not made: " + rejected.getMessage(),
+					rejected));
+		}
+		return outcome;
+	}
 }

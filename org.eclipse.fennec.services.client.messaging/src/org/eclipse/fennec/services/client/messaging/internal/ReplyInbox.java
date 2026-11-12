@@ -14,10 +14,12 @@
 package org.eclipse.fennec.services.client.messaging.internal;
 
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
@@ -50,8 +52,12 @@ final class ReplyInbox {
 
 	private static final Logger LOG = Logger.getLogger(ReplyInbox.class.getName());
 
-	/** One waiting call. A queue of one, because there is one answer. */
-	private final Map<String, BlockingQueue<CloudEventCodec.Message>> waiting = new ConcurrentHashMap<>();
+	/**
+	 * One waiting call: a future, because there is one answer and a
+	 * caller either waits for it or is told — the same inbox serves the
+	 * call that blocks and the one that answers later.
+	 */
+	private final Map<String, CompletableFuture<CloudEventCodec.Message>> waiting = new ConcurrentHashMap<>();
 
 	private final String subtree;
 
@@ -72,9 +78,16 @@ final class ReplyInbox {
 		return filter;
 	}
 
-	/** Expect the answer to this call. */
-	void expect(String requestId) {
-		waiting.put(requestId, new ArrayBlockingQueue<>(1));
+	/**
+	 * Expect the answer to this call.
+	 *
+	 * @return completes with the answer when it arrives — for a caller
+	 *         that would rather be told than wait
+	 */
+	CompletableFuture<CloudEventCodec.Message> expect(String requestId) {
+		CompletableFuture<CloudEventCodec.Message> answer = new CompletableFuture<>();
+		waiting.put(requestId, answer);
+		return answer;
 	}
 
 	/** Stop expecting it — answered, timed out or given up on. */
@@ -88,11 +101,19 @@ final class ReplyInbox {
 	 * @return the message, or {@code null} when the wait ran out
 	 */
 	CloudEventCodec.Message await(String requestId, long timeout, TimeUnit unit) throws InterruptedException {
-		BlockingQueue<CloudEventCodec.Message> queue = waiting.get(requestId);
-		if (queue == null) {
+		CompletableFuture<CloudEventCodec.Message> answer = waiting.get(requestId);
+		if (answer == null) {
 			throw new IllegalStateException("no call is waiting for " + requestId);
 		}
-		return queue.poll(timeout, unit);
+		try {
+			return answer.get(timeout, unit);
+		} catch (TimeoutException silence) {
+			return null;
+		} catch (ExecutionException | CancellationException given) {
+			// Nothing completes an expectation with a failure but its
+			// own caller giving up; either way there is no answer.
+			return null;
+		}
 	}
 
 	/**
@@ -116,13 +137,13 @@ final class ReplyInbox {
 			LOG.warning("[DDSR-MQTT] an answer on " + subtree + " named no call, dropped");
 			return;
 		}
-		BlockingQueue<CloudEventCodec.Message> queue = waiting.get(correlation);
-		if (queue == null) {
+		CompletableFuture<CloudEventCodec.Message> answer = waiting.get(correlation);
+		if (answer == null) {
 			// The caller is gone: it timed out, or was interrupted. There
 			// is nobody to hand this to and nothing to keep it for.
 			LOG.fine(() -> "[DDSR-MQTT] nobody is waiting for " + correlation + " any more");
 			return;
 		}
-		queue.offer(message);
+		answer.complete(message);
 	}
 }

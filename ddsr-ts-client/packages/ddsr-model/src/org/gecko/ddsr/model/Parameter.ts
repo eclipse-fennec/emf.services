@@ -7,6 +7,7 @@
 
 import type { EObject, EList, EClassifier, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
 import type { NamedElement } from './NamedElement.js';
+import type { Delivery } from './Delivery.js';
 import type { ParameterConstraint } from './ParameterConstraint.js';
 
 /**
@@ -22,6 +23,7 @@ export interface Parameter extends NamedElement {
   optional: boolean;
   defaultValue?: string;
   description?: string;
+  delivery: Delivery;
   constraints: EList<ParameterConstraint>;
 
 }

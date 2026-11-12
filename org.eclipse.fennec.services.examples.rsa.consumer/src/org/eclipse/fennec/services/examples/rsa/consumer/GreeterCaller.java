@@ -21,6 +21,7 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.util.promise.Promise;
 
 /**
  * An ordinary consumer.
@@ -72,6 +73,15 @@ public class GreeterCaller {
 			String greeting = greeter.greet("RSA consumer");
 			int soFar = greeter.greeted();
 			LOG.info("[RSA-Consumer] " + greeting + " (" + soFar + " greetings so far, none of them local)");
+			// The same service, asked not to keep us waiting (osgi.async):
+			// the call returns at once with a Promise, and what happens
+			// when it resolves is said here and done later, on a thread
+			// that is not this one.
+			Promise<String> later = greeter.greetLater("RSA consumer");
+			LOG.info("[RSA-Consumer] asked to be greeted later — the call came back"
+					+ (later.isDone() ? " with the greeting already there" : " before the greeting"));
+			later.onSuccess(arrived -> LOG.info("[RSA-Consumer] greeted later: " + arrived))
+					.onFailure(refused -> LOG.log(Level.WARNING, "[RSA-Consumer] no greeting later", refused));
 		} catch (RuntimeException failed) {
 			// On a thread of our own nobody else reports it: an exception
 			// out of activate would have been DS's to log.

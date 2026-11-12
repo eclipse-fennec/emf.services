@@ -14,10 +14,13 @@
 package org.eclipse.fennec.services.messaging;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -328,6 +331,107 @@ public final class MessagingLink implements AutoCloseable {
 			throw new IllegalStateException("the answer on " + topic + " is no CloudEvent");
 		}
 		return answer;
+	}
+
+	/**
+	 * A request whose answer is told, not waited for.
+	 *
+	 * <p>The same request as {@link #request}, for a caller that has
+	 * something better to do with its thread: the stage completes on a
+	 * thread of the messaging instance when the answer is there, and
+	 * fails the way {@code request} throws — with a
+	 * {@link TimeoutException} when the instance waited in vain.
+	 */
+	public CompletionStage<CloudEventCodec.Message> requestLater(String topic, CloudEventCodec.Message message,
+			int qos, long timeoutMillis) {
+		Instance current = instance;
+		if (current == null) {
+			return CompletableFuture
+					.failedFuture(new IllegalStateException("no connection to " + settings.address() + " yet"));
+		}
+		if (current.requests == null) {
+			return CompletableFuture.failedFuture(new UnsupportedOperationException(
+					"the connection to " + settings.address() + " offers no request and reply"));
+		}
+		try {
+			MessageContextBuilder builder = current.builders.getService();
+			Message request;
+			try {
+				builder.extensionEntry(MessagingConstants.EXTENSION_REPLY_TIMEOUT, timeoutMillis);
+				request = Envelopes.toMessage(builder, topic, message, qos, message.attributes().getEventId());
+			} finally {
+				current.builders.ungetService(builder);
+			}
+			return stageOf(current.requests.publishWithReply(request)).thenApply(answered -> {
+				CloudEventCodec.Message answer = Envelopes.fromMessage(answered);
+				if (answer == null) {
+					throw new IllegalStateException("the answer on " + topic + " is no CloudEvent");
+				}
+				return answer;
+			});
+		} catch (RuntimeException unsendable) {
+			return CompletableFuture.failedFuture(unsendable);
+		}
+	}
+
+	/**
+	 * Publish without waiting: the stage completes when the broker has
+	 * the message, and fails when the hand-over did.
+	 */
+	public CompletionStage<Void> publishLater(String topic, CloudEventCodec.Message message, int qos) {
+		Instance current = instance;
+		if (current == null) {
+			return CompletableFuture
+					.failedFuture(new IllegalStateException("no connection to " + settings.address() + " yet"));
+		}
+		try {
+			return stageOf(current.publisher
+					.publish(builder -> Envelopes.toMessage(builder, topic, message, qos, null)));
+		} catch (RuntimeException unsendable) {
+			return CompletableFuture.failedFuture(unsendable);
+		}
+	}
+
+	/**
+	 * Be told when the link is connected, once — at once when it is
+	 * already. The way to wait for a connection without a thread: what
+	 * {@link #awaitConnected} is for a caller that may block.
+	 *
+	 * @return completes when connected, fails with a
+	 *         {@link TimeoutException} when that took too long
+	 */
+	public CompletionStage<Void> whenConnected(long timeout, TimeUnit unit) {
+		CompletableFuture<Void> ready = new CompletableFuture<>();
+		AutoCloseable telling = onConnected(again -> ready.complete(null));
+		ready.orTimeout(timeout, unit).whenComplete((connected, failure) -> {
+			try {
+				telling.close();
+			} catch (Exception ignored) {
+				// Closing a listener registration does not fail.
+			}
+		});
+		return ready;
+	}
+
+	/** A promise of the instance as a stage, failed with the promise's own failure. */
+	private static <T> CompletableFuture<T> stageOf(Promise<T> promise) {
+		CompletableFuture<T> stage = new CompletableFuture<>();
+		promise.onResolve(() -> {
+			try {
+				Throwable failure = promise.getFailure();
+				if (failure != null) {
+					stage.completeExceptionally(failure);
+				} else {
+					stage.complete(promise.getValue());
+				}
+			} catch (InterruptedException interrupted) {
+				Thread.currentThread().interrupt();
+				stage.completeExceptionally(interrupted);
+			} catch (InvocationTargetException unreadable) {
+				stage.completeExceptionally(unreadable.getCause());
+			}
+		});
+		return stage;
 	}
 
 	private AutoCloseable want(Subscribed subscribed) {

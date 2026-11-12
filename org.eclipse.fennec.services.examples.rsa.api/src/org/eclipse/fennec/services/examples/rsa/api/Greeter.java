@@ -13,6 +13,8 @@
 
 package org.eclipse.fennec.services.examples.rsa.api;
 
+import org.osgi.util.promise.Promise;
+
 /**
  * An ordinary Java interface.
  *
@@ -32,4 +34,18 @@ public interface Greeter {
 
 	/** @return how many greetings have been handed out */
 	int greeted();
+
+	/**
+	 * The same greeting from a service that takes its time: the method
+	 * returns at once and the greeting arrives later.
+	 *
+	 * <p>A Promise is all it takes to say so (the {@code osgi.async}
+	 * intent of Remote Services). To the contract this method returns a
+	 * string like {@link #greet(String)} does; that the answer comes
+	 * later is something each end decides for itself.
+	 *
+	 * @param name who to greet
+	 * @return the greeting, when there is one
+	 */
+	Promise<String> greetLater(String name);
 }

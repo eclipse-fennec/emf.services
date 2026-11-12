@@ -430,6 +430,9 @@ run_container ddsr-rsa-import ddsr/rsa-consumer $(client_args rsa-example-consum
   -e RSA_FLAVOR=fennec.mqtt \
   -e RSA_MQTT_URL="tcp://localhost:1883"
 wait_for_log ddsr-rsa-import "RSA-Consumer" 150
+# The Greeter's third method returns a Promise (osgi.async): the call
+# comes back first, the greeting later.
+wait_for_log ddsr-rsa-import "greeted later:" 60
 
 podman logs ddsr-rsa-export >"$WORK/rsa-export.log" 2>&1
 podman logs ddsr-rsa-import >"$WORK/rsa-import.log" 2>&1
@@ -437,6 +440,11 @@ grep -q "greetings so far, none of them local" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the consumer never got an answer"; cat "$WORK/rsa-import.log"; exit 1; }
 grep -q "ddsr/rpc/req/" "$WORK/rsa-export.log" \
   || { echo "SCENARIO I FAILED: the export did not listen on the request tree"; cat "$WORK/rsa-export.log"; exit 1; }
+grep -q "asked to be greeted later — the call came back before the greeting" "$WORK/rsa-import.log" \
+  || { echo "SCENARIO I FAILED: the Promise was not returned before its value"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
+grep -q "greeted later: Hello, RSA consumer, sorry to keep you waiting!" "$WORK/rsa-import.log" \
+  || { echo "SCENARIO I FAILED: the Promise never resolved"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
+echo "  ✓ promise-over-mqtt: the call came back before the greeting, and the greeting arrived"
 # Two MQTT versions on one call (#138): the exporting node serves over
 # MQTT 5, the importing node calls over 3.1.1. The request's reply
 # address and correlation are in the envelope, which is why neither has
@@ -499,11 +507,15 @@ run_container ddsr-rsa-export-amqp ddsr/rsa-example $(client_args rsa-example) \
   -e RSA_AMQP_URL="amqp://localhost:5672"
 wait_for_log ddsr-rsa-export-amqp "exported .* over AMQP" 150
 wait_for_log ddsr-rsa-import-amqp "RSA-Consumer" 150
+wait_for_log ddsr-rsa-import-amqp "greeted later:" 60
 
 podman logs ddsr-rsa-export-amqp >"$WORK/rsa-export-amqp.log" 2>&1
 podman logs ddsr-rsa-import-amqp >"$WORK/rsa-import-amqp.log" 2>&1
 grep -q "greetings so far, none of them local" "$WORK/rsa-import-amqp.log" \
   || { echo "SCENARIO R FAILED: the consumer never got an answer"; cat "$WORK/rsa-import-amqp.log"; exit 1; }
+grep -q "asked to be greeted later — the call came back before the greeting" "$WORK/rsa-import-amqp.log" \
+  || { echo "SCENARIO R FAILED: the Promise was not returned before its value"; grep "RSA-Consumer" "$WORK/rsa-import-amqp.log"; exit 1; }
+echo "  ✓ promise-over-amqp: the call came back before the greeting, and the greeting arrived"
 grep -q "under ddsr.rpc\." "$WORK/rsa-export-amqp.log" \
   || { echo "SCENARIO R FAILED: the export did not listen under a routing key"; cat "$WORK/rsa-export-amqp.log"; exit 1; }
 # The guarded Ledger is asked to be exported here too, and for the same

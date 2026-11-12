@@ -95,7 +95,7 @@ public interface LanguageBinding extends NamedElement {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Overrides for Parameter.type, the language-neutral type name. A generator knows the standard set ('string', 'int', 'double', …) on its own; only what it cannot know is stated here, e.g. 'money.Money' to 'com.acme.money.Money'.
+	 * Overrides for Parameter.type, the language-neutral type name, and the names of declared errors (ServiceException.type). A generator knows the standard set ('string', 'int', 'double', …) on its own; only what it cannot know is stated here, e.g. 'money.Money' to 'com.acme.money.Money'. An entry is asked BEFORE the standard set, for a parameter and a return value alike, so it may also say that a standard name is something else in this binding. It decides how a slot is written in the generated code and nothing about how its value travels.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Type Mappings</em>' containment reference list.
 	 * @see org.eclipse.fennec.services.ServicesPackage#getLanguageBinding_TypeMappings()

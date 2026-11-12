@@ -29,12 +29,13 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.Parameter#isOptional <em>Optional</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getDefaultValue <em>Default Value</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getDescription <em>Description</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.Parameter#getDelivery <em>Delivery</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getConstraints <em>Constraints</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getParameter()
- * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='typeOrEType boundsOrdered requiredSlotHasLowerBound'"
- *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 typeOrEType='type &lt;&gt; null or eType &lt;&gt; null' boundsOrdered='upperBound = -1 or upperBound &gt;= lowerBound' requiredSlotHasLowerBound='optional or lowerBound &gt;= 1'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 typeOrEType='type &lt;&gt; null or eType &lt;&gt; null' boundsOrdered='upperBound = -1 or upperBound &gt;= lowerBound' requiredSlotHasLowerBound='optional or lowerBound &gt;= 1' streamIsUnbounded='delivery &lt;&gt; Delivery::STREAM or upperBound = -1'"
  * @generated
  */
 @ProviderType
@@ -146,7 +147,7 @@ public interface Parameter extends NamedElement {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded but finite collection. Unbounded streams over time are NOT meant here — those belong to the interaction-style work in WIRE_CHANNELS.md. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds.
+	 * Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded. Whether an unbounded slot is a collection that arrives complete or a stream over time is said by 'delivery'. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Upper Bound</em>' attribute.
 	 * @see #setUpperBound(int)
@@ -241,6 +242,35 @@ public interface Parameter extends NamedElement {
 	 * @generated
 	 */
 	void setDescription(String value);
+
+	/**
+	 * Returns the value of the '<em><b>Delivery</b></em>' attribute.
+	 * The default value is <code>"VALUE"</code>.
+	 * The literals are from the enumeration {@link org.eclipse.fennec.services.Delivery}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot — a list — in that a list arrives complete.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Delivery</em>' attribute.
+	 * @see org.eclipse.fennec.services.Delivery
+	 * @see #setDelivery(Delivery)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getParameter_Delivery()
+	 * @model default="VALUE" required="true"
+	 * @generated
+	 */
+	Delivery getDelivery();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.Parameter#getDelivery <em>Delivery</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Delivery</em>' attribute.
+	 * @see org.eclipse.fennec.services.Delivery
+	 * @see #getDelivery()
+	 * @generated
+	 */
+	void setDelivery(Delivery value);
 
 	/**
 	 * Returns the value of the '<em><b>Constraints</b></em>' containment reference list.

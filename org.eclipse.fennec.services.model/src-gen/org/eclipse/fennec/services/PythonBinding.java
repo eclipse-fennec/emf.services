@@ -10,7 +10,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * Python rendering: targetPackage is the module. Same as TypeScriptBinding — a discriminator today, attributes when its generator arrives.
+ * Python rendering: targetPackage is the module. There is no Python generator yet; like TypeScriptBinding it says which language a binding document is for, and gains attributes only if that generator turns out to need some.
  * <!-- end-model-doc -->
  *
  *

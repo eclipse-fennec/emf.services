@@ -165,6 +165,7 @@ export { DiagnosticSeverity, getDiagnosticSeverity, getDiagnosticSeverityByLiter
 export { FlavorKind, getFlavorKind, getFlavorKindByLiteral } from './FlavorKind.js';
 export { HttpMethod, getHttpMethod, getHttpMethodByLiteral } from './HttpMethod.js';
 export { ParameterBinding, getParameterBinding, getParameterBindingByLiteral } from './ParameterBinding.js';
+export { Delivery, getDelivery, getDeliveryByLiteral } from './Delivery.js';
 export { MessagingQos, getMessagingQos, getMessagingQosByLiteral } from './MessagingQos.js';
 export { RegistryKind, getRegistryKind, getRegistryKindByLiteral } from './RegistryKind.js';
 export { ExpressionLanguage, getExpressionLanguage, getExpressionLanguageByLiteral } from './ExpressionLanguage.js';

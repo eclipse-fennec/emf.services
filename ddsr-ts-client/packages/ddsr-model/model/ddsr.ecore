@@ -150,6 +150,14 @@
     <eLiterals name="HEADER" value="2"/>
     <eLiterals name="PATH" value="3"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Delivery">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint — the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language's: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable."/>
+    </eAnnotations>
+    <eLiterals name="VALUE"/>
+    <eLiterals name="PROMISE" value="1"/>
+    <eLiterals name="STREAM" value="2"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="MessagingQos">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Quality-of-service level of a message. AT_MOST_ONCE (0, fire-and-forget); AT_LEAST_ONCE (1, acknowledged, redelivered — the default); EXACTLY_ONCE (2, where the protocol has it: MQTT does, AMQP 0-9-1 does not and refuses it)."/>
@@ -295,6 +303,12 @@
     </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ServiceOperation" eSuperTypes="#//NamedElement">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="onlyAReturnValueIsPromised"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="onlyAReturnValueIsPromised" value="parameters->forAll(p | p.delivery &lt;> Delivery::PROMISE)"/>
+    </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A single language-neutral operation on a ServiceInterface: parameters in order, optional return type with constraints, declared exceptions. The Code Publisher uses ServiceOperations to emit typed method signatures in Java/TS/Python stub artifacts."/>
     </eAnnotations>
@@ -342,7 +356,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Parameter" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="typeOrEType boundsOrdered requiredSlotHasLowerBound"/>
+      <details key="constraints" value="typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A typed, named, positional input to a ServiceOperation — and, as ServiceOperation.returnValue, its return slot. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping)."/>
@@ -351,6 +365,7 @@
       <details key="typeOrEType" value="type &lt;> null or eType &lt;> null"/>
       <details key="boundsOrdered" value="upperBound = -1 or upperBound >= lowerBound"/>
       <details key="requiredSlotHasLowerBound" value="optional or lowerBound >= 1"/>
+      <details key="streamIsUnbounded" value="delivery &lt;> Delivery::STREAM or upperBound = -1"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -376,7 +391,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="upperBound" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"
         defaultValueLiteral="1">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded but finite collection. Unbounded streams over time are NOT meant here — those belong to the interaction-style work in WIRE_CHANNELS.md. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds."/>
+        <details key="documentation" value="Maximum number of values, inclusive. 1 = single value (the default), -1 = unbounded. Whether an unbounded slot is a collection that arrives complete or a stream over time is said by 'delivery'. As soon as it deviates from 1 the slot is multi-valued, and the sd1 canonical form renders both bounds."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="optional" lowerBound="1"
@@ -393,6 +408,12 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Doc text; rendered as @param JavaDoc / TSDoc tag / Python docstring entry."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" lowerBound="1" eType="#//Delivery"
+        defaultValueLiteral="VALUE">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot — a list — in that a list arrives complete."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="constraints" upperBound="-1"

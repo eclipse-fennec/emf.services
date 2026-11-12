@@ -73,6 +73,7 @@ export class DDSRPackage extends BasicEPackage {
     PARAMETER__OPTIONAL: null as unknown as EAttribute | EReference,
     PARAMETER__DEFAULT_VALUE: null as unknown as EAttribute | EReference,
     PARAMETER__DESCRIPTION: null as unknown as EAttribute | EReference,
+    PARAMETER__DELIVERY: null as unknown as EAttribute | EReference,
     PARAMETER__CONSTRAINTS: null as unknown as EAttribute | EReference,
     PARAMETER_CONSTRAINT: null as unknown as EClass,
     REQUIRED_CONSTRAINT: null as unknown as EClass,
@@ -687,6 +688,14 @@ export class DDSRPackage extends BasicEPackage {
     parameter_description.setUpperBound(1);
     parameterClass.getEStructuralFeatures().push(parameter_description);
     DDSRPackage.Literals.PARAMETER__DESCRIPTION = parameter_description;
+
+    // Create delivery feature
+    const parameter_delivery = new BasicEAttribute();
+    parameter_delivery.setName('delivery');
+    parameter_delivery.setLowerBound(1);
+    parameter_delivery.setUpperBound(1);
+    parameterClass.getEStructuralFeatures().push(parameter_delivery);
+    DDSRPackage.Literals.PARAMETER__DELIVERY = parameter_delivery;
 
     // Create constraints feature
     const parameter_constraints = new BasicEReference();

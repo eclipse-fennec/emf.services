@@ -406,6 +406,11 @@ Where the session's messages go:
   `<request channel>/session/<id>` (`.session` on AMQP, the id after a
   `/`).
 
+The caller checks the channel the provider names in `accept` before it
+sends anything there: a generated one, or one below the operation's
+`<request channel>/session` (Gecko Messaging's
+`sessionChannelAllowed`, given per session). A provider that names
+another channel ends the session.
 The provider answers a session on any reply channel, as it answers a
 call wherever it asks to be (`replyToAllowed` = `*` on the messaging
 connection); what may be written where is the messaging broker's ACL.

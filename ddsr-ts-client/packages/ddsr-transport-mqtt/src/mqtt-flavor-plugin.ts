@@ -29,6 +29,7 @@ import {
   isAmqpFlavor,
   namedReplyBaseFor,
   sessionReplyChannelFor,
+  sessionPrefixFor,
   encodeRequest,
   qosFor,
   replySubtreeFor,
@@ -169,6 +170,7 @@ export class MqttFlavorPlugin implements FlavorPlugin {
         requestTopic,
         qos,
         owner: consumer,
+        providerChannelPrefix: sessionPrefixFor(mqttFlavor, mqttOp),
         // The consumer's subtree under the reply tree the flavor names,
         // as for a call answered once; without one, a generated channel.
         replyChannel: namedReplyBaseFor(mqttFlavor, mqttOp)

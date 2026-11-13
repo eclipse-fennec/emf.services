@@ -115,6 +115,10 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_INTERFACE__REPLACED_BY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__UPDATE_POLICY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__SECURITY: null as unknown as EAttribute | EReference,
+    SERVICE_INTERFACE__MODELS: null as unknown as EAttribute | EReference,
+    MODEL_REFERENCE: null as unknown as EClass,
+    MODEL_REFERENCE__NS_U_R_I: null as unknown as EAttribute | EReference,
+    MODEL_REFERENCE__FINGERPRINT: null as unknown as EAttribute | EReference,
     LIFECYCLE_HOOK: null as unknown as EClass,
     LIFECYCLE_HOOK__KIND: null as unknown as EAttribute | EReference,
     LIFECYCLE_HOOK__PARAMETER: null as unknown as EAttribute | EReference,
@@ -1041,6 +1045,40 @@ export class DDSRPackage extends BasicEPackage {
     serviceInterface_security.setUpperBound(1);
     serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_security);
     DDSRPackage.Literals.SERVICE_INTERFACE__SECURITY = serviceInterface_security;
+
+    // Create models feature
+    const serviceInterface_models = new BasicEReference();
+    serviceInterface_models.setContainment(true);
+    serviceInterface_models.setName('models');
+    serviceInterface_models.setLowerBound(0);
+    serviceInterface_models.setUpperBound(-1);
+    serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_models);
+    DDSRPackage.Literals.SERVICE_INTERFACE__MODELS = serviceInterface_models;
+
+    // Create ModelReference class
+    const modelReferenceClass = new BasicEClass();
+    modelReferenceClass.setName('ModelReference');
+    modelReferenceClass.setAbstract(false);
+    modelReferenceClass.setInterface(false);
+    this.getEClassifiers().push(modelReferenceClass);
+    modelReferenceClass.setEPackage(this);
+    DDSRPackage.Literals.MODEL_REFERENCE = modelReferenceClass;
+
+    // Create nsURI feature
+    const modelReference_nsURI = new BasicEAttribute();
+    modelReference_nsURI.setName('nsURI');
+    modelReference_nsURI.setLowerBound(1);
+    modelReference_nsURI.setUpperBound(1);
+    modelReferenceClass.getEStructuralFeatures().push(modelReference_nsURI);
+    DDSRPackage.Literals.MODEL_REFERENCE__NS_U_R_I = modelReference_nsURI;
+
+    // Create fingerprint feature
+    const modelReference_fingerprint = new BasicEAttribute();
+    modelReference_fingerprint.setName('fingerprint');
+    modelReference_fingerprint.setLowerBound(0);
+    modelReference_fingerprint.setUpperBound(1);
+    modelReferenceClass.getEStructuralFeatures().push(modelReference_fingerprint);
+    DDSRPackage.Literals.MODEL_REFERENCE__FINGERPRINT = modelReference_fingerprint;
 
     // Create LifecycleHook class
     const lifecycleHookClass = new BasicEClass();
@@ -2967,6 +3005,9 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_INTERFACE__DEPRECATED_BY as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_INTERFACE__REPLACED_BY as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
     (DDSRPackage.Literals.SERVICE_INTERFACE__SECURITY as BasicEReference).setEType(DDSRPackage.Literals.SECURITY_REQUIREMENT);
+    (DDSRPackage.Literals.SERVICE_INTERFACE__MODELS as BasicEReference).setEType(DDSRPackage.Literals.MODEL_REFERENCE);
+    (DDSRPackage.Literals.MODEL_REFERENCE__NS_U_R_I as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.MODEL_REFERENCE__FINGERPRINT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.LIFECYCLE_HOOK__PARAMETER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
     (DDSRPackage.Literals.COMPONENT_REFERENCE__INTERFACE_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.COMPONENT_REFERENCE__TARGET as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);

@@ -133,6 +133,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateServiceException((ServiceException)value, diagnostics, context);
 			case ServicesPackage.SERVICE_INTERFACE:
 				return validateServiceInterface((ServiceInterface)value, diagnostics, context);
+			case ServicesPackage.MODEL_REFERENCE:
+				return validateModelReference((ModelReference)value, diagnostics, context);
 			case ServicesPackage.LIFECYCLE_HOOK:
 				return validateLifecycleHook((LifecycleHook)value, diagnostics, context);
 			case ServicesPackage.REFERENCE_BINDING:
@@ -928,6 +930,7 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(serviceInterface, diagnostics, context);
 		if (result || diagnostics != null) result &= validateVersionedElement_validSemver(serviceInterface, diagnostics, context);
 		if (result || diagnostics != null) result &= validateServiceInterface_replacedByIsDeprecated(serviceInterface, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceInterface_modelsUnique(serviceInterface, diagnostics, context);
 		return result;
 	}
 
@@ -958,6 +961,44 @@ public class ServicesValidator extends EObjectValidator {
 				 org.eclipse.emf.common.util.Diagnostic.ERROR,
 				 DIAGNOSTIC_SOURCE,
 				 0);
+	}
+
+	/**
+	 * The cached validation expression for the modelsUnique constraint of '<em>Service Interface</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_INTERFACE__MODELS_UNIQUE__EEXPRESSION = "models->isUnique(m | m.nsURI)";
+
+	/**
+	 * Validates the modelsUnique constraint of '<em>Service Interface</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceInterface_modelsUnique(ServiceInterface serviceInterface, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_INTERFACE,
+				 serviceInterface,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "modelsUnique",
+				 SERVICE_INTERFACE__MODELS_UNIQUE__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateModelReference(ModelReference modelReference, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(modelReference, diagnostics, context);
 	}
 
 	/**

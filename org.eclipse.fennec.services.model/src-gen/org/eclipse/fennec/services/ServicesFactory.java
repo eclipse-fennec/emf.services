@@ -205,6 +205,15 @@ public interface ServicesFactory extends EFactory {
 	ServiceInterface createServiceInterface();
 
 	/**
+	 * Returns a new object of class '<em>Model Reference</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Model Reference</em>'.
+	 * @generated
+	 */
+	ModelReference createModelReference();
+
+	/**
 	 * Returns a new object of class '<em>Lifecycle Hook</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

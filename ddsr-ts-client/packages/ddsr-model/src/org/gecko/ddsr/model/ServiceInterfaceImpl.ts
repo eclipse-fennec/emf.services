@@ -14,6 +14,7 @@ import type { ServiceOperation } from './ServiceOperation.js';
 import type { ServiceException } from './ServiceException.js';
 import type { Invariant } from './Invariant.js';
 import type { SecurityRequirement } from './SecurityRequirement.js';
+import type { ModelReference } from './ModelReference.js';
 import { CatalogStatus } from './CatalogStatus.js';
 import { UpdatePolicy } from './UpdatePolicy.js';
 import type { ServiceInterface } from './ServiceInterface.js';
@@ -36,6 +37,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   static readonly REPLACED_BY: number = 10;
   static readonly UPDATE_POLICY: number = 11;
   static readonly SECURITY: number = 12;
+  static readonly MODELS: number = 13;
   static readonly NAME: number = 0;
   static readonly VERSION: number = 1;
 
@@ -51,6 +53,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   private _replacedBy?: ServiceInterface;
   private _updatePolicy: UpdatePolicy = UpdatePolicy.UNSPECIFIED;
   private _security?: SecurityRequirement;
+  private _models!: EList<ModelReference>;
   private _name: string = "";
   private _version?: string;
 
@@ -275,6 +278,13 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
     }
   }
 
+  get models(): EList<ModelReference> {
+    if (!this._models) {
+      this._models = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('models') as EReference);
+    }
+    return this._models;
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -321,6 +331,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this.updatePolicy;
       case ServiceInterfaceImpl.SECURITY:
         return this.security;
+      case ServiceInterfaceImpl.MODELS:
+        return this.models;
       case ServiceInterfaceImpl.NAME:
         return this.name;
       case ServiceInterfaceImpl.VERSION:
@@ -383,6 +395,11 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         this.security = newValue as SecurityRequirement;
         super.eSet(feature, newValue);
         break;
+      case ServiceInterfaceImpl.MODELS:
+        this.models.clear();
+        this.models.addAll(newValue as any[]);
+        super.eSet(feature, newValue);
+        break;
       case ServiceInterfaceImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -424,6 +441,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this._updatePolicy !== UpdatePolicy.UNSPECIFIED;
       case ServiceInterfaceImpl.SECURITY:
         return this._security !== undefined;
+      case ServiceInterfaceImpl.MODELS:
+        return this._models !== undefined && !this._models.isEmpty();
       case ServiceInterfaceImpl.NAME:
         return this._name !== "";
       case ServiceInterfaceImpl.VERSION:
@@ -471,6 +490,9 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return;
       case ServiceInterfaceImpl.SECURITY:
         this._security = undefined;
+        return;
+      case ServiceInterfaceImpl.MODELS:
+        if (this._models) this._models.clear();
         return;
       case ServiceInterfaceImpl.NAME:
         this._name = "";

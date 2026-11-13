@@ -595,7 +595,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ServiceInterface" eSuperTypes="#//NamedElement #//VersionedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="replacedByIsDeprecated"/>
+      <details key="constraints" value="replacedByIsDeprecated modelsUnique"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="The core catalog citizen: a versioned, identified service contract carrying operations and exceptions. Lives containment in RemoteServiceRegistry.catalog. Providers reference it (non-containment) from their ServiceImplementations; consumers look up services by its name."/>
@@ -603,6 +603,7 @@
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
       <details key="immutableAfterPublish" value="-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant — placeholder."/>
       <details key="replacedByIsDeprecated" value="replacedBy = null or status.toString() = 'DEPRECATED'"/>
+      <details key="modelsUnique" value="models->isUnique(m | m.nsURI)"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -663,6 +664,28 @@
         eType="#//SecurityRequirement" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Default requirement for every operation of this contract; an operation may override it via ServiceOperation.security. Part of the contract, not of a deployment: it states WHAT a caller must be, transport-neutral. HOW that is proven is the flavor's business (ServiceFlavor.securitySchemes). Absent here and on every operation = the contract states no requirement; whether such a contract may then be called anonymously is a decision of the serving node's configuration, never an implicit 'open'. The broker's own contracts carry these too (#88): the broker's access matrix — publish, consume, curate — is expressed and enforced with the same mechanism as on every peer."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="models" upperBound="-1"
+        eType="#//ModelReference" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The payload models this contract's slots are typed with (Parameter.eType), each pinned to the version it means by its fingerprint. Part of the contract: a payload model that changes under the same nsURI is a different exchange, and with the fingerprint here the sd1 moves with it. A broker with a model source checks that every eType's package is listed and resolves at its fingerprint; a consumer fetches what it does not have. Empty = the contract pins no model (eType references still travel as hrefs)."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ModelReference">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One payload model a contract uses: its namespace URI and the fingerprint of the version meant. The fingerprint is the one fennec EMF generates for a package (fp1:..., EPackageConfigurator.FINGERPRINT, @EPackage(fingerprint)) and the one the Model Atlas reports, so a reference resolves the same everywhere."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nsURI" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Namespace URI of the EPackage, as in the eType hrefs of the contract's slots."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="fingerprint" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Fingerprint of the package version meant (fp1:...). Absent = any version under the nsURI; a broker with a model source may then pin the one it resolves."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>

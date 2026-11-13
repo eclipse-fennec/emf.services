@@ -48,6 +48,8 @@ import type { ServiceException } from './ServiceException.js';
 import { ServiceExceptionImpl } from './ServiceExceptionImpl.js';
 import type { ServiceInterface } from './ServiceInterface.js';
 import { ServiceInterfaceImpl } from './ServiceInterfaceImpl.js';
+import type { ModelReference } from './ModelReference.js';
+import { ModelReferenceImpl } from './ModelReferenceImpl.js';
 import type { LifecycleHook } from './LifecycleHook.js';
 import { LifecycleHookImpl } from './LifecycleHookImpl.js';
 import type { ReferenceBinding } from './ReferenceBinding.js';
@@ -283,6 +285,13 @@ export class DDSRFactory extends BasicEFactory {
    */
   createServiceInterface(): ServiceInterface {
     return new ServiceInterfaceImpl();
+  }
+
+  /**
+   * Create a new ModelReference instance
+   */
+  createModelReference(): ModelReference {
+    return new ModelReferenceImpl();
   }
 
   /**
@@ -596,6 +605,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createServiceException();
       case 'ServiceInterface':
         return this.createServiceInterface();
+      case 'ModelReference':
+        return this.createModelReference();
       case 'LifecycleHook':
         return this.createLifecycleHook();
       case 'ReferenceBinding':

@@ -231,4 +231,29 @@ describe('ServiceDescriptionFingerprint (sd1) — typed slots and multiplicity (
     expect(fingerprint(slot(undefined))).toBe(fingerprint(slot('VALUE')));
     expect(canonicalForm(slot('VALUE'))).not.toContain('elivery');
   });
+
+  // #256: the payload models a contract pins, sorted by nsURI - the same
+  // text the Java side renders.
+  it('renders the pinned payload models sorted, and a pin moves the hash', () => {
+    const factory = DDSRFactory.eINSTANCE;
+    const si = factory.createServiceInterface();
+    si.name = 'Readings';
+    si.version = '1.0.0';
+    const without = fingerprint(si);
+    const b = factory.createModelReference();
+    b.nsURI = 'http://b.example/1.0';
+    const a = factory.createModelReference();
+    a.nsURI = 'http://a.example/1.0';
+    a.fingerprint = 'fp1:aaa';
+    si.models.push(b);
+    si.models.push(a);
+
+    expect(canonicalForm(si)).toBe('I|Readings|version=1.0.0|status=ACTIVE\n'
+      + '  M|http://a.example/1.0|fingerprint=fp1:aaa\n'
+      + '  M|http://b.example/1.0|fingerprint=');
+    expect(fingerprint(si)).not.toBe(without);
+    const pinned = fingerprint(si);
+    a.fingerprint = 'fp1:bbb';
+    expect(fingerprint(si)).not.toBe(pinned);
+  });
 });

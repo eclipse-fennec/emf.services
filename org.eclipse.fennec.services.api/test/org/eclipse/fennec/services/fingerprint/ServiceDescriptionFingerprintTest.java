@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
+import org.eclipse.fennec.services.ModelReference;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
@@ -498,5 +499,35 @@ class ServiceDescriptionFingerprintTest {
 				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(sensor(Delivery.VALUE, false)));
 		assertThat(ServiceDescriptionFingerprint.canonicalForm(sensor(Delivery.VALUE, false)))
 				.doesNotContain("elivery");
+	}
+
+	/**
+	 * The payload models a contract pins (#256): one line each, sorted by
+	 * nsURI — the same text the TypeScript side renders.
+	 */
+	@Test
+	void thePinnedPayloadModelsAreRenderedSortedAndMoveTheHash() {
+		ServiceInterface readings = ServicesFactory.eINSTANCE.createServiceInterface();
+		readings.setName("Readings");
+		readings.setVersion("1.0.0");
+		String without = ServiceDescriptionFingerprint.fingerprint(readings);
+		ModelReference b = ServicesFactory.eINSTANCE.createModelReference();
+		b.setNsURI("http://b.example/1.0");
+		ModelReference a = ServicesFactory.eINSTANCE.createModelReference();
+		a.setNsURI("http://a.example/1.0");
+		a.setFingerprint("fp1:aaa");
+		readings.getModels().add(b);
+		readings.getModels().add(a);
+
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(readings)).isEqualTo(
+				"I|Readings|version=1.0.0|status=ACTIVE\n"
+						+ "  M|http://a.example/1.0|fingerprint=fp1:aaa\n"
+						+ "  M|http://b.example/1.0|fingerprint=");
+		assertThat(ServiceDescriptionFingerprint.fingerprint(readings)).isNotEqualTo(without);
+
+		String pinned = ServiceDescriptionFingerprint.fingerprint(readings);
+		a.setFingerprint("fp1:bbb");
+		assertThat(ServiceDescriptionFingerprint.fingerprint(readings))
+				.as("another version of a payload model is another contract").isNotEqualTo(pinned);
 	}
 }

@@ -31,6 +31,7 @@ import org.eclipse.fennec.services.FloatProperty;
 import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.LongProperty;
 import org.eclipse.fennec.services.Delivery;
+import org.eclipse.fennec.services.ModelReference;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.Property;
 import org.eclipse.fennec.services.SecurityRequirement;
@@ -162,6 +163,14 @@ public final class ServiceDescriptionFingerprint {
 				+ "|status=" + (status != null ? status.getLiteral() : CatalogStatus.ACTIVE.getLiteral()));
 		if (serviceInterface.getSecurity() != null) {
 			lines.add("  " + securityLine(serviceInterface.getSecurity()));
+		}
+		// The payload models the contract pins (#256), a set: sorted by
+		// nsURI, and only where there are any, so a contract that pins
+		// none hashes as it did before.
+		List<ModelReference> models = new ArrayList<>(serviceInterface.getModels());
+		models.sort(Comparator.comparing(ModelReference::getNsURI, Comparator.nullsFirst(Comparator.naturalOrder())));
+		for (ModelReference model : models) {
+			lines.add("  M|" + esc(model.getNsURI()) + "|fingerprint=" + esc(model.getFingerprint()));
 		}
 
 		List<ServiceException> exceptions = new ArrayList<>(serviceInterface.getExceptions());

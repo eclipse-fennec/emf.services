@@ -47,6 +47,7 @@ divergence between the languages is a bug in one of them, never a
 ```
 I|<name>|version=<version>|status=<literal>
   sec|authenticated=<bool>|scopes=<list>   only where the interface declares a requirement
+  M|<nsURI>|fingerprint=<fp1>        pinned payload models, sorted by nsURI, only where any
   X|<name>|type=|version=            exceptions, sorted by name
     pr|<tag>|<name>|value=<value>      exception properties, sorted
   O|<name>|returnType=<type>[|returnEType=][|returnLower=|returnUpper=][|returnOptional=true][|returnDelivery=STREAM]
@@ -64,6 +65,18 @@ plus its eClass name (conservative: visible, the hash moves).
 
 Operation **order is contract** (it renders in declared order);
 exceptions are sorted by name (a set, not a sequence).
+
+### Pinned payload models (#256)
+
+A contract may list the payload models its slots are typed with
+(`ServiceInterface.models`, each a `ModelReference` of nsURI and the
+package's `fp1:` fingerprint — the value fennec EMF generates into every
+`EPackageConfigurator` and the Model Atlas reports). Each renders as an
+`M` line, sorted by nsURI because the list is a set. A different version
+of a payload model is a different exchange, and pinned this way it moves
+the sd1, which an `eType` href alone cannot: the href names the nsURI,
+not the version behind it. A contract that pins nothing renders no
+line and hashes as it did before.
 
 ### Typed slots and multiplicity — and why the tag is still sd1
 

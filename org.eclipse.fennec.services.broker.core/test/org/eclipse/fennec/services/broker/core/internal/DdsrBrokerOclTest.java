@@ -35,6 +35,7 @@ import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.DiagnosticSeverity;
+import org.eclipse.fennec.services.ModelReference;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.SecurityRequirement;
@@ -269,6 +270,25 @@ class DdsrBrokerOclTest {
 
 		readings.setUpperBound(-1);
 		assertThat(Diagnostician.INSTANCE.validate(readings).getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	/** A contract pins each payload model once (#256). */
+	@Test
+	void aPayloadModelIsPinnedOnce() {
+		ServiceInterface contract = ServicesFactory.eINSTANCE.createServiceInterface();
+		contract.setName("Readings");
+		contract.setVersion("1.0.0");
+		for (String fingerprint : new String[] { "fp1:aaa", "fp1:bbb" }) {
+			ModelReference model = ServicesFactory.eINSTANCE.createModelReference();
+			model.setNsURI("http://a.example/1.0");
+			model.setFingerprint(fingerprint);
+			contract.getModels().add(model);
+		}
+
+		assertThat(Diagnostician.INSTANCE.validate(contract).toString()).contains("modelsUnique");
+
+		contract.getModels().remove(1);
+		assertThat(Diagnostician.INSTANCE.validate(contract).toString()).doesNotContain("modelsUnique");
 	}
 
 	/** A REST request is answered once; a stream needs a flavor that carries many answers (#251). */

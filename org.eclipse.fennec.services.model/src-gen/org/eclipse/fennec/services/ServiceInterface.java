@@ -30,11 +30,12 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getReplacedBy <em>Replaced By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getUpdatePolicy <em>Update Policy</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getSecurity <em>Security</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getModels <em>Models</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface()
- * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='replacedByIsDeprecated'"
- *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 immutableAfterPublish='-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant \u2014 placeholder.' replacedByIsDeprecated='replacedBy = null or status.toString() = \'DEPRECATED\''"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='replacedByIsDeprecated modelsUnique'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 immutableAfterPublish='-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant \u2014 placeholder.' replacedByIsDeprecated='replacedBy = null or status.toString() = \'DEPRECATED\'' modelsUnique='models-&gt;isUnique(m | m.nsURI)'"
  * @generated
  */
 @ProviderType
@@ -290,5 +291,20 @@ public interface ServiceInterface extends NamedElement, VersionedElement {
 	 * @generated
 	 */
 	void setSecurity(SecurityRequirement value);
+
+	/**
+	 * Returns the value of the '<em><b>Models</b></em>' containment reference list.
+	 * The list contents are of type {@link org.eclipse.fennec.services.ModelReference}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * The payload models this contract's slots are typed with (Parameter.eType), each pinned to the version it means by its fingerprint. Part of the contract: a payload model that changes under the same nsURI is a different exchange, and with the fingerprint here the sd1 moves with it. A broker with a model source checks that every eType's package is listed and resolves at its fingerprint; a consumer fetches what it does not have. Empty = the contract pins no model (eType references still travel as hrefs).
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Models</em>' containment reference list.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface_Models()
+	 * @model containment="true"
+	 * @generated
+	 */
+	EList<ModelReference> getModels();
 
 } // ServiceInterface

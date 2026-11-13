@@ -18,6 +18,7 @@ Bundle-Description: \
 	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.runtime;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.emf.osgi.api;version=latest,\
 
 # Plain JUnit, no OSGi runtime: DdsrBrokerImpl is deliberately pure Java
 # (see its class comment) and takes its collaborators as constructor
@@ -42,4 +43,5 @@ Bundle-Description: \
 	org.eclipse.fennec.m2x.ocl.model;version="[0.1.1,0.1.2)",\
 	org.eclipse.fennec.m2x.ocl.parser;version="[0.1.1,0.1.2)",\
 	org.eclipse.fennec.m2x.unit;version="[0.1.1,0.1.2)",\
-	org.antlr.antlr4-runtime;version=latest
+	org.antlr.antlr4-runtime;version=latest,\
+	org.eclipse.fennec.emf.osgi.component.minimal;version=latest

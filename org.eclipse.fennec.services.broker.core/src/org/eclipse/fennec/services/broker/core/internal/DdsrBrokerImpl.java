@@ -25,6 +25,7 @@ import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.models.ModelSource;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServiceRegistration;
@@ -94,6 +95,15 @@ public final class DdsrBrokerImpl implements DdsrBroker {
 
 	/** The work the broker does on its own, on a clock. */
 	private final Maintenance maintenance;
+
+	/**
+	 * Where payload models come from (#256), and whether every model a
+	 * contract's slots are typed with must be pinned. Without a source
+	 * the gate asks nothing about payload models.
+	 */
+	public void useModels(ModelSource source, boolean strict) {
+		catalog.useModels(source, strict);
+	}
 
 	public DdsrBrokerImpl(Path snapshotPath, LookupBackend lookup) {
 		this(snapshotPath, lookup, EventSink.NOOP);

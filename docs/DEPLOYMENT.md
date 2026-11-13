@@ -227,7 +227,7 @@ from drifting away from the published bundles.
 **What a snapshot publishes (#261).** Only the bundles another
 workspace uses: the examples, demos, tests and harness configuration
 carry `-maven-release: local`, and so — for now — do the Remote Service
-Admin bundles, whose project libraries are not offered meanwhile
+Admin bundles, which have no project libraries meanwhile
 ([BND_LIBRARIES](BND_LIBRARIES.md)). A snapshot carries the jar and its
 pom, no sources and no javadoc (`cnf/ext/snapshot-release.bnd`); a
 release keeps all of it, signed. Every file is a request, and since

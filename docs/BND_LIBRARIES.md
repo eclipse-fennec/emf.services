@@ -6,22 +6,20 @@ workspace, which makes the bundles resolvable, and four for projects,
 which say what a project compiles against and what a launch runs.
 
 > **Remote Service Admin is not published for now (#261).** The RSA
-> bundles are not released to Maven Central, so the three RSA project
-> libraries below are not offered either: one that named them would hand
-> a downstream launch stale or missing snapshots. Their run lists stay in
-> the repository and are still verified here; they come back with the
-> bundles.
+> bundles are not released to Maven Central, so there are no RSA project
+> libraries either (`enableFennecServicesRsa`, `…RsaMqtt`, `…RsaAmqp`):
+> one that named them would hand a downstream launch stale or missing
+> snapshots. They come back with the bundles. Until then, a workspace that
+> runs Remote Service Admin on this registry builds it from this
+> repository.
 
 | Library | Kind | Gives you |
 | --- | --- | --- |
-| `fennecServices` | workspace | a Maven repository with every bundle the four offered run lists below name, and the project libraries themselves |
+| `fennecServices` | workspace | a Maven repository with every bundle the four run lists below name, and the project libraries themselves |
 | `enableFennecServicesClient` | project | the SDK: publish, look up, invoke |
-| `enableFennecServicesRsa` | project | Remote Service Admin on the registry — *not offered for now (#261)* |
 | `enableFennecServicesSecurity` | project | bearer tokens: supply them, verify them |
 | `enableFennecServicesMqtt` | project | the MQTT transport: call, hear events, serve a contract on topics |
-| `enableFennecServicesRsaMqtt` | project | Remote Service Admin over MQTT — *not offered for now (#261)* |
 | `enableFennecServicesAmqp` | project | the AMQP transport: call, serve a contract on routing keys |
-| `enableFennecServicesRsaAmqp` | project | Remote Service Admin over AMQP — *not offered for now (#261)* |
 
 ## In the workspace
 
@@ -37,7 +35,7 @@ use:
 
 That puts one repository into the workspace — *Eclipse Fennec Services*,
 indexed from Maven Central and its snapshot repository — with exactly
-what the four offered run lists name.
+what the four run lists name.
 
 ## In a project
 
@@ -51,17 +49,9 @@ what the four offered run lists name.
 | Library | Compiles against |
 | --- | --- |
 | `enableFennecServicesClient` | `…services.api`, `…model`, `…runtime`, `…client.java` |
-| `enableFennecServicesRsa` | `org.osgi.service.remoteserviceadmin`, `…services.rsa` |
 | `enableFennecServicesSecurity` | `…services.api` (`TokenSupplier`, `CallPrincipal`), `…security.jwt` (`SecurityNames`) |
 | `enableFennecServicesMqtt` | `…flavor.messaging` (channels, where answers go, QoS), for a project that names placements itself |
-| `enableFennecServicesRsaMqtt` | nothing — the flavor is a configuration |
 | `enableFennecServicesAmqp` | `…flavor.messaging`, the same rules |
-| `enableFennecServicesRsaAmqp` | nothing — the flavor is a configuration |
-
-A service exported through Remote Service Admin usually needs nothing at
-compile time: it is a plain OSGi service with `service.exported.*`
-properties, and `@RolesAllowed` on its interface if only some callers
-may call it ([Remote Service Admin](RSA.md#who-may-call)).
 
 ## In a launch
 
@@ -87,12 +77,9 @@ launch that takes minutes to start.
 | Library | Runs |
 | --- | --- |
 | `enableFennecServicesClient` | the SDK and the REST transport, the wire codec, CloudEvents, EMF, protobuf |
-| `enableFennecServicesRsa` | the RSA core, its role configuration, REST distribution and discovery, the topology manager, the generic REST distribution, the EObject registry, the RSA and Event Admin APIs — on top of the client |
 | `enableFennecServicesSecurity` | the client-credentials token supplier, the JWT verifier and its filters, the client-certificate filter of mode `mtls`, Nimbus JOSE+JWT |
 | `enableFennecServicesMqtt` | the messaging transport (`…client.messaging`, `…provider.messaging`, the flavor rules, the messaging link, Gecko Messaging `api` and `core`) with the `mqtt3` binding and the Paho build it drives — on top of the client. MQTT 5 (`mqtt.version=5`) is not in it: a launch that wants it adds `org.gecko.messaging.mqtt` and `org.eclipse.paho.mqttv5.client` |
-| `enableFennecServicesRsaMqtt` | `…rsa.distribution.messaging` and the discovery that hears events over MQTT — on top of `…Rsa` and `…Mqtt` |
 | `enableFennecServicesAmqp` | the same messaging transport with the `amqp` binding, the RabbitMQ client and the Netty 4.2 it requires — on top of the client |
-| `enableFennecServicesRsaAmqp` | `…rsa.distribution.messaging` — on top of `…Rsa` and `…Amqp` |
 
 The security components act only where configured or where an
 application asks for their mode, so the security list is safe in a
@@ -101,27 +88,21 @@ configured — `DDSR_OAUTH_*`, `DDSR_JWT_*` — is in
 [Getting started](GETTING_STARTED.md#open-or-secured) and
 [Security](SECURITY.md).
 
-MQTT comes in two lists, so that a client that speaks MQTT does not
-pull Remote Service Admin: `enableFennecServicesMqtt` for the transport,
-and `enableFennecServicesRsaMqtt` next to it and `…Rsa` for a node that
-exports or imports over `fennec.mqtt`. Every MQTT part is dormant until
-it is given a broker (`messaging.broker`, or the RSA role's `mqtt.url`), so
-the transport list is safe in a launch that speaks only REST. A part
+`enableFennecServicesMqtt` is the MQTT transport. Every MQTT part is
+dormant until it is given a broker (`messaging.broker`), so the
+transport list is safe in a launch that speaks only REST. A part
 that is given a broker creates its connection as a messaging instance
 by configuration, so such a launch needs the Configuration Admin
 service — the one piece of the configuration stack the MQTT list does
-count on. AMQP comes the same way, in `enableFennecServicesAmqp` and
-`enableFennecServicesRsaAmqp`; it has no discovery of its own, so a
-node that serves over it announces over REST. The transport is the
-same bundles in both lists — one invoker and one distribution for
-every protocol — and what a list adds is its binding and that
+count on. AMQP comes the same way, in `enableFennecServicesAmqp`. The transport
+is the same bundles in both lists — one invoker and one distribution
+for every protocol — and what a list adds is its binding and that
 binding's client library. They are named in both, so that either list
 stands alone.
 Gecko Messaging 2.0 is a snapshot for now, which the
 `fennecServices` index resolves from the Central snapshot repository.
 Which
-flavor a node speaks is in [Remote Service Admin](RSA.md) and
-[Transports](TRANSPORTS.md).
+flavor a node speaks is in [Transports](TRANSPORTS.md).
 
 ## Versions
 

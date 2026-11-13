@@ -22,6 +22,6 @@ Bundle-Description: \
 	junit-platform-launcher;version=latest
 
 # Remote Service Admin is not released to Maven Central for now (#261):
-# fewer uploads per snapshot, and the RSA project libraries are not
-# offered meanwhile (bnd.library.project). Remove this line to bring it back.
+# fewer uploads per snapshot, and no RSA project libraries meanwhile
+# (they come back from the git history of bnd.library.project with it).
 -maven-release: local

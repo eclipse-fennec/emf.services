@@ -110,13 +110,26 @@ final class PayloadModelPins {
 		}
 	}
 
-	/** A package as the Ecore document that defines it. */
+	/**
+	 * A package as the Ecore document that defines it.
+	 *
+	 * <p>Written from the resource it lives in - a generated package has
+	 * one under its nsURI - so references inside it stay inside the
+	 * document, as in the .ecore it was generated from, and the broker
+	 * computes the very fingerprint fennec EMF generated. A copy would
+	 * keep pointing at the original classes, and the broker would hash
+	 * proxies. Only a package without a resource of its own is copied.
+	 */
 	static byte[] ecoreOf(EPackage ePackage) throws IOException {
-		Resource resource = new EcoreResourceFactoryImpl().createResource(URI.createURI(ePackage.getName() + ".ecore"));
-		new ResourceSetImpl().getResources().add(resource);
-		// A copy: a generated package belongs to the registry's resource.
-		resource.getContents().add(EcoreUtil.copy(ePackage));
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		Resource home = ePackage.eResource();
+		if (home != null && home.getContents().size() == 1 && home.getContents().get(0) == ePackage) {
+			home.save(out, Map.of());
+			return out.toByteArray();
+		}
+		Resource resource = new EcoreResourceFactoryImpl().createResource(URI.createURI(ePackage.getNsURI()));
+		new ResourceSetImpl().getResources().add(resource);
+		resource.getContents().add(EcoreUtil.copy(ePackage));
 		resource.save(out, Map.of());
 		return out.toByteArray();
 	}

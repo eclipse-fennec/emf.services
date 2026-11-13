@@ -24,6 +24,7 @@ import java.util.Optional;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -47,6 +48,10 @@ class PayloadModelPinsTest {
 		ePackage.setNsURI("http://example.org/readings/1.0");
 		EClass reading = EcoreFactory.eINSTANCE.createEClass();
 		reading.setName("Reading");
+		EReference previous = EcoreFactory.eINSTANCE.createEReference();
+		previous.setName("previous");
+		previous.setEType(reading);
+		reading.getEStructuralFeatures().add(previous);
 		ePackage.getEClassifiers().add(reading);
 		Resource home = new EcoreResourceFactoryImpl().createResource(URI.createURI(ePackage.getNsURI()));
 		new ResourceSetImpl().getResources().add(home);
@@ -85,6 +90,10 @@ class PayloadModelPinsTest {
 
 		assertThat(handedIn).as("readings once; Ecore and the registry's own model never").hasSize(1);
 		assertThat(handedIn.get(0)).contains("nsURI=\"http://example.org/readings/1.0\"", "name=\"Reading\"");
+		// Written from the package's own resource: a reference inside it
+		// stays inside the document, so the broker hashes the package and
+		// not a proxy to the original.
+		assertThat(handedIn.get(0)).contains("eType=\"#//Reading\"");
 		assertThat(contract.getModels()).extracting(ModelReference::getNsURI, ModelReference::getFingerprint)
 				.containsExactly(tuple("http://example.org/readings/1.0", "fp1:from-the-broker"));
 	}

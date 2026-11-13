@@ -41,6 +41,7 @@ import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.SecuritySchemeKind;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
@@ -268,6 +269,28 @@ class DdsrBrokerOclTest {
 
 		readings.setUpperBound(-1);
 		assertThat(Diagnostician.INSTANCE.validate(readings).getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	/** A REST request is answered once; a stream needs a flavor that carries many answers (#251). */
+	@Test
+	void aStreamHasNoRestBinding() {
+		ServiceOperation readings = ServicesFactory.eINSTANCE.createServiceOperation();
+		readings.setName("readings");
+		Parameter result = ServicesFactory.eINSTANCE.createParameter();
+		result.setName("result");
+		result.setType("double");
+		result.setUpperBound(-1);
+		result.setDelivery(Delivery.STREAM);
+		readings.setReturnValue(result);
+		RestOperationFlavor overRest = ServicesFactory.eINSTANCE.createRestOperationFlavor();
+		overRest.setName("readings");
+		overRest.setPath("/readings");
+		overRest.setOperation(readings);
+
+		assertThat(Diagnostician.INSTANCE.validate(overRest).toString()).contains("noStreamOverRest");
+
+		result.setDelivery(Delivery.VALUE);
+		assertThat(Diagnostician.INSTANCE.validate(overRest).toString()).doesNotContain("noStreamOverRest");
 	}
 
 	/** A promise is something that comes back; an argument is handed over, and is there when it is. */

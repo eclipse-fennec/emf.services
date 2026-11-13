@@ -1270,6 +1270,7 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_pathBindingsNeedPath(restOperationFlavor, diagnostics, context);
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_exceptionBindingsReferenceOperationExceptions(restOperationFlavor, diagnostics, context);
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_oneBindingPerException(restOperationFlavor, diagnostics, context);
+		if (result || diagnostics != null) result &= validateRestOperationFlavor_noStreamOverRest(restOperationFlavor, diagnostics, context);
 		return result;
 	}
 
@@ -1413,6 +1414,35 @@ public class ServicesValidator extends EObjectValidator {
 				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
 				 "oneBindingPerException",
 				 REST_OPERATION_FLAVOR__ONE_BINDING_PER_EXCEPTION__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the noStreamOverRest constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String REST_OPERATION_FLAVOR__NO_STREAM_OVER_REST__EEXPRESSION = "operation = null or operation.returnValue = null or operation.returnValue.delivery <> Delivery::STREAM";
+
+	/**
+	 * Validates the noStreamOverRest constraint of '<em>Rest Operation Flavor</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateRestOperationFlavor_noStreamOverRest(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.REST_OPERATION_FLAVOR,
+				 restOperationFlavor,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "noStreamOverRest",
+				 REST_OPERATION_FLAVOR__NO_STREAM_OVER_REST__EEXPRESSION,
 				 org.eclipse.emf.common.util.Diagnostic.ERROR,
 				 DIAGNOSTIC_SOURCE,
 				 0);

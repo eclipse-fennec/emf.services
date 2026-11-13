@@ -9,9 +9,11 @@ import java.util.Collection;
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
 
+import org.eclipse.emf.common.util.BasicEList;
 import org.eclipse.emf.common.util.EList;
 
 import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.InternalEObject;
 
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
@@ -256,10 +258,14 @@ public class ServiceReferenceImpl extends MinimalEObjectImpl.Container implement
 	 * @generated
 	 */
 	@Override
-	public Object getProperty(String key) {
-		// TODO: implement this method
-		// Ensure that you remove @generated or mark it @generated NOT
-		throw new UnsupportedOperationException();
+	public Object getProperty(final String key) {
+		for (Property property : getProperties()) {
+			if (key != null && key.equals(property.getName())) {
+				EStructuralFeature value = property.eClass().getEStructuralFeature("value");
+				return value == null ? null : property.eGet(value);
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -269,9 +275,13 @@ public class ServiceReferenceImpl extends MinimalEObjectImpl.Container implement
 	 */
 	@Override
 	public EList<String> getPropertyKeys() {
-		// TODO: implement this method
-		// Ensure that you remove @generated or mark it @generated NOT
-		throw new UnsupportedOperationException();
+		EList<String> keys = new BasicEList<String>();
+		for (Property property : getProperties()) {
+			if (property.getName() != null) {
+				keys.add(property.getName());
+			}
+		}
+		return keys;
 	}
 
 	/**

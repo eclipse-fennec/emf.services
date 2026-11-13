@@ -132,7 +132,7 @@ public interface ServiceReference extends EObject {
 	 * Looks up a property value by key. Returns null when no property with that name exists. Return type is EJavaObject because the concrete value type depends on the Property subclass.
 	 * @param key Property name. Case-sensitive.
 	 * <!-- end-model-doc -->
-	 * @model
+	 * @model annotation="http://www.eclipse.org/emf/2002/GenModel body='for (Property property : getProperties()) {\n\tif (key != null &amp;&amp; key.equals(property.getName())) {\n\t\t&lt;%org.eclipse.emf.ecore.EStructuralFeature%&gt; value = property.eClass().getEStructuralFeature(\"value\");\n\t\treturn value == null ? null : property.eGet(value);\n\t}\n}\nreturn null;'"
 	 * @generated
 	 */
 	Object getProperty(String key);
@@ -144,6 +144,7 @@ public interface ServiceReference extends EObject {
 	 * Returns the names of all defined properties, in undefined order. Empty list if no properties are set.
 	 * <!-- end-model-doc -->
 	 * @model kind="operation"
+	 *        annotation="http://www.eclipse.org/emf/2002/GenModel body='&lt;%org.eclipse.emf.common.util.EList%&gt;&lt;String&gt; keys = new &lt;%org.eclipse.emf.common.util.BasicEList%&gt;&lt;String&gt;();\nfor (Property property : getProperties()) {\n\tif (property.getName() != null) {\n\t\tkeys.add(property.getName());\n\t}\n}\nreturn keys;'"
 	 * @generated
 	 */
 	EList<String> getPropertyKeys();

@@ -292,3 +292,10 @@ org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.openteleme
 org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.integration.jakarta.rest:0.1.0-SNAPSHOT
 org.eclipse.osgi-technology.opentelemetry:org.eclipse.osgi-technology.opentelemetry.integration.jakarta.servlet:0.1.0-SNAPSHOT
 com.nimbusds:nimbus-jose-jwt:10.3
+
+# Model Atlas client (#256): the broker's atlas ModelSource reads released payload models
+# through it. impl is the plain-Java client behind ModelAtlasClientFactory, which it offers
+# through the ServiceLoader mediator (SPI Fly); scope.api is the scope model its API names.
+org.eclipse.fennec.model.atlas:org.eclipse.fennec.model.atlas.rest.client.api:0.1.0-SNAPSHOT
+org.eclipse.fennec.model.atlas:org.eclipse.fennec.model.atlas.rest.client.impl:0.1.0-SNAPSHOT
+org.eclipse.fennec.model.atlas:org.eclipse.fennec.model.atlas.scope.api:0.1.0-SNAPSHOT

@@ -133,9 +133,40 @@ public final class MessagingFlavors {
 		return replyBase + separator(flavor) + segment(flavor, consumer);
 	}
 
-	/** The filter that covers everything on a subtree. */
+	/**
+	 * Where the provider listens for the messages of a session opened on
+	 * an operation's channel: {@code <channel><separator>session}, each
+	 * session one level below. Under the request channel, so the rule a
+	 * broker's ACL has for the calls of a contract covers its sessions
+	 * with one more level; the requester's side of a session is the
+	 * reply channel the call names, in its subtree as for any answer.
+	 */
+	public static String sessionChannelPrefix(MessagingFlavor flavor, String channel) {
+		return channel + separator(flavor) + "session";
+	}
+
+	/**
+	 * The filter a consumer listens on for the answers to its calls: the
+	 * one level below its subtree where a call answered once is answered.
+	 * One level and not the whole subtree, so it does not overlap the
+	 * channels of the consumer's sessions ({@link #sessionReplyChannel}),
+	 * which the messaging library subscribes itself — a broker may deliver
+	 * a message once for every subscription it matches.
+	 */
 	public static String subtreeFilter(MessagingFlavor flavor, String subtree) {
-		return subtree + separator(flavor) + "#";
+		return subtree + separator(flavor) + (isAmqp(flavor) ? "*" : "+");
+	}
+
+	/**
+	 * Where the provider's messages in one session arrive, for a flavor
+	 * that names a reply tree: {@code <consumer's subtree><separator>session<separator><session>},
+	 * in the consumer's subtree as any answer and two levels below it, out
+	 * of the reach of {@link #subtreeFilter}.
+	 */
+	public static String sessionReplyChannel(MessagingFlavor flavor, String replyBase, String consumer,
+			String sessionId) {
+		return replySubtree(flavor, replyBase, consumer) + separator(flavor) + "session" + separator(flavor)
+				+ segment(flavor, sessionId);
 	}
 
 	/** The channel one call's answer goes to: the consumer's subtree, then the call. */

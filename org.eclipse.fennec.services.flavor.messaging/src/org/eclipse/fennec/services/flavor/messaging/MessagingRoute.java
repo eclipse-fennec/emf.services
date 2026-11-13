@@ -185,6 +185,16 @@ public final class MessagingRoute {
 		return MessagingFlavors.replySubtree(flavor, replyBaseOf(operation), consumer);
 	}
 
+	/** Where one session's messages from the provider arrive, for a flavor that names a reply tree. */
+	public String sessionReplyChannel(Operation operation, String consumer, String sessionId) {
+		return MessagingFlavors.sessionReplyChannel(flavor, replyBaseOf(operation), consumer, sessionId);
+	}
+
+	/** Where the provider listens for the messages of the sessions opened on an operation. */
+	public String sessionChannelPrefix(Operation operation) {
+		return MessagingFlavors.sessionChannelPrefix(flavor, operation.channel());
+	}
+
 	/** The filter a consumer subscribes to cover that subtree. */
 	public String replyFilter(Operation operation, String consumer) {
 		return MessagingFlavors.subtreeFilter(flavor, replySubtree(operation, consumer));

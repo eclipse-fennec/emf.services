@@ -218,6 +218,13 @@ public record LinkSettings(String name, String url, String clientId, String keys
 		// protocol without message properties (MQTT 3.1.1) a reply
 		// address and a correlation.
 		configuration.put("cloudEvents", "structured");
+		// A session the library answers is opened on the reply channel the
+		// call names: the consumer's subtree under the reply tree its
+		// flavor names, or one the requester's library generated. A call
+		// answered once is answered wherever it asks to be, by this
+		// project's own dispatch; a session is held to the same rule.
+		// What may be written where is the messaging broker's ACL.
+		configuration.put("replyToAllowed", "*");
 		if (maxBodyBytes > 0) {
 			// The instance bounds the message, the deployment states the
 			// document. A document that is not text travels in the

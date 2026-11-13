@@ -198,7 +198,8 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 				// An operation that answers with a stream is served in the
 				// messaging library's sessions, every other one per request.
 				subscriptions.add(dispatcher.streams(channel)
-						? link.serveSessions(channel, dispatcher.qosFor(channel), dispatcher::onSession)
+						? link.serveSessions(channel, dispatcher.sessionChannelPrefix(channel), dispatcher.qosFor(channel),
+								dispatcher::onSession)
 						: link.serve(channel, dispatcher.qosFor(channel),
 								(received, call, reply) -> dispatcher.onRequest(received, call, reply::send)));
 				channels.add(channel);

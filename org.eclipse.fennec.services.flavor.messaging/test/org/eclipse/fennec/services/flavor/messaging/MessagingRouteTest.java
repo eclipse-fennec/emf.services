@@ -72,7 +72,7 @@ class MessagingRouteTest {
 		assertThat(charge.qos()).isEqualTo(1);
 		assertThat(charge.namesReplyChannel()).isTrue();
 		assertThat(route.replySubtree(charge, "node a")).isEqualTo("ddsr/rpc/res/payments/node_a");
-		assertThat(route.replyFilter(charge, "node a")).isEqualTo("ddsr/rpc/res/payments/node_a/#");
+		assertThat(route.replyFilter(charge, "node a")).isEqualTo("ddsr/rpc/res/payments/node_a/+");
 		assertThat(route.replyChannel(charge, "node a", "42")).isEqualTo("ddsr/rpc/res/payments/node_a/42");
 	}
 
@@ -102,7 +102,7 @@ class MessagingRouteTest {
 		assertThat(MessagingRoute.of(mqttWithout).operation("charge").namesReplyChannel()).isFalse();
 		MessagingRoute route = MessagingRoute.of(amqpWith);
 		assertThat(route.replyFilter(route.operation("charge"), "node.a"))
-				.isEqualTo("ddsr.rpc.answers.node_a.#");
+				.isEqualTo("ddsr.rpc.answers.node_a.*");
 	}
 
 	@Test

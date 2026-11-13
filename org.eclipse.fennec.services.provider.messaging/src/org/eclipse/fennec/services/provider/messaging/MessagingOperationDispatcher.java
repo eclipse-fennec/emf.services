@@ -317,6 +317,15 @@ public final class MessagingOperationDispatcher {
 		}
 	}
 
+	/** Where the provider listens for the messages of the sessions opened on this channel. */
+	public String sessionChannelPrefix(String channel) {
+		MessagingRoute.Operation placed = route.onChannel(channel);
+		if (placed == null) {
+			throw new IllegalArgumentException("nothing of this contract answers on " + channel);
+		}
+		return route.sessionChannelPrefix(placed);
+	}
+
 	/** Whether the operation on this channel answers with a stream, and is served in sessions. */
 	public boolean streams(String channel) {
 		MessagingRoute.Operation placed = route.onChannel(channel);

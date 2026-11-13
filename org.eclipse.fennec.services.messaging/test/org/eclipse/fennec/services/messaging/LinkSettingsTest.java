@@ -42,6 +42,7 @@ class LinkSettingsTest {
 				Map.entry("uri", "tcp://localhost:1883"),
 				Map.entry("clientId", "ddsr-broker"),
 				Map.entry("cloudEvents", "structured"),
+				Map.entry("replyToAllowed", "*"),
 				Map.entry("cleanSession", Boolean.TRUE));
 	}
 
@@ -143,6 +144,7 @@ class LinkSettingsTest {
 				Map.entry("uri", "amqp://localhost:5672"),
 				Map.entry("clientId", "node-1"),
 				Map.entry("cloudEvents", "structured"),
+				Map.entry("replyToAllowed", "*"),
 				Map.entry("exchange", "calls"));
 	}
 

@@ -153,11 +153,11 @@ Limits worth knowing before you build on it:
   named error, or keeps the latest (`policy: 'DISCARD_OLDEST'`). Credit
   from consumer to provider is
   [#249](https://github.com/eclipse-fennec/emf.services/issues/249).
-- **A session listens on a reply channel of its own**
-  (`osgi/messaging/reply/<name>/…`), not on the reply tree a flavor
-  names. A broker ACL written for the reply trees needs a rule for that
-  prefix as well, until Gecko Messaging honours a named channel for a
-  session (org.gecko.messaging#31).
+- **A session stays in the trees a broker's ACL is written for**: the
+  caller listens in its reply subtree where the flavor names a reply
+  tree, the provider below the operation's request channel
+  ([Security](SECURITY.md)). A flavor that names no reply tree gets a
+  channel the messaging library generates.
 - **Streams to many receivers at once** are a different exchange and
   not built yet ([#252](https://github.com/eclipse-fennec/emf.services/issues/252)).
 

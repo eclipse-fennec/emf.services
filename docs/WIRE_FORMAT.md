@@ -390,12 +390,24 @@ did not describe, says so with `replyerror` and a short fixed reason;
 that is why a failure the service describes travels as a message of
 its own before `close`.
 
-Session channels are generated: `osgi/messaging/reply/<name>/<uuid>`, on
-AMQP the same string as a routing key on the flavor's exchange. A
-responder answers a session whose `replyto` starts with
-`osgi/messaging/reply/` without further configuration. Values arrive in
-the order they were sent — one publisher, one channel, and QoS 1 where
-the flavor says so.
+Where the session's messages go:
+
+- **to the caller:** where the flavor names a reply tree, the caller's
+  subtree there, a level below the answers to calls answered once —
+  `<reply tree>/<consumer>/session/<id>`. A consumer listens for those
+  answers on one level only (`<reply tree>/<consumer>/+`, on AMQP
+  `.*`), so no message matches two of its subscriptions. A flavor that
+  names no reply tree gets a channel the library generates,
+  `osgi/messaging/reply/<name>/<uuid>`;
+- **to the provider:** below the operation's request channel,
+  `<request channel>/session/<id>` (`.session` on AMQP, the id after a
+  `/`).
+
+The provider answers a session on any reply channel, as it answers a
+call wherever it asks to be (`replyToAllowed` = `*` on the messaging
+connection); what may be written where is the messaging broker's ACL.
+Values arrive in the order they were sent — one publisher, one
+channel, and QoS 1 where the flavor says so.
 
 ### Who may read what
 

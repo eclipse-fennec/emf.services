@@ -376,19 +376,22 @@ in either direction.
 | --- | --- | --- | --- |
 | open | caller | the operation's request channel | the call (`invoke`, its `ServiceInvocation` as the document), `correlationid` = the session id, `replyto` = the caller's session channel, `replysession` = `open`, `replysessionlease` = the lease asked for |
 | accept | provider | `replyto` | `replysession` = `accept`, `replysessionchannel` = the provider's session channel, `replysessionlease` = the lease granted (1 s to 5 min) |
-| ready | caller | `replysessionchannel` | `replysession` = `ready`; the provider starts sending |
+| ready | caller | `replysessionchannel` | `replysession` = `ready`, `replysessioncredit` = the values the caller can hold; the provider starts sending |
+| credit | caller | `replysessionchannel` | `replysession` = `credit`, `replysessioncredit` = as many more as the caller's application took |
 | a value | provider | `replyto` | `invoke.reply`, `correlationid` = the session id, a `ServiceInvocationResult` holding that one value |
-| a failure | provider | `replyto` | the same, holding the `Diagnostic`, its `code` as for a single answer; then `close` |
+| a failure | provider | `replyto` | the same, holding the `Diagnostic`, its `code` as for a single answer, and `replysessionreason` = `declared:<code>` or `failed`; the caller delivers it, ends the session with that reason and sends `close` |
 | ping | either | the other's channel | `replysession` = `ping`, when it has sent nothing for a third of the lease |
 | close | either | the other's channel | `replysession` = `close`; from the provider after the last value, from the caller when it leaves |
 
 Every message of the session carries its id as `correlationid`, and
 every message renews the lease. A side that hears nothing for a lease
 ends the session; a provider whose caller went silent stops its stream.
-A responder that refuses a session, or whose stream failed in a way it
-did not describe, says so with `replyerror` and a short fixed reason;
-that is why a failure the service describes travels as a message of
-its own before `close`.
+A provider sends no more values than it was granted; a caller that
+grants no credit (one that keeps only the latest) gets them as fast as
+they come. A responder that refuses a session, or whose stream failed
+in a way it did not describe, says so with `replyerror` and a short
+fixed reason. A failure the service describes travels as the session's
+last message, with its reason (Gecko Messaging's `SessionEndedException`).
 
 Where the session's messages go:
 

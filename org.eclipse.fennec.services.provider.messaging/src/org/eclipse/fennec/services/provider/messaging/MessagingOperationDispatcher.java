@@ -45,6 +45,7 @@ import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.messaging.PushStreams;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -340,10 +341,11 @@ public final class MessagingOperationDispatcher {
 	 * <p>One message per value, each a {@code ServiceInvocationResult} in
 	 * the encoding the flavor declares, asked for when the connection has
 	 * taken the one before. A failure — thrown by the call or ending the
-	 * stream — is one last message holding the Diagnostic a single answer
-	 * would have carried, a declared error under its code; the session
-	 * then ends normally, because the library's own way of ending one
-	 * with a failure carries no reason. When the session ends first —
+	 * stream — ends the stream with a {@link MessagingLink.SessionEnd}: one
+	 * last message holding the Diagnostic a single answer would have
+	 * carried, a declared error under its code, and the reason the session
+	 * ends with ({@code declared:<code>} or {@code failed}). When the
+	 * session ends first —
 	 * the caller closed it or went silent for its lease — the stream is
 	 * cancelled, and with it the service's.
 	 *
@@ -400,13 +402,18 @@ public final class MessagingOperationDispatcher {
 						unwritable);
 			}
 		});
-		return Flows.endingWith(answers, failure -> {
+		return Flows.mapFailure(answers, failure -> {
 			LOG.log(Level.FINE, "[DDSR-MSG] the stream answering a call on " + channel + " ended with a failure",
 					failure);
+			ServiceInvocationResult result = thrown(operation, failure);
+			int code = result.getDiagnostic().getCode();
 			try {
-				return message(request, thrown(operation, failure), MessagingRoute.DEFAULT_CONTENT_TYPE);
+				// The Diagnostic as the session's last message, and the reason
+				// that ends it: which declared error, or that it failed.
+				return new MessagingLink.SessionEnd(message(request, result, MessagingRoute.DEFAULT_CONTENT_TYPE),
+						code != 0 ? "declared:" + code : "failed");
 			} catch (Exception unsayable) {
-				throw new IllegalStateException(unsayable);
+				return failure;
 			}
 		});
 	}

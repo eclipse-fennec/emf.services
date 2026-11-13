@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,6 +46,7 @@ import org.gecko.messaging.api.replyto.MessagingSession;
 import org.gecko.messaging.api.replyto.ReplyToPublisher;
 import org.gecko.messaging.api.replyto.ReplyToSessionHandler;
 import org.gecko.messaging.api.replyto.ReplyToSubscriptionConstants;
+import org.gecko.messaging.api.replyto.SessionEndedException;
 import org.gecko.messaging.api.runtime.ConnectionEvent;
 import org.gecko.messaging.api.runtime.ConnectionListener;
 import org.gecko.messaging.api.runtime.ConnectionState;
@@ -380,6 +382,41 @@ public final class MessagingLink implements AutoCloseable {
 		}
 	}
 
+	/**
+	 * How a session's messages end with a reason of the application: the
+	 * failure a {@link SessionReceiver}'s publisher ends with to send one
+	 * last message - a Diagnostic, say - and end the session with the
+	 * reason (org.gecko.messaging#32). The requester receives the message,
+	 * then the session fails with the reason. Any other failure reaches
+	 * the requester only as the library's fixed reason.
+	 */
+	public static final class SessionEnd extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		private final transient CloudEventCodec.Message last;
+
+		private final String reason;
+
+		/**
+		 * @param last   the message the requester receives last
+		 * @param reason short and without internals, e.g. a code
+		 */
+		public SessionEnd(CloudEventCodec.Message last, String reason) {
+			super("the session ended: " + reason);
+			this.last = last;
+			this.reason = reason;
+		}
+
+		public CloudEventCodec.Message last() {
+			return last;
+		}
+
+		public String reason() {
+			return reason;
+		}
+	}
+
 	/** What a session handler hands the call that opened a session to. */
 	public interface SessionReceiver {
 
@@ -520,7 +557,12 @@ public final class MessagingLink implements AutoCloseable {
 				return PushStreams.streamOf(MessagingLink.<Message>failed(
 						new IllegalArgumentException("a session opened with no CloudEvent")));
 			}
-			return PushStreams.streamOf(receiver.opened(channel, call))
+			// The application's end, in the library's words: its last message
+			// and its reason travel, nothing else of the failure.
+			Flow.Publisher<CloudEventCodec.Message> answers = endedAs(receiver.opened(channel, call),
+					ended -> new SessionEndedException(ended.reason(),
+							Envelopes.toMessage(responseBuilders.get(), reply, ended.last(), qos, session)));
+			return PushStreams.streamOf(answers)
 					.map(answer -> Envelopes.toMessage(responseBuilders.get(), reply, answer, qos, session));
 		};
 		ServiceRegistration<ReplyToSessionHandler> registration = context.registerService(ReplyToSessionHandler.class,
@@ -535,6 +577,40 @@ public final class MessagingLink implements AutoCloseable {
 				}
 			}
 		};
+	}
+
+	/** The same publisher, a {@link SessionEnd} it fails with told as the library's end. */
+	private static <T> Flow.Publisher<T> endedAs(Flow.Publisher<T> source,
+			Function<SessionEnd, ? extends Throwable> told) {
+		return subscriber -> source.subscribe(new Flow.Subscriber<T>() {
+			@Override
+			public void onSubscribe(Flow.Subscription subscription) {
+				subscriber.onSubscribe(subscription);
+			}
+
+			@Override
+			public void onNext(T element) {
+				subscriber.onNext(element);
+			}
+
+			@Override
+			public void onError(Throwable failure) {
+				Throwable other = failure;
+				if (failure instanceof SessionEnd ended) {
+					try {
+						other = told.apply(ended);
+					} catch (RuntimeException unsayable) {
+						LOG.log(Level.FINE, "[DDSR-MSG] the end of a session could not be written", unsayable);
+					}
+				}
+				subscriber.onError(other);
+			}
+
+			@Override
+			public void onComplete() {
+				subscriber.onComplete();
+			}
+		});
 	}
 
 	/** A publisher that fails at once, for a stream that could not be started. */

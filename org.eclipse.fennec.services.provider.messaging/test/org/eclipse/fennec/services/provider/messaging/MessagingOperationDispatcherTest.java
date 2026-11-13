@@ -53,6 +53,7 @@ import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
@@ -464,10 +465,17 @@ class MessagingOperationDispatcherTest {
 		}
 	}
 
-	/** Takes what a session would send, all of it, and how it ended. */
+	/** Takes what a session would send, all of it, and asserts that it ended normally. */
 	private static List<CloudEventCodec.Message> sessionOf(Flow.Publisher<CloudEventCodec.Message> answers)
 			throws Exception {
 		List<CloudEventCodec.Message> taken = new CopyOnWriteArrayList<>();
+		assertThat(endOf(answers, taken)).as("a session's stream ends normally").isNull();
+		return taken;
+	}
+
+	/** Takes what a session would send into the list given, and returns how it ended. */
+	private static Throwable endOf(Flow.Publisher<CloudEventCodec.Message> answers,
+			List<CloudEventCodec.Message> taken) throws Exception {
 		CompletableFuture<Throwable> ended = new CompletableFuture<>();
 		answers.subscribe(new Flow.Subscriber<>() {
 			@Override
@@ -490,8 +498,7 @@ class MessagingOperationDispatcherTest {
 				ended.complete(null);
 			}
 		});
-		assertThat(ended.get(5, TimeUnit.SECONDS)).as("a session's stream ends normally").isNull();
-		return taken;
+		return ended.get(5, TimeUnit.SECONDS);
 	}
 
 	/**
@@ -526,23 +533,27 @@ class MessagingOperationDispatcherTest {
 	}
 
 	/**
-	 * A failure is one last message holding the Diagnostic a single answer
-	 * would carry — the library ends a session with a failure only with a
-	 * fixed reason, so the session itself then ends normally.
+	 * A failure ends the session with a reason of the application
+	 * (org.gecko.messaging#32): its last message holds the Diagnostic a
+	 * single answer would carry, and the reason says which declared error.
 	 */
 	@Test
 	void a_stream_that_fails_ends_with_the_error_a_single_answer_would_carry() throws Exception {
 		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
+		List<CloudEventCodec.Message> answers = new CopyOnWriteArrayList<>();
 
-		List<CloudEventCodec.Message> answers = sessionOf(
+		Throwable ended = endOf(
 				new MessagingOperationDispatcher(flavor, BreakingPayments::new, "/provider/Payment", resourceSets)
-						.onSession("ddsr/rpc/payments/charge", call(flavor, null, 5)));
+						.onSession("ddsr/rpc/payments/charge", call(flavor, null, 5)), answers);
 
-		assertThat(answers).hasSize(2);
+		assertThat(answers).hasSize(1);
 		assertThat(Invocations.valueOf(answerIn(answers.get(0)))).isEqualTo(5.0);
-		assertThat(answerIn(answers.get(1)).getDiagnostic().getCode())
+		assertThat(ended).isInstanceOf(MessagingLink.SessionEnd.class);
+		MessagingLink.SessionEnd end = (MessagingLink.SessionEnd) ended;
+		assertThat(end.reason()).isEqualTo("declared:402");
+		assertThat(answerIn(end.last()).getDiagnostic().getCode())
 				.as("the declared error, under its code — as in a single answer").isEqualTo(402);
-		assertThat(answerIn(answers.get(1)).getDiagnostic().getMessage()).isEqualTo("only 3.50 left");
+		assertThat(answerIn(end.last()).getDiagnostic().getMessage()).isEqualTo("only 3.50 left");
 	}
 
 	/** Never ends by itself, and says when it was told to stop. */

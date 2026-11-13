@@ -145,14 +145,15 @@ messaging distribution.
 
 Limits worth knowing before you build on it:
 
-- **Flow control ends at the broker.** The provider sends within its
-  connection's window, not at the pace of the consumer. A Java consumer
-  that falls behind holds back its own connection. A TypeScript
-  consumer holds up to 256 values it has not taken
-  (`streamBuffer` on the plugin) and then gives the stream up with a
-  named error, or keeps the latest (`policy: 'DISCARD_OLDEST'`). Credit
-  from consumer to provider is
-  [#249](https://github.com/eclipse-fennec/emf.services/issues/249).
+- **A slow consumer holds the provider back.** The consumer grants the
+  provider credit — as many values as its buffer holds — and grants
+  more as its application takes them; the provider sends only within
+  the credit and holds the service's stream otherwise. A Java consumer
+  grants its receive buffer, a TypeScript one its `streamBuffer` (256
+  values by default; the test in the harness reads thirty values
+  through a buffer of four). A consumer that would rather skip values
+  than slow the source down says so: `policy: 'DISCARD_OLDEST'` in
+  TypeScript, and then grants no credit and keeps the latest.
 - **A session stays in the trees a broker's ACL is written for**: the
   caller listens in its reply subtree where the flavor names a reply
   tree, the provider below the operation's request channel

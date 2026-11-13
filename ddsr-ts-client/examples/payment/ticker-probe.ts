@@ -57,6 +57,9 @@ interface Ticker {
 async function main(): Promise<void> {
   const plugin = new MqttFlavorPlugin({
     protocol: PROTOCOL, timeoutMs: 15000, tls: nodeTls(), consumer: consumerId('harness-probe-ts'),
+    // Small on purpose: a slow caller holds no more than four values, and
+    // the credit it grants is what keeps the provider from sending more.
+    streamBuffer: { size: 4 },
   });
   const client = DdsrClientImpl.create({
     brokerUrl: BROKER_URL,
@@ -93,6 +96,19 @@ async function main(): Promise<void> {
     if (some.length === 3) break;
   }
   console.log(`took [${some.join(', ')}] of forever and left`);
+
+  // A slow caller (org.gecko.messaging#33): thirty numbers through a buffer
+  // of four. Without credit the provider would overrun it and the stream
+  // would be given up; with it, the Java service waits for this side.
+  const slow: number[] = [];
+  for await (const tick of serviceProxy<Ticker>(locator).count(30)) {
+    slow.push(Number(tick));
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  console.log(`slowly took ${slow.length} of 30 through a buffer of 4 — the provider waited`);
+  if (slow.join(',') !== Array.from({ length: 30 }, (_, i) => i + 1).join(',')) {
+    fail(`the slow stream brought [${slow.join(', ')}]`);
+  }
 
   await plugin.close();
   await client.close();

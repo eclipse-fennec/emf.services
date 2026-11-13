@@ -425,6 +425,8 @@ ticker_from_typescript() {
     || { echo "$scenario FAILED: the stream did not reach TypeScript whole and in order"; cat "$WORK/$name.log"; exit 1; }
   grep -q "took \[1, 2, 3\] of forever and left" "$WORK/$name.log" \
     || { echo "$scenario FAILED: TypeScript did not take three of forever"; cat "$WORK/$name.log"; exit 1; }
+  grep -q "slowly took 30 of 30 through a buffer of 4" "$WORK/$name.log" \
+    || { echo "$scenario FAILED: a slow TypeScript caller lost values — no credit?"; cat "$WORK/$name.log"; exit 1; }
 }
 
 # The exporting framework stopped forever twice: once for the Java
@@ -502,6 +504,7 @@ echo "  ✓ stream-cancel-over-mqtt: the caller left after three, and the provid
 # iterates what the Java service's PushStream brings.
 ticker_from_typescript ddsr-ticker-ts MQTT "SCENARIO I"
 echo "  ✓ stream-java-to-ts-over-mqtt: a PushStream iterated as an AsyncIterable"
+echo "  ✓ stream-credit-ts-to-java-over-mqtt: thirty values through a buffer of four, the provider held back"
 forever_stopped_twice ddsr-rsa-export "SCENARIO I"
 echo "  ✓ stream-cancel-ts-to-java-over-mqtt: TypeScript left, and the Java service's stream stopped"
 # Two MQTT versions on one call (#138): the exporting node serves over
@@ -591,6 +594,7 @@ echo "  ✓ stream-cancel-over-amqp: the caller left after three, and the provid
 # a routing key of its own, bound to a queue only it reads.
 ticker_from_typescript ddsr-ticker-ts-amqp AMQP "SCENARIO R"
 echo "  ✓ stream-java-to-ts-over-amqp: a PushStream iterated as an AsyncIterable"
+echo "  ✓ stream-credit-ts-to-java-over-amqp: thirty values through a buffer of four, the provider held back"
 forever_stopped_twice ddsr-rsa-export-amqp "SCENARIO R"
 echo "  ✓ stream-cancel-ts-to-java-over-amqp: TypeScript left, and the Java service's stream stopped"
 grep -q "under ddsr.rpc\." "$WORK/rsa-export-amqp.log" \

@@ -799,10 +799,12 @@ cat >"$MQ/acl" <<'ACL'
 # the provider reads the calls on its tree and answers into any reply subtree
 user payment-java
 topic read ddsr/rpc/binding-probe/+
+topic read ddsr/rpc/binding-probe/+/session/#
 topic write ddsr/rpc/binding-probe/+/reply/#
 
 # every certified node may call, and reads only the answers under its own name
 pattern write ddsr/rpc/+/+
+pattern write ddsr/rpc/+/+/session/#
 pattern read ddsr/rpc/+/+/reply/%u/#
 ACL
 podman run -d --replace --name ddsr-mosquitto-tls --network=host -v "$MQ:/mosquitto/config/tls:ro,Z" \

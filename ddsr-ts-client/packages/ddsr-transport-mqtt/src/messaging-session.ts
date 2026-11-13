@@ -175,8 +175,14 @@ export interface RequestedSession {
   /** Where the responder listens: the operation's request channel. */
   requestTopic: string;
   qos: 0 | 1 | 2;
-  /** This node's name, for the channel it listens on. */
+  /** This node's name, for a channel of its own where the flavor names none. */
   owner: string;
+  /**
+   * Where the provider's messages arrive: the consumer's subtree under
+   * the reply tree the flavor names, which a broker's ACL holds to this
+   * node. Without it, a channel under the generated prefix.
+   */
+  replyChannel?: string;
   /** The CloudEvents source of the control messages. */
   source: string;
   /** The request that opens the session, for its id and the channel to answer on. */
@@ -201,7 +207,7 @@ export interface RequestedSession {
 export async function* requestSession(session: RequestedSession): AsyncGenerator<Uint8Array> {
   const { client, qos } = session;
   const id = randomUUID();
-  const channel = sessionChannelFor(session.owner);
+  const channel = session.replyChannel ?? sessionChannelFor(session.owner);
   const buffer = { ...DEFAULT_STREAM_BUFFER, ...session.buffer };
   const queue = new BoundedQueue<Uint8Array>(buffer.size, buffer.policy);
   const arrived = new Signal();
@@ -324,6 +330,12 @@ export interface RespondedSession {
   /** The lease the requester asked for. */
   askedLease?: number;
   owner: string;
+  /**
+   * Where this side listens for the requester's messages: below the
+   * operation's request channel, so a broker's ACL can grant the
+   * requester that tree. Without it, a channel under the generated prefix.
+   */
+  channelPrefix?: string;
   source: string;
   qos: 0 | 1 | 2;
   /** The values to send, asked for when the requester is ready. */
@@ -347,7 +359,7 @@ export interface RespondedSession {
  */
 export async function respondSession(session: RespondedSession): Promise<void> {
   const { client, qos, sessionId: id } = session;
-  const channel = sessionChannelFor(session.owner);
+  const channel = session.channelPrefix ? `${session.channelPrefix}/${randomUUID()}` : sessionChannelFor(session.owner);
   const lease = grantedLease(session.askedLease);
   let lastSeen = Date.now();
   let lastSent = Date.now();

@@ -27,6 +27,8 @@ import {
   connectMessaging,
   decodeResponse,
   isAmqpFlavor,
+  namedReplyBaseFor,
+  sessionReplyChannelFor,
   encodeRequest,
   qosFor,
   replySubtreeFor,
@@ -167,6 +169,10 @@ export class MqttFlavorPlugin implements FlavorPlugin {
         requestTopic,
         qos,
         owner: consumer,
+        // The consumer's subtree under the reply tree the flavor names,
+        // as for a call answered once; without one, a generated channel.
+        replyChannel: namedReplyBaseFor(mqttFlavor, mqttOp)
+          ? sessionReplyChannelFor(mqttFlavor, subtree, randomUUID()) : undefined,
         source,
         timeoutMs,
         leaseMs: this.options.sessionLeaseMs,
@@ -227,7 +233,10 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     if (this.subscribed.has(subtree)) return;
     this.subscribed.add(subtree);
     try {
-      await client.subscribeAsync(`${subtree}${separator}#`, { qos });
+      // One level, where a call answered once is answered; a session's
+      // channel lies a level deeper and is subscribed by the session, so
+      // no message matches two subscriptions of this connection.
+      await client.subscribeAsync(`${subtree}${separator}${separator === '.' ? '*' : '+'}`, { qos });
     } catch (error) {
       this.subscribed.delete(subtree);
       throw error;

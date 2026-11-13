@@ -192,6 +192,27 @@ export const OWN_REPLY_BASE = 'ddsr/reply';
  * Where answers to one operation go, or undefined when the flavor names
  * no place for them — which is a statement, not a gap.
  */
+/**
+ * Where the provider listens for the messages of a session opened on an
+ * operation: below its request channel, so the ACL rule for a
+ * contract's calls covers its sessions with one more level. The twin of
+ * MessagingFlavors.sessionChannelPrefix.
+ */
+export function sessionPrefixFor(flavor: FlavorLike, opFlavor: OperationFlavorLike): string {
+  return `${requestTopicFor(flavor, opFlavor)}${separatorFor(flavor)}session`;
+}
+
+/**
+ * Where one session's messages from the provider arrive, for a flavor
+ * that names a reply tree: two levels below the consumer's subtree, out
+ * of reach of the one-level filter for calls answered once. The twin of
+ * MessagingFlavors.sessionReplyChannel.
+ */
+export function sessionReplyChannelFor(flavor: FlavorLike, subtree: string, sessionId: string): string {
+  const separator = separatorFor(flavor);
+  return `${subtree}${separator}session${separator}${topicSegment(sessionId)}`;
+}
+
 export function namedReplyBaseFor(
   flavor: FlavorLike, opFlavor: OperationFlavorLike,
 ): string | undefined {

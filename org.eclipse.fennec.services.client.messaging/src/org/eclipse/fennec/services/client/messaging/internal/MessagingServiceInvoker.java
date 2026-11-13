@@ -439,6 +439,12 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 						.attribute("fennec.flavor", prepared.route().protocol())
 						.attribute(ClientOrigin.ATTRIBUTE, source);
 			}
+			if (placed.namesReplyChannel()) {
+				// The session's own channel in this consumer's subtree, a
+				// level below the answers to calls answered once.
+				request.getExtensions().put(CloudEvents.EXTENSION_REPLY_TO,
+						prepared.route().sessionReplyChannel(placed, consumer, request.getEventId()));
+			}
 			CloudEventCodec.Message call = new CloudEventCodec.Message(request, prepared.document());
 			linkLater(prepared.route()).whenComplete((link, unreachable) -> {
 				Flow.Publisher<CloudEventCodec.Message> answers = unreachable != null

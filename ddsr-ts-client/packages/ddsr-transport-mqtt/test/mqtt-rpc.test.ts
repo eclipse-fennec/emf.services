@@ -642,9 +642,12 @@ describe('a stream a service returns travels over the messaging broker', () => {
     const { flavor, count } = tickerFlavor();
     const { broker, clientFactory } = testHarness();
     const seen: string[] = [];
+    const topics: Record<string, string> = {};
     broker.onPublish((topic, payload) => {
-      const extensions = readStructured(payload).attributes.extensions;
-      seen.push(extensions.replysession ?? (topic.startsWith('osgi/messaging/reply/') ? 'value' : 'call'));
+      const message = readStructured(payload).attributes;
+      const kind = message.extensions.replysession ?? (message.type.endsWith('invoke.reply') ? 'value' : 'call');
+      seen.push(kind);
+      topics[kind] = topic;
     });
     const server = new MqttOperationServer(flavor, { count: () => upTo(2) }, { clientFactory, log: () => undefined });
     await server.start();
@@ -653,6 +656,11 @@ describe('a stream a service returns travels over the messaging broker', () => {
     expect(await collect(await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)))).toEqual([1, 2]);
 
     expect(seen.filter(kind => kind !== 'ping')).toEqual(['open', 'accept', 'ready', 'value', 'value', 'close']);
+    // Both sides in trees a broker's ACL can be written against
+    // (org.gecko.messaging#31): the consumer's subtree under the reply
+    // tree the flavor names, and the provider's below the request channel.
+    expect(topics.value).toMatch(/^ddsr\/rpc\/ticker\/count\/reply\/[^/]+\/session\/[^/]+$/);
+    expect(topics.ready).toMatch(/^ddsr\/rpc\/ticker\/count\/session\/[^/]+$/);
     await plugin.close();
     await server.stop();
   });

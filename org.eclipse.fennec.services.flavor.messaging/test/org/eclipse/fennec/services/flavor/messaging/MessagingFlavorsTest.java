@@ -129,9 +129,15 @@ class MessagingFlavorsTest {
 		assertThat(MessagingFlavors.replySubtree(flavor, "ddsr/rpc/res/payments", "node a/1"))
 				.isEqualTo("ddsr/rpc/res/payments/node_a_1");
 		assertThat(MessagingFlavors.subtreeFilter(flavor, "ddsr/rpc/res/payments/node_a_1"))
-				.isEqualTo("ddsr/rpc/res/payments/node_a_1/#");
+				.isEqualTo("ddsr/rpc/res/payments/node_a_1/+");
 		assertThat(MessagingFlavors.replyChannel(flavor, "ddsr/rpc/res/payments", "node a/1", "42"))
 				.isEqualTo("ddsr/rpc/res/payments/node_a_1/42");
+		// A session's answers are in the same subtree, out of reach of
+		// that filter: the library subscribes them itself.
+		assertThat(MessagingFlavors.sessionReplyChannel(flavor, "ddsr/rpc/res/payments", "node a/1", "s-1"))
+				.isEqualTo("ddsr/rpc/res/payments/node_a_1/session/s-1");
+		assertThat(MessagingFlavors.sessionChannelPrefix(flavor, "ddsr/rpc/req/payments/charge"))
+				.isEqualTo("ddsr/rpc/req/payments/charge/session");
 	}
 
 	@Test
@@ -141,7 +147,7 @@ class MessagingFlavorsTest {
 		assertThat(MessagingFlavors.replySubtree(flavor, "ddsr.rpc.answers", "node.a"))
 				.isEqualTo("ddsr.rpc.answers.node_a");
 		assertThat(MessagingFlavors.subtreeFilter(flavor, "ddsr.rpc.answers.node_a"))
-				.isEqualTo("ddsr.rpc.answers.node_a.#");
+				.isEqualTo("ddsr.rpc.answers.node_a.*");
 	}
 
 	@Test

@@ -663,16 +663,25 @@ under its own name. RSA nodes get the same from their role
 configuration: over MQTT, `tls.keystore` and `tls.truststore` reach the
 invoker, the distribution's connection and the event source.
 
-The trees above cover calls answered once. **A stream travels in a
-duplex session** of the messaging library ([Remote Service
-Admin](RSA.md#streams)), and a session listens on channels the library
-generates, `osgi/messaging/reply/<name>/<uuid>` — on the Java side
-`<name>` is the connection's client id, on the TypeScript side the
-plugin's `consumer`. An ACL that is to hold streams as well needs rules
-for that prefix (for example `pattern read osgi/messaging/reply/%c/#`
-and a provider that may write below `osgi/messaging/reply/`), until the
-library opens a session on a reply channel the flavor names
-(org.gecko.messaging#31). Scenario Q runs no stream.
+**A stream travels in a duplex session** of the messaging library
+([Remote Service Admin](RSA.md#streams)), and its two channels stay in
+the same trees: the provider listens for the caller's messages below
+the operation's request channel
+(`ddsr/rpc/<contract>/<operation>/session/<id>`), and the caller listens
+in its own reply subtree, a level below the answers to calls answered
+once (`…/reply/<cn>/session/<id>`, which the read rule above already
+covers). Two more rules hold sessions to the same separation — the
+provider reads its session channels, every certified node may write to
+them:
+
+```
+user payment-java
+topic read ddsr/rpc/binding-probe/+/session/#
+
+pattern write ddsr/rpc/+/+/session/#
+```
+
+Scenario Q carries these rules; it runs no stream yet.
 
 The podman harness proves it in scenario Q: a second mosquitto with
 `require_certificate` and `use_identity_as_username`, the Java provider

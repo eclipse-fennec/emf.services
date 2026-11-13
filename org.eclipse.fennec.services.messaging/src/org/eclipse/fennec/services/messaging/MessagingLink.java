@@ -408,9 +408,11 @@ public final class MessagingLink implements AutoCloseable {
 	 * session, and the responder is told — that is how a stream the
 	 * caller no longer wants stops at its source.
 	 *
-	 * <p>The session listens on a reply channel the library generates;
-	 * a reply channel named by the flavor is not honoured yet
-	 * (org.gecko.messaging#31).
+	 * <p>The session listens on the reply channel the call names
+	 * ({@code replyto} in its envelope) — where the flavor names a reply
+	 * tree, the consumer's subtree there, which a broker's ACL holds to
+	 * the consumer as for any answer. A call that names none gets a
+	 * channel the library generates.
 	 *
 	 * @param timeoutMillis how long the responder may take to accept
 	 */
@@ -486,7 +488,10 @@ public final class MessagingLink implements AutoCloseable {
 	 * returns travels in.
 	 *
 	 * <p>A handler of the messaging library's whiteboard, bound to this
-	 * link's instance; the library accepts each session, keeps it alive
+	 * link's instance. Each session listens for the requester's messages
+	 * on a channel below {@code sessionChannelPrefix}, so a broker's ACL
+	 * can grant the requester that tree. The library accepts each
+	 * session, keeps it alive
 	 * with its lease, and sends what the receiver returns once the
 	 * requester is ready. Whatever the receiver returns is asked for one
 	 * message at a time, within the instance's send window.
@@ -494,9 +499,12 @@ public final class MessagingLink implements AutoCloseable {
 	 * @return closing it stops answering, and ends the sessions open now.
 	 *         Idempotent.
 	 */
-	public AutoCloseable serveSessions(String channel, int qos, SessionReceiver receiver) {
+	public AutoCloseable serveSessions(String channel, String sessionChannelPrefix, int qos,
+			SessionReceiver receiver) {
 		Hashtable<String, Object> properties = new Hashtable<>();
 		properties.put(ReplyToSubscriptionConstants.REPLY_TO_SUBSCRIPTION_CHANNEL_PROPERTY, channel);
+		properties.put(ReplyToSubscriptionConstants.REPLY_TO_SUBSCRIPTION_SESSION_CHANNEL_PREFIX_PROPERTY,
+				sessionChannelPrefix);
 		properties.put(MessagingConstants.MESSAGING_TARGET_PROPERTY, filter);
 		ReplyToSessionHandler handler = (openRequest, messages, responseBuilders) -> {
 			// Nothing comes from the requester yet: a stream argument is not

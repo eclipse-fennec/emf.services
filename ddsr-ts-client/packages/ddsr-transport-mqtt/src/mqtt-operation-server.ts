@@ -22,6 +22,7 @@ import {
   encodeResponse,
   qosFor,
   requestTopicFor,
+  sessionPrefixFor,
 } from './mqtt-rpc.js';
 import type { AmqpConnectOptions } from './amqp-client.js';
 import { respondSession } from './messaging-session.js';
@@ -183,6 +184,7 @@ export class MqttOperationServer {
       replyTo: request.replyTo,
       askedLease: session.lease,
       owner: this.options.originLabel ?? operationName,
+      channelPrefix: opFlavor ? sessionPrefixFor(this.flavor, opFlavor as MessagingOperationFlavor) : undefined,
       source,
       qos,
       start: async () => {

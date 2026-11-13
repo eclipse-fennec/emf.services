@@ -78,7 +78,10 @@ broker. Requirements and decisions:
   importing framework collects its five values and the end of the
   stream, and a TypeScript consumer (`ticker-probe.ts`) looks the
   derived contract up and iterates the same stream as an
-  `AsyncIterable`.
+  `AsyncIterable`. `Ticker.forever` does not end by itself: both
+  consumers take three numbers and leave, and the exporting framework
+  must log twice that it stopped — the session closed by the caller
+  reached the provider.
 - **R (podman only) — RSA over AMQP:** scenario I on the third
   transport (#138). The same service is exported over AMQP 0-9-1 by one
   framework and bound with `@Reference` in another, over a RabbitMQ

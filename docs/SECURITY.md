@@ -663,6 +663,17 @@ under its own name. RSA nodes get the same from their role
 configuration: over MQTT, `tls.keystore` and `tls.truststore` reach the
 invoker, the distribution's connection and the event source.
 
+The trees above cover calls answered once. **A stream travels in a
+duplex session** of the messaging library ([Remote Service
+Admin](RSA.md#streams)), and a session listens on channels the library
+generates, `osgi/messaging/reply/<name>/<uuid>` — on the Java side
+`<name>` is the connection's client id, on the TypeScript side the
+plugin's `consumer`. An ACL that is to hold streams as well needs rules
+for that prefix (for example `pattern read osgi/messaging/reply/%c/#`
+and a provider that may write below `osgi/messaging/reply/`), until the
+library opens a session on a reply channel the flavor names
+(org.gecko.messaging#31). Scenario Q runs no stream.
+
 The podman harness proves it in scenario Q: a second mosquitto with
 `require_certificate` and `use_identity_as_username`, the Java provider
 serving `BindingProbe` over `ssl://`, the TypeScript probe calling it

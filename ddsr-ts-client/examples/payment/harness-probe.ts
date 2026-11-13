@@ -37,6 +37,7 @@ import {
   DdsrClientImpl,
   FINGERPRINT_PROPERTY,
   fingerprint,
+  knowsModel,
   propertiesOf,
   propertyOf,
   toArray,
@@ -215,6 +216,27 @@ async function main(): Promise<void> {
         check(`${over}-probe-echo`, false, String(error));
       }
     }
+  }
+
+  // 4c. payload models (#256): PersonStore's slots are typed with the
+  // example model, which this node does not have. The Java provider handed
+  // it to the broker and pinned it with the broker's fingerprint; finding
+  // the contract fetched it here, so a payload of it could be read.
+  if (EXPECT_BINDINGS) {
+    const EXAMPLE_MODEL = 'http://geckoprojects.org/ddsr/example';
+    let persons;
+    for (let attempt = 0; attempt < 40 && !persons; attempt++) {
+      persons = await client.consumer.findOne('PersonStore').catch(() => undefined);
+      if (!persons) await new Promise(r => setTimeout(r, 500));
+    }
+    const pins = persons
+      ? toArray<{ nsURI?: string; fingerprint?: string }>((persons.serviceInterface as unknown as { models?: unknown }).models)
+      : [];
+    const pin = pins.find(model => model.nsURI === EXAMPLE_MODEL);
+    check('payload-model-pinned', pin?.fingerprint?.startsWith('fp1:') === true,
+      `${EXAMPLE_MODEL} at ${pin?.fingerprint ?? '-'}`);
+    check('payload-model-fetched', knowsModel(EXAMPLE_MODEL),
+      knowsModel(EXAMPLE_MODEL) ? 'registered from the broker' : 'not known here');
   }
 
   // 4b. acquisition stage (ACQUISITION §3/§4): after the session PUT the

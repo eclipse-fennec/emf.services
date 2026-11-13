@@ -73,25 +73,6 @@ public final class CloudEvents {
 	/** Extension carrying the topic an answer is expected on. */
 	public static final String EXTENSION_REPLY_TO = "replyto";
 
-	/**
-	 * Marks the message that ends a stream of answers: an answer to a
-	 * call whose return value is a stream ({@code Delivery.STREAM}) is
-	 * any number of {@link #TYPE_INVOKE_REPLY} events with the call's
-	 * correlation, each carrying one value, and then one that carries
-	 * this extension with the value {@code true} and no value of its
-	 * own. The name is the one the messaging library ends a stream of
-	 * replies with, so an instance that reads the envelope ends its
-	 * stream by it.
-	 */
-	public static final String EXTENSION_REPLY_COMPLETE = "replycomplete";
-
-	/**
-	 * Beside {@link #EXTENSION_REPLY_COMPLETE}: the stream ended with a
-	 * failure, and this says which. Without it the stream ended because
-	 * it was over.
-	 */
-	public static final String EXTENSION_REPLY_ERROR = "replyerror";
-
 	/** The event type for one lifecycle transition. */
 	public static String typeOf(ServiceEventType eventType) {
 		return TYPE_PREFIX + switch (eventType) {

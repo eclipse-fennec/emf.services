@@ -29,6 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,7 +41,10 @@ import org.gecko.messaging.api.MessageContextBuilder;
 import org.gecko.messaging.api.MessagePublisher;
 import org.gecko.messaging.api.MessageSubscription;
 import org.gecko.messaging.api.MessagingConstants;
+import org.gecko.messaging.api.replyto.MessagingSession;
 import org.gecko.messaging.api.replyto.ReplyToPublisher;
+import org.gecko.messaging.api.replyto.ReplyToSessionHandler;
+import org.gecko.messaging.api.replyto.ReplyToSubscriptionConstants;
 import org.gecko.messaging.api.runtime.ConnectionEvent;
 import org.gecko.messaging.api.runtime.ConnectionListener;
 import org.gecko.messaging.api.runtime.ConnectionState;
@@ -376,26 +380,44 @@ public final class MessagingLink implements AutoCloseable {
 		}
 	}
 
+	/** What a session handler hands the call that opened a session to. */
+	public interface SessionReceiver {
+
+		/**
+		 * @param channel the channel the session was opened on
+		 * @param call    the envelope and payload of the request that
+		 *                opened it
+		 * @return the messages to send to the requester, asked for one at
+		 *         a time; the session ends when they end, and they are
+		 *         cancelled when the session ends first — the requester
+		 *         closed it, or went silent for longer than its lease
+		 */
+		Flow.Publisher<CloudEventCodec.Message> opened(String channel, CloudEventCodec.Message call);
+	}
+
 	/**
-	 * A request answered with a stream: any number of answers and the
-	 * one that ends them ({@code replycomplete}).
+	 * A request that opens a duplex session of the messaging library,
+	 * and the messages the responder sends in it.
 	 *
-	 * <p>Nothing is published before the publisher has a subscriber —
-	 * the request goes out when the stream is connected. Answers are
-	 * acknowledged to the broker as they are taken, and they are taken
-	 * as the subscriber asks: a slow subscriber slows the responder down
-	 * through the broker's window. The stream fails with a
-	 * {@link TimeoutException} when no answer comes within the timeout
-	 * of the request or of the answer before.
+	 * <p>Nothing is published before the publisher has a subscriber. The
+	 * session is opened then, and the subscriber is told once the
+	 * responder accepted it. Its messages are taken as the subscriber
+	 * asks. The publisher completes when the responder ends the session
+	 * and fails when the session could not be opened, its lease expired
+	 * or the responder failed. A subscriber that cancels closes the
+	 * session, and the responder is told — that is how a stream the
+	 * caller no longer wants stops at its source.
 	 *
-	 * @throws UnsupportedOperationException through the publisher, when
-	 *                                       the instance cannot take
-	 *                                       many answers to one request
+	 * <p>The session listens on a reply channel the library generates;
+	 * a reply channel named by the flavor is not honoured yet
+	 * (org.gecko.messaging#31).
+	 *
+	 * @param timeoutMillis how long the responder may take to accept
 	 */
-	public Flow.Publisher<CloudEventCodec.Message> requestMany(String topic, CloudEventCodec.Message message,
+	public Flow.Publisher<CloudEventCodec.Message> openSession(String topic, CloudEventCodec.Message message,
 			int qos, long timeoutMillis) {
 		return subscriber -> {
-			Flow.Publisher<CloudEventCodec.Message> answers;
+			Promise<MessagingSession> opening;
 			try {
 				Instance current = instance;
 				if (current == null) {
@@ -413,25 +435,115 @@ public final class MessagingLink implements AutoCloseable {
 				} finally {
 					current.builders.ungetService(builder);
 				}
-				answers = PushStreams.publisherOf(current.requests.publishWithReplyMany(request)
-						.map(Envelopes::fromMessage).filter(answer -> answer != null));
-			} catch (RuntimeException unsendable) {
-				answers = refused -> {
-					refused.onSubscribe(new Flow.Subscription() {
-						@Override
-						public void request(long n) {
-							// nothing will come
-						}
-
-						@Override
-						public void cancel() {
-							// nothing to stop
-						}
-					});
-					refused.onError(unsendable);
-				};
+				opening = current.requests.openSession(request);
+			} catch (RuntimeException unopenable) {
+				MessagingLink.<CloudEventCodec.Message>failed(unopenable).subscribe(subscriber);
+				return;
 			}
-			answers.subscribe(subscriber);
+			opening.onFailure(unopened -> MessagingLink.<CloudEventCodec.Message>failed(unopened).subscribe(subscriber));
+			opening.onSuccess(session -> {
+				Flow.Publisher<CloudEventCodec.Message> received = PushStreams.publisherOf(
+						session.receive().map(Envelopes::fromMessage).filter(answer -> answer != null));
+				received.subscribe(new Flow.Subscriber<CloudEventCodec.Message>() {
+					@Override
+					public void onSubscribe(Flow.Subscription subscription) {
+						subscriber.onSubscribe(new Flow.Subscription() {
+							@Override
+							public void request(long n) {
+								subscription.request(n);
+							}
+
+							@Override
+							public void cancel() {
+								subscription.cancel();
+								session.close();
+							}
+						});
+					}
+
+					@Override
+					public void onNext(CloudEventCodec.Message answer) {
+						subscriber.onNext(answer);
+					}
+
+					@Override
+					public void onError(Throwable failure) {
+						session.close();
+						subscriber.onError(failure);
+					}
+
+					@Override
+					public void onComplete() {
+						subscriber.onComplete();
+					}
+				});
+			});
+		};
+	}
+
+	/**
+	 * Answer the sessions opened on a channel: what a stream a service
+	 * returns travels in.
+	 *
+	 * <p>A handler of the messaging library's whiteboard, bound to this
+	 * link's instance; the library accepts each session, keeps it alive
+	 * with its lease, and sends what the receiver returns once the
+	 * requester is ready. Whatever the receiver returns is asked for one
+	 * message at a time, within the instance's send window.
+	 *
+	 * @return closing it stops answering, and ends the sessions open now.
+	 *         Idempotent.
+	 */
+	public AutoCloseable serveSessions(String channel, int qos, SessionReceiver receiver) {
+		Hashtable<String, Object> properties = new Hashtable<>();
+		properties.put(ReplyToSubscriptionConstants.REPLY_TO_SUBSCRIPTION_CHANNEL_PROPERTY, channel);
+		properties.put(MessagingConstants.MESSAGING_TARGET_PROPERTY, filter);
+		ReplyToSessionHandler handler = (openRequest, messages, responseBuilders) -> {
+			// Nothing comes from the requester yet: a stream argument is not
+			// carried (#248). Connected, as the library asks, and dropped.
+			messages.forEach(ignored -> {
+				// no stream arguments yet
+			});
+			CloudEventCodec.Message call = Envelopes.fromMessage(openRequest);
+			String reply = openRequest.getContext().getReplyToChannel();
+			String session = openRequest.getContext().getCorrelationId();
+			if (call == null) {
+				LOG.warning("[DDSR-MSG] a session on " + channel + " was opened with no CloudEvent; ended");
+				return PushStreams.streamOf(MessagingLink.<Message>failed(
+						new IllegalArgumentException("a session opened with no CloudEvent")));
+			}
+			return PushStreams.streamOf(receiver.opened(channel, call))
+					.map(answer -> Envelopes.toMessage(responseBuilders.get(), reply, answer, qos, session));
+		};
+		ServiceRegistration<ReplyToSessionHandler> registration = context.registerService(ReplyToSessionHandler.class,
+				handler, properties);
+		AtomicBoolean closedOnce = new AtomicBoolean();
+		return () -> {
+			if (closedOnce.compareAndSet(false, true)) {
+				try {
+					registration.unregister();
+				} catch (IllegalStateException alreadyGone) {
+					// unregistered with the bundle
+				}
+			}
+		};
+	}
+
+	/** A publisher that fails at once, for a stream that could not be started. */
+	private static <T> Flow.Publisher<T> failed(Throwable failure) {
+		return subscriber -> {
+			subscriber.onSubscribe(new Flow.Subscription() {
+				@Override
+				public void request(long n) {
+					// nothing will come
+				}
+
+				@Override
+				public void cancel() {
+					// nothing to stop
+				}
+			});
+			subscriber.onError(failure);
 		};
 	}
 

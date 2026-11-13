@@ -399,16 +399,17 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 	}
 
 	/**
-	 * A call answered with a stream ({@code Delivery.STREAM}): one
-	 * answer per value, and the one that ends them.
+	 * A call answered with a stream ({@code Delivery.STREAM}), in a duplex
+	 * session of the messaging library.
 	 *
-	 * <p>The request goes out when the stream has its subscriber. Where
-	 * the flavor names a place for answers they arrive in this
-	 * consumer's inbox; where it does not, the connection takes many
-	 * answers to one request itself. Either way an answer is taken when
-	 * the subscriber asks for it, and what is not taken yet holds a
-	 * place in the broker's window — so a slow subscriber slows the
-	 * responder, and nothing in between grows without bound.
+	 * <p>The session is opened when the stream has its subscriber, and
+	 * each of its messages is one value. A message holding a Diagnostic
+	 * is the failure the stream ended with — a declared error is
+	 * recognised by its code as in a single answer. A subscriber that
+	 * cancels closes the session, and the provider's stream stops; one
+	 * that goes away without a word is ended by the provider when the
+	 * session's lease runs out. What is not taken yet waits in the
+	 * session's buffer, and the broker's window holds back the rest.
 	 */
 	@Override
 	public Flow.Publisher<Object> invokeStream(ServiceLocator locator, String operationName,
@@ -436,8 +437,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 			linkLater(prepared.route()).whenComplete((link, unreachable) -> {
 				Flow.Publisher<CloudEventCodec.Message> answers = unreachable != null
 						? Flows.failed(unwrapped(unreachable))
-						: placed.namesReplyChannel() ? manyViaInbox(link, prepared, call, timeout)
-								: link.requestMany(placed.channel(), call, placed.qos(), timeout);
+						: link.openSession(placed.channel(), call, placed.qos(), timeout);
 				Flow.Publisher<Object> values = Flows.map(answers, answer -> {
 					try {
 						return valueOf(answer, request, prepared.operation(), operationName);
@@ -447,58 +447,8 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 						throw failed(unreadable, operationName, prepared);
 					}
 				});
-				Flows.mapFailure(values, failure -> streamFailed(unwrapped(failure), operationName, prepared))
+				Flows.mapFailure(values, failure -> failed(unwrapped(failure), operationName, prepared))
 						.subscribe(subscriber);
-			});
-		};
-	}
-
-	/** What ended a stream, as the caller is told. */
-	private Throwable streamFailed(Throwable failure, String operationName, Prepared prepared) {
-		if (failure instanceof ReplyInbox.StreamFailed ended) {
-			// The responder said why. Where its last message carries the
-			// Diagnostic, a declared error is recognised by its code as
-			// in a single answer.
-			try {
-				byte[] document = ended.last().data();
-				if (document != null && document.length > 0) {
-					XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(document), resourceSets,
-							ended.last().attributes().getDatacontenttype(), config.max_body_bytes());
-					for (EObject root : bundle.roots()) {
-						if (root instanceof ServiceInvocationResult result && result.getDiagnostic() != null) {
-							return failureOf(prepared.operation(), result.getDiagnostic(), operationName);
-						}
-					}
-				}
-			} catch (Exception unreadable) {
-				// The reason it gave is still a reason.
-			}
-			return new DdsrException(operationName + " failed: " + ended.getMessage());
-		}
-		return failed(failure, operationName, prepared);
-	}
-
-	/** The flavor names a place for answers: the stream arrives in this consumer's inbox there. */
-	private Flow.Publisher<CloudEventCodec.Message> manyViaInbox(MessagingLink link, Prepared prepared,
-			CloudEventCodec.Message call, long timeout) {
-		MessagingRoute.Operation placed = prepared.placed();
-		String id = prepared.request().getEventId();
-		return subscriber -> {
-			ReplyInbox inbox;
-			try {
-				inbox = inboxFor(link, prepared.route().replySubtree(placed, consumer),
-						prepared.route().replyFilter(placed, consumer), placed.qos());
-			} catch (RuntimeException unsubscribable) {
-				Flows.<CloudEventCodec.Message>failed(unsubscribable).subscribe(subscriber);
-				return;
-			}
-			inbox.expectMany(id, timeout).subscribe(subscriber);
-			// The request goes out now that somebody listens. One the
-			// broker did not take has no answers to wait for.
-			link.publishLater(placed.channel(), call, placed.qos()).whenComplete((sent, unsent) -> {
-				if (unsent != null) {
-					inbox.fail(id, unsent);
-				}
 			});
 		};
 	}

@@ -21,16 +21,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ServiceException;
@@ -91,65 +89,6 @@ public final class MessagingOperationDispatcher {
 
 		void send(CloudEventCodec.Message answer) throws Exception;
 
-		/**
-		 * Answer with a stream: every message the publisher hands out,
-		 * one after the other, and then the one that ends it.
-		 *
-		 * <p>The next answer is asked for when the broker has the one
-		 * before — so a service that produces faster than the broker
-		 * takes is slowed down by the broker, not buffered here.
-		 *
-		 * @param answers the answers; asked for one at a time
-		 * @param last    the message that ends the stream, for the
-		 *                failure it ended with or {@code null} for a
-		 *                stream that was simply over
-		 * @return completes when the last message is handed over, and
-		 *         fails when an answer could not be
-		 */
-		default CompletionStage<Void> stream(Flow.Publisher<CloudEventCodec.Message> answers,
-				Function<Throwable, CloudEventCodec.Message> last) {
-			CompletableFuture<Void> done = new CompletableFuture<>();
-			answers.subscribe(new Flow.Subscriber<>() {
-				private Flow.Subscription subscription;
-
-				@Override
-				public void onSubscribe(Flow.Subscription asked) {
-					this.subscription = asked;
-					asked.request(1);
-				}
-
-				@Override
-				public void onNext(CloudEventCodec.Message answer) {
-					try {
-						send(answer);
-						subscription.request(1);
-					} catch (Exception unsent) {
-						subscription.cancel();
-						done.completeExceptionally(unsent);
-					}
-				}
-
-				@Override
-				public void onError(Throwable failure) {
-					end(failure);
-				}
-
-				@Override
-				public void onComplete() {
-					end(null);
-				}
-
-				private void end(Throwable failure) {
-					try {
-						send(last.apply(failure));
-						done.complete(null);
-					} catch (Exception unsent) {
-						done.completeExceptionally(unsent);
-					}
-				}
-			});
-			return done;
-		}
 	}
 
 	private final MessagingRoute route;
@@ -254,14 +193,12 @@ public final class MessagingOperationDispatcher {
 			ServiceInvocationResult result;
 			try {
 				Object value = invoke(placed, invocation);
-				Flow.Publisher<Object> stream = PushStreams.asPublisher(value);
-				if (stream != null) {
-					// A service that answers with a stream (Delivery.STREAM):
-					// one answer per value and then the one that ends it. The
-					// next value is asked for when the broker has the one
-					// before, so a fast service is slowed by the broker.
-					answerWithStream(request, channel, placed, stream, reply);
-					return;
+				if (PushStreams.asPublisher(value) != null) {
+					// A stream travels in a session (onSession), opened for an
+					// operation whose contract says STREAM; one answer cannot
+					// carry it.
+					throw new IllegalStateException("the service answered " + spanNameOf(placed)
+							+ " with a stream its contract does not declare");
 				}
 				if (AsyncReturns.isPending(value)) {
 					// A service that answers later (osgi.async). The answer is
@@ -380,50 +317,97 @@ public final class MessagingOperationDispatcher {
 		}
 	}
 
+	/** Whether the operation on this channel answers with a stream, and is served in sessions. */
+	public boolean streams(String channel) {
+		MessagingRoute.Operation placed = route.onChannel(channel);
+		return placed != null && placed.operation() != null && placed.operation().getReturnValue() != null
+				&& placed.operation().getReturnValue().getDelivery() == Delivery.STREAM;
+	}
+
 	/**
-	 * Many answers to one call. Each carries one value in the encoding
-	 * the flavor declares; the last carries none and says that the
-	 * stream is over ({@code replycomplete}) — and, where it ended with
-	 * a failure, the Diagnostic a single answer would have carried, so
-	 * a declared error is recognised the same way.
+	 * A session opened for an operation that answers with a stream
+	 * ({@code Delivery.STREAM}): the messages to send in it.
+	 *
+	 * <p>One message per value, each a {@code ServiceInvocationResult} in
+	 * the encoding the flavor declares, asked for when the connection has
+	 * taken the one before. A failure — thrown by the call or ending the
+	 * stream — is one last message holding the Diagnostic a single answer
+	 * would have carried, a declared error under its code; the session
+	 * then ends normally, because the library's own way of ending one
+	 * with a failure carries no reason. When the session ends first —
+	 * the caller closed it or went silent for its lease — the stream is
+	 * cancelled, and with it the service's.
+	 *
+	 * <p>Never throws, for the reason {@link #onRequest} does not.
 	 */
-	private void answerWithStream(CloudEvent request, String channel, MessagingRoute.Operation placed,
-			Flow.Publisher<Object> values, Reply reply) {
+	public Flow.Publisher<CloudEventCodec.Message> onSession(String channel, CloudEventCodec.Message call) {
+		CloudEvent request = call.attributes();
+		MessagingRoute.Operation placed = route.onChannel(channel);
+		ServiceInvocation invocation;
+		try {
+			if (placed == null) {
+				throw new IllegalArgumentException("nothing of this contract answers on " + channel);
+			}
+			if (!CloudEvents.TYPE_INVOKE.equals(request.getType())) {
+				throw new IllegalArgumentException("a '" + request.getType() + "' is not a call");
+			}
+			if (call.data() == null) {
+				throw new IllegalArgumentException("a call without its document says nothing");
+			}
+			invocation = invocationOf(call.data(), request.getDatacontenttype());
+		} catch (Exception unreadable) {
+			LOG.warning("[DDSR-MSG] unreadable call opening a session on " + channel + ": " + unreadable);
+			return Flows.failed(unreadable);
+		}
+		ServiceOperation operation = placed.operation();
+		Flow.Publisher<Object> values;
+		try (CallSpan span = tracer.serving(spanNameOf(placed), TraceCarrier.over(request.getExtensions().map()))) {
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("server.address", channel)
+					.attribute("fennec.flavor", route.protocol())
+					.attribute(ClientOrigin.ATTRIBUTE,
+							request.getSource() == null ? ClientOrigin.ANONYMOUS : request.getSource());
+			try {
+				Object value = invoke(placed, invocation);
+				values = PushStreams.asPublisher(value);
+				if (values == null) {
+					throw new IllegalStateException("the service answered " + spanNameOf(placed)
+							+ " with no stream, although its contract says it streams");
+				}
+			} catch (InvocationTargetException failed) {
+				span.failed(failed.getCause());
+				values = Flows.failed(failed.getCause());
+			} catch (Exception failed) {
+				span.failed(failed);
+				values = Flows.failed(failed);
+			}
+		}
 		String contentType = placed.produces();
 		Flow.Publisher<CloudEventCodec.Message> answers = Flows.map(values, value -> {
 			try {
-				ServiceInvocationResult result = Invocations.result(value);
-				return new CloudEventCodec.Message(
-						CloudEvents.describing(MessagingRoute.reply(request, source, contentType), result),
-						write(List.of(result), contentType));
+				return message(request, resultOf(value), contentType);
 			} catch (Exception unwritable) {
 				throw new IllegalStateException("a value of the stream could not be written: " + unwritable.getMessage(),
 						unwritable);
 			}
 		});
-		reply.stream(answers, failure -> last(request, placed, failure)).whenComplete((sent, unsent) -> {
-			if (unsent != null) {
-				LOG.log(Level.WARNING, "[DDSR-MSG] the stream answering a call on " + channel + " broke off", unsent);
+		return Flows.endingWith(answers, failure -> {
+			LOG.log(Level.FINE, "[DDSR-MSG] the stream answering a call on " + channel + " ended with a failure",
+					failure);
+			try {
+				return message(request, thrown(operation, failure), MessagingRoute.DEFAULT_CONTENT_TYPE);
+			} catch (Exception unsayable) {
+				throw new IllegalStateException(unsayable);
 			}
 		});
 	}
 
-	/** The message that ends a stream of answers, for the failure it ended with or null. */
-	private CloudEventCodec.Message last(CloudEvent request, MessagingRoute.Operation placed, Throwable failure) {
-		CloudEvent envelope = MessagingRoute.reply(request, source, MessagingRoute.DEFAULT_CONTENT_TYPE);
-		envelope.getExtensions().put(CloudEvents.EXTENSION_REPLY_COMPLETE, "true");
-		if (failure == null) {
-			return new CloudEventCodec.Message(envelope, null);
-		}
-		ServiceInvocationResult result = thrown(placed.operation(), failure);
-		envelope.getExtensions().put(CloudEvents.EXTENSION_REPLY_ERROR,
-				result.getDiagnostic().getMessage() == null ? "failed" : result.getDiagnostic().getMessage());
-		try {
-			return new CloudEventCodec.Message(CloudEvents.describing(envelope, result),
-					write(List.of(result), MessagingRoute.DEFAULT_CONTENT_TYPE));
-		} catch (Exception unwritable) {
-			return new CloudEventCodec.Message(envelope, null);
-		}
+	/** One answer: the result in the encoding given, the envelope saying what it is. */
+	private CloudEventCodec.Message message(CloudEvent request, ServiceInvocationResult result, String contentType)
+			throws Exception {
+		return new CloudEventCodec.Message(
+				CloudEvents.describing(MessagingRoute.reply(request, source, contentType), result),
+				write(List.of(result), contentType));
 	}
 
 	private ServiceInvocation invocationOf(byte[] document, String contentType) throws Exception {

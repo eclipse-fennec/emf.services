@@ -23,14 +23,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.FlavorKind;
@@ -461,30 +464,51 @@ class MessagingOperationDispatcherTest {
 		}
 	}
 
+	/** Takes what a session would send, all of it, and how it ended. */
+	private static List<CloudEventCodec.Message> sessionOf(Flow.Publisher<CloudEventCodec.Message> answers)
+			throws Exception {
+		List<CloudEventCodec.Message> taken = new CopyOnWriteArrayList<>();
+		CompletableFuture<Throwable> ended = new CompletableFuture<>();
+		answers.subscribe(new Flow.Subscriber<>() {
+			@Override
+			public void onSubscribe(Flow.Subscription subscription) {
+				subscription.request(Long.MAX_VALUE);
+			}
+
+			@Override
+			public void onNext(CloudEventCodec.Message answer) {
+				taken.add(answer);
+			}
+
+			@Override
+			public void onError(Throwable failure) {
+				ended.complete(failure);
+			}
+
+			@Override
+			public void onComplete() {
+				ended.complete(null);
+			}
+		});
+		assertThat(ended.get(5, TimeUnit.SECONDS)).as("a session's stream ends normally").isNull();
+		return taken;
+	}
+
 	/**
-	 * A stream is many answers to one call: one per value, each with the
-	 * call's correlation, and one that carries no value and says the
-	 * stream is over. That last one is what lets a reader end its stream
-	 * — the messaging library on the other side, or a TypeScript client.
+	 * A stream travels in a session: one message per value, each a result
+	 * in the flavor's encoding, and the session ends when the stream does.
 	 */
 	@Test
-	void a_stream_is_answered_value_by_value_and_then_ended() throws Exception {
+	void a_stream_is_answered_value_by_value_in_a_session() throws Exception {
 		MessagingFlavor flavor = payments();
-		CloudEventCodec.Message request = call(flavor, "ddsr/rpc/payments/charge/reply/10", 2);
+		CloudEventCodec.Message request = call(flavor, null, 2);
 
-		new MessagingOperationDispatcher(flavor, StreamingPayments::new, "/provider/Payment", resourceSets)
-				.onRequest("ddsr/rpc/payments/charge", request, sent::add);
+		List<CloudEventCodec.Message> answers = sessionOf(
+				new MessagingOperationDispatcher(flavor, StreamingPayments::new, "/provider/Payment", resourceSets)
+						.onSession("ddsr/rpc/payments/charge", request));
 
-		assertThat(sent).hasSize(4);
-		assertThat(sent.subList(0, 3)).extracting(message -> Invocations.valueOf(answerIn(message)))
+		assertThat(answers).extracting(message -> Invocations.valueOf(answerIn(message)))
 				.containsExactly(2.0, 4.0, 6.0);
-		for (CloudEventCodec.Message answer : sent) {
-			assertThat(MessagingRoute.correlationOf(answer.attributes())).isEqualTo(request.attributes().getEventId());
-		}
-		CloudEvent last = sent.get(3).attributes();
-		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_COMPLETE)).isEqualTo("true");
-		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_ERROR)).isNull();
-		assertThat(sent.get(3).data()).as("the end carries no value").isNull();
 	}
 
 	/** Fails after one value, with the error the contract declares. */
@@ -501,20 +525,101 @@ class MessagingOperationDispatcherTest {
 		}
 	}
 
+	/**
+	 * A failure is one last message holding the Diagnostic a single answer
+	 * would carry — the library ends a session with a failure only with a
+	 * fixed reason, so the session itself then ends normally.
+	 */
 	@Test
 	void a_stream_that_fails_ends_with_the_error_a_single_answer_would_carry() throws Exception {
 		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
 
-		new MessagingOperationDispatcher(flavor, BreakingPayments::new, "/provider/Payment", resourceSets)
-				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/11", 5), sent::add);
+		List<CloudEventCodec.Message> answers = sessionOf(
+				new MessagingOperationDispatcher(flavor, BreakingPayments::new, "/provider/Payment", resourceSets)
+						.onSession("ddsr/rpc/payments/charge", call(flavor, null, 5)));
 
-		assertThat(sent).hasSize(2);
-		assertThat(Invocations.valueOf(answerIn(sent.get(0)))).isEqualTo(5.0);
-		CloudEvent last = sent.get(1).attributes();
-		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_COMPLETE)).isEqualTo("true");
-		assertThat(last.getExtensions().get(CloudEvents.EXTENSION_REPLY_ERROR)).isEqualTo("only 3.50 left");
-		assertThat(answerIn(sent.get(1)).getDiagnostic().getCode())
+		assertThat(answers).hasSize(2);
+		assertThat(Invocations.valueOf(answerIn(answers.get(0)))).isEqualTo(5.0);
+		assertThat(answerIn(answers.get(1)).getDiagnostic().getCode())
 				.as("the declared error, under its code — as in a single answer").isEqualTo(402);
+		assertThat(answerIn(answers.get(1)).getDiagnostic().getMessage()).isEqualTo("only 3.50 left");
+	}
+
+	/** Never ends by itself, and says when it was told to stop. */
+	public static final class EndlessPayments {
+
+		static final CompletableFuture<Void> STOPPED = new CompletableFuture<>();
+
+		@SuppressWarnings("unused")
+		public Flow.Publisher<Double> charge(double amount) {
+			return subscriber -> subscriber.onSubscribe(new Flow.Subscription() {
+				@Override
+				public void request(long n) {
+					subscriber.onNext(amount);
+				}
+
+				@Override
+				public void cancel() {
+					STOPPED.complete(null);
+				}
+			});
+		}
+	}
+
+	/** A session that ends first — the caller closed it — stops the service's stream. */
+	@Test
+	void a_session_that_ends_stops_the_services_stream() throws Exception {
+		MessagingFlavor flavor = payments();
+		Flow.Publisher<CloudEventCodec.Message> answers = new MessagingOperationDispatcher(flavor,
+				EndlessPayments::new, "/provider/Payment", resourceSets)
+				.onSession("ddsr/rpc/payments/charge", call(flavor, null, 1));
+		List<CloudEventCodec.Message> taken = new CopyOnWriteArrayList<>();
+		answers.subscribe(new Flow.Subscriber<>() {
+			private Flow.Subscription subscription;
+
+			@Override
+			public void onSubscribe(Flow.Subscription subscription) {
+				this.subscription = subscription;
+				subscription.request(1);
+			}
+
+			@Override
+			public void onNext(CloudEventCodec.Message answer) {
+				taken.add(answer);
+				if (taken.size() < 3) {
+					subscription.request(1);
+				} else {
+					subscription.cancel();
+				}
+			}
+
+			@Override
+			public void onError(Throwable failure) {
+			}
+
+			@Override
+			public void onComplete() {
+			}
+		});
+
+		EndlessPayments.STOPPED.get(5, TimeUnit.SECONDS);
+		assertThat(taken).hasSize(3);
+	}
+
+	@Test
+	void a_stream_is_served_in_sessions_only_where_the_contract_says_so() {
+		MessagingFlavor flavor = payments();
+		MessagingOperationDispatcher dispatcher = dispatcher(flavor);
+		assertThat(dispatcher.streams("ddsr/rpc/payments/charge")).isFalse();
+
+		ServiceOperation charge = flavor.getOperationFlavors().get(0).getOperation();
+		Parameter returned = ServicesFactory.eINSTANCE.createParameter();
+		returned.setName("result");
+		returned.setType("double");
+		charge.setReturnValue(returned);
+		returned.setUpperBound(-1);
+		returned.setDelivery(Delivery.STREAM);
+		assertThat(dispatcher(flavor).streams("ddsr/rpc/payments/charge")).isTrue();
 	}
 
 	@Test

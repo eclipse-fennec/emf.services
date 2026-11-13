@@ -14,6 +14,9 @@
 package org.eclipse.fennec.services.invocation;
 
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 /**
@@ -110,6 +113,91 @@ public final class Flows {
 			@Override
 			public void onComplete() {
 				subscriber.onComplete();
+			}
+		});
+	}
+
+	/**
+	 * The same stream, ending with one more element instead of a failure:
+	 * a failure becomes the element {@code last} makes of it, handed on
+	 * when the subscriber has asked for it, and the stream then completes.
+	 * What turns a broken stream into the message that says why, for a
+	 * transport that can end a stream only normally.
+	 */
+	public static <T> Flow.Publisher<T> endingWith(Flow.Publisher<T> source,
+			Function<? super Throwable, ? extends T> last) {
+		return subscriber -> source.subscribe(new Flow.Subscriber<T>() {
+			private final AtomicLong asked = new AtomicLong();
+
+			private final AtomicReference<T> held = new AtomicReference<>();
+
+			private final AtomicBoolean ended = new AtomicBoolean();
+
+			@Override
+			public void onSubscribe(Flow.Subscription subscription) {
+				subscriber.onSubscribe(new Flow.Subscription() {
+					@Override
+					public void request(long n) {
+						if (n > 0) {
+							asked.getAndAccumulate(n, (had, more) -> had + more < 0 ? Long.MAX_VALUE : had + more);
+						}
+						if (handOverHeld()) {
+							return;
+						}
+						subscription.request(n);
+					}
+
+					@Override
+					public void cancel() {
+						ended.set(true);
+						held.set(null);
+						subscription.cancel();
+					}
+				});
+			}
+
+			@Override
+			public void onNext(T element) {
+				asked.decrementAndGet();
+				subscriber.onNext(element);
+			}
+
+			@Override
+			public void onError(Throwable failure) {
+				if (!ended.compareAndSet(false, true)) {
+					return;
+				}
+				T element;
+				try {
+					element = last.apply(failure);
+				} catch (RuntimeException unsayable) {
+					subscriber.onError(failure);
+					return;
+				}
+				// Held until asked for; whichever of this and a request sees
+				// both hands it on, and only one of them can take it.
+				held.set(element);
+				handOverHeld();
+			}
+
+			private boolean handOverHeld() {
+				if (asked.get() <= 0) {
+					return false;
+				}
+				T element = held.getAndSet(null);
+				if (element == null) {
+					return false;
+				}
+				subscriber.onNext(element);
+				subscriber.onComplete();
+				return true;
+			}
+
+			@Override
+			public void onComplete() {
+				if (ended.compareAndSet(false, true)) {
+					subscriber.onComplete();
+				}
 			}
 		});
 	}

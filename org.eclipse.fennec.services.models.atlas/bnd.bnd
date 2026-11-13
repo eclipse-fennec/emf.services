@@ -1,0 +1,22 @@
+Bundle-Name: Fennec Services Model Atlas Source
+Bundle-Description: \
+	The Model Atlas as the broker's source of payload models (#256): a \
+	ModelSource with fennec.models=atlas that reads released packages \
+	through the Model Atlas client, pinned by their fingerprint. \
+	Read-only - the atlas is where models are published, not the broker.
+
+-library: enableEMF
+
+-buildpath: \
+	osgi.core;version=latest,\
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.emf.osgi.api;version=latest,\
+	org.eclipse.fennec.model.atlas.rest.client.api;version=latest
+
+# Plain JUnit: the source takes the atlas read and the fingerprint as
+# functions, so a fake answers for the atlas.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest

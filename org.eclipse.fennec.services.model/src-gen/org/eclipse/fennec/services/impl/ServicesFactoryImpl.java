@@ -77,6 +77,7 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.COLLECTION_SIZE_CONSTRAINT: return createCollectionSizeConstraint();
 			case ServicesPackage.SERVICE_EXCEPTION: return createServiceException();
 			case ServicesPackage.SERVICE_INTERFACE: return createServiceInterface();
+			case ServicesPackage.MODEL_REFERENCE: return createModelReference();
 			case ServicesPackage.LIFECYCLE_HOOK: return createLifecycleHook();
 			case ServicesPackage.REFERENCE_BINDING: return createReferenceBinding();
 			case ServicesPackage.COMPONENT_REFERENCE: return createComponentReference();
@@ -460,6 +461,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public ServiceInterface createServiceInterface() {
 		ServiceInterfaceImpl serviceInterface = new ServiceInterfaceImpl();
 		return serviceInterface;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ModelReference createModelReference() {
+		ModelReferenceImpl modelReference = new ModelReferenceImpl();
+		return modelReference;
 	}
 
 	/**

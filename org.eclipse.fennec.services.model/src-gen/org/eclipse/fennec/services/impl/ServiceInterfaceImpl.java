@@ -20,6 +20,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
 
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.Invariant;
+import org.eclipse.fennec.services.ModelReference;
 import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -49,6 +50,7 @@ import org.eclipse.fennec.services.VersionedElement;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getReplacedBy <em>Replaced By</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getUpdatePolicy <em>Update Policy</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getSecurity <em>Security</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getModels <em>Models</em>}</li>
  * </ul>
  *
  * @generated
@@ -263,6 +265,16 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @ordered
 	 */
 	protected SecurityRequirement security;
+
+	/**
+	 * The cached value of the '{@link #getModels() <em>Models</em>}' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getModels()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<ModelReference> models;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -597,6 +609,19 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @generated
 	 */
 	@Override
+	public EList<ModelReference> getModels() {
+		if (models == null) {
+			models = new EObjectContainmentEList<ModelReference>(ModelReference.class, this, ServicesPackage.SERVICE_INTERFACE__MODELS);
+		}
+		return models;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_INTERFACE__OPERATIONS:
@@ -607,6 +632,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return ((InternalEList<?>)getInvariants()).basicRemove(otherEnd, msgs);
 			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
 				return basicSetSecurity(null, msgs);
+			case ServicesPackage.SERVICE_INTERFACE__MODELS:
+				return ((InternalEList<?>)getModels()).basicRemove(otherEnd, msgs);
 		}
 		return super.eInverseRemove(otherEnd, featureID, msgs);
 	}
@@ -646,6 +673,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return getUpdatePolicy();
 			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
 				return getSecurity();
+			case ServicesPackage.SERVICE_INTERFACE__MODELS:
+				return getModels();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -701,6 +730,10 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
 				setSecurity((SecurityRequirement)newValue);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__MODELS:
+				getModels().clear();
+				getModels().addAll((Collection<? extends ModelReference>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -752,6 +785,9 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
 				setSecurity((SecurityRequirement)null);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__MODELS:
+				getModels().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -790,6 +826,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return updatePolicy != UPDATE_POLICY_EDEFAULT;
 			case ServicesPackage.SERVICE_INTERFACE__SECURITY:
 				return security != null;
+			case ServicesPackage.SERVICE_INTERFACE__MODELS:
+				return models != null && !models.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}

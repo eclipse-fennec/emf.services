@@ -12,7 +12,7 @@
  ********************************************************************/
 
 import { createHash } from 'node:crypto';
-import type { Parameter, Property, ServiceException, ServiceInterface, ServiceOperation } from '@ddsr/model';
+import type { ModelReference, Parameter, Property, ServiceException, ServiceInterface, ServiceOperation } from '@ddsr/model';
 import { eClassName, toArray } from '../internal/emf-util.js';
 
 /**
@@ -58,6 +58,13 @@ export function canonicalForm(serviceInterface: ServiceInterface | undefined): s
   lines.push(`I|${esc(serviceInterface.name)}|version=${esc(serviceInterface.version)}|status=${status}`);
   const interfaceSecurity = (serviceInterface as unknown as Record<string, unknown>).security;
   if (interfaceSecurity) lines.push(`  ${securityLine(interfaceSecurity as Record<string, unknown>)}`);
+  // The payload models the contract pins (#256), sorted by nsURI and only
+  // where there are any - the twin of the Java rendering.
+  const models = toArray<ModelReference>((serviceInterface as unknown as { models?: unknown }).models)
+    .map(model => ({ name: model.nsURI ?? undefined, fingerprint: model.fingerprint ?? undefined }));
+  for (const model of sortByName(models)) {
+    lines.push(`  M|${esc(model.name)}|fingerprint=${esc(model.fingerprint)}`);
+  }
 
   const exceptions = sortByName(toArray<ServiceException>(serviceInterface.exceptions));
   for (const ex of exceptions) {

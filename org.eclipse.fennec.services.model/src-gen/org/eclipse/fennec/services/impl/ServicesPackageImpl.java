@@ -54,6 +54,7 @@ import org.eclipse.fennec.services.LongProperty;
 import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.MessagingOperationFlavor;
 import org.eclipse.fennec.services.MessagingQos;
+import org.eclipse.fennec.services.ModelReference;
 import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.NamedElement;
 import org.eclipse.fennec.services.NumericRangeConstraint;
@@ -286,6 +287,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass serviceInterfaceEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass modelReferenceEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1672,6 +1680,46 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EReference getServiceInterface_Security() {
 		return (EReference)serviceInterfaceEClass.getEStructuralFeatures().get(10);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getServiceInterface_Models() {
+		return (EReference)serviceInterfaceEClass.getEStructuralFeatures().get(11);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getModelReference() {
+		return modelReferenceEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getModelReference_NsURI() {
+		return (EAttribute)modelReferenceEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getModelReference_Fingerprint() {
+		return (EAttribute)modelReferenceEClass.getEStructuralFeatures().get(1);
 	}
 
 	/**
@@ -4408,6 +4456,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__REPLACED_BY);
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__UPDATE_POLICY);
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__SECURITY);
+		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__MODELS);
+
+		modelReferenceEClass = createEClass(MODEL_REFERENCE);
+		createEAttribute(modelReferenceEClass, MODEL_REFERENCE__NS_URI);
+		createEAttribute(modelReferenceEClass, MODEL_REFERENCE__FINGERPRINT);
 
 		lifecycleHookEClass = createEClass(LIFECYCLE_HOOK);
 		createEAttribute(lifecycleHookEClass, LIFECYCLE_HOOK__KIND);
@@ -4904,6 +4957,11 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getServiceInterface_ReplacedBy(), this.getServiceInterface(), null, "replacedBy", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceInterface_UpdatePolicy(), this.getUpdatePolicy(), "updatePolicy", null, 1, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceInterface_Security(), this.getSecurityRequirement(), null, "security", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getServiceInterface_Models(), this.getModelReference(), null, "models", null, 0, -1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(modelReferenceEClass, ModelReference.class, "ModelReference", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getModelReference_NsURI(), ecorePackage.getEString(), "nsURI", null, 1, 1, ModelReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getModelReference_Fingerprint(), ecorePackage.getEString(), "fingerprint", null, 0, 1, ModelReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(lifecycleHookEClass, LifecycleHook.class, "LifecycleHook", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getLifecycleHook_Kind(), this.getLifecycleHookKind(), "kind", null, 1, 1, LifecycleHook.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -6012,6 +6070,30 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Default requirement for every operation of this contract; an operation may override it via ServiceOperation.security. Part of the contract, not of a deployment: it states WHAT a caller must be, transport-neutral. HOW that is proven is the flavor\'s business (ServiceFlavor.securitySchemes). Absent here and on every operation = the contract states no requirement; whether such a contract may then be called anonymously is a decision of the serving node\'s configuration, never an implicit \'open\'. The broker\'s own contracts carry these too (#88): the broker\'s access matrix \u2014 publish, consume, curate \u2014 is expressed and enforced with the same mechanism as on every peer."
+		   });
+		addAnnotation
+		  (getServiceInterface_Models(),
+		   source,
+		   new String[] {
+			   "documentation", "The payload models this contract\'s slots are typed with (Parameter.eType), each pinned to the version it means by its fingerprint. Part of the contract: a payload model that changes under the same nsURI is a different exchange, and with the fingerprint here the sd1 moves with it. A broker with a model source checks that every eType\'s package is listed and resolves at its fingerprint; a consumer fetches what it does not have. Empty = the contract pins no model (eType references still travel as hrefs)."
+		   });
+		addAnnotation
+		  (modelReferenceEClass,
+		   source,
+		   new String[] {
+			   "documentation", "One payload model a contract uses: its namespace URI and the fingerprint of the version meant. The fingerprint is the one fennec EMF generates for a package (fp1:..., EPackageConfigurator.FINGERPRINT, @EPackage(fingerprint)) and the one the Model Atlas reports, so a reference resolves the same everywhere."
+		   });
+		addAnnotation
+		  (getModelReference_NsURI(),
+		   source,
+		   new String[] {
+			   "documentation", "Namespace URI of the EPackage, as in the eType hrefs of the contract\'s slots."
+		   });
+		addAnnotation
+		  (getModelReference_Fingerprint(),
+		   source,
+		   new String[] {
+			   "documentation", "Fingerprint of the package version meant (fp1:...). Absent = any version under the nsURI; a broker with a model source may then pin the one it resolves."
 		   });
 		addAnnotation
 		  (lifecycleHookEClass,
@@ -7648,7 +7730,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (serviceInterfaceEClass,
 		   source,
 		   new String[] {
-			   "constraints", "replacedByIsDeprecated"
+			   "constraints", "replacedByIsDeprecated modelsUnique"
 		   });
 		addAnnotation
 		  (serviceImplementationEClass,
@@ -7755,7 +7837,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "immutableAfterPublish", "-- ServiceInterface is conceptually immutable once added to the catalog (semver: changes mean a new entry, old one optionally deprecated). Enforced at addCatalogEntry / mutation operations, not as a static invariant \u2014 placeholder.",
-			   "replacedByIsDeprecated", "replacedBy = null or status.toString() = \'DEPRECATED\'"
+			   "replacedByIsDeprecated", "replacedBy = null or status.toString() = \'DEPRECATED\'",
+			   "modelsUnique", "models->isUnique(m | m.nsURI)"
 		   });
 		addAnnotation
 		  (serviceImplementationEClass,

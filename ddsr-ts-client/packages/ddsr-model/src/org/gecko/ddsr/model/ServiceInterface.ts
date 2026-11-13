@@ -14,6 +14,7 @@ import type { Invariant } from './Invariant.js';
 import type { CatalogStatus } from './CatalogStatus.js';
 import type { UpdatePolicy } from './UpdatePolicy.js';
 import type { SecurityRequirement } from './SecurityRequirement.js';
+import type { ModelReference } from './ModelReference.js';
 
 /**
  * ServiceInterface
@@ -31,5 +32,6 @@ export interface ServiceInterface extends NamedElement, VersionedElement {
   replacedBy?: ServiceInterface;
   updatePolicy: UpdatePolicy;
   security?: SecurityRequirement;
+  models: EList<ModelReference>;
 
 }

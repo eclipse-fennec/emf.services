@@ -241,6 +241,11 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/replacedBy"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/updatePolicy"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/security"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/models"/>
+    </genClasses>
+    <genClasses ecoreClass="services.ecore#//ModelReference">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ModelReference/nsURI"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ModelReference/fingerprint"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//LifecycleHook">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//LifecycleHook/kind"/>

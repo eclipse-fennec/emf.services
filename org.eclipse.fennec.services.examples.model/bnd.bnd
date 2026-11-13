@@ -19,3 +19,8 @@
 -buildpath: \
 	org.osgi.service.condition;version=latest
 
+
+# An example, run from this workspace: never released to Maven Central
+# (#261 - every file is a request, and Central's snapshot repository
+# rate-limits a burst of them).
+-maven-release: local

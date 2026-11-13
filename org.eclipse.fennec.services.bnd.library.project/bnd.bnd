@@ -5,12 +5,9 @@ Bundle-Description: \
 	against (-buildpath) and what a launch runs (-runbundles): \
 	\
 	  enableFennecServicesClient    the SDK: publish, look up, invoke \
-	  enableFennecServicesRsa       Remote Service Admin on the registry \
 	  enableFennecServicesSecurity  bearer tokens: supply and verify \
 	  enableFennecServicesMqtt      the MQTT transport: call, hear, serve \
-	  enableFennecServicesRsaMqtt   Remote Service Admin over MQTT \
 	  enableFennecServicesAmqp      the AMQP transport: call, serve \
-	  enableFennecServicesRsaAmqp   Remote Service Admin over AMQP \
 	\
 	The run lists carry this project's bundles and what they need \
 	directly — never an HTTP stack or Jersey, which enableJakartaREST \
@@ -24,11 +21,14 @@ Bundle-Description: \
 -resourceonly: true
 -includeresource: library=library
 
+# The RSA libraries (library/rsa, rsaMqtt, rsaAmqp) are not offered for now:
+# the RSA bundles are not released to Maven Central (#261), and a library
+# that names them would hand a downstream launch stale or missing
+# snapshots. The directories stay and the itest still checks them; to
+# bring them back, add the three capabilities again and drop
+# -maven-release: local from the rsa bundles.
 Provide-Capability: \
 	bnd.library;bnd.library=enableFennecServicesClient;path=library/client,\
-	bnd.library;bnd.library=enableFennecServicesRsa;path=library/rsa,\
 	bnd.library;bnd.library=enableFennecServicesSecurity;path=library/security,\
 	bnd.library;bnd.library=enableFennecServicesMqtt;path=library/mqtt,\
-	bnd.library;bnd.library=enableFennecServicesRsaMqtt;path=library/rsaMqtt,\
-	bnd.library;bnd.library=enableFennecServicesAmqp;path=library/amqp,\
-	bnd.library;bnd.library=enableFennecServicesRsaAmqp;path=library/rsaAmqp
+	bnd.library;bnd.library=enableFennecServicesAmqp;path=library/amqp

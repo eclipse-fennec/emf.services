@@ -1,0 +1,11 @@
+# What a snapshot puts into the Maven repository (#261).
+#
+# A snapshot carries the bundle and its pom, nothing else. Central's requirements
+# (sources, javadoc, signatures) apply to releases only, and every file is a request:
+# with sources and javadoc a bundle is 15 uploads, without them 9, and since
+# 2026-11-12 Central's snapshot repository answers a burst of them with HTTP 429
+# (Cloudflare 1015), refusing most bundles of a run.
+#
+# A release (DO_RELEASE=true) does not include the file and keeps what the fennec
+# workspace library sets for Central: pom, signed, with sources and javadoc.
+-include: ${if;${env;DO_RELEASE;false};;${workspace}/cnf/releng/snapshot-maven-release.bnd}

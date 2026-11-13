@@ -26,3 +26,8 @@ Bundle-Description: \
 # leaves both to whoever calls the admin — the TCK, for one.
 Provide-Capability: \
 	osgi.remoteserviceadmin.topology;policy:List<String>="promiscuous,manual";version:Version="1.1"
+
+# Remote Service Admin is not released to Maven Central for now (#261):
+# fewer uploads per snapshot, and the RSA project libraries are not
+# offered meanwhile (bnd.library.project). Remove this line to bring it back.
+-maven-release: local

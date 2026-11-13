@@ -22,3 +22,8 @@ Bundle-Description: \
 -includeresource: \
 	OSGI-INF/configurator/=configs/
 Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
+
+# An example, run from this workspace: never released to Maven Central
+# (#261 - every file is a request, and Central's snapshot repository
+# rate-limits a burst of them).
+-maven-release: local

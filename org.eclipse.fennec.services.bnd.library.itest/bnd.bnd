@@ -24,3 +24,6 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 -dependson: \
 	org.eclipse.fennec.services.bnd.library.project,\
 	org.eclipse.fennec.services.bnd.library.workspace
+
+# A test, run in this workspace: never released to Maven Central (#261).
+-maven-release: local

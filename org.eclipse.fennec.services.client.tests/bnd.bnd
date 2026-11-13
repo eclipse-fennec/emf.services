@@ -20,3 +20,6 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	org.eclipse.fennec.services.client.java;version=snapshot
 
 Private-Package: org.eclipse.fennec.services.client.tests
+
+# A test, run in this workspace: never released to Maven Central (#261).
+-maven-release: local

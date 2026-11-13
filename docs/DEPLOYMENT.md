@@ -213,6 +213,7 @@ push to snapshot / main
   └─ verify            (reusable-verify, eclipse-fennec/.github)
       └─ release       (reusable-release) — build + testOSGi + export.broker + publish
           │              uploads broker.jar and the broker.rest bundle jar as "release-jars"
+          ├─ uploads    reads the release job's log, fails on a refused upload
           ├─ docs       (reusable-docs)
           └─ container  (reusable-container, eclipse-fennec/.github)
                          downloads "release-jars", reads Bundle-Version off the
@@ -223,7 +224,19 @@ push to snapshot / main
 The container job never rebuilds the jar — that is what keeps the image
 from drifting away from the published bundles.
 
-All four jobs are central workflows owned by `eclipse-fennec/.github`
+**What a snapshot publishes (#261).** Only the bundles another
+workspace uses: the examples, demos, tests and harness configuration
+carry `-maven-release: local`, and so — for now — do the Remote Service
+Admin bundles, whose project libraries are not offered meanwhile
+([BND_LIBRARIES](BND_LIBRARIES.md)). A snapshot carries the jar and its
+pom, no sources and no javadoc (`cnf/ext/snapshot-release.bnd`); a
+release keeps all of it, signed. Every file is a request, and since
+2026-11-12 Maven Central answers a burst of them with HTTP 429
+(Cloudflare 1015). bnd logs a refused upload and carries on, so the
+`uploads` job reads the release job's log and fails the run, naming
+every bundle that did not reach Central.
+
+All jobs but `uploads` are central workflows owned by `eclipse-fennec/.github`
 and pinned here by commit. This repository states only what is its own:
 the image name, the variant prefix, the build context and the two jar
 names. The tags that come out are `broker-<label>` and

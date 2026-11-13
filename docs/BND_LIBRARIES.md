@@ -2,19 +2,26 @@
 
 Fennec Services ships two kinds of bnd library, the same way
 [EMF OSGi](https://github.com/eclipse-fennec/emf.osgi) does: one for the
-workspace, which makes the bundles resolvable, and seven for projects,
+workspace, which makes the bundles resolvable, and four for projects,
 which say what a project compiles against and what a launch runs.
+
+> **Remote Service Admin is not published for now (#261).** The RSA
+> bundles are not released to Maven Central, so the three RSA project
+> libraries below are not offered either: one that named them would hand
+> a downstream launch stale or missing snapshots. Their run lists stay in
+> the repository and are still verified here; they come back with the
+> bundles.
 
 | Library | Kind | Gives you |
 | --- | --- | --- |
-| `fennecServices` | workspace | a Maven repository with every bundle the seven run lists below name, and the project libraries themselves |
+| `fennecServices` | workspace | a Maven repository with every bundle the four offered run lists below name, and the project libraries themselves |
 | `enableFennecServicesClient` | project | the SDK: publish, look up, invoke |
-| `enableFennecServicesRsa` | project | Remote Service Admin on the registry |
+| `enableFennecServicesRsa` | project | Remote Service Admin on the registry — *not offered for now (#261)* |
 | `enableFennecServicesSecurity` | project | bearer tokens: supply them, verify them |
 | `enableFennecServicesMqtt` | project | the MQTT transport: call, hear events, serve a contract on topics |
-| `enableFennecServicesRsaMqtt` | project | Remote Service Admin over MQTT |
+| `enableFennecServicesRsaMqtt` | project | Remote Service Admin over MQTT — *not offered for now (#261)* |
 | `enableFennecServicesAmqp` | project | the AMQP transport: call, serve a contract on routing keys |
-| `enableFennecServicesRsaAmqp` | project | Remote Service Admin over AMQP |
+| `enableFennecServicesRsaAmqp` | project | Remote Service Admin over AMQP — *not offered for now (#261)* |
 
 ## In the workspace
 
@@ -30,7 +37,7 @@ use:
 
 That puts one repository into the workspace — *Eclipse Fennec Services*,
 indexed from Maven Central and its snapshot repository — with exactly
-what the seven run lists name.
+what the four offered run lists name.
 
 ## In a project
 

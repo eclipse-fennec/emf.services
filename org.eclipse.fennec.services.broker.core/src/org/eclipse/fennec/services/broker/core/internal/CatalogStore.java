@@ -28,6 +28,7 @@ import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.models.ModelSource;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
@@ -58,6 +59,17 @@ final class CatalogStore {
 	private final BrokerState state;
 
 	private final ColdCache cold;
+
+	/** Where payload models come from (#256); null checks none. */
+	private volatile ModelSource models;
+
+	/** Whether a contract must pin every model its slots are typed with. */
+	private volatile boolean strictModels;
+
+	void useModels(ModelSource source, boolean strict) {
+		this.models = source;
+		this.strictModels = strict;
+	}
 
 	CatalogStore(BrokerState state, ColdCache cold) {
 		this.state = state;
@@ -91,6 +103,13 @@ final class CatalogStore {
 			if (violations.isPresent()) {
 				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_INVALID,
 						"catalog entry violates the model's invariants: " + violations.get());
+			}
+			// The payload models it pins resolve here (#256), and with a
+			// strict broker every model its slots are typed with is pinned.
+			Optional<String> unresolved = PayloadModels.violations(serviceInterface, models, strictModels);
+			if (unresolved.isPresent()) {
+				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_CATALOG_ENTRY_INVALID,
+						"catalog entry names payload models the broker cannot resolve: " + unresolved.get());
 			}
 			// Who put it there (#125). Set after the fingerprint
 			// comparison above, though sd1 excludes it either way — the

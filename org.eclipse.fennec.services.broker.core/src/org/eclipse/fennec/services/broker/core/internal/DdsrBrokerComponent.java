@@ -22,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.fennec.services.models.ModelSource;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ConsumerSession;
 import org.eclipse.fennec.services.Diagnostic;
@@ -78,7 +79,10 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
 		// broker.rest — and it carries the property (#88).
 		property = {
 				"ddsr.contract=BrokerCatalog",
-				"ddsr.contract=BrokerImplementations" },
+				"ddsr.contract=BrokerImplementations",
+				// Where payload models come from (#256): the broker's own
+				// store unless the configuration names another source.
+				"models.target=(" + ModelSource.PROPERTY + "=embedded)" },
 		configurationPid = "org.eclipse.fennec.services.broker.core",
 		immediate = true)
 @Designate(ocd = DdsrBrokerComponent.Config.class)
@@ -154,6 +158,15 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 						+ "before it gets here. Empty is the single default domain.",
 				required = false)
 		String domain() default "";
+
+		@AttributeDefinition(name = "Payload models: strict", description = "Refuse a contract whose slots are "
+				+ "typed with a payload model it does not pin in its models (#256). Pinned models must resolve "
+				+ "in the model source either way.")
+		boolean models_strict() default false;
+
+		@AttributeDefinition(name = "Payload models: source", description = "Filter selecting the ModelSource: "
+				+ "(fennec.models=embedded) for the broker's own store, (fennec.models=atlas) for the Model Atlas.")
+		String models_target() default "(" + ModelSource.PROPERTY + "=embedded)";
 	}
 
 	/**
@@ -166,6 +179,10 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 	 */
 	@Reference(name = "broker.backend", policyOption = ReferencePolicyOption.GREEDY)
 	private LookupBackend lookup;
+
+	/** Where payload models come from (#256); which one is the configuration's (models.target). */
+	@Reference(name = "models")
+	private ModelSource models;
 
 	/**
 	 * Event sinks as a whiteboard: every registered {@link EventSink}
@@ -263,6 +280,7 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 					config.cutover_grace_seconds() * 1000L,
 					config.domain());
 			DdsrBrokerImpl broker = new DdsrBrokerImpl(settings, lookup, this::fanOut);
+			broker.useModels(models, config.models_strict());
 			this.delegate = broker;
 			broker.activate();
 			// Registered separately and by hand, because its one property

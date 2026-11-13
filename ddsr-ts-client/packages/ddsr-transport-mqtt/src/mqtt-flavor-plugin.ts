@@ -14,7 +14,7 @@
 import type { TlsOptions } from '@ddsr/client';
 import { randomUUID } from 'node:crypto';
 import type { FlavorPlugin } from '@ddsr/client';
-import { DdsrServiceError, declaredByCode, toArray } from '@ddsr/client';
+import { CE_EXTENSION_CORRELATION_ID, DdsrServiceError, declaredByCode, readStructured, toArray } from '@ddsr/client';
 import type {
   MessagingFlavor,
   MessagingOperationFlavor,
@@ -35,6 +35,8 @@ import {
   topicSegment,
 } from './mqtt-rpc.js';
 import type { AmqpConnectOptions } from './amqp-client.js';
+import { SESSION, SESSION_LEASE, requestSession } from './messaging-session.js';
+import type { StreamBuffer } from './messaging-session.js';
 
 export interface MqttFlavorPluginOptions {
   /**
@@ -70,6 +72,15 @@ export interface MqttFlavorPluginOptions {
   consumer?: string;
   /** The node's certificate and the authorities it believes, for mqtts:// brokers. */
   tls?: TlsOptions;
+  /**
+   * How long either side of a stream's session may stay silent before
+   * the other ends it, in milliseconds; default 10s. Both sides ping
+   * within it, so a slow stream lives on, and one whose caller went
+   * away ends at the provider.
+   */
+  sessionLeaseMs?: number;
+  /** What a stream may hold that the caller has not taken yet, and what happens beyond. */
+  streamBuffer?: StreamBuffer;
   log?: (message: string) => void;
 }
 
@@ -95,7 +106,7 @@ export class MqttFlavorPlugin implements FlavorPlugin {
   private readonly log: (message: string) => void;
   private readonly clientsByUrl = new Map<string, Promise<MqttRpcClientLike>>();
   private readonly pending = new Map<string, (payload: Uint8Array) => void>();
-  /** The calls answered with a stream: every answer of theirs, as it arrives. */
+  /** The sessions of the streams open now, by their id: every message of theirs, as it arrives. */
   private readonly streams = new Map<string, (payload: Uint8Array) => void>();
   private readonly subscribed = new Set<string>();
 
@@ -146,11 +157,24 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     // business, not the topic's.
     await this.listenOn(client, subtree, separatorFor(mqttFlavor), qos);
     if (String(operation.returnValue?.delivery ?? '') === 'STREAM') {
-      // A stream (Parameter.delivery): the call resolves to something to
-      // iterate, and the request goes out when the first value is asked
-      // for. Each answer is one value; the one marked complete ends it.
-      return this.answers(operation, request, () =>
-        client.publishAsync(requestTopic, request.payload, { qos, retain: false }), timeoutMs, requestTopic);
+      // A stream (Parameter.delivery): a session of the messaging
+      // library, opened when the first value is asked for. The session
+      // listens on a channel of its own, not on the subtree above.
+      return this.valuesOf(operation, requestSession({
+        client,
+        requestTopic,
+        qos,
+        owner: consumer,
+        source,
+        timeoutMs,
+        leaseMs: this.options.sessionLeaseMs,
+        buffer: this.options.streamBuffer,
+        open: (sessionId, replyChannel, lease) => encodeRequest(operation, params, replyChannel, source, mqttOp,
+          { [CE_EXTENSION_CORRELATION_ID]: sessionId, [SESSION]: 'open', [SESSION_LEASE]: String(lease) }).payload,
+        register: (sessionId, deliver) => { this.streams.set(sessionId, deliver); },
+        unregister: sessionId => { this.streams.delete(sessionId); },
+        describe: `the stream of ${operation.name} via ${requestTopic}`,
+      }));
     }
     try {
       const answer = new Promise<Uint8Array>((resolve, reject) => {
@@ -181,51 +205,16 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     }
   }
 
-  /**
-   * The answers to one call as an async iterable. A value is handed out
-   * when the caller asks for the next one; what arrives faster waits in
-   * a queue here - mqtt.js and amqplib deliver without being asked, so
-   * unlike the Java side nothing holds the broker back. A stream that
-   * brings nothing for the timeout fails.
-   */
-  private async *answers(
-    operation: ServiceOperation, request: { id: string }, send: () => Promise<unknown>,
-    timeoutMs: number, requestTopic: string,
-  ): AsyncGenerator<unknown> {
-    const arrived: Uint8Array[] = [];
-    let wake: (() => void) | undefined;
-    this.streams.set(request.id, payload => {
-      arrived.push(payload);
-      wake?.();
-    });
-    try {
-      await send();
-      for (;;) {
-        if (arrived.length === 0) {
-          let timer: ReturnType<typeof setTimeout> | undefined;
-          const quiet = new Promise<'quiet'>(resolve => { timer = setTimeout(() => resolve('quiet'), timeoutMs); });
-          const more = new Promise<'more'>(resolve => { wake = () => resolve('more'); });
-          const outcome = await Promise.race([more, quiet]);
-          clearTimeout(timer);
-          wake = undefined;
-          if (outcome === 'quiet' && arrived.length === 0) {
-            throw new Error(
-              `the stream of ${operation.name} brought nothing for ${timeoutMs}ms via ${requestTopic}`);
-          }
-        }
-        const response = decodeResponse(arrived.shift()!);
-        if (response.error !== undefined) {
-          const declared = declaredByCode(operation, response.code);
-          if (declared) throw new DdsrServiceError(response.error, declared);
-          throw new Error(`MQTT call failed: ${operation.name} — ${response.error}`);
-        }
-        if (response.complete) return;
-        yield response.value;
+  /** The messages of a session as the values they carry; one holding a Diagnostic is the failure it ended with. */
+  private async *valuesOf(operation: ServiceOperation, messages: AsyncGenerator<Uint8Array>): AsyncGenerator<unknown> {
+    for await (const payload of messages) {
+      const response = decodeResponse(payload);
+      if (response.error !== undefined) {
+        const declared = declaredByCode(operation, response.code);
+        if (declared) throw new DdsrServiceError(response.error, declared);
+        throw new Error(`MQTT call failed: ${operation.name} — ${response.error}`);
       }
-    } finally {
-      // Left early, failed or over: nothing more is expected. The
-      // provider is not told - it sends to the end.
-      this.streams.delete(request.id);
+      yield response.value;
     }
   }
 
@@ -276,12 +265,15 @@ export class MqttFlavorPlugin implements FlavorPlugin {
 
   private onMessage(_topic: string, payload: Uint8Array): void {
     try {
-      const response = decodeResponse(payload);
-      const stream = this.streams.get(response.correlationId);
+      // A session's control messages carry no result: by the correlation
+      // first, decoded as an answer only where one is awaited.
+      const correlationId = readStructured(payload).attributes.extensions[CE_EXTENSION_CORRELATION_ID];
+      const stream = correlationId ? this.streams.get(correlationId) : undefined;
       if (stream) {
         stream(payload);
         return;
       }
+      const response = decodeResponse(payload);
       const waiter = this.pending.get(response.correlationId);
       if (waiter) {
         this.pending.delete(response.correlationId);

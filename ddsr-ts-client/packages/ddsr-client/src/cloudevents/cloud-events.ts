@@ -79,19 +79,6 @@ export const CE_EXTENSION_CORRELATION_ID = 'correlationid';
 /** Extension carrying the topic an answer is expected on. */
 export const CE_EXTENSION_REPLY_TO = 'replyto';
 
-/**
- * Marks the message that ends a stream of answers. A call whose return
- * value is a stream (Parameter.delivery = STREAM) is answered with any
- * number of invoke.reply events with the call's correlation, each
- * carrying one value, and then one that carries this extension with the
- * value `true` and no value of its own. The name is the one the Java
- * side's messaging library ends a stream of replies with.
- */
-export const CE_EXTENSION_REPLY_COMPLETE = 'replycomplete';
-
-/** Beside CE_EXTENSION_REPLY_COMPLETE: the stream ended with a failure, and this says which. */
-export const CE_EXTENSION_REPLY_ERROR = 'replyerror';
-
 const LIFECYCLE_TYPES: Record<string, ServiceEventType> = {
   [`${TYPE_PREFIX}unspecified`]: ServiceEventType.UNSPECIFIED,
   [`${TYPE_PREFIX}registered`]: ServiceEventType.REGISTERED,
@@ -251,7 +238,11 @@ export function readStructured(payload: Uint8Array | string): CloudEventMessage 
   const time = stringMember(message, 'time', false);
   if (time) attributes.time = time;
   for (const [name, value] of Object.entries(message)) {
-    if (!RESERVED.has(name) && typeof value === 'string') attributes.extensions[name] = value;
+    // An extension may be a string, an integer or a boolean (CloudEvents
+    // §3.1.1); the messaging library writes a session's lease as a number.
+    if (!RESERVED.has(name) && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')) {
+      attributes.extensions[name] = String(value);
+    }
   }
   let data: Uint8Array | undefined;
   if (typeof message.data_base64 === 'string') {

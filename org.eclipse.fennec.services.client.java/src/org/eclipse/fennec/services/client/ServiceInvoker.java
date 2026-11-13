@@ -76,6 +76,16 @@ public interface ServiceInvoker {
 	 *                 transport that does not wait never uses it
 	 */
 	/**
+	 * Whether this transport carries a stream a service returns. A proxy
+	 * calls an operation that streams over a flavor whose invoker says
+	 * so, where the service announces one, and leaves the others to the
+	 * calls answered once (#251).
+	 */
+	default boolean carriesStreams() {
+		return false;
+	}
+
+	/**
 	 * A call whose return value is a stream ({@code Delivery.STREAM}):
 	 * values one after the other, as the subscriber asks for them, until
 	 * the stream is over or fails.

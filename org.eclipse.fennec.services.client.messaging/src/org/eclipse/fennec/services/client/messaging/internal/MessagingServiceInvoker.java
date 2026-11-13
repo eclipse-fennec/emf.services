@@ -411,6 +411,12 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 	 * session's lease runs out. What is not taken yet waits in the
 	 * session's buffer, and the broker's window holds back the rest.
 	 */
+	/** A session of the messaging library carries a stream, over MQTT and AMQP alike. */
+	@Override
+	public boolean carriesStreams() {
+		return true;
+	}
+
 	@Override
 	public Flow.Publisher<Object> invokeStream(ServiceLocator locator, String operationName,
 			Map<String, Object> args) {

@@ -46,6 +46,48 @@ jobs:
         org.eclipse.fennec.services.broker.rest/generated/org.eclipse.fennec.services.broker.rest.jar
     secrets: inherit
 
+  # bnd's releaser logs a refused upload ("something went wrong during upload")
+  # and the Gradle task stays green, so a snapshot that only partly reached
+  # Central looked like a good one: since 2026-11-12 Central answers bursts with
+  # HTTP 429 (Cloudflare 1015) and most bundles of a run were refused (#261).
+  # This job reads the release job's log and fails the run, naming the bundles.
+  # Belongs into the central reusable-release workflow eventually.
+  uploads:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    steps:
+      - name: Every upload reached Central
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          job=$(gh api "repos/$REPO/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs" --paginate \
+            -q '.jobs[] | select(.name | startswith("release")) | .id' | head -1)
+          [ -n "$job" ] || { echo "::error::no release job in this run"; exit 1; }
+          # The log of a job that has just finished can take a moment to appear.
+          for attempt in 1 2 3 4 5 6; do
+            if gh api "repos/$REPO/actions/jobs/$job/logs" > release.log 2>/dev/null && [ -s release.log ]; then
+              break
+            fi
+            sleep 10
+          done
+          [ -s release.log ] || { echo "::error::the release job's log could not be read"; exit 1; }
+          uploaded=$(grep -c 'Upload https://' release.log || true)
+          failed=$(grep -c 'something went wrong during upload' release.log || true)
+          echo "uploads: $uploaded, refused: $failed"
+          if [ "$failed" -gt 0 ]; then
+            grep -o 'Could not store [^ ]*' release.log | sed 's|.*/services/\([^/]*\)/.*|\1|' | sort -u \
+              | sed 's/^/  not on Central: /'
+            grep -m1 -o 'You are being rate limited\|code=[0-9]*' release.log | sed 's/^/  cause: /' || true
+            echo "::error::$failed upload(s) to Maven Central were refused - the snapshot on Central is incomplete"
+            exit 1
+          fi
+
   docs:
     needs: release
     uses: eclipse-fennec/.github/.github/workflows/reusable-docs.yml@2a98ad6e2459556b858e1273bff2f8d87fc11a06 # v1.3.0

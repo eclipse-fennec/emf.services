@@ -91,8 +91,10 @@ class RunListsTest {
 		assertThat(range.group(1)).as("%s follows base-version", file).isEqualTo(expected);
 	}
 
+	// Only the offered libraries: the RSA ones are not, for now, because the
+	// RSA bundles are not released to Maven Central (#261).
 	@ParameterizedTest
-	@ValueSource(strings = { "client", "rsa", "security", "mqtt", "rsaMqtt", "amqp", "rsaAmqp" })
+	@ValueSource(strings = { "client", "security", "mqtt", "amqp" })
 	void theWorkspaceLibraryIndexesEveryBundleOfOurs(String role) throws IOException {
 		// A downstream workspace resolves the lists from that index; a bundle
 		// of ours missing there is a launch that fails to find it.

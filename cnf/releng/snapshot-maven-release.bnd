@@ -1,0 +1,2 @@
+# Included by cnf/ext/snapshot-release.bnd for snapshot builds only (#261).
+-maven-release: pom,javadoc;path=NONE,sources;path=NONE

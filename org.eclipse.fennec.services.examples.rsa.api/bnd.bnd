@@ -17,3 +17,8 @@ Bundle-Description: \
 Import-Package: \
 	jakarta.annotation.security;version="[2.1,4)",\
 	*
+
+# An example, run from this workspace: never released to Maven Central
+# (#261 - every file is a request, and Central's snapshot repository
+# rate-limits a burst of them).
+-maven-release: local

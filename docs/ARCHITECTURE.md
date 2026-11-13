@@ -115,6 +115,13 @@ org.eclipse.fennec.services.broker.core         # the broker itself
                                    #     Announcements  access to the EventSink
                                    #   Retirement / Republication: the two seams
                                    #     over which the concerns call each other
+                                   #   EmbeddedModelStore: payload models handed in
+                                   #     by providers (fennec.models=embedded, #256)
+
+org.eclipse.fennec.services.models.atlas        # the Model Atlas as the broker's source
+                                   #   of payload models (fennec.models=atlas, #256):
+                                   #   released packages, read pinned by fp1 through
+                                   #   the atlas client; read-only, only with base.uri
 
 org.eclipse.fennec.services.broker.rest         # JAX-RS endpoints
                                    #   /catalog and /implementations are NOT

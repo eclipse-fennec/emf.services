@@ -316,7 +316,14 @@ Two things the gate knows about the broker it guards:
   the payload models it uses (`ServiceInterface.models`, nsURI and
   `fp1` fingerprint). The gate asks the broker's model source — its own
   store unless the configuration names another — and refuses a
-  contract whose pins do not resolve there. A strict broker
+  contract whose pins do not resolve there. With the Model Atlas as the
+  source (`DDSR_MODELS=atlas`) that means: a contract may pin only a
+  version the atlas has released (stage `release` unless configured
+  otherwise). A model a provider hands in still goes to the broker's
+  own store and counts for nothing until the atlas holds the same
+  version — who publishes a model is not who registers a service. The
+  broker computes the fingerprint of what the atlas answers again and
+  takes no claim of the atlas's either. A strict broker
   (`models.strict`, `DDSR_MODELS_STRICT`) also refuses a contract whose
   slots are typed with a model it does not pin. Ecore and the
   registry's own model are on every node and never asked for. Who may

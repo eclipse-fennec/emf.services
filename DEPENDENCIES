@@ -76,6 +76,10 @@ maven/mavencentral/org.eclipse.fennec.m2x/org.eclipse.fennec.m2x.ocl.engine/0.1.
 maven/mavencentral/org.eclipse.fennec.m2x/org.eclipse.fennec.m2x.ocl.model/0.1.1-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.m2x/org.eclipse.fennec.m2x.ocl.parser/0.1.1-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.m2x/org.eclipse.fennec.m2x.unit/0.1.1-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.model.atlas/org.eclipse.fennec.model.atlas.action.api/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.model.atlas/org.eclipse.fennec.model.atlas.rest.client.api/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.model.atlas/org.eclipse.fennec.model.atlas.rest.client.impl/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
+maven/mavencentral/org.eclipse.fennec.model.atlas/org.eclipse.fennec.model.atlas.scope.api/0.1.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.models/io.cloudevents.model/1.0.2-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.util/org.eclipse.fennec.protobuf.osgi/1.0.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec
 maven/mavencentral/org.eclipse.fennec.util/org.eclipse.fennec.protobuf/1.0.0-SNAPSHOT, EPL-2.0, approved, modeling.fennec

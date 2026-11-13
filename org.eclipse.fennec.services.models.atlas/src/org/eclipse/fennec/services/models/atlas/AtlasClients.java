@@ -18,13 +18,15 @@ import java.net.URI;
 import org.eclipse.fennec.model.atlas.rest.client.api.ModelAtlasClient;
 import org.eclipse.fennec.model.atlas.rest.client.api.ModelAtlasClientFactory;
 
+import jakarta.ws.rs.client.ClientBuilder;
+
 /** Opens the atlas client from the source's configuration, refusing one that names no atlas. */
 final class AtlasClients {
 
 	private AtlasClients() {
 	}
 
-	static ModelAtlasClient open(ModelAtlasClientFactory clients, String baseUri, String scope, int connectTimeoutMs,
+	static ModelAtlasClient open(ModelAtlasClientFactory clients, ClientBuilder http, String baseUri, String scope, int connectTimeoutMs,
 			int readTimeoutMs) {
 		if (baseUri == null || baseUri.isBlank()) {
 			throw new IllegalArgumentException("base.uri names no atlas");
@@ -36,6 +38,7 @@ final class AtlasClients {
 				.baseUri(URI.create(baseUri))
 				.connectTimeoutMs(connectTimeoutMs)
 				.readTimeoutMs(readTimeoutMs)
+				.clientProvider(new WhiteboardClientProvider(http))
 				.build();
 	}
 }

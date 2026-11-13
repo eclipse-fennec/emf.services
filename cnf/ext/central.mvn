@@ -295,7 +295,9 @@ com.nimbusds:nimbus-jose-jwt:10.3
 
 # Model Atlas client (#256): the broker's atlas ModelSource reads released payload models
 # through it. impl is the plain-Java client behind ModelAtlasClientFactory, which it offers
-# through the ServiceLoader mediator (SPI Fly); scope.api is the scope model its API names.
+# through the ServiceLoader mediator (SPI Fly); scope.api is the scope model its API names,
+# action.api what scope.api imports.
 org.eclipse.fennec.model.atlas:org.eclipse.fennec.model.atlas.rest.client.api:0.1.0-SNAPSHOT
 org.eclipse.fennec.model.atlas:org.eclipse.fennec.model.atlas.rest.client.impl:0.1.0-SNAPSHOT
 org.eclipse.fennec.model.atlas:org.eclipse.fennec.model.atlas.scope.api:0.1.0-SNAPSHOT
+org.eclipse.fennec.model.atlas:org.eclipse.fennec.model.atlas.action.api:0.1.0-SNAPSHOT

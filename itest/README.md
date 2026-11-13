@@ -28,6 +28,15 @@ broker. Requirements and decisions:
   the development launch with no security variable, a TypeScript
   provider without credentials publishing to it, and a lookup without a
   token finding it.
+- **L (host only, needs podman) — payload models from the Model Atlas:**
+  the published atlas image (`ATLAS_IMAGE`, default
+  `eclipsefennec/model.atlas:file-snapshot`) with scope `fennec`, seeded
+  with the example model on stage `release`, and an open broker with
+  `DDSR_MODELS=atlas` and `DDSR_MODELS_STRICT=true`. The Java provider
+  registers `PersonStore`, whose pin the gate resolves at the atlas;
+  `GET /models` hands out the atlas's model at the generated
+  fingerprint and nothing at another one; a model only handed in to the
+  broker is not handed out (#256).
 - **M (host only) — client certificates:** a CA issued per run
   (`tls/make-certs.sh`), a broker in mode `mtls` with HTTPS demanding a
   certificate and a plain listener for a gateway's header; no

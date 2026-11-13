@@ -587,7 +587,7 @@ if command -v podman >/dev/null 2>&1; then
   wait_for_line "$WORK/payment-atlas.log" "published PersonStore" 90
   LISTED=$(curl -sf "$ATLAS_BROKER_URL/references?interface=PersonStore") \
     || { echo "SCENARIO L FAILED: the lookup did not answer"; exit 1; }
-  grep -q 'payments-atlas' <<<"$LISTED" \
+  grep -q 'localhost:9099/payments/persons' <<<"$LISTED" \
     || { echo "SCENARIO L FAILED: PersonStore is not listed"; grep -i "payload\|refus" "$WORK/broker-atlas.log" | tail -10; exit 1; }
   echo "  ✓ atlas-gate: PersonStore registered, its pinned model resolved at the atlas"
 

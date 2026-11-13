@@ -105,44 +105,68 @@ void feed(String sensorId, PushStream<Double> in);   // the caller streams to th
 A stream is another exchange than a list of the same type and therefore
 another contract: `STREAM` is part of the fingerprint.
 
-**A stream a service returns travels over a messaging broker** — MQTT
-and AMQP alike. The provider's stream is consumed as it comes: each
-value is one answer to the call, and a last one says that the stream is
-over, or why it broke off
+**A stream a service returns travels over a messaging broker**, MQTT
+and AMQP alike, in a **duplex session** of Gecko Messaging: the call
+opens it, the provider accepts it, and every value is one message of
+the session until the stream is over
 ([the wire](WIRE_FORMAT.md#a-stream-as-the-answer)). On the other side
 the proxy hands back a stream of the type the method declares —
 `PushStream<T>` (the Push Stream bundle is then needed in the launch;
-the SDK imports it optionally) or `Flow.Publisher<T>` — and makes the
-call when the stream is consumed: a terminal operation on the
+the SDK imports it optionally) or `Flow.Publisher<T>` — and opens the
+session when the stream is consumed: a terminal operation on the
 `PushStream`, `subscribe` on the publisher. A failure, a declared error
 included, ends the stream as its error.
 
-What is refused, each time at the export and with the slots named,
-rather than accepted and failing on the first call:
+**A caller that leaves stops the stream at its source.** Closing the
+`PushStream`, cancelling the subscription or leaving a `for await` in
+TypeScript closes the session, and the provider's stream is closed with
+it. Both sides keep the session alive with pings within its lease (10 s
+by default); a side that hears nothing for a lease ends it. So a caller
+that goes away without a word — a crash, a lost network — is noticed
+too, and a slow stream lives on as long as both sides are there.
 
-- **a stream over REST** — a request there is answered once;
-- **a stream as an argument**, on every transport: many requests to one
-  responder is another exchange, and nothing carries it yet.
+A service that streams is also called over the right flavor: where it
+announces REST first and a messaging flavor beside it, the proxy calls
+the stream over the messaging flavor and everything else as before.
+
+What is refused, each time with the slots named, rather than accepted
+and failing on the first call:
+
+- **a stream over REST**, at the export, at the broker's validation
+  gate (a `RestOperationFlavor` for a streaming operation breaks the
+  constraint `noStreamOverRest`) and in the consumer: a request there is
+  answered once;
+- **a stream as an argument**, on every transport: the session can
+  carry it, and nothing here sends one yet
+  ([#248](https://github.com/eclipse-fennec/emf.services/issues/248)).
 
 The same holds for a contract document served by the generic REST or
 messaging distribution.
 
-Three limits worth knowing before you build on it:
+Limits worth knowing before you build on it:
 
-- **Leaving early stays local.** A consumer that closes its stream
-  stops listening; the provider is not told and sends to the end.
-- **Flow control ends at the broker.** A slow consumer holds back its
-  own connection — over MQTT with a flavor that names a reply tree,
-  that is the delivery of every answer on that tree — and the provider
-  is paced by its connection to the broker, not by the consumer. A
-  TypeScript consumer queues what arrives faster than it iterates.
-- **A stream that brings nothing for the call timeout fails.** The
-  timeout is between two values, not over the whole stream.
+- **Flow control ends at the broker.** The provider sends within its
+  connection's window, not at the pace of the consumer. A Java consumer
+  that falls behind holds back its own connection. A TypeScript
+  consumer holds up to 256 values it has not taken
+  (`streamBuffer` on the plugin) and then gives the stream up with a
+  named error, or keeps the latest (`policy: 'DISCARD_OLDEST'`). Credit
+  from consumer to provider is
+  [#249](https://github.com/eclipse-fennec/emf.services/issues/249).
+- **A session listens on a reply channel of its own**
+  (`osgi/messaging/reply/<name>/…`), not on the reply tree a flavor
+  names. A broker ACL written for the reply trees needs a rule for that
+  prefix as well, until Gecko Messaging honours a named channel for a
+  session (org.gecko.messaging#31).
+- **Streams to many receivers at once** are a different exchange and
+  not built yet ([#252](https://github.com/eclipse-fennec/emf.services/issues/252)).
 
-The example's `Ticker.count` is this (`PushStream<Integer>`), and the
-harness runs it over MQTT and AMQP — bound by `@Reference` in a second
-framework, and iterated by a TypeScript consumer as an
-`AsyncIterable<number>`.
+The example's `Ticker` is this: `count` (`PushStream<Integer>`) ends by
+itself, `forever` does not. The harness runs both over MQTT and AMQP —
+bound by `@Reference` in a second framework and iterated by a
+TypeScript consumer as an `AsyncIterable<number>` — and checks that the
+provider's `forever` stops when each of the two callers leaves after
+three numbers.
 
 The one thing a consumer of a possibly remote service should not do is
 call it from `activate`: the call waits for a connection and an answer

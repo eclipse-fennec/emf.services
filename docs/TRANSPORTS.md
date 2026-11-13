@@ -285,13 +285,16 @@ protocol carried (AMQP). Nothing in it is written per contract, and
 nothing per protocol beyond that one distinction.
 
 A service method that returns a stream — `PushStream<T>` or
-`Flow.Publisher<T>`, `delivery="STREAM"` in the contract — is answered
-value by value and then with the message that ends the stream
-([Wire format](WIRE_FORMAT.md#a-stream-as-the-answer)). The dispatcher
-asks for the next value when the last one is handed to the connection.
-REST carries no stream, and no transport carries one as an argument
-yet: such a contract is refused when it is served, by slot
-([Remote Service Admin](RSA.md#streams)).
+`Flow.Publisher<T>`, `delivery="STREAM"` in the contract — is served in
+duplex sessions of the messaging library: the operation's channel gets a
+`ReplyToSessionHandler` instead of a plain subscription, and each value
+is one message of the session
+([Wire format](WIRE_FORMAT.md#a-stream-as-the-answer)). The next value
+is asked for when the connection has taken the one before. When the
+caller closes the session or goes silent for its lease, the service's
+stream is closed. REST carries no stream, and no transport carries one
+as an argument yet: such a contract is refused when it is served, by
+slot ([Remote Service Admin](RSA.md#streams)).
 
 Connections are pooled per broker URL (and exchange), opened with the
 first export and closed with the last. Who the node is to a broker is

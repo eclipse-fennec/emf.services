@@ -141,10 +141,12 @@ of the three, while the MQTT flavor of #98 was being built (see
   should use the exclusive queue and not copy the topic convention.
 - **`ReplyToPolicy SINGLE | MULTIPLE`** is the same distinction this
   page draws in the abstract: a call may expect one answer or a stream
-  of them. A `STREAM` return value is the second case, and the
-  messaging transport carries it
-  ([Wire format](WIRE_FORMAT.md#a-stream-as-the-answer)); a `STREAM`
-  argument is not carried yet.
+  of them. A `STREAM` return value is the second case. The messaging
+  transport carries it in the library's duplex sessions, which also
+  give both sides a way to end it early and a lease
+  ([Wire format](WIRE_FORMAT.md#a-stream-as-the-answer)). A `STREAM`
+  argument is not carried yet, although the session could carry it
+  (#248).
 - **The knobs an AMQP channel needs** are `routingKey`, `queueName`,
   `durable`, `exclusive`, `autoDelete` and `contentEncoding` — beside
   the correlation id, reply address and content type the CloudEvents

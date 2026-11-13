@@ -365,27 +365,37 @@ wire.
 ### A stream as the answer
 
 An operation whose return value is delivered as a stream
-(`Parameter.delivery = STREAM`) is answered with many messages instead
-of one. Nothing changes on the request, and nothing in where answers
-go:
+(`Parameter.delivery = STREAM`) is answered in a **duplex session** of
+Gecko Messaging instead of with one answer. The control messages are
+CloudEvents like every other message here; what makes one control is
+the extension `replysession`. The names and rules are the messaging
+library's, so Java and TypeScript nodes open sessions with each other
+in either direction.
 
-| Message | Envelope | Document |
-| --- | --- | --- |
-| one per value | `invoke.reply`, correlated as a single answer is | a `ServiceInvocationResult` holding that one value |
-| the end | the same, plus the extension `replycomplete` = `true` | none |
-| a failure | `replycomplete` = `true` and `replyerror` = the message | a `ServiceInvocationResult` holding the `Diagnostic`, its `code` as for a single answer |
+| Step | From | To | Envelope |
+| --- | --- | --- | --- |
+| open | caller | the operation's request channel | the call (`invoke`, its `ServiceInvocation` as the document), `correlationid` = the session id, `replyto` = the caller's session channel, `replysession` = `open`, `replysessionlease` = the lease asked for |
+| accept | provider | `replyto` | `replysession` = `accept`, `replysessionchannel` = the provider's session channel, `replysessionlease` = the lease granted (1 s to 5 min) |
+| ready | caller | `replysessionchannel` | `replysession` = `ready`; the provider starts sending |
+| a value | provider | `replyto` | `invoke.reply`, `correlationid` = the session id, a `ServiceInvocationResult` holding that one value |
+| a failure | provider | `replyto` | the same, holding the `Diagnostic`, its `code` as for a single answer; then `close` |
+| ping | either | the other's channel | `replysession` = `ping`, when it has sent nothing for a third of the lease |
+| close | either | the other's channel | `replysession` = `close`; from the provider after the last value, from the caller when it leaves |
 
-The two extension names are the ones Gecko Messaging's reply-to-many
-writes, so a consumer whose connection collects the answers itself
-(Java, where the flavor names no reply tree) and one that reads its own
-subscription (Java with a reply tree, TypeScript always) read the same
-messages. On the first of these paths the last message's document is
-not handed on: the consumer learns the failure's text and not its code.
+Every message of the session carries its id as `correlationid`, and
+every message renews the lease. A side that hears nothing for a lease
+ends the session; a provider whose caller went silent stops its stream.
+A responder that refuses a session, or whose stream failed in a way it
+did not describe, says so with `replyerror` and a short fixed reason;
+that is why a failure the service describes travels as a message of
+its own before `close`.
 
-Values arrive in the order they were sent — one publisher, one
-subscription, and QoS 1 where the flavor says so. Nothing travels back
-while a stream runs: a consumer that leaves early stops listening, and
-the provider sends to the end.
+Session channels are generated: `osgi/messaging/reply/<name>/<uuid>`, on
+AMQP the same string as a routing key on the flavor's exchange. A
+responder answers a session whose `replyto` starts with
+`osgi/messaging/reply/` without further configuration. Values arrive in
+the order they were sent — one publisher, one channel, and QoS 1 where
+the flavor says so.
 
 ### Who may read what
 

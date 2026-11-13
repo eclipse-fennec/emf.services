@@ -156,6 +156,36 @@ export class BrokerHttp {
     return asRoots(deserializeFromXmi(text));
   }
 
+  /**
+   * PUT /models (#256): hands in the Ecore of one payload model.
+   *
+   * @returns the fingerprint the broker computed, or undefined when the
+   *   broker takes no models (one older than #256)
+   */
+  async handInModel(ecore: string): Promise<string | undefined> {
+    const response = await this.fetchFn(`${this.base}/models`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/xml', Accept: 'text/plain' },
+      body: ecore,
+    });
+    if (response.status === 404 || response.status === 405) return undefined;
+    const text = await response.text();
+    if (!response.ok) throw new Error(`the broker refused a payload model: ${response.status} - ${text.slice(0, 300)}`);
+    return text.trim();
+  }
+
+  /** GET /models (#256): the Ecore of a payload model, undefined when the broker has no such version. */
+  async fetchModel(nsURI: string, fingerprint?: string): Promise<string | undefined> {
+    const params = new URLSearchParams({ nsURI });
+    if (fingerprint) params.set('fingerprint', fingerprint);
+    const response = await this.fetchFn(`${this.base}/models?${params}`, { headers: { Accept: 'application/xml' } });
+    if (response.status === 404) return undefined;
+    if (!response.ok) {
+      throw new Error(`fetching the payload model ${nsURI} failed: ${response.status} - ${(await response.text()).slice(0, 300)}`);
+    }
+    return response.text();
+  }
+
   /** POST /catalog with X-DDSR-Requestor. */
   async addCatalogEntry(serviceInterface: ServiceInterface, requestor?: string): Promise<Diagnostic> {
     const response = await this.fetchFn(`${this.base}/catalog`, {

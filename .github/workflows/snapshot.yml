@@ -69,11 +69,14 @@ jobs:
           job=$(gh api "repos/$REPO/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs" --paginate \
             -q '.jobs[] | select(.name | startswith("release")) | .id' | head -1)
           [ -n "$job" ] || { echo "::error::no release job in this run"; exit 1; }
-          # The log of a job that has just finished is not there at once: the
-          # first run of this job asked for a minute and got nothing. Wait up to
-          # five, and say what GitHub answered.
+          # curl, not gh: the gh on the runner refuses to write a response that
+          # contains terminal escape sequences, and a Gradle log is full of them
+          # (both failed runs of this job died on that, not on a missing log).
+          # A log may still lag behind the job that wrote it, hence the retries.
           for attempt in $(seq 1 30); do
-            if gh api "repos/$REPO/actions/jobs/$job/logs" > release.log 2> gh.err && [ -s release.log ]; then
+            if curl -sSfL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+                "$GITHUB_API_URL/repos/$REPO/actions/jobs/$job/logs" -o release.log 2> gh.err \
+                && [ -s release.log ]; then
               echo "release job $job: log read on attempt $attempt"
               break
             fi

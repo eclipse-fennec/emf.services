@@ -90,9 +90,9 @@ class PayloadModelPinsTest {
 
 		assertThat(handedIn).as("readings once; Ecore and the registry's own model never").hasSize(1);
 		assertThat(handedIn.get(0)).contains("nsURI=\"http://example.org/readings/1.0\"", "name=\"Reading\"");
-		// Written from the package's own resource: a reference inside it
-		// stays inside the document, so the broker hashes the package and
-		// not a proxy to the original.
+		// Written under the package's nsURI: a reference inside it stays
+		// inside the document, so the broker hashes the package and not a
+		// proxy to the original.
 		assertThat(handedIn.get(0)).contains("eType=\"#//Reading\"");
 		assertThat(contract.getModels()).extracting(ModelReference::getNsURI, ModelReference::getFingerprint)
 				.containsExactly(tuple("http://example.org/readings/1.0", "fp1:from-the-broker"));

@@ -113,23 +113,21 @@ final class PayloadModelPins {
 	/**
 	 * A package as the Ecore document that defines it.
 	 *
-	 * <p>Written from the resource it lives in - a generated package has
-	 * one under its nsURI - so references inside it stay inside the
-	 * document, as in the .ecore it was generated from, and the broker
-	 * computes the very fingerprint fennec EMF generated. A copy would
-	 * keep pointing at the original classes, and the broker would hash
-	 * proxies. Only a package without a resource of its own is copied.
+	 * <p>A copy, written into a resource under the package's nsURI - the
+	 * URI a generated package lives under. The copy's references may
+	 * still point at the original classes; under the same URI they are
+	 * written as fragments ({@code #//Contact}) and read back as
+	 * references inside the document, as in the .ecore the package was
+	 * generated from. The broker then computes exactly the fingerprint
+	 * fennec EMF generated. Under another URI it would hash proxies and
+	 * get another one; and the package's own resource cannot simply be
+	 * saved - under OSGi it is a plain resource that saves nothing.
 	 */
 	static byte[] ecoreOf(EPackage ePackage) throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		Resource home = ePackage.eResource();
-		if (home != null && home.getContents().size() == 1 && home.getContents().get(0) == ePackage) {
-			home.save(out, Map.of());
-			return out.toByteArray();
-		}
 		Resource resource = new EcoreResourceFactoryImpl().createResource(URI.createURI(ePackage.getNsURI()));
 		new ResourceSetImpl().getResources().add(resource);
 		resource.getContents().add(EcoreUtil.copy(ePackage));
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		resource.save(out, Map.of());
 		return out.toByteArray();
 	}

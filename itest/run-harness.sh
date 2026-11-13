@@ -230,6 +230,16 @@ PROBE_PID=$!
 PIDS+=("$PROBE_PID")
 
 wait_for_line "$WORK/probe-a.log" "PROBE_READY" 90
+# The payload model PersonStore pins (#256): the broker keeps it under
+# exactly the fingerprint fennec EMF generated for the package - read from
+# the generated configurator, so a model change needs no edit here. A
+# provider that handed in a document with hrefs out of itself would make
+# the broker hash proxies and keep it under another one.
+EXAMPLE_FP=$(grep -o 'fp1:[0-9a-f]*' "$ROOT/org.eclipse.fennec.services.examples.model/src/org/eclipse/fennec/services/examples/model/ddsrexample/configuration/DDSRExampleEPackageConfigurator.java" | head -1)
+grep -q "payload model http://geckoprojects.org/ddsr/example kept as $EXAMPLE_FP" "$WORK/broker.log" \
+  || { echo "SCENARIO A FAILED: the broker did not keep the example model as $EXAMPLE_FP"
+       grep "payload model" "$WORK/broker.log"; exit 1; }
+echo "  ✓ payload-model-fingerprint: the broker keeps the example model as fennec EMF generated it ($EXAMPLE_FP)"
 
 # --------------------------------------------------- Scenario P (protobuf)
 log "Scenario P: Java provider -> Java consumer, body encoded as protobuf"

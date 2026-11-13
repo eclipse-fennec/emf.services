@@ -12,7 +12,8 @@
  ********************************************************************/
 
 import type { Diagnostic, ServiceInterface } from '@ddsr/model';
-import type { DdsrCatalog } from '../api/ddsr-catalog.js';
+import type { CatalogEntryOptions, DdsrCatalog } from '../api/ddsr-catalog.js';
+import { pinModels } from '../models/payload-models.js';
 import { DdsrClientError } from '../api/errors.js';
 import { BrokerHttp, isError } from './broker-http.js';
 
@@ -25,7 +26,9 @@ export class DdsrCatalogImpl implements DdsrCatalog {
     this.broker = broker;
   }
 
-  async ensureEntry(serviceInterface: ServiceInterface, requestor?: string): Promise<Diagnostic> {
+  async ensureEntry(serviceInterface: ServiceInterface, requestor?: string,
+      options: CatalogEntryOptions = {}): Promise<Diagnostic> {
+    await pinModels(serviceInterface, options.payloadModels ?? [], this.broker);
     const diagnostic = await this.broker.addCatalogEntry(serviceInterface, requestor);
     if (isError(diagnostic) && diagnostic.code !== CATALOG_ENTRY_ALREADY_EXISTS) {
       throw new DdsrClientError(
@@ -36,7 +39,9 @@ export class DdsrCatalogImpl implements DdsrCatalog {
     return diagnostic;
   }
 
-  addEntry(serviceInterface: ServiceInterface, requestor?: string): Promise<Diagnostic> {
+  async addEntry(serviceInterface: ServiceInterface, requestor?: string,
+      options: CatalogEntryOptions = {}): Promise<Diagnostic> {
+    await pinModels(serviceInterface, options.payloadModels ?? [], this.broker);
     return this.broker.addCatalogEntry(serviceInterface, requestor);
   }
 

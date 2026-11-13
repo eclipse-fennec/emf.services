@@ -29,6 +29,7 @@ import type { LocatorTracking, ResolvedRegistration } from '../proxy/service-loc
 import { serviceProxy } from '../proxy/service-proxy.js';
 import { ServiceListenerRegistry } from './service-listener-registry.js';
 import type { BrokerHttp } from './broker-http.js';
+import { ensureModels } from '../models/payload-models.js';
 import { eClassName, toArray } from './emf-util.js';
 import { implementationFingerprint } from '../fingerprint/service-implementation-fingerprint.js';
 import { propertyOf } from '../properties.js';
@@ -82,6 +83,11 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     const roots = await this.broker.getReferences(
       interfaceName, filter, flavors, this.consumerId, fingerprint);
     const locators = this.parseLocators(roots, interfaceName, filter);
+    // The payload models the contracts pin, fetched before anybody calls:
+    // without the package a payload of it cannot be read (#256).
+    for (const contract of new Set(locators.map(locator => locator.serviceInterface))) {
+      await ensureModels(contract, this.broker);
+    }
     for (const locator of locators) this.track(locator);
     return locators;
   }

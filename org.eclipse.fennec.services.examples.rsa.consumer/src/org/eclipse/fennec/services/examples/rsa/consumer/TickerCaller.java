@@ -52,5 +52,12 @@ public class TickerCaller {
 				.onSuccess(ended -> LOG.info("[RSA-Consumer] ticks " + ticks + " — the stream ended"))
 				.onFailure(broken -> LOG.log(Level.WARNING, "[RSA-Consumer] the stream of ticks broke off after "
 						+ ticks, broken));
+		// A stream that would not end by itself: three numbers, and then
+		// this side leaves. Closing it is what reaches the provider.
+		List<Integer> some = new CopyOnWriteArrayList<>();
+		ticker.forever(100).limit(3L).forEach(some::add)
+				.onSuccess(left -> LOG.info("[RSA-Consumer] took " + some + " of forever and left"))
+				.onFailure(broken -> LOG.log(Level.WARNING, "[RSA-Consumer] forever broke off after " + some,
+						broken));
 	}
 }

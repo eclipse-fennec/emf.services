@@ -14,12 +14,18 @@
 package org.eclipse.fennec.services.examples.rsa;
 
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
 import org.eclipse.fennec.services.examples.rsa.api.Ticker;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.util.pushstream.PushEvent;
+import org.osgi.util.pushstream.PushEventSource;
 import org.osgi.util.pushstream.PushStream;
 import org.osgi.util.pushstream.PushStreamProvider;
 
@@ -55,5 +61,28 @@ public class TickerImpl implements Ticker {
 	public PushStream<Integer> count(int upTo) {
 		LOG.info("[RSA-Example] count(" + upTo + ") — a stream of " + upTo);
 		return streams.streamOf(IntStream.rangeClosed(1, upTo).boxed());
+	}
+
+	@Override
+	public PushStream<Integer> forever(long everyMillis) {
+		LOG.info("[RSA-Example] forever(" + everyMillis + ") — a stream that ends when its caller leaves");
+		PushEventSource<Integer> ticking = consumer -> {
+			AtomicInteger next = new AtomicInteger();
+			ScheduledExecutorService clock = Executors.newSingleThreadScheduledExecutor();
+			clock.scheduleAtFixedRate(() -> {
+				try {
+					if (consumer.accept(PushEvent.data(next.incrementAndGet())) < 0) {
+						clock.shutdown();
+					}
+				} catch (Exception refused) {
+					clock.shutdown();
+				}
+			}, 0, everyMillis, TimeUnit.MILLISECONDS);
+			return () -> {
+				clock.shutdownNow();
+				LOG.info("[RSA-Example] forever stopped after " + next.get() + " — its caller left");
+			};
+		};
+		return streams.buildStream(ticking).unbuffered().build();
 	}
 }

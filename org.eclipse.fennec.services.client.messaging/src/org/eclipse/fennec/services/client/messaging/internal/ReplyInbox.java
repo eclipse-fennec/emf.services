@@ -18,18 +18,13 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Flow;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
-import org.eclipse.fennec.services.invocation.Flows;
 
 import io.cloudevents.model.ce.CloudEvent;
 
@@ -100,137 +95,6 @@ final class ReplyInbox {
 		waiting.remove(requestId);
 	}
 
-	/** The calls that are answered with a stream, by the id of their request. */
-	private final Map<String, Answers> streams = new ConcurrentHashMap<>();
-
-	/**
-	 * Expect a stream of answers to this call ({@code Delivery.STREAM}):
-	 * any number of them and the one that ends it.
-	 *
-	 * <p>The answers are handed on as the subscriber asks. One that is
-	 * slower than they arrive fills a small buffer, and then the thread
-	 * that delivers this inbox waits — which holds back every call on
-	 * this subtree, and through the broker's window the responder. A
-	 * stream that brings nothing for {@code idleMillis} fails with a
-	 * {@link TimeoutException}.
-	 */
-	Flow.Publisher<CloudEventCodec.Message> expectMany(String requestId, long idleMillis) {
-		Answers answers = new Answers(requestId, idleMillis);
-		streams.put(requestId, answers);
-		answers.watch();
-		// The message that ends a stream with a failure travels through the
-		// same buffer as the values before it and turns into the failure
-		// only when it is taken: closeExceptionally would overtake them,
-		// and the values still buffered would be lost.
-		return Flows.map(answers.publisher, answers::taken);
-	}
-
-	/** End a stream of answers from this side — the request could not be sent. */
-	void fail(String requestId, Throwable failure) {
-		Answers answers = streams.remove(requestId);
-		if (answers != null) {
-			answers.publisher.closeExceptionally(failure);
-		}
-	}
-
-	/** The stream ended with a failure the responder reported; carries its last message. */
-	static final class StreamFailed extends RuntimeException {
-
-		private static final long serialVersionUID = 1L;
-
-		private final transient CloudEventCodec.Message last;
-
-		StreamFailed(String reason, CloudEventCodec.Message last) {
-			super(reason);
-			this.last = last;
-		}
-
-		/** The message that ended the stream — it may carry the Diagnostic. */
-		CloudEventCodec.Message last() {
-			return last;
-		}
-	}
-
-	/** One stream of answers on its way to its subscriber. */
-	private final class Answers {
-
-		private static final int BUFFER = 64;
-
-		private final String requestId;
-
-		private final long idleMillis;
-
-		private final SubmissionPublisher<CloudEventCodec.Message> publisher =
-				new SubmissionPublisher<>(ForkJoinPool.commonPool(), BUFFER);
-
-		private volatile long lastSeen = System.nanoTime();
-
-		/** Handed to the publisher and not taken by the subscriber yet. */
-		private final AtomicInteger untaken = new AtomicInteger();
-
-		Answers(String requestId, long idleMillis) {
-			this.requestId = requestId;
-			this.idleMillis = idleMillis;
-		}
-
-		void take(CloudEventCodec.Message message) {
-			lastSeen = System.nanoTime();
-			Map<String, String> extensions = message.attributes().getExtensions().map();
-			if (Boolean.parseBoolean(extensions.get(CloudEvents.EXTENSION_REPLY_COMPLETE))) {
-				streams.remove(requestId, this);
-				if (extensions.get(CloudEvents.EXTENSION_REPLY_ERROR) != null) {
-					// Behind the values still buffered; see taken.
-					untaken.incrementAndGet();
-					publisher.submit(message);
-				}
-				// close() hands on what is buffered before it completes.
-				publisher.close();
-				return;
-			}
-			// Blocks while the subscriber is behind by a buffer: the
-			// back-pressure of this stream.
-			untaken.incrementAndGet();
-			publisher.submit(message);
-		}
-
-		/**
-		 * The subscriber takes a message: a value as it is, the message
-		 * that ends the stream with a failure as that failure.
-		 */
-		CloudEventCodec.Message taken(CloudEventCodec.Message message) {
-			untaken.decrementAndGet();
-			String reason = message.attributes().getExtensions().map().get(CloudEvents.EXTENSION_REPLY_ERROR);
-			if (reason != null) {
-				throw new StreamFailed(reason, message);
-			}
-			return message;
-		}
-
-		/**
-		 * Ends a stream that has gone quiet, and looks again while it has
-		 * not. A subscriber still behind on what arrived is not told of the
-		 * silence yet: the failure would overtake what it has not taken.
-		 */
-		void watch() {
-			long quietFor = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - lastSeen);
-			if (streams.get(requestId) != this) {
-				return;
-			}
-			if (quietFor >= idleMillis && untaken.get() > 0) {
-				lastSeen = System.nanoTime();
-				quietFor = 0;
-			}
-			if (quietFor >= idleMillis) {
-				streams.remove(requestId, this);
-				publisher.closeExceptionally(new TimeoutException("nothing arrived on " + subtree + " for "
-						+ idleMillis + " ms"));
-				return;
-			}
-			CompletableFuture.delayedExecutor(idleMillis - quietFor + 1, TimeUnit.MILLISECONDS)
-					.execute(this::watch);
-		}
-	}
-
 	/**
 	 * Wait for the answer to one call.
 	 *
@@ -271,11 +135,6 @@ final class ReplyInbox {
 		String correlation = MessagingRoute.correlationOf(envelope);
 		if (correlation == null) {
 			LOG.warning("[DDSR-MQTT] an answer on " + subtree + " named no call, dropped");
-			return;
-		}
-		Answers stream = streams.get(correlation);
-		if (stream != null) {
-			stream.take(message);
 			return;
 		}
 		CompletableFuture<CloudEventCodec.Message> answer = waiting.get(correlation);

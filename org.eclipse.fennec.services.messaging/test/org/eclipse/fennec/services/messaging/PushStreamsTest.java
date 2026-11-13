@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
+import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -137,5 +138,51 @@ class PushStreamsTest {
 		assertThat(PushStreams.asPublisher("a value")).isNull();
 		assertThat(PushStreams.asPublisher(null)).isNull();
 		stream.close();
+	}
+
+	/** The other way: a publisher sent as a stream, element by element, to its end. */
+	@Test
+	void aPublisherBecomesAStreamThatEndsWhereItEnds() throws Exception {
+		SubmissionPublisher<String> source = new SubmissionPublisher<>();
+		List<String> seen = new CopyOnWriteArrayList<>();
+		CompletableFuture<Long> done = new CompletableFuture<>();
+		PushStreams.streamOf(source).forEach(seen::add).onResolve(() -> done.complete(0L));
+
+		waitForSubscribers(source);
+		source.submit("one");
+		source.submit("two");
+		source.close();
+
+		done.get(5, TimeUnit.SECONDS);
+		assertThat(seen).containsExactly("one", "two");
+	}
+
+	/** Closing the stream - a session that ended - cancels what feeds it. */
+	@Test
+	void closingTheStreamCancelsThePublisher() throws Exception {
+		CompletableFuture<Void> cancelled = new CompletableFuture<>();
+		Flow.Publisher<String> endless = subscriber -> subscriber.onSubscribe(new Flow.Subscription() {
+			@Override
+			public void request(long n) {
+				subscriber.onNext("tick");
+			}
+
+			@Override
+			public void cancel() {
+				cancelled.complete(null);
+			}
+		});
+		PushStream<String> stream = PushStreams.streamOf(endless);
+		List<String> seen = new CopyOnWriteArrayList<>();
+		stream.limit(3L).forEach(seen::add).getValue();
+
+		cancelled.get(5, TimeUnit.SECONDS);
+		assertThat(seen).containsExactly("tick", "tick", "tick");
+	}
+
+	private static void waitForSubscribers(SubmissionPublisher<?> source) throws InterruptedException {
+		for (int i = 0; i < 250 && source.getNumberOfSubscribers() == 0; i++) {
+			Thread.sleep(20);
+		}
 	}
 }

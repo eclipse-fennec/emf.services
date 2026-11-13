@@ -195,8 +195,12 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 			for (String channel : dispatcher.channels()) {
 				// The same on every protocol: the connection knows where
 				// the answer goes, because it read the request.
-				subscriptions.add(link.serve(channel, dispatcher.qosFor(channel),
-						(received, call, reply) -> dispatcher.onRequest(received, call, reply::send)));
+				// An operation that answers with a stream is served in the
+				// messaging library's sessions, every other one per request.
+				subscriptions.add(dispatcher.streams(channel)
+						? link.serveSessions(channel, dispatcher.qosFor(channel), dispatcher::onSession)
+						: link.serve(channel, dispatcher.qosFor(channel),
+								(received, call, reply) -> dispatcher.onRequest(received, call, reply::send)));
 				channels.add(channel);
 			}
 		} catch (RuntimeException failed) {

@@ -451,10 +451,18 @@ public final class MessagingLink implements AutoCloseable {
 	 * the consumer as for any answer. A call that names none gets a
 	 * channel the library generates.
 	 *
-	 * @param timeoutMillis how long the responder may take to accept
+	 * <p>The responder names the channel this side then writes to; the
+	 * library accepts a generated one, and one below
+	 * {@code sessionChannelPrefix} - where a provider of this project
+	 * listens - for this session (org.gecko.messaging#36). Anything else
+	 * ends the session before a message is sent there.
+	 *
+	 * @param sessionChannelPrefix where the responder's session channels
+	 *                             lie, or null for generated ones only
+	 * @param timeoutMillis        how long the responder may take to accept
 	 */
 	public Flow.Publisher<CloudEventCodec.Message> openSession(String topic, CloudEventCodec.Message message,
-			int qos, long timeoutMillis) {
+			int qos, String sessionChannelPrefix, long timeoutMillis) {
 		return subscriber -> {
 			Promise<MessagingSession> opening;
 			try {
@@ -470,6 +478,11 @@ public final class MessagingLink implements AutoCloseable {
 				Message request;
 				try {
 					builder.extensionEntry(MessagingConstants.EXTENSION_REPLY_TIMEOUT, timeoutMillis);
+					if (sessionChannelPrefix != null) {
+						// The responder's channel is the prefix, a "/" and an id.
+						builder.extensionEntry(MessagingConstants.EXTENSION_SESSION_CHANNEL_ALLOWED,
+								sessionChannelPrefix + "/");
+					}
 					request = Envelopes.toMessage(builder, topic, message, qos, message.attributes().getEventId());
 				} finally {
 					current.builders.ungetService(builder);

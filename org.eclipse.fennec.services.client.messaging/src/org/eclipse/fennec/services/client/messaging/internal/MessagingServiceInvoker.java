@@ -449,7 +449,8 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 			linkLater(prepared.route()).whenComplete((link, unreachable) -> {
 				Flow.Publisher<CloudEventCodec.Message> answers = unreachable != null
 						? Flows.failed(unwrapped(unreachable))
-						: link.openSession(placed.channel(), call, placed.qos(), timeout);
+						: link.openSession(placed.channel(), call, placed.qos(),
+								prepared.route().sessionChannelPrefix(placed), timeout);
 				Flow.Publisher<Object> values = Flows.map(answers, answer -> {
 					try {
 						return valueOf(answer, request, prepared.operation(), operationName);

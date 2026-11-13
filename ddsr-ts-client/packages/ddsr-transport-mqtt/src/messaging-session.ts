@@ -204,6 +204,13 @@ export interface RequestedSession {
   replyChannel?: string;
   /** The CloudEvents source of the control messages. */
   source: string;
+  /**
+   * Where the provider's session channels lie: the channel it names in
+   * `accept` must start with this or with the generated prefix, or the
+   * session ends before anything is sent there (as the messaging library
+   * checks it, org.gecko.messaging#36).
+   */
+  providerChannelPrefix?: string;
   /** The request that opens the session, for its id and the channel to answer on. */
   open: (sessionId: string, replyChannel: string, lease: number) => Uint8Array;
   /** How long the responder may take to accept. */
@@ -297,6 +304,14 @@ export async function* requestSession(session: RequestedSession): AsyncGenerator
         return;
       case 'accept':
         if (sendChannel || !message.channel) return;
+        if (!message.channel.startsWith(`${SESSION_REPLY_PREFIX}/`)
+            && !(session.providerChannelPrefix && message.channel.startsWith(`${session.providerChannelPrefix}/`))) {
+          // A responder that names a channel elsewhere could direct this
+          // side's messages to any channel it may write to.
+          end(new Error(`${session.describe}: the provider named a session channel that is not allowed`
+            + ` (${message.channel})`));
+          return;
+        }
         sendChannel = message.channel;
         if (message.lease) lease = message.lease;
         arrived.notify();

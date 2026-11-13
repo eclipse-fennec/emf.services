@@ -781,6 +781,32 @@ describe('a stream a service returns travels over the messaging broker', () => {
     await server.stop();
   });
 
+  // org.gecko.messaging#36: the provider names the channel the caller then
+  // writes to; one outside the provider's tree ends the session first.
+  it('ends a session whose provider names a channel outside its tree, before writing there', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { broker, clientFactory } = testHarness();
+    const forged = broker.connect();
+    await forged.subscribeAsync(requestTopicFor(flavor, firstOpFlavor(flavor)));
+    forged.on('message', (_topic, payload) => {
+      const call = readStructured(payload).attributes.extensions;
+      if (call.replysession !== 'open') return;
+      void forged.publishAsync(call.replyto!, encodeControl(call.correlationid!, '/provider/forged', 'accept',
+        { replysessionchannel: 'somebody/elses/topic', replysessionlease: '10000' }));
+    });
+    const written: string[] = [];
+    broker.onPublish(topic => { if (topic.startsWith('somebody/')) written.push(topic); });
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+
+    await expect((async () => {
+      for await (const value of await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)) as AsyncIterable<unknown>) {
+        void value;
+      }
+    })()).rejects.toThrow(/named a session channel that is not allowed/);
+    expect(written).toEqual([]);
+    await plugin.close();
+  });
+
   it('gives up a stream whose provider sends more than it was granted, and says so', async () => {
     const { flavor, count } = tickerFlavor();
     const { broker, clientFactory } = testHarness();

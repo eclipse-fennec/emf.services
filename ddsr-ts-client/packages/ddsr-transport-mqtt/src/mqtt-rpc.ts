@@ -345,12 +345,13 @@ export function decodeRequest(payload: Uint8Array): MqttRpcRequest {
 /** The answer to a call: a second event, correlated by the request's id. */
 export function encodeResponse(
   requestId: string, source: string, value: unknown, failure?: string,
-  opFlavor: OperationFlavorLike = {}, failureCode = 0,
+  opFlavor: OperationFlavorLike = {}, failureCode = 0, extensions: Record<string, string> = {},
 ): Uint8Array {
   const envelope = newEnvelope(CE_TYPE_INVOKE_REPLY, source,
       declaredContentType(opFlavor, 'produces'));
   envelope.dataschema = DDSRPackage.eNS_URI;
   envelope.extensions[CE_EXTENSION_CORRELATION_ID] = requestId;
+  Object.assign(envelope.extensions, extensions);
   const document = failure !== undefined ? encodeFailure(failure, failureCode) : encodeResult(value);
   return writeStructured(envelope, document);
 }

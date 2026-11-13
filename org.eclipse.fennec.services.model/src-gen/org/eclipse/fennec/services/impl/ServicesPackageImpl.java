@@ -6693,7 +6693,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getServiceReference__GetProperty__String(),
 		   source,
 		   new String[] {
-			   "documentation", "Looks up a property value by key. Returns null when no property with that name exists. Return type is EJavaObject because the concrete value type depends on the Property subclass."
+			   "documentation", "Looks up a property value by key. Returns null when no property with that name exists. Return type is EJavaObject because the concrete value type depends on the Property subclass.",
+			   "body", "for (Property property : getProperties()) {\n\tif (key != null && key.equals(property.getName())) {\n\t\t<%org.eclipse.emf.ecore.EStructuralFeature%> value = property.eClass().getEStructuralFeature(\"value\");\n\t\treturn value == null ? null : property.eGet(value);\n\t}\n}\nreturn null;"
 		   });
 		addAnnotation
 		  ((getServiceReference__GetProperty__String()).getEParameters().get(0),
@@ -6705,7 +6706,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getServiceReference__GetPropertyKeys(),
 		   source,
 		   new String[] {
-			   "documentation", "Returns the names of all defined properties, in undefined order. Empty list if no properties are set."
+			   "documentation", "Returns the names of all defined properties, in undefined order. Empty list if no properties are set.",
+			   "body", "<%org.eclipse.emf.common.util.EList%><String> keys = new <%org.eclipse.emf.common.util.BasicEList%><String>();\nfor (Property property : getProperties()) {\n\tif (property.getName() != null) {\n\t\tkeys.add(property.getName());\n\t}\n}\nreturn keys;"
 		   });
 		addAnnotation
 		  (getServiceReference_Id(),

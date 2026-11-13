@@ -1,4 +1,4 @@
-# The run lists of the project libraries offered (RSA is not, for now: #261), as this project's buildpath —
+# The run lists of the project libraries, as this project's buildpath —
 # the source of the Maven index (mavendeps in bnd.bnd). include=bndrun.bnd
 # because a project would otherwise take the library's project.bnd.
 -library: \

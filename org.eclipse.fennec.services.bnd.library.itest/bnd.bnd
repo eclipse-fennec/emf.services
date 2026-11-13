@@ -21,20 +21,9 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 	fennec.bnd=${workspace}/cnf/ext/fennec.bnd,\
 	@../org.eclipse.fennec.services.bnd.library.workspace/generated/org.eclipse.fennec.services.bnd.library.workspace.jar!/template/fennecServices.maven
 
-# The RSA run lists are still resolved here, but no longer reach the
-# workspace library's index (#261), which used to order their bundles
-# before this test - so they are named here.
 -dependson: \
 	org.eclipse.fennec.services.bnd.library.project,\
-	org.eclipse.fennec.services.bnd.library.workspace,\
-	org.eclipse.fennec.services.rsa,\
-	org.eclipse.fennec.services.rsa.config,\
-	org.eclipse.fennec.services.rsa.topology,\
-	org.eclipse.fennec.services.rsa.discovery.local,\
-	org.eclipse.fennec.services.rsa.discovery.rest,\
-	org.eclipse.fennec.services.rsa.discovery.mqtt,\
-	org.eclipse.fennec.services.rsa.distribution.rest,\
-	org.eclipse.fennec.services.rsa.distribution.messaging
+	org.eclipse.fennec.services.bnd.library.workspace
 
 # A test, run in this workspace: never released to Maven Central (#261).
 -maven-release: local

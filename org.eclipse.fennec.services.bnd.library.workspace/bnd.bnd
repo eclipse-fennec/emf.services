@@ -9,7 +9,7 @@ Bundle-Description: \
 
 -resourceonly: true
 
-# What the index lists: the four offered run lists (RSA not, for now: #261), read from the project
+# What the index lists: the four run lists, read from the project
 # library's own directories, and the project library itself.
 -include: ${.}/buildpath.bnd
 

@@ -48,7 +48,7 @@ class RunListsTest {
 	private final BundleContext context = FrameworkUtil.getBundle(RunListsTest.class).getBundleContext();
 
 	@ParameterizedTest
-	@ValueSource(strings = { "client", "rsa", "security", "mqtt", "rsaMqtt", "amqp", "rsaAmqp" })
+	@ValueSource(strings = { "client", "security", "mqtt", "amqp" })
 	void everyBundleOfTheListIsThereAndResolves(String role) throws IOException {
 		Map<String, Bundle> installed = Arrays.stream(context.getBundles())
 				.collect(Collectors.toMap(Bundle::getSymbolicName, Function.identity(), (a, b) -> a));
@@ -75,10 +75,8 @@ class RunListsTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "client/project.bnd", "client/bndrun.bnd", "rsa/project.bnd", "rsa/bndrun.bnd",
-			"security/project.bnd", "security/bndrun.bnd", "mqtt/project.bnd", "mqtt/bndrun.bnd", "rsaMqtt/project.bnd",
-			"rsaMqtt/bndrun.bnd", "amqp/project.bnd", "amqp/bndrun.bnd", "rsaAmqp/project.bnd",
-			"rsaAmqp/bndrun.bnd" })
+	@ValueSource(strings = { "client/project.bnd", "client/bndrun.bnd", "security/project.bnd", "security/bndrun.bnd",
+			"mqtt/project.bnd", "mqtt/bndrun.bnd", "amqp/project.bnd", "amqp/bndrun.bnd" })
 	void theRangeIsTheReleaseLine(String file) throws IOException {
 		Matcher base = Pattern.compile("^base-version:\\s*(\\d+)\\.(\\d+)\\.(\\d+)\\s*$", Pattern.MULTILINE)
 				.matcher(read("fennec.bnd"));
@@ -91,8 +89,6 @@ class RunListsTest {
 		assertThat(range.group(1)).as("%s follows base-version", file).isEqualTo(expected);
 	}
 
-	// Only the offered libraries: the RSA ones are not, for now, because the
-	// RSA bundles are not released to Maven Central (#261).
 	@ParameterizedTest
 	@ValueSource(strings = { "client", "security", "mqtt", "amqp" })
 	void theWorkspaceLibraryIndexesEveryBundleOfOurs(String role) throws IOException {

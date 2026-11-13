@@ -6401,7 +6401,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings)."
+			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings). A request is answered once, so an operation whose return value is a stream (Delivery::STREAM) has no REST binding (constraint noStreamOverRest); a messaging flavor carries it."
 		   });
 		addAnnotation
 		  (getRestOperationFlavor_Method(),
@@ -7660,7 +7660,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException"
+			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException noStreamOverRest"
 		   });
 		addAnnotation
 		  (securityRequirementEClass,
@@ -7776,7 +7776,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "oneBindingPerParameter", "parameterBindings->isUnique(b | b.parameter)",
 			   "pathBindingsNeedPath", "parameterBindings->forAll(b | b.binding.toString() <> \'PATH\' or path <> null)",
 			   "exceptionBindingsReferenceOperationExceptions", "exceptionBindings->forAll(b | operation.exceptions->includes(b.exception))",
-			   "oneBindingPerException", "exceptionBindings->isUnique(b | b.exception)"
+			   "oneBindingPerException", "exceptionBindings->isUnique(b | b.exception)",
+			   "noStreamOverRest", "operation = null or operation.returnValue = null or operation.returnValue.delivery <> Delivery::STREAM"
 		   });
 		addAnnotation
 		  (securityRequirementEClass,

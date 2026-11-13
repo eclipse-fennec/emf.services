@@ -12,7 +12,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * <!-- end-user-doc -->
  *
  * <!-- begin-model-doc -->
- * REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings).
+ * REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings). A request is answered once, so an operation whose return value is a stream (Delivery::STREAM) has no REST binding (constraint noStreamOverRest); a messaging flavor carries it.
  * <!-- end-model-doc -->
  *
  * <p>
@@ -27,8 +27,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getRestOperationFlavor()
- * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException'"
- *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 bindingsReferenceOperationParameters='parameterBindings-&gt;forAll(b | operation.parameters-&gt;includes(b.parameter))' oneBindingPerParameter='parameterBindings-&gt;isUnique(b | b.parameter)' pathBindingsNeedPath='parameterBindings-&gt;forAll(b | b.binding.toString() &lt;&gt; \'PATH\' or path &lt;&gt; null)' exceptionBindingsReferenceOperationExceptions='exceptionBindings-&gt;forAll(b | operation.exceptions-&gt;includes(b.exception))' oneBindingPerException='exceptionBindings-&gt;isUnique(b | b.exception)'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException noStreamOverRest'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 bindingsReferenceOperationParameters='parameterBindings-&gt;forAll(b | operation.parameters-&gt;includes(b.parameter))' oneBindingPerParameter='parameterBindings-&gt;isUnique(b | b.parameter)' pathBindingsNeedPath='parameterBindings-&gt;forAll(b | b.binding.toString() &lt;&gt; \'PATH\' or path &lt;&gt; null)' exceptionBindingsReferenceOperationExceptions='exceptionBindings-&gt;forAll(b | operation.exceptions-&gt;includes(b.exception))' oneBindingPerException='exceptionBindings-&gt;isUnique(b | b.exception)' noStreamOverRest='operation = null or operation.returnValue = null or operation.returnValue.delivery &lt;&gt; Delivery::STREAM'"
  * @generated
  */
 @ProviderType

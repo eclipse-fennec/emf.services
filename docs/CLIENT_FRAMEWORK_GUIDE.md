@@ -242,13 +242,23 @@ result.setUpperBound(-1);                        // a finite list of them
 list.setReturnValue(result);
 ```
 
-Three things to know:
+Four things to know:
 
 - **`eType` travels as a cross-document href** (`<nsURI>#//<Name>`).
   Neither the broker nor a consumer needs your metamodel on its classpath
   to hold, hash or forward the contract — it reads the URI. Use `type`
   (the language-neutral string) for everything non-EMF; at least one of
   the two must be set.
+- **Your payload models go to the broker with the contract (#256).**
+  Before the contract is registered, the client hands in every package
+  its slots are typed with (`PUT /models`) and pins each in
+  `ServiceInterface.models` with the `fp1` fingerprint the broker
+  answered. The package is written from the resource it was generated
+  into, so the fingerprint is the one fennec EMF generated
+  (`EPackageConfigurator.FINGERPRINT`). A different version of a
+  payload model then moves the contract's sd1, and a consumer without
+  your model fetches it from the broker. Nothing to do in provider
+  code; a pin you set yourself stays.
 - **`upperBound = -1` is what separates `list` from `get`.** Both reach
   the sd1 fingerprint, so changing a result from one instance to a list
   is a contract change and shows up as one.
@@ -564,6 +574,24 @@ const tls = { pfx: readFileSync(process.env.DDSR_TLS_KEYSTORE!),
 new MqttFlavorPlugin({ tls, consumer: 'my-node' });        // the certificate's CN
 new MqttOperationServer({ tls });
 ```
+
+### Payload models in TypeScript (#256)
+
+A TypeScript node has no generated model to fall back on. A consumer
+fetches every payload model a contract pins when it finds the contract
+(`consumer.find`/`findOne`) and registers it as a dynamic package, so a
+payload of it can be read. A provider hands its Ecore documents in with
+the contract — the broker computes the fingerprint, so this side need
+not:
+
+```ts
+await client.catalog.ensureEntry(contract, undefined, {
+  payloadModels: [readFileSync('model/readings.ecore', 'utf8')],
+});
+```
+
+`registerModel`, `knowsModel`, `pinModels` and `ensureModels` are the
+pieces, exported from `@ddsr/client`.
 
 ### Serving a contract in TypeScript
 

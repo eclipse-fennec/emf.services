@@ -26,6 +26,7 @@ import org.eclipse.fennec.services.ModelReference;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
+import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.models.ModelSource;
 
 /**
@@ -67,7 +68,7 @@ final class PayloadModels {
 		return wrong.isEmpty() ? Optional.empty() : Optional.of(String.join("; ", wrong));
 	}
 
-	/** The packages the contract's slots are typed with, Ecore's own left out. */
+	/** The packages the contract's slots are typed with, Ecore's and the registry's own left out. */
 	static Set<String> typedWith(ServiceInterface contract) {
 		Set<String> packages = new LinkedHashSet<>();
 		for (ServiceOperation operation : contract.getOperations()) {
@@ -76,7 +77,9 @@ final class PayloadModels {
 				add(packages, parameter);
 			}
 		}
+		// Ecore and the registry's own model are on every node already.
 		packages.remove(EcorePackage.eNS_URI);
+		packages.remove(ServicesPackage.eNS_URI);
 		return packages;
 	}
 

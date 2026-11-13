@@ -25,7 +25,9 @@ import {
   requestTopicFor,
   topicSegment,
   tlsConnectOptions,
+  encodeRequest,
 } from '../src/mqtt-rpc';
+import { encodeControl } from '../src/messaging-session';
 
 function firstOpFlavor(flavor: MessagingFlavor): MessagingOperationFlavor {
   const list = flavor.operationFlavors as unknown as
@@ -636,25 +638,139 @@ describe('a stream a service returns travels over the messaging broker', () => {
       });
   }
 
-  it('puts one answer per value on the wire and one that ends the stream', async () => {
+  it('travels in a session: accepted, ready, one message per value, then closed', async () => {
     const { flavor, count } = tickerFlavor();
     const { broker, clientFactory } = testHarness();
-    const answers: Array<Record<string, unknown>> = [];
+    const seen: string[] = [];
     broker.onPublish((topic, payload) => {
-      if (topic.includes('/reply/')) answers.push(JSON.parse(new TextDecoder().decode(payload)));
+      const extensions = readStructured(payload).attributes.extensions;
+      seen.push(extensions.replysession ?? (topic.startsWith('osgi/messaging/reply/') ? 'value' : 'call'));
     });
     const server = new MqttOperationServer(flavor, { count: () => upTo(2) }, { clientFactory, log: () => undefined });
     await server.start();
     const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
 
-    await collect(await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)));
+    expect(await collect(await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)))).toEqual([1, 2]);
 
-    expect(answers).toHaveLength(3);
-    expect(answers[0].replycomplete).toBeUndefined();
-    expect(answers[1].replycomplete).toBeUndefined();
-    expect(String(answers[2].replycomplete)).toBe('true');
-    expect(answers[2].replyerror).toBeUndefined();
-    expect(new Set(answers.map(answer => answer.correlationid ?? answer.id)).size).toBeGreaterThan(0);
+    expect(seen.filter(kind => kind !== 'ping')).toEqual(['open', 'accept', 'ready', 'value', 'value', 'close']);
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('stops the provider\'s stream when the caller leaves', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { clientFactory } = testHarness();
+    let produced = 0;
+    let stopped!: () => void;
+    const providerStopped = new Promise<void>(resolve => { stopped = resolve; });
+    const server = new MqttOperationServer(flavor, {
+      count: async function* () {
+        try {
+          for (;;) {
+            produced++;
+            yield produced;
+            await new Promise(resolve => setTimeout(resolve, 5));
+          }
+        } finally {
+          stopped();
+        }
+      },
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined });
+
+    const taken: unknown[] = [];
+    for await (const value of await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)) as AsyncIterable<unknown>) {
+      taken.push(value);
+      if (taken.length === 3) break;
+    }
+    await providerStopped;
+
+    expect(taken).toEqual([1, 2, 3]);
+    const atStop = produced;
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(produced).toBe(atStop);
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('ends a session whose caller went silent, after the lease', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { broker, clientFactory } = testHarness();
+    let stopped!: () => void;
+    const providerStopped = new Promise<void>(resolve => { stopped = resolve; });
+    const server = new MqttOperationServer(flavor, {
+      count: async function* () {
+        try {
+          for (let i = 1; ; i++) {
+            yield i;
+            await new Promise(resolve => setTimeout(resolve, 20));
+          }
+        } finally {
+          stopped();
+        }
+      },
+    }, { clientFactory, log: () => undefined });
+    await server.start();
+    // A caller that opens a session by hand, says it is ready and then
+    // never speaks again - no pings, no close.
+    const silent = broker.connect();
+    const replyChannel = 'osgi/messaging/reply/silent/1';
+    await silent.subscribeAsync(replyChannel);
+    silent.on('message', (_topic, payload) => {
+      const message = readStructured(payload).attributes.extensions;
+      if (message.replysession === 'accept') {
+        void silent.publishAsync(message.replysessionchannel!,
+          encodeControl('session-1', '/consumer/silent', 'ready'));
+      }
+    });
+    const open = encodeRequest(count, {}, replyChannel, '/consumer/silent', firstOpFlavor(flavor),
+      { correlationid: 'session-1', replysession: 'open', replysessionlease: '1000' });
+    await silent.publishAsync(requestTopicFor(flavor, firstOpFlavor(flavor)), open.payload);
+
+    await providerStopped;
+    await server.stop();
+  }, 10_000);
+
+  it('gives up a stream the caller does not keep up with, and says so', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, { count: () => upTo(20) }, { clientFactory, log: () => undefined });
+    await server.start();
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined, streamBuffer: { size: 4 } });
+
+    const values = (await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)) as AsyncIterable<unknown>)[Symbol.asyncIterator]();
+    await values.next();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const failure = await (async () => { for (;;) { if ((await values.next()).done) return undefined; } })()
+      .then(() => undefined, (error: unknown) => error);
+
+    expect(String(failure)).toMatch(/more than 4 values the caller had not taken/);
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('keeps the latest where the caller asks for that, and drops the oldest', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { clientFactory } = testHarness();
+    const server = new MqttOperationServer(flavor, { count: () => upTo(20) }, { clientFactory, log: () => undefined });
+    await server.start();
+    const plugin = new MqttFlavorPlugin({
+      clientFactory, log: () => undefined, streamBuffer: { size: 4, policy: 'DISCARD_OLDEST' },
+    });
+
+    const values = (await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)) as AsyncIterable<unknown>)[Symbol.asyncIterator]();
+    const first = await values.next();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const rest: unknown[] = [];
+    for (;;) {
+      const next = await values.next();
+      if (next.done) break;
+      rest.push(next.value);
+    }
+
+    expect(first.value).toBe(1);
+    expect(rest).toEqual([17, 18, 19, 20]);
     await plugin.close();
     await server.stop();
   });
@@ -728,13 +844,13 @@ describe('a stream a service returns travels over the messaging broker', () => {
     await server.stop();
   });
 
-  it('fails a stream that brings nothing for the timeout', async () => {
+  it('fails a stream whose provider does not accept the session in time', async () => {
     const { flavor, count } = tickerFlavor();
     const { clientFactory } = testHarness();
     const plugin = new MqttFlavorPlugin({ clientFactory, timeoutMs: 50, log: () => undefined });
 
     await expect(collect(await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor))))
-      .rejects.toThrow(/brought nothing for 50ms/);
+      .rejects.toThrow(/did not accept the session within 50ms/);
     await plugin.close();
   });
 

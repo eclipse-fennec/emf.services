@@ -20,11 +20,11 @@ import {
   connectMessaging,
   decodeRequest,
   encodeResponse,
-  encodeStreamEnd,
   qosFor,
   requestTopicFor,
 } from './mqtt-rpc.js';
 import type { AmqpConnectOptions } from './amqp-client.js';
+import { respondSession } from './messaging-session.js';
 
 /** One handler per operation name; receives the named args, returns the result. */
 export type OperationHandlers = Record<string, (args: Record<string, unknown>) => unknown | Promise<unknown>>;
@@ -62,6 +62,8 @@ export class MqttOperationServer {
   private readonly log: (message: string) => void;
   private client: MqttRpcClientLike | undefined;
   private readonly topicToOperation = new Map<string, string>();
+  /** The channels of the sessions open now, and who listens on each. */
+  private readonly sessions = new Map<string, (payload: Uint8Array) => void>();
 
   constructor(flavor: MessagingFlavor, handlers: OperationHandlers, options: MqttOperationServerOptions = {}) {
     this.flavor = flavor;
@@ -114,6 +116,11 @@ export class MqttOperationServer {
 
   private async dispatch(topic: string, payload: Uint8Array): Promise<void> {
     const client = this.client;
+    const session = this.sessions.get(topic);
+    if (session) {
+      session(payload);
+      return;
+    }
     const operationName = this.topicToOperation.get(topic);
     if (!client || !operationName) return; // a reply or foreign topic
     let request;
@@ -125,16 +132,17 @@ export class MqttOperationServer {
     }
     const source = `/provider/${this.options.originLabel ?? operationName}`;
     const opFlavor = this.operationFlavorFor(operationName);
+    if (request.session) {
+      // A stream it answers with (Parameter.delivery = STREAM): a session
+      // of the messaging library, accepted on a channel of this side's.
+      this.serveSession(client, request, request.session, source, opFlavor, operationName);
+      return;
+    }
     let answer: Uint8Array;
     try {
       const result = await this.handlers[operationName](request.args);
       if (isAsyncIterable(result)) {
-        // A handler that answers with a stream (Parameter.delivery =
-        // STREAM): one answer per value and then the one that ends it.
-        // Each is handed to the broker before the next value is asked
-        // of the handler, so a fast handler is paced by the connection.
-        await this.answerWithStream(client, request, source, opFlavor, result);
-        return;
+        throw new Error(`${operationName} answered with a stream, and the call opened no session for one`);
       }
       answer = encodeResponse(request.id, source, result, undefined, opFlavor);
     } catch (error) {
@@ -163,32 +171,40 @@ export class MqttOperationServer {
     }
   }
 
-  private async answerWithStream(
-    client: MqttRpcClientLike, request: { id: string; replyTo: string }, source: string,
-    opFlavor: ServiceOperationFlavor | undefined, values: AsyncIterable<unknown>,
-  ): Promise<void> {
-    let last: Uint8Array;
-    try {
-      for await (const value of values) {
-        await client.publishAsync(request.replyTo,
-          encodeResponse(request.id, source, value, undefined, opFlavor), { retain: false });
-      }
-      last = encodeStreamEnd(request.id, source);
-    } catch (error) {
-      // The stream broke off - in the handler, or on the way out. The
-      // caller is told with the mark that ends the stream, and a
-      // declared error travels under its code as in a single answer.
-      const declared = declaredRaisedBy(opFlavor?.operation, error);
-      last = declared
-        ? encodeStreamEnd(request.id, source,
-            (error as Error).message || declared.name || 'declared error', declaredCode(declared) ?? 0)
-        : encodeStreamEnd(request.id, source, String(error));
-    }
-    try {
-      await client.publishAsync(request.replyTo, last, { retain: false });
-    } catch (error) {
-      this.log(`could not end the stream answering ${request.id} on ${request.replyTo}: ${String(error)}`);
-    }
+  private serveSession(
+    client: MqttRpcClientLike, request: { args: Record<string, unknown>; replyTo: string },
+    session: { id: string; lease?: number }, source: string, opFlavor: ServiceOperationFlavor | undefined,
+    operationName: string,
+  ): void {
+    const qos = opFlavor ? qosFor(this.flavor, opFlavor as MessagingOperationFlavor) : 1;
+    respondSession({
+      client,
+      sessionId: session.id,
+      replyTo: request.replyTo,
+      askedLease: session.lease,
+      owner: this.options.originLabel ?? operationName,
+      source,
+      qos,
+      start: async () => {
+        const result = await this.handlers[operationName](request.args);
+        if (!isAsyncIterable(result)) {
+          throw new Error(`${operationName} streams by its contract, and its handler returned no async iterable`);
+        }
+        return result;
+      },
+      value: value => encodeResponse(session.id, source, value, undefined, opFlavor),
+      failure: error => {
+        // A declared error travels under its code, as in a single answer.
+        const declared = declaredRaisedBy(opFlavor?.operation, error);
+        return declared
+          ? encodeResponse(session.id, source, undefined,
+              (error as Error).message || declared.name || 'declared error', {}, declaredCode(declared) ?? 0)
+          : encodeResponse(session.id, source, undefined, String(error));
+      },
+      listen: (channel, deliver) => { this.sessions.set(channel, deliver); },
+      unlisten: channel => { this.sessions.delete(channel); },
+      log: this.log,
+    }).catch(error => this.log(`could not open the session ${session.id}: ${String(error)}`));
   }
 }
 

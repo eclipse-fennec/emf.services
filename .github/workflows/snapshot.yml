@@ -69,14 +69,17 @@ jobs:
           job=$(gh api "repos/$REPO/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs" --paginate \
             -q '.jobs[] | select(.name | startswith("release")) | .id' | head -1)
           [ -n "$job" ] || { echo "::error::no release job in this run"; exit 1; }
-          # The log of a job that has just finished can take a moment to appear.
-          for attempt in 1 2 3 4 5 6; do
-            if gh api "repos/$REPO/actions/jobs/$job/logs" > release.log 2>/dev/null && [ -s release.log ]; then
+          # The log of a job that has just finished is not there at once: the
+          # first run of this job asked for a minute and got nothing. Wait up to
+          # five, and say what GitHub answered.
+          for attempt in $(seq 1 30); do
+            if gh api "repos/$REPO/actions/jobs/$job/logs" > release.log 2> gh.err && [ -s release.log ]; then
+              echo "release job $job: log read on attempt $attempt"
               break
             fi
             sleep 10
           done
-          [ -s release.log ] || { echo "::error::the release job's log could not be read"; exit 1; }
+          [ -s release.log ] || { cat gh.err; echo "::error::the release job's log could not be read"; exit 1; }
           uploaded=$(grep -c 'Upload https://' release.log || true)
           failed=$(grep -c 'something went wrong during upload' release.log || true)
           echo "uploads: $uploaded, refused: $failed"

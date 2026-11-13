@@ -399,6 +399,11 @@ class ReflectiveServiceProxyFactoryRetryTest {
 		}
 
 		@Override
+		public boolean carriesStreams() {
+			return true;
+		}
+
+		@Override
 		public Flow.Publisher<Object> invokeStream(ServiceLocator locator, String operationName,
 				Map<String, Object> args) {
 			streamsAsked++;
@@ -498,7 +503,7 @@ class ReflectiveServiceProxyFactoryRetryTest {
 		streaming(FlowBalances.class, new ScriptedInvoker()).getBalance("acc-1").subscribe(collecting);
 
 		assertThat(collecting.ended.get(5, TimeUnit.SECONDS))
-				.isInstanceOf(DdsrException.class).hasMessageContaining("carries no streams");
+				.isInstanceOf(DdsrException.class).hasMessageContaining("a stream travels over a messaging flavor");
 	}
 
 	@Test

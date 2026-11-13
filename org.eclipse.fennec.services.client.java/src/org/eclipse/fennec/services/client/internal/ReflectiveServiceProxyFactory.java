@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.eclipse.fennec.services.FlavorKind;
@@ -85,9 +85,12 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 	 * order it announces them, because that order is the provider's own
 	 * statement about what it prefers. A lookup already filtered by what
 	 * this consumer said it speaks, so anything still listed here is
-	 * fair game.
+	 * fair game. For an operation that streams, only an invoker that
+	 * carries streams will do: a service may announce REST first and a
+	 * messaging flavor beside it, and the stream travels over the one
+	 * that can carry it (#251).
 	 */
-	private ServiceInvoker invokerFor(ServiceLocator locator) {
+	private ServiceInvoker invokerFor(ServiceLocator locator, boolean streams) {
 		ServiceImplementation implementation = locator.implementation();
 		List<String> announced = new ArrayList<>();
 		if (implementation != null) {
@@ -97,7 +100,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				}
 				announced.add(flavor.getKind().getName());
 				ServiceInvoker invoker = invokers.invokerFor(flavor.getKind());
-				if (invoker != null) {
+				if (invoker != null && (!streams || invoker.carriesStreams())) {
 					return invoker;
 				}
 			}
@@ -107,6 +110,10 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		Set<FlavorKind> spoken = invokers.flavors();
 		if (announced.isEmpty() && spoken.size() == 1) {
 			return invokers.invokerFor(spoken.iterator().next());
+		}
+		if (streams) {
+			throw new DdsrException("this service streams over none of " + announced
+					+ " that this runtime can carry a stream over — a stream travels over a messaging flavor");
 		}
 		throw new DdsrException("this service is reachable over " + announced
 				+ " and this runtime speaks " + spoken
@@ -165,14 +172,14 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		 * rebind to another implementation, and the new one does not have
 		 * to be reachable the same way as the old.
 		 */
-		private final Function<ServiceLocator, ServiceInvoker> invokerFor;
+		private final BiFunction<ServiceLocator, Boolean, ServiceInvoker> invokerFor;
 		private final ServiceLocator locator;
 		private final Class<?> serviceInterface;
 
 		/** Where calls that answer later are made. */
 		private final Supplier<Executor> calls;
 
-		RemoteCallHandler(Function<ServiceLocator, ServiceInvoker> invokerFor, ServiceLocator locator,
+		RemoteCallHandler(BiFunction<ServiceLocator, Boolean, ServiceInvoker> invokerFor, ServiceLocator locator,
 				Class<?> serviceInterface, Supplier<Executor> calls) {
 			this.calls = calls;
 			this.invokerFor = invokerFor;
@@ -224,7 +231,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 			Class<?> element = AsyncReturns.rawOf(AsyncReturns.valueType(method.getGenericReturnType()));
 			Flow.Publisher<Object> answered;
 			try {
-				answered = invokerFor.apply(locator).invokeStream(locator, method.getName(), buildArgMap(method, args));
+				answered = invokerFor.apply(locator, true).invokeStream(locator, method.getName(), buildArgMap(method, args));
 			} catch (RuntimeException unstartable) {
 				answered = Flows.failed(unstartable);
 			}
@@ -287,7 +294,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 			Executor blocking = calls.get();
 			CompletionStage<Object> answered;
 			try {
-				answered = invokerFor.apply(locator).invokeAsync(locator, method.getName(), argMap, blocking);
+				answered = invokerFor.apply(locator, false).invokeAsync(locator, method.getName(), argMap, blocking);
 			} catch (RuntimeException unstartable) {
 				answered = CompletableFuture.failedFuture(unstartable);
 			}
@@ -349,7 +356,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 			Map<String, Object> argMap = buildArgMap(method, args);
 			Object result;
 			try {
-				result = invokerFor.apply(locator).invoke(locator, method.getName(), argMap);
+				result = invokerFor.apply(locator, false).invoke(locator, method.getName(), argMap);
 			} catch (DdsrException failure) {
 				// #59: the registered provider did not answer. Rebind away from
 				// it and retry exactly once; a second failure is the caller's.
@@ -359,7 +366,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 				}
 				// Asked again after the rebind: the service it bound to now
 				// may be reachable a different way than the one that failed.
-				result = invokerFor.apply(locator).invoke(locator, method.getName(), argMap);
+				result = invokerFor.apply(locator, false).invoke(locator, method.getName(), argMap);
 			}
 			return result;
 		}

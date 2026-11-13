@@ -28,6 +28,14 @@ export interface FlavorPlugin {
   canHandle(flavor: ServiceFlavor): boolean;
 
   /**
+   * Whether this transport carries a stream a service returns
+   * (Parameter.delivery = STREAM). An operation that streams is called
+   * over the first announced flavor whose plugin says so; one without
+   * this - REST - is left to the calls answered once (#251).
+   */
+  readonly carriesStreams?: boolean;
+
+  /**
    * Invokes a service operation over the transport this plugin provides.
    *
    * @param operation     the ServiceOperation being called

@@ -101,6 +101,8 @@ export class MqttFlavorPlugin implements FlavorPlugin {
    * node that speaks both registers the plugin twice.
    */
   readonly flavorKind: 'MQTT' | 'AMQP';
+  /** A session of the messaging library carries a stream, over MQTT and AMQP alike. */
+  readonly carriesStreams = true;
 
   private readonly options: MqttFlavorPluginOptions;
   private readonly log: (message: string) => void;

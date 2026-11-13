@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.MessagingFlavor;
@@ -33,6 +35,7 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.client.DdsrException;
 import org.eclipse.fennec.services.client.ServiceInvoker;
 import org.eclipse.fennec.services.client.ServiceLocator;
+import org.eclipse.fennec.services.invocation.Flows;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -53,6 +56,12 @@ class ProxyFactoryFlavorSelectionTest {
 		double getBalance(String accountId);
 	}
 
+	/** A service that answers with a stream (Delivery.STREAM). */
+	public interface Readings {
+
+		Flow.Publisher<Double> readings(String sensorId);
+	}
+
 	/** Records that it was the one asked. */
 	private static final class NamedInvoker implements ServiceInvoker {
 
@@ -68,6 +77,19 @@ class ProxyFactoryFlavorSelectionTest {
 		public Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args) {
 			calls.add(operationName);
 			return 42.0;
+		}
+
+		/** The invokers named after messaging carry streams; REST does not. */
+		@Override
+		public boolean carriesStreams() {
+			return !"REST".equals(name);
+		}
+
+		@Override
+		public Flow.Publisher<Object> invokeStream(ServiceLocator locator, String operationName,
+				Map<String, Object> args) {
+			calls.add(operationName);
+			return Flows.failed(new IllegalStateException("not consumed in this test"));
 		}
 	}
 
@@ -115,9 +137,16 @@ class ProxyFactoryFlavorSelectionTest {
 		accountId.setName("accountId");
 		accountId.setType("string");
 		getBalance.getParameters().add(accountId);
+		ServiceOperation readings = F.createServiceOperation();
+		readings.setName("readings");
+		var sensorId = F.createParameter();
+		sensorId.setName("sensorId");
+		sensorId.setType("string");
+		readings.getParameters().add(sensorId);
 		ServiceInterface contract = F.createServiceInterface();
 		contract.setName("Payment");
 		contract.getOperations().add(getBalance);
+		contract.getOperations().add(readings);
 
 		ServiceImplementation implementation = F.createServiceImplementation();
 		implementation.setName("payments");
@@ -230,5 +259,66 @@ class ProxyFactoryFlavorSelectionTest {
 		assertThat(mqtt.calls)
 			.as("a transport that left takes its flavor with it")
 			.containsExactly("getBalance");
+	}
+
+	/**
+	 * A service may announce REST first and a messaging flavor beside it:
+	 * calls answered once go over REST, the stream over the flavor that
+	 * carries it (#251).
+	 */
+	@Test
+	void a_stream_goes_over_the_first_flavor_that_carries_one() {
+		NamedInvoker rest = new NamedInvoker("REST");
+		NamedInvoker mqtt = new NamedInvoker("MQTT");
+		ServiceLocator locator = new FixedLocator(announcing(FlavorKind.REST, FlavorKind.MQTT));
+
+		CompletableFuture<Throwable> ended = new CompletableFuture<>();
+		factoryWith(rest, mqtt).newProxy(Readings.class, locator).readings("s-1").subscribe(new Ignoring() {
+			@Override
+			public void onError(Throwable failure) {
+				ended.complete(failure);
+			}
+		});
+
+		assertThat(ended.join()).as("the fake ends every stream it is asked for").hasMessage("not consumed in this test");
+		assertThat(rest.calls).isEmpty();
+		assertThat(mqtt.calls).containsExactly("readings");
+	}
+
+	@Test
+	void a_stream_no_announced_flavor_carries_is_refused_by_name() {
+		NamedInvoker rest = new NamedInvoker("REST");
+		ServiceLocator locator = new FixedLocator(announcing(FlavorKind.REST));
+		CompletableFuture<Throwable> failed = new CompletableFuture<>();
+
+		factoryWith(rest).newProxy(Readings.class, locator).readings("s-1").subscribe(new Ignoring() {
+			@Override
+			public void onError(Throwable failure) {
+				failed.complete(failure);
+			}
+		});
+
+		assertThat(failed.join()).hasMessageContaining("a stream travels over a messaging flavor");
+		assertThat(rest.calls).isEmpty();
+	}
+
+	private static class Ignoring implements Flow.Subscriber<Double> {
+
+		@Override
+		public void onSubscribe(Flow.Subscription subscription) {
+			subscription.request(1);
+		}
+
+		@Override
+		public void onNext(Double item) {
+		}
+
+		@Override
+		public void onError(Throwable failure) {
+		}
+
+		@Override
+		public void onComplete() {
+		}
 	}
 }

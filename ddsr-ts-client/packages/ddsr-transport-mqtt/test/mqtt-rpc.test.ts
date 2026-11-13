@@ -26,6 +26,7 @@ import {
   topicSegment,
   tlsConnectOptions,
   encodeRequest,
+  encodeResponse,
 } from '../src/mqtt-rpc';
 import { encodeControl } from '../src/messaging-session';
 
@@ -740,22 +741,75 @@ describe('a stream a service returns travels over the messaging broker', () => {
     await server.stop();
   }, 10_000);
 
-  it('gives up a stream the caller does not keep up with, and says so', async () => {
+  // org.gecko.messaging#33: the caller grants what it can hold, and the
+  // provider sends within it.
+  it('holds the provider back to what a slow caller can hold, and loses nothing', async () => {
     const { flavor, count } = tickerFlavor();
-    const { clientFactory } = testHarness();
-    const server = new MqttOperationServer(flavor, { count: () => upTo(20) }, { clientFactory, log: () => undefined });
+    const { broker, clientFactory } = testHarness();
+    let produced = 0;
+    let taken = 0;
+    let mostAhead = 0;
+    const server = new MqttOperationServer(flavor, {
+      count: async function* () {
+        for (let i = 1; i <= 20; i++) {
+          produced = i;
+          mostAhead = Math.max(mostAhead, produced - taken);
+          yield i;
+        }
+      },
+    }, { clientFactory, log: () => undefined });
     await server.start();
+    const credits: string[] = [];
+    broker.onPublish((_topic, payload) => {
+      const extensions = readStructured(payload).attributes.extensions;
+      if (extensions.replysessioncredit) credits.push(`${extensions.replysession}:${extensions.replysessioncredit}`);
+    });
+    const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined, streamBuffer: { size: 4 } });
+
+    const seen: unknown[] = [];
+    for await (const value of await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)) as AsyncIterable<unknown>) {
+      seen.push(value);
+      taken++;
+      await new Promise(resolve => setTimeout(resolve, 5));
+    }
+
+    expect(seen).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
+    expect(credits[0]).toBe('ready:4');
+    expect(credits.slice(1).every(grant => grant === 'credit:2')).toBe(true);
+    expect(mostAhead).toBeLessThanOrEqual(5);
+    await plugin.close();
+    await server.stop();
+  });
+
+  it('gives up a stream whose provider sends more than it was granted, and says so', async () => {
+    const { flavor, count } = tickerFlavor();
+    const { broker, clientFactory } = testHarness();
+    // A provider that ignores the credit: accepts, waits for ready, then
+    // sends ten values at once.
+    const rogue = broker.connect();
+    await rogue.subscribeAsync(requestTopicFor(flavor, firstOpFlavor(flavor)));
+    rogue.on('message', (_topic, payload) => {
+      const call = readStructured(payload).attributes.extensions;
+      if (call.replysession !== 'open') return;
+      const session = call.correlationid!;
+      void rogue.publishAsync(readStructured(payload).attributes.extensions.replyto!, encodeControl(session, '/provider/rogue',
+        'accept', { replysessionchannel: 'ddsr/rpc/ticker/count/session/rogue', replysessionlease: '10000' }));
+      void (async () => {
+        for (let i = 1; i <= 10; i++) {
+          await rogue.publishAsync(call.replyto!, encodeResponse(session, '/provider/rogue', i));
+        }
+      })();
+    });
     const plugin = new MqttFlavorPlugin({ clientFactory, log: () => undefined, streamBuffer: { size: 4 } });
 
     const values = (await plugin.invoke(count, {}, flavor, firstOpFlavor(flavor)) as AsyncIterable<unknown>)[Symbol.asyncIterator]();
     await values.next();
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 50));
     const failure = await (async () => { for (;;) { if ((await values.next()).done) return undefined; } })()
       .then(() => undefined, (error: unknown) => error);
 
     expect(String(failure)).toMatch(/more than 4 values the caller had not taken/);
     await plugin.close();
-    await server.stop();
   });
 
   it('keeps the latest where the caller asks for that, and drops the oldest', async () => {
@@ -832,7 +886,12 @@ describe('a stream a service returns travels over the messaging broker', () => {
     declared.properties.push(code);
     count.exceptions.push(declared);
     class OutOfRangeException extends Error {}
-    const { clientFactory } = testHarness();
+    const { broker, clientFactory } = testHarness();
+    const reasons: string[] = [];
+    broker.onPublish((_topic, payload) => {
+      const reason = readStructured(payload).attributes.extensions.replysessionreason;
+      if (reason) reasons.push(reason);
+    });
     const server = new MqttOperationServer(flavor, {
       count: async function* () {
         yield 1;
@@ -848,6 +907,8 @@ describe('a stream a service returns travels over the messaging broker', () => {
     expect(failure).toBeInstanceOf(DdsrServiceError);
     expect((failure as DdsrServiceError).exception).toBe(declared);
     expect((failure as DdsrServiceError).message).toBe('no more than one');
+    // org.gecko.messaging#32: the last message says it ends the session, and why.
+    expect(reasons).toEqual(['declared:416']);
     await plugin.close();
     await server.stop();
   });

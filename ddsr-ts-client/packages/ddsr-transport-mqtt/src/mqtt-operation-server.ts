@@ -25,7 +25,7 @@ import {
   sessionPrefixFor,
 } from './mqtt-rpc.js';
 import type { AmqpConnectOptions } from './amqp-client.js';
-import { respondSession } from './messaging-session.js';
+import { SESSION_REASON, respondSession } from './messaging-session.js';
 
 /** One handler per operation name; receives the named args, returns the result. */
 export type OperationHandlers = Record<string, (args: Record<string, unknown>) => unknown | Promise<unknown>>;
@@ -196,12 +196,15 @@ export class MqttOperationServer {
       },
       value: value => encodeResponse(session.id, source, value, undefined, opFlavor),
       failure: error => {
-        // A declared error travels under its code, as in a single answer.
+        // A declared error travels under its code, as in a single answer,
+        // and the reason that ends the session says which.
         const declared = declaredRaisedBy(opFlavor?.operation, error);
+        const code = declared ? declaredCode(declared) ?? 0 : 0;
+        const reason = { [SESSION_REASON]: declared ? `declared:${code}` : 'failed' };
         return declared
           ? encodeResponse(session.id, source, undefined,
-              (error as Error).message || declared.name || 'declared error', {}, declaredCode(declared) ?? 0)
-          : encodeResponse(session.id, source, undefined, String(error));
+              (error as Error).message || declared.name || 'declared error', {}, code, reason)
+          : encodeResponse(session.id, source, undefined, String(error), {}, 0, reason);
       },
       listen: (channel, deliver) => { this.sessions.set(channel, deliver); },
       unlisten: channel => { this.sessions.delete(channel); },

@@ -28,7 +28,7 @@ export type { MqttRpcRequest, MqttRpcResponse, MqttRpcClientLike } from './mqtt-
 export { operationHandlers } from './operation-target.js';
 export type { OperationTarget, HandlersOptions } from './operation-target.js';
 export {
-  SESSION, SESSION_CHANNEL, SESSION_LEASE, REPLY_ERROR, SESSION_REPLY_PREFIX, DEFAULT_LEASE_MS, DEFAULT_STREAM_BUFFER,
+  SESSION, SESSION_CHANNEL, SESSION_LEASE, SESSION_CREDIT, SESSION_REASON, REPLY_ERROR, SESSION_REPLY_PREFIX, DEFAULT_LEASE_MS, DEFAULT_STREAM_BUFFER,
   BoundedQueue, encodeControl, readSessionMessage, requestSession, respondSession, sessionChannelFor,
 } from './messaging-session.js';
 export type { OverflowPolicy, StreamBuffer, SessionMessage } from './messaging-session.js';

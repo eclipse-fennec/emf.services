@@ -48,6 +48,18 @@ export const SESSION_LEASE = 'replysessionlease';
 /** A responder that failed or refused says so with this, and a short reason. */
 export const REPLY_ERROR = 'replyerror';
 /**
+ * Of a `ready` and a `credit`: the messages the requester grants the
+ * responder, first in all, then as many more as it took
+ * (org.gecko.messaging#33). A responder sends only within the credit.
+ */
+export const SESSION_CREDIT = 'replysessioncredit';
+/**
+ * Of the last message of a session its responder ended with a reason of
+ * the application (org.gecko.messaging#32): the reason. The requester
+ * delivers the message and then fails the session with that reason.
+ */
+export const SESSION_REASON = 'replysessionreason';
+/**
  * Where generated reply channels start. A responder answers a request
  * whose reply channel starts here without further configuration.
  */
@@ -60,7 +72,7 @@ const MAX_LEASE_MS = 300_000;
 /** The type of the control messages this side writes; the messaging library reads none. */
 const CONTROL_TYPE = 'org.eclipse.fennec.services.session';
 
-export type SessionKind = 'open' | 'accept' | 'ready' | 'ping' | 'close';
+export type SessionKind = 'open' | 'accept' | 'ready' | 'credit' | 'ping' | 'close';
 
 /** A channel of one session, under the generated prefix and the owner's name. */
 export function sessionChannelFor(owner: string): string {
@@ -86,6 +98,10 @@ export interface SessionMessage {
   kind?: string;
   channel?: string;
   lease?: number;
+  /** The credit a `ready` or `credit` grants. */
+  credit?: number;
+  /** The reason a responder ended the session with, on its last message. */
+  reason?: string;
   /** A responder that failed or refused. */
   error?: string;
 }
@@ -93,7 +109,10 @@ export interface SessionMessage {
 export function readSessionMessage(payload: Uint8Array): SessionMessage {
   const extensions = readStructured(payload).attributes.extensions;
   const lease = extensions[SESSION_LEASE] !== undefined ? Number(extensions[SESSION_LEASE]) : undefined;
+  const credit = extensions[SESSION_CREDIT] !== undefined ? Number(extensions[SESSION_CREDIT]) : undefined;
   return {
+    credit: credit !== undefined && Number.isFinite(credit) && credit > 0 ? Math.floor(credit) : undefined,
+    reason: extensions[SESSION_REASON],
     correlationId: extensions[CE_EXTENSION_CORRELATION_ID],
     kind: extensions[SESSION],
     channel: extensions[SESSION_CHANNEL],
@@ -223,11 +242,25 @@ export async function* requestSession(session: RequestedSession): AsyncGenerator
     if (!ended) ended = { error };
     arrived.notify();
   };
-  const sendControl = (kind: SessionKind): void => {
+  const sendControl = (kind: SessionKind, extra: Record<string, string> = {}): void => {
     if (!sendChannel) return;
     lastSent = Date.now();
-    client.publishAsync(sendChannel, encodeControl(id, session.source, kind), { qos, retain: false })
+    client.publishAsync(sendChannel, encodeControl(id, session.source, kind, extra), { qos, retain: false })
       .catch(() => undefined);
+  };
+  // The responder sends no more than this side can hold: the buffer when
+  // it fails on overflow, nothing when the latest wins anyway - as the
+  // messaging library grants it.
+  const credit = buffer.policy === 'FAIL' ? buffer.size : 0;
+  let taken = 0;
+  const took = (): void => {
+    if (credit === 0) return;
+    taken++;
+    if (taken >= Math.max(1, Math.floor(credit / 2))) {
+      const n = taken;
+      taken = 0;
+      if (!ended) sendControl('credit', { [SESSION_CREDIT]: String(n) });
+    }
   };
 
   session.register(id, payload => {
@@ -244,6 +277,14 @@ export async function* requestSession(session: RequestedSession): AsyncGenerator
       // than a short reason.
       closedByResponder = message.kind === 'close' || message.kind === undefined;
       end(new Error(`the provider ended ${session.describe}: ${message.error}`));
+      return;
+    }
+    if (message.kind === undefined && message.reason !== undefined) {
+      // The responder ended the session with a reason of its own: its
+      // last message, delivered last, then the end with that reason.
+      if (readStructured(payload).data?.length) queue.push(payload);
+      closedByResponder = false;
+      end(new Error(`the provider ended ${session.describe}: ${message.reason}`));
       return;
     }
     switch (message.kind) {
@@ -289,7 +330,7 @@ export async function* requestSession(session: RequestedSession): AsyncGenerator
     if (early?.error) throw early.error;
     if (early) return;
 
-    sendControl('ready');
+    sendControl('ready', credit > 0 ? { [SESSION_CREDIT]: String(credit) } : {});
     const period = Math.max(1, Math.floor(lease / 3));
     keeper = setInterval(() => {
       const now = Date.now();
@@ -304,6 +345,7 @@ export async function* requestSession(session: RequestedSession): AsyncGenerator
     for (;;) {
       const next = queue.shift();
       if (next !== undefined) {
+        took();
         yield next;
         continue;
       }
@@ -342,7 +384,10 @@ export interface RespondedSession {
   start: () => Promise<AsyncIterable<unknown>>;
   /** One message of the session for a value. */
   value: (value: unknown) => Uint8Array;
-  /** The message that says why the stream broke off, before the session ends. */
+  /**
+   * The message that says why the stream broke off, the session's last;
+   * it carries `replysessionreason`, which ends the session.
+   */
   failure: (error: unknown) => Uint8Array;
   /** Where this side's channel is listened on; the server routes by it. */
   listen: (channel: string, deliver: (payload: Uint8Array) => void) => void;
@@ -367,6 +412,17 @@ export async function respondSession(session: RespondedSession): Promise<void> {
   let started = false;
   let iterator: AsyncIterator<unknown> | undefined;
   let keeper: ReturnType<typeof setInterval> | undefined;
+  // The requester's credit, once it granted any: messages it may still
+  // receive. A requester that grants none gets as fast as this side goes.
+  let credited = false;
+  let credit = 0;
+  const granted = new Signal();
+  const grant = (n: number | undefined): void => {
+    if (!n) return;
+    credited = true;
+    credit += Math.min(n, 1 << 20);
+    granted.notify();
+  };
 
   const publish = async (payload: Uint8Array, to = session.replyTo): Promise<void> => {
     lastSent = Date.now();
@@ -389,6 +445,17 @@ export async function respondSession(session: RespondedSession): Promise<void> {
     try {
       iterator = (await session.start())[Symbol.asyncIterator]();
       while (!ended) {
+        if (credited) {
+          // Holds the handler back while the requester is behind.
+          while (credit <= 0 && !ended) {
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            await Promise.race([granted.wait(),
+              new Promise<void>(resolve => { timer = setTimeout(resolve, Math.max(1, Math.floor(lease / 3))); })]);
+            clearTimeout(timer);
+          }
+          if (ended) break;
+          credit--;
+        }
         const next = await iterator.next();
         if (next.done || ended) break;
         await publish(session.value(next.value));
@@ -397,9 +464,12 @@ export async function respondSession(session: RespondedSession): Promise<void> {
       if (!ended) {
         session.log(`the stream of session ${id} broke off: ${String(error)}`);
         // The reason as the session's last message, a declared error
-        // under its code; the library's own failure mark says no more
-        // than that something failed.
+        // under its code, marked as the end (replysessionreason): the
+        // requester delivers it, ends the session with the reason and
+        // closes it itself.
         await publish(session.failure(error)).catch(() => undefined);
+        await end(false);
+        return;
       }
     }
     await end(true);
@@ -414,8 +484,11 @@ export async function respondSession(session: RespondedSession): Promise<void> {
     }
     if (message.correlationId !== id) return;
     lastSeen = Date.now();
-    if (message.kind === 'ready' && !started) {
+    if (message.kind === 'credit') {
+      grant(message.credit);
+    } else if (message.kind === 'ready' && !started) {
       started = true;
+      grant(message.credit);
       void run();
     } else if (message.kind === 'close') {
       // The requester left: nothing more to tell it.

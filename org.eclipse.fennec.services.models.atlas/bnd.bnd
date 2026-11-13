@@ -13,7 +13,9 @@ Bundle-Description: \
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.emf.osgi.api;version=latest,\
-	org.eclipse.fennec.model.atlas.rest.client.api;version=latest
+	org.eclipse.fennec.model.atlas.rest.client.api;version=latest,\
+	org.eclipse.fennec.model.atlas.rest.client.impl;version=latest,\
+	jakarta.ws.rs-api;version=latest
 
 # Plain JUnit: the source takes the atlas read and the fingerprint as
 # functions, so a fake answers for the atlas.

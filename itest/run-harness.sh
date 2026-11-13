@@ -29,6 +29,11 @@ WORK="$ROOT/itest/work"
 TS="$ROOT/ddsr-ts-client"
 BROKER_URL="http://localhost:8887/ddsr/rest"
 PIDS=()
+# The Model Atlas of scenario L, as it is published: the file image,
+# configured from the environment and seeded from a mounted folder.
+ATLAS_IMAGE="${ATLAS_IMAGE:-docker.io/eclipsefennec/model.atlas:file-snapshot}"
+ATLAS_CONTAINER=ddsr-itest-atlas
+ATLAS_PORT=18090
 # shellcheck source=keycloak/auth.sh
 . "$ROOT/itest/keycloak/auth.sh"
 
@@ -41,6 +46,7 @@ cleanup() {
   done
   wait 2>/dev/null || true
   stop_keycloak
+  podman rm -f "$ATLAS_CONTAINER" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -525,6 +531,103 @@ kill "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 wait "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 echo "Scenario N OK: no token anywhere — published, and listed to a caller without one"
 
+# ============================================================ Scenario L
+log "Scenario L: payload models from the Model Atlas"
+# The broker's other source of payload models (#256): a Model Atlas holds
+# the released packages, the broker reads them pinned by fingerprint and
+# hands out nothing the atlas has not released. The atlas is the published
+# file image; its scope and the example model on stage release come from
+# the environment and a seed folder, nothing of it is built here.
+atlas_expect() { # expected actual what
+  [ "$2" = "$1" ] || { echo "SCENARIO L FAILED: $3 answered $2, expected $1"; exit 1; }
+}
+if command -v podman >/dev/null 2>&1; then
+  require_port_free "$ATLAS_PORT"
+  require_port_free 8896
+  require_port_free 9099
+  ATLAS_SEED="$WORK/atlas-seed"
+  mkdir -p "$ATLAS_SEED/scopes/fennec"
+  cp "$ROOT/org.eclipse.fennec.services.examples.model/model/example.ecore" "$ATLAS_SEED/scopes/fennec/"
+  podman run -d --replace --name "$ATLAS_CONTAINER" -p "$ATLAS_PORT:8080" \
+    -e MODEL_ATLAS_SCOPE=fennec -e INITIAL_MODELS_FOLDER=/initial-models \
+    -v "$ATLAS_SEED:/initial-models:ro,Z" "$ATLAS_IMAGE" >/dev/null
+  ATLAS_URL="http://localhost:$ATLAS_PORT/atlas/rest"
+  waited=0
+  until [ "$(curl -s -o /dev/null -w '%{http_code}' "$ATLAS_URL/fennec/schema/stages/release/content?nsUri=http://geckoprojects.org/ddsr/example")" = 200 ]; do
+    sleep 1
+    waited=$((waited + 1))
+    if [ "$waited" -ge 120 ]; then
+      podman logs --tail 40 "$ATLAS_CONTAINER" >&2 || true
+      echo "SCENARIO L FAILED: the atlas did not release the example model within 120 s"; exit 1
+    fi
+  done
+  echo "  atlas up, the example model on stage release"
+
+  ATLAS_BROKER_URL="http://localhost:8896/ddsr/rest"
+  (cd "$WORK" && mkdir -p broker-atlas && cd broker-atlas \
+    && exec env -u DDSR_AUTH_MODE -u DDSR_JWT_ISSUER DDSR_HTTP_PORT=8896 DDSR_PUBLIC_URL="$ATLAS_BROKER_URL" \
+         DDSR_MODELS=atlas DDSR_MODELS_STRICT=true DDSR_MODELS_ATLAS_URI="$ATLAS_URL" DDSR_MODELS_ATLAS_SCOPE=fennec \
+         java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-atlas.log" 2>&1 &
+  ATLAS_BROKER_PID=$!
+  PIDS+=("$ATLAS_BROKER_PID")
+  wait_for_url "$ATLAS_BROKER_URL/catalog" 60
+  wait_for_broker_contracts "$ATLAS_BROKER_URL"
+  grep -q "payload models come from the Model Atlas at $ATLAS_URL" "$WORK/broker-atlas.log" \
+    || { echo "SCENARIO L FAILED: the broker does not read its models from the atlas"; tail -40 "$WORK/broker-atlas.log"; exit 1; }
+
+  # The Java provider registers PersonStore, whose contract pins the example
+  # model: the gate asks the atlas, and the atlas has released that version.
+  (cd "$WORK" && mkdir -p payment-atlas && cd payment-atlas \
+    && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_TOKENS=none DDSR_BROKER_URL="$ATLAS_BROKER_URL" \
+         PAYMENTS_HTTP_PORT=9099 PAYMENTS_PUBLIC_URL="http://localhost:9099/payments" \
+         PAYMENTS_PROVIDER_NAME=payments-atlas PAYMENTS_PUBLISH_PERSON_STORE=true \
+         java -Dgosh.args=--nointeractive -jar "$PROVIDER_JAR") >"$WORK/payment-atlas.log" 2>&1 &
+  ATLAS_PROVIDER_PID=$!
+  PIDS+=("$ATLAS_PROVIDER_PID")
+  wait_for_line "$WORK/payment-atlas.log" "published PersonStore" 90
+  LISTED=$(curl -sf "$ATLAS_BROKER_URL/references?interface=PersonStore") \
+    || { echo "SCENARIO L FAILED: the lookup did not answer"; exit 1; }
+  grep -q 'payments-atlas' <<<"$LISTED" \
+    || { echo "SCENARIO L FAILED: PersonStore is not listed"; grep -i "payload\|refus" "$WORK/broker-atlas.log" | tail -10; exit 1; }
+  echo "  ✓ atlas-gate: PersonStore registered, its pinned model resolved at the atlas"
+
+  # A consumer gets the model from the broker, and it is the atlas's.
+  MODEL_HEADERS=$(curl -s -D - -o "$WORK/atlas-model.ecore" \
+    "$ATLAS_BROKER_URL/models?nsURI=http://geckoprojects.org/ddsr/example&fingerprint=$EXAMPLE_FP")
+  grep -qi "^X-Fennec-Model-Fingerprint: $EXAMPLE_FP" <<<"$MODEL_HEADERS" \
+    || { echo "SCENARIO L FAILED: the broker did not hand out the example model at $EXAMPLE_FP"; echo "$MODEL_HEADERS"; exit 1; }
+  grep -q 'nsURI="http://geckoprojects.org/ddsr/example"' "$WORK/atlas-model.ecore" \
+    || { echo "SCENARIO L FAILED: what the broker handed out is not the example model"; head -c 600 "$WORK/atlas-model.ecore"; exit 1; }
+  atlas_expect 404 "$(curl -s -o /dev/null -w '%{http_code}' \
+    "$ATLAS_BROKER_URL/models?nsURI=http://geckoprojects.org/ddsr/example&fingerprint=fp1:0000")" \
+    "the example model pinned at a version the atlas does not hold"
+  echo "  ✓ atlas-models: the broker hands out the atlas's model at its fingerprint, and no other version"
+
+  # What a provider hands in goes to the broker's own store; it is not a
+  # released model, so the broker does not hand it out.
+  cat >"$WORK/handed-in.ecore" <<'ECORE'
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    name="handedin" nsURI="http://example.org/itest/handed-in" nsPrefix="handedin">
+  <eClassifiers xsi:type="ecore:EClass" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="Thing"/>
+</ecore:EPackage>
+ECORE
+  atlas_expect 201 "$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H 'Content-Type: application/xml' \
+    --data-binary @"$WORK/handed-in.ecore" "$ATLAS_BROKER_URL/models")" "a model handed in"
+  atlas_expect 404 "$(curl -s -o /dev/null -w '%{http_code}' \
+    "$ATLAS_BROKER_URL/models?nsURI=http://example.org/itest/handed-in")" "a model only handed in, not released"
+  echo "  ✓ atlas-authority: a model handed in is not one the atlas released"
+
+  kill "$ATLAS_PROVIDER_PID" "$ATLAS_BROKER_PID" 2>/dev/null || true
+  wait "$ATLAS_PROVIDER_PID" "$ATLAS_BROKER_PID" 2>/dev/null || true
+  podman rm -f "$ATLAS_CONTAINER" >/dev/null 2>&1 || true
+  echo "Scenario L OK: the broker's payload models come from the atlas, released and pinned"
+  SCENARIO_L="L + "
+else
+  echo "Scenario L skipped: the Model Atlas runs as a container and there is no podman"
+  SCENARIO_L=""
+fi
+
 # ============================================================ Scenario M
 log "Scenario M: client certificates, mode mtls"
 # The other authentication mode (SECURITY.md §7d), independent of
@@ -761,4 +864,4 @@ kill "$MTLS_PID" 2>/dev/null || true
 wait "$MTLS_PID" 2>/dev/null || true
 echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client$(secured && echo '; discovery by certificate, calls by token')"
 
-log "HARNESS PASSED (A + B + F + G + H + T + N + M, auth: $HARNESS_AUTH)"
+log "HARNESS PASSED (A + B + F + G + H + T + N + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"

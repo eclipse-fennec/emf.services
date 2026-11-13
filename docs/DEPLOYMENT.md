@@ -73,6 +73,10 @@ interpolation plugin. The defaults are the ones
 | `DDSR_HTTP_PORT` | `8887` | Port the broker listens on (inside the container). |
 | `DDSR_HTTP_HOST` | `0.0.0.0` | Interface the broker binds. |
 | `DDSR_MODELS_STRICT` | `false` | Refuse a contract whose slots are typed with a payload model it does not pin in its `models` (#256). Pinned models must resolve in the broker's model source either way; see [Security](SECURITY.md) (the gate). |
+| `DDSR_MODELS` | `embedded` | The broker's source of payload models (#256): `embedded`, the store in the broker that providers hand their models to, or `atlas`, a Model Atlas that holds the released ones (the next three rows). |
+| `DDSR_MODELS_ATLAS_URI` | *(empty)* | Base URI of the Model Atlas REST API, e.g. `http://atlas:8080/atlas/rest`. Empty means no atlas source, without an error; with `DDSR_MODELS=atlas` the broker then waits for one. |
+| `DDSR_MODELS_ATLAS_SCOPE` | *(empty)* | The atlas scope the payload models are read from. Required with a URI. |
+| `DDSR_MODELS_ATLAS_STAGE` | `release` | The stage a model must have reached in the atlas before a contract may pin it. |
 | `DDSR_DOMAIN` | *(empty)* | The one domain this broker serves — a tenant, a topology (see [Security](SECURITY.md) §3). Which callers belong to it is the verifier's issuer and audience below; the name is written onto every registration and session. Empty is the single default domain. |
 | `DDSR_AUTH_MODE` | `bearer` | `bearer`, `mtls` or `none`. Bearer needs the verifier below, `mtls` HTTPS with client certificates (the `DDSR_HTTPS_*` and `DDSR_MTLS_*` rows); `none` is an open broker, meant for development. See [Security](SECURITY.md) §7a and §7d. |
 | `DDSR_JWT_ISSUER` | *(empty)* | The token issuer the broker trusts (`iss`), e.g. a Keycloak realm URL. Empty means no verifier — and in bearer mode a broker that serves nothing. |
@@ -131,6 +135,34 @@ snapshot dependency whose propagators are still a no-op upstream
 (eclipse-osgi-technology/opentelemetry#22), and
 [TELEMETRY.md](TELEMETRY.md) describes how a deployment adds it in the
 meantime.
+
+### Payload models from a Model Atlas
+
+By default the broker keeps the payload models providers hand in
+(`DDSR_MODELS=embedded`). An organisation that runs the Model Atlas can
+make it the authority instead: a contract may then pin only a model the
+atlas has released. The published file image of the atlas is enough;
+its scope comes from the environment, and models placed in a seed
+folder under `scopes/<scope>/` land on stage `release`:
+
+```bash
+podman run -d --name atlas -p 8080:8080 \
+  -e MODEL_ATLAS_SCOPE=fennec -e INITIAL_MODELS_FOLDER=/initial-models \
+  -v ./initial-models:/initial-models:ro,Z \
+  docker.io/eclipsefennec/model.atlas:file-snapshot
+
+podman run -d --name broker -p 8887:8887 \
+  -e DDSR_MODELS=atlas \
+  -e DDSR_MODELS_ATLAS_URI=http://atlas:8080/atlas/rest \
+  -e DDSR_MODELS_ATLAS_SCOPE=fennec \
+  ... ddsr/broker
+```
+
+The broker reads through the atlas's client library and computes the
+fingerprint of every answer itself. It starts only once the atlas
+source is configured: with `DDSR_MODELS=atlas` and no URI there is no
+model source, and the broker waits for one. Harness scenario L runs
+exactly this pair.
 
 ### State and the data volume
 

@@ -113,6 +113,19 @@ launch with no security variable at all, a provider without credentials
 publishing to it, and a lookup without a token finding it. The path a
 developer takes stays proven whatever the rest of the run did.
 
+**Scenario L** (host, needs podman) proves the Model Atlas as the
+broker's source of payload models (#256). The atlas is its published
+file image, configured from the environment (scope `fennec`) and seeded
+with the example model, which it puts on stage `release`; nothing of
+the atlas is built here. An open broker runs with `DDSR_MODELS=atlas`
+and `DDSR_MODELS_STRICT=true`. The Java provider registers
+`PersonStore`, whose contract pins the example model, and the lookup
+lists it — the gate resolved the pin at the atlas. `GET /models` hands
+out the model with exactly the fingerprint fennec EMF generated, `404`
+at any other fingerprint (the atlas refuses the pin with `412`), and a
+model only handed in to the broker is not handed out: the atlas is the
+authority, the broker's own store is not asked.
+
 After it, **scenario M** proves the other authentication mode
 ([Security](SECURITY.md) §7d), again independent of Keycloak.
 `itest/tls/make-certs.sh` issues a CA for the run, a server certificate

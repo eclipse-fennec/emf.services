@@ -35,6 +35,9 @@ import org.eclipse.fennec.model.atlas.rest.client.api.ResolvedEPackage;
 import org.eclipse.fennec.model.atlas.rest.client.api.VersionMismatchException;
 import org.eclipse.fennec.services.models.ModelDocument;
 import org.eclipse.fennec.services.models.ModelSource;
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
@@ -43,6 +46,8 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
+
+import jakarta.ws.rs.client.ClientBuilder;
 
 /**
  * The Model Atlas as the source of a broker's payload models (#256).
@@ -60,9 +65,13 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  *
  * <p>A pinned answer is kept: content named by its fingerprint does not
  * change. An unpinned one is asked every time.
+ *
+ * <p>Registers itself, and only with {@code base.uri}: the broker's
+ * configuration carries this PID with the atlas from the environment,
+ * and an empty one means no atlas, without an error - the same rule as
+ * the JWT verifier.
  */
-@Component(service = ModelSource.class, configurationPid = AtlasModelSource.PID,
-		configurationPolicy = ConfigurationPolicy.REQUIRE, property = ModelSource.PROPERTY + "=atlas")
+@Component(name = AtlasModelSource.PID, configurationPolicy = ConfigurationPolicy.REQUIRE, service = {})
 @Designate(ocd = AtlasModelSource.Config.class)
 public final class AtlasModelSource implements ModelSource {
 
@@ -74,11 +83,11 @@ public final class AtlasModelSource implements ModelSource {
 			description = "Reads the payload models a broker's contracts pin from a Model Atlas")
 	@interface Config {
 
-		@AttributeDefinition(description = "Base URI of the atlas REST API, e.g. http://atlas:8080/atlas/rest")
-		String base_uri();
+		@AttributeDefinition(description = "Base URI of the atlas REST API, e.g. http://atlas:8080/atlas/rest; empty = no atlas")
+		String base_uri() default "";
 
 		@AttributeDefinition(description = "The atlas scope the models are read from")
-		String scope();
+		String scope() default "";
 
 		@AttributeDefinition(description = "The stage a model must have reached")
 		String stage() default "release";
@@ -98,38 +107,59 @@ public final class AtlasModelSource implements ModelSource {
 	private final Function<EPackage, String> fingerprints;
 	private final String origin;
 	private final AutoCloseable client;
+	private final ServiceRegistration<ModelSource> registration;
 
 	/** nsURI + " " + fingerprint. */
 	private final Map<String, ModelDocument> pinned = new ConcurrentHashMap<>();
 
 	@Activate
-	public AtlasModelSource(Config config, @Reference ModelAtlasClientFactory clients,
-			@Reference FingerprintService fingerprints) {
-		this(open(config, clients), config.scope(), config.stage(), ePackage -> fingerprints.fingerprint(ePackage));
-		LOG.info(() -> "[DDSR] payload models come from the Model Atlas at " + config.base_uri() + ", " + origin);
+	public AtlasModelSource(Config config, BundleContext context, @Reference ModelAtlasClientFactory clients,
+			@Reference ClientBuilder http, @Reference FingerprintService fingerprints) {
+		this(config.base_uri().isBlank() ? null : open(config, clients, http), config.scope(), config.stage(),
+				ePackage -> fingerprints.fingerprint(ePackage), context);
+		if (registration == null) {
+			LOG.fine("[DDSR] no Model Atlas configured (base.uri is empty)");
+		} else {
+			LOG.info(() -> "[DDSR] payload models come from the Model Atlas at " + config.base_uri() + ", " + origin);
+		}
 	}
 
 	private AtlasModelSource(ModelAtlasClient client, String scope, String stage,
-			Function<EPackage, String> fingerprints) {
-		this((nsURI, fingerprint) -> client.ePackages().resolveAtStage(nsURI, scope, stage, fingerprint),
-				fingerprints, scope, stage, client);
+			Function<EPackage, String> fingerprints, BundleContext context) {
+		this(client == null ? (nsURI, fingerprint) -> Optional.empty()
+				: (nsURI, fingerprint) -> client.ePackages().resolveAtStage(nsURI, scope, stage, fingerprint),
+				fingerprints, scope, stage, client, client == null ? null : context);
 	}
 
 	AtlasModelSource(AtlasRead atlas, Function<EPackage, String> fingerprints, String scope, String stage,
 			AutoCloseable client) {
+		this(atlas, fingerprints, scope, stage, client, null);
+	}
+
+	private AtlasModelSource(AtlasRead atlas, Function<EPackage, String> fingerprints, String scope, String stage,
+			AutoCloseable client, BundleContext context) {
 		this.atlas = atlas;
 		this.fingerprints = fingerprints;
 		this.origin = "atlas " + scope + "/" + stage;
 		this.client = client;
+		this.registration = context == null ? null
+				: context.registerService(ModelSource.class, this,
+						FrameworkUtil.asDictionary(Map.of(ModelSource.PROPERTY, "atlas")));
 	}
 
-	private static ModelAtlasClient open(Config config, ModelAtlasClientFactory clients) {
-		return AtlasClients.open(clients, config.base_uri(), config.scope(), config.connect_timeout_ms(),
+	private static ModelAtlasClient open(Config config, ModelAtlasClientFactory clients, ClientBuilder http) {
+		return AtlasClients.open(clients, http, config.base_uri(), config.scope(), config.connect_timeout_ms(),
 				config.read_timeout_ms());
 	}
 
 	@Deactivate
 	void deactivate() {
+		if (registration != null) {
+			registration.unregister();
+		}
+		if (client == null) {
+			return;
+		}
 		try {
 			client.close();
 		} catch (Exception closing) {

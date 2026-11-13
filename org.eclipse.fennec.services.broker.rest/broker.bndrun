@@ -27,7 +27,9 @@ jersey.deps:
 	bnd.identity;id='org.eclipse.osgitech.rest.sse',\
 	bnd.identity;id='org.apache.felix.configadmin.plugin.interpolation',\
 	bnd.identity;id='org.eclipse.fennec.services.security.jwt',\
-	bnd.identity;id='org.eclipse.fennec.services.security.mtls'
+	bnd.identity;id='org.eclipse.fennec.services.security.mtls',\
+	bnd.identity;id='org.eclipse.fennec.services.models.atlas',\
+	bnd.identity;id='org.eclipse.fennec.model.atlas.rest.client.impl'
 # we need to run our project
 -runbundles.project: \
 	org.eclipse.osgitech.rest.servlet.whiteboard;version=latest,\
@@ -154,4 +156,9 @@ jersey.deps:
 	org.objectweb.asm.commons;version='[9.10.1,9.10.2)',\
 	org.objectweb.asm.tree;version='[9.10.1,9.10.2)',\
 	org.objectweb.asm.tree.analysis;version='[9.10.1,9.10.2)',\
-	org.objectweb.asm.util;version='[9.10.1,9.10.2)'
+	org.objectweb.asm.util;version='[9.10.1,9.10.2)',\
+	org.eclipse.fennec.model.atlas.action.api;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.model.atlas.rest.client.api;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.model.atlas.rest.client.impl;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.model.atlas.scope.api;version='[0.1.0,0.1.1)',\
+	org.eclipse.fennec.services.models.atlas;version=snapshot

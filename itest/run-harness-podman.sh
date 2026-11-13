@@ -423,6 +423,24 @@ ticker_from_typescript() {
   fi
   grep -q "ticks \[1, 2, 3\] — the stream ended" "$WORK/$name.log" \
     || { echo "$scenario FAILED: the stream did not reach TypeScript whole and in order"; cat "$WORK/$name.log"; exit 1; }
+  grep -q "took \[1, 2, 3\] of forever and left" "$WORK/$name.log" \
+    || { echo "$scenario FAILED: TypeScript did not take three of forever"; cat "$WORK/$name.log"; exit 1; }
+}
+
+# The exporting framework stopped forever twice: once for the Java
+# consumer that left, once for the TypeScript one.
+forever_stopped_twice() {
+  local container="$1" scenario="$2" waited=0 stops
+  while :; do
+    podman logs "$container" >"$WORK/.$container.stops.log" 2>&1 || true
+    stops=$(grep -c "forever stopped after" "$WORK/.$container.stops.log" || true)
+    [ "${stops:-0}" -ge 2 ] && return 0
+    if [ "$waited" -ge 120 ]; then
+      echo "$scenario FAILED: the provider stopped forever ${stops:-0} time(s), expected 2"
+      grep "RSA-Example" "$WORK/.$container.stops.log"; exit 1
+    fi
+    sleep 0.5; waited=$((waited + 1))
+  done
 }
 
 # ============================================================ Scenario I
@@ -471,11 +489,21 @@ echo "  ✓ promise-over-mqtt: the call came back before the greeting, and the g
 grep -q "ticks \[1, 2, 3, 4, 5\] — the stream ended" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the stream did not arrive whole and in order"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
 echo "  ✓ stream-over-mqtt: five values in order, and the end of the stream"
+# A stream that does not end by itself: the consumer takes three numbers
+# and leaves, and closing its session is what stops the provider (#247).
+wait_for_log ddsr-rsa-export "forever stopped after" 30
+podman logs ddsr-rsa-export >"$WORK/rsa-export.log" 2>&1
+podman logs ddsr-rsa-import >"$WORK/rsa-import.log" 2>&1
+grep -q "took \[1, 2, 3\] of forever and left" "$WORK/rsa-import.log" \
+  || { echo "SCENARIO I FAILED: the consumer did not take three of forever"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
+echo "  ✓ stream-cancel-over-mqtt: the caller left after three, and the provider's stream stopped"
 # The same stream across the language border: a TypeScript consumer
 # looks the derived contract up, reads STREAM off its return value and
 # iterates what the Java service's PushStream brings.
 ticker_from_typescript ddsr-ticker-ts MQTT "SCENARIO I"
 echo "  ✓ stream-java-to-ts-over-mqtt: a PushStream iterated as an AsyncIterable"
+forever_stopped_twice ddsr-rsa-export "SCENARIO I"
+echo "  ✓ stream-cancel-ts-to-java-over-mqtt: TypeScript left, and the Java service's stream stopped"
 # Two MQTT versions on one call (#138): the exporting node serves over
 # MQTT 5, the importing node calls over 3.1.1. The request's reply
 # address and correlation are in the envelope, which is why neither has
@@ -553,10 +581,18 @@ echo "  ✓ promise-over-amqp: the call came back before the greeting, and the g
 grep -q "ticks \[1, 2, 3, 4, 5\] — the stream ended" "$WORK/rsa-import-amqp.log" \
   || { echo "SCENARIO R FAILED: the stream did not arrive whole and in order"; grep "RSA-Consumer" "$WORK/rsa-import-amqp.log"; exit 1; }
 echo "  ✓ stream-over-amqp: five values in order, and the end of the stream"
+wait_for_log ddsr-rsa-export-amqp "forever stopped after" 30
+podman logs ddsr-rsa-export-amqp >"$WORK/rsa-export-amqp.log" 2>&1
+podman logs ddsr-rsa-import-amqp >"$WORK/rsa-import-amqp.log" 2>&1
+grep -q "took \[1, 2, 3\] of forever and left" "$WORK/rsa-import-amqp.log" \
+  || { echo "SCENARIO R FAILED: the consumer did not take three of forever"; grep "RSA-Consumer" "$WORK/rsa-import-amqp.log"; exit 1; }
+echo "  ✓ stream-cancel-over-amqp: the caller left after three, and the provider's stream stopped"
 # And from TypeScript, where the consumer brings the place for answers:
 # a routing key of its own, bound to a queue only it reads.
 ticker_from_typescript ddsr-ticker-ts-amqp AMQP "SCENARIO R"
 echo "  ✓ stream-java-to-ts-over-amqp: a PushStream iterated as an AsyncIterable"
+forever_stopped_twice ddsr-rsa-export-amqp "SCENARIO R"
+echo "  ✓ stream-cancel-ts-to-java-over-amqp: TypeScript left, and the Java service's stream stopped"
 grep -q "under ddsr.rpc\." "$WORK/rsa-export-amqp.log" \
   || { echo "SCENARIO R FAILED: the export did not listen under a routing key"; cat "$WORK/rsa-export-amqp.log"; exit 1; }
 # The guarded Ledger is asked to be exported here too, and for the same

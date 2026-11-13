@@ -25,8 +25,13 @@
  * TICKER_PROTOCOL says which protocol this consumer speaks (MQTT or
  * AMQP) - the broker lists only what a consumer can call.
  *
+ * Then it takes three numbers of `forever`, a stream that does not end
+ * by itself, and leaves: closing the session is what stops the Java
+ * service's stream.
+ *
  * Output contract (parsed by the harness): a line `ticks [1, 2, 3] — the
- * stream ended`, then PROBE_OK, or PROBE_FAIL <reason>.
+ * stream ended`, a line `took [1, 2, 3] of forever and left`, then
+ * PROBE_OK, or PROBE_FAIL <reason>.
  */
 
 import { MqttFlavorPlugin } from '@ddsr/transport-mqtt';
@@ -46,6 +51,7 @@ function fail(reason: string): never {
 /** What the generator would write for the derived contract. */
 interface Ticker {
   count(upTo: number): AsyncIterable<number>;
+  forever(everyMillis: number): AsyncIterable<number>;
 }
 
 async function main(): Promise<void> {
@@ -78,6 +84,15 @@ async function main(): Promise<void> {
   const ticks: number[] = [];
   for await (const tick of serviceProxy<Ticker>(locator).count(UP_TO)) ticks.push(Number(tick));
   console.log(`ticks [${ticks.join(', ')}] — the stream ended`);
+
+  // A stream that does not end by itself: three numbers, then this side
+  // leaves. Leaving closes the session, and the provider's stream stops.
+  const some: number[] = [];
+  for await (const tick of serviceProxy<Ticker>(locator).forever(100)) {
+    some.push(Number(tick));
+    if (some.length === 3) break;
+  }
+  console.log(`took [${some.join(', ')}] of forever and left`);
 
   await plugin.close();
   await client.close();

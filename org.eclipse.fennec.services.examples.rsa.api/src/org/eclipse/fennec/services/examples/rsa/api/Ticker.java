@@ -33,4 +33,13 @@ public interface Ticker {
 	 * @return the numbers from 1 to {@code upTo}, one after the other
 	 */
 	PushStream<Integer> count(int upTo);
+
+	/**
+	 * A stream that does not end by itself: what a caller leaves when it
+	 * has seen enough, and what has to stop at its source when it does.
+	 *
+	 * @param everyMillis the time between two numbers
+	 * @return the numbers from 1 on, until the caller closes the stream
+	 */
+	PushStream<Integer> forever(long everyMillis);
 }

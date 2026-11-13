@@ -312,6 +312,17 @@ Two things the gate knows about the broker it guards:
   not counted. A proxy where a reference *into the contract* belongs is
   still caught, because the broker rewires those to its catalog entry
   first and a proxy is never a member of the live contract.
+- **A pinned payload model must resolve (#256).** A contract may pin
+  the payload models it uses (`ServiceInterface.models`, nsURI and
+  `fp1` fingerprint). The gate asks the broker's model source — its own
+  store unless the configuration names another — and refuses a
+  contract whose pins do not resolve there. A strict broker
+  (`models.strict`, `DDSR_MODELS_STRICT`) also refuses a contract whose
+  slots are typed with a model it does not pin. Ecore and the
+  registry's own model are on every node and never asked for. Who may
+  hand a model in is `service-provider`, who may fetch one
+  `service-consumer`; the broker computes the fingerprint of what it is
+  handed and takes no claim of the sender's.
 
 The second point found a gap on the gate's first run against the
 harness: a Java publisher keeps its contract at the broker's

@@ -28,7 +28,8 @@
 	},
 	"org.eclipse.fennec.services.broker.core":
 	{
-		"domain": "$[env:DDSR_DOMAIN;default=]"
+		"domain": "$[env:DDSR_DOMAIN;default=]",
+		"models.strict": "$[env:DDSR_MODELS_STRICT;default=false]"
 	},
 	"org.eclipse.fennec.services.broker.rest":
 	{

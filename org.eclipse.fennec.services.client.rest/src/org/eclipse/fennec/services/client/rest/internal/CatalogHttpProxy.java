@@ -13,6 +13,7 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -67,12 +68,41 @@ public final class CatalogHttpProxy implements BrokerCatalog {
 
 	@Override
 	public Diagnostic addCatalogEntry(ServiceInterface serviceInterface, String requestor) {
+		// The payload models first (#256): the contract then pins each
+		// with the fingerprint the broker computed, which its gate checks.
+		PayloadModelPins.pin(serviceInterface, this::handInModel);
 		Response r = tx.send("BrokerCatalog/addCatalogEntry",
 				tx.target().path("catalog")
 						.request(MediaType.APPLICATION_XML)
 						.header("X-DDSR-Requestor", requestorOr(requestor)),
 				request -> request.post(Entity.entity(serviceInterface, MediaType.APPLICATION_XML)));
 		return readDiagnostic(r);
+	}
+
+	/**
+	 * Hands one payload model to the broker (PUT /models).
+	 *
+	 * @return the broker's fingerprint of it, or empty when the broker
+	 *         takes no models - one older than #256
+	 */
+	private Optional<String> handInModel(byte[] ecore) {
+		Response r = tx.send("BrokerModels/handIn",
+				tx.target().path("models").request(MediaType.TEXT_PLAIN),
+				request -> request.put(Entity.entity(ecore, MediaType.APPLICATION_XML)));
+		try {
+			if (r.getStatus() == Response.Status.NOT_FOUND.getStatusCode()
+					|| r.getStatus() == Response.Status.METHOD_NOT_ALLOWED.getStatusCode()) {
+				LOG.fine("[DDSR-Client] the broker takes no payload models; the contract goes without pins");
+				return Optional.empty();
+			}
+			String body = r.readEntity(String.class);
+			if (r.getStatus() / 100 != 2) {
+				throw new IllegalStateException("the broker refused a payload model (" + r.getStatus() + "): " + body);
+			}
+			return Optional.of(body.trim());
+		} finally {
+			r.close();
+		}
 	}
 
 	@Override

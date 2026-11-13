@@ -290,7 +290,8 @@ duplex sessions of the messaging library: the operation's channel gets a
 `ReplyToSessionHandler` instead of a plain subscription, and each value
 is one message of the session
 ([Wire format](WIRE_FORMAT.md#a-stream-as-the-answer)). The next value
-is asked for when the connection has taken the one before. When the
+is asked for when the connection has taken the one before and the
+caller has credit left: a slow caller holds the service back. When the
 caller closes the session or goes silent for its lease, the service's
 stream is closed. REST carries no stream, and no transport carries one
 as an argument yet: such a contract is refused when it is served, by

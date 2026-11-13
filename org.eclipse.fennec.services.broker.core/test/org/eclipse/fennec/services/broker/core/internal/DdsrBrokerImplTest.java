@@ -515,6 +515,33 @@ class DdsrBrokerImplTest {
 		assertThat(b.getRegistry().getImplementations()).as("no second registration").hasSize(1);
 	}
 
+	/**
+	 * In process (#258): the provider modifies the very implementation the
+	 * broker keeps as live and hands it in again. Its properties, flavors
+	 * and capabilities are what the reference shows afterwards - nothing
+	 * is cleared along the way.
+	 */
+	@Test
+	void anInProcessModificationOfTheLiveObjectKeepsItsProperties() {
+		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");
+		ServiceProvider live = provider("payments-java", "impl", serviceInterface("Payment", "charge", "getBalance"));
+		StringProperty availability = ServicesFactory.eINSTANCE.createStringProperty();
+		availability.setName("availability");
+		availability.setValue("UNKNOWN");
+		soleImpl(live).getProperties().add(availability);
+		broker.publishImplementation(live, soleImpl(live));
+		assertThat(stringProperty(broker.getServiceReferences("Payment", null, null).get(0), "availability"))
+				.isEqualTo("UNKNOWN");
+
+		availability.setValue("REACHABLE");
+		Diagnostic d = broker.modifyImplementation(live, soleImpl(live));
+
+		assertThat(isError(d)).as(d.getMessage()).isFalse();
+		ServiceReference after = broker.getServiceReferences("Payment", null, null).get(0);
+		assertThat(stringProperty(after, "availability")).isEqualTo("REACHABLE");
+		assertThat(soleImpl(live).getFlavors()).as("the flavors stay too").isNotEmpty();
+	}
+
 	@Test
 	void modifyOfSomethingNotPublishedIsNotPublished() {
 		broker.addCatalogEntry(serviceInterface("Payment", "charge", "getBalance"), "test");

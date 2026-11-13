@@ -409,6 +409,13 @@ final class Registrations implements Retirement, Republication {
 	 * policy is a publish-time act.
 	 */
 	static void applyModification(ServiceImplementation target, ServiceImplementation source) {
+		if (target == source) {
+			// In process the provider hands in the very object the broker
+			// keeps as live (#258): it carries the new values already, and
+			// clearing its lists before copying them from itself would
+			// leave it without properties, flavors and capabilities.
+			return;
+		}
 		target.setDescription(source.getDescription());
 		target.setImplementationId(source.getImplementationId());
 		target.setUpdatePolicy(source.getUpdatePolicy());

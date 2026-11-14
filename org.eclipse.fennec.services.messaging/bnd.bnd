@@ -23,6 +23,7 @@ Bundle-Description: \
 	org.osgi.util.function;version=latest,\
 	org.gecko.messaging.api;version=latest,\
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
 	io.cloudevents.model;version=latest
 
 # Plain JUnit 5: what a link asks of the messaging instance is a

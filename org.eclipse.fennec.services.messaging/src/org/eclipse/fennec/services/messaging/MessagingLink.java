@@ -36,6 +36,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.invocation.PushStreams;
 import org.gecko.messaging.api.Message;
 import org.gecko.messaging.api.MessageContext;
 import org.gecko.messaging.api.MessageContextBuilder;

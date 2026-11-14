@@ -17,7 +17,20 @@ Bundle-Description: \
 
 -buildpath: \
 	osgi.core;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot
+
+# PushStreams adapts the OSGi PushStream to Flow.Publisher and back, for
+# every transport that carries a stream. Optional: a node whose services
+# stream as Flow.Publisher, or not at all, needs no pushstream bundle, and
+# the class is loaded only where a PushStream is at hand.
+Import-Package: \
+	org.osgi.util.pushstream;resolution:=optional,\
+	org.osgi.util.promise;resolution:=optional,\
+	org.osgi.util.function;resolution:=optional,\
+	*
 
 # ContractAddressing decides what a catalog entry is addressed by, and
 # the fingerprints are pinned byte for byte against golden files that

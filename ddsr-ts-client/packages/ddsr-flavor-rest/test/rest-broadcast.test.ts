@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
 import type { RestFlavor } from '@ddsr/model';
-import { decodeResult } from '@ddsr/client';
+import { dataAsText, decodeResult, readStructured } from '@ddsr/client';
 import { restDispatcher } from '../src/operation-dispatch';
 import { eventsOf } from '../src/rest-streams';
 
@@ -54,8 +54,8 @@ async function read(frames: AsyncIterable<string>, take?: (seen: number) => Prom
   })();
   for await (const { event, data } of eventsOf(bytes)) {
     last = event;
-    if (event === 'value') values.push(decodeResult(data).value);
-    if (event === 'error') last = `error: ${decodeResult(data).error}`;
+    if (event === 'value') values.push(decodeResult(dataAsText(readStructured(data))).value);
+    if (event === 'error') last = `error: ${decodeResult(dataAsText(readStructured(data))).error}`;
   }
   return { values, last };
 }

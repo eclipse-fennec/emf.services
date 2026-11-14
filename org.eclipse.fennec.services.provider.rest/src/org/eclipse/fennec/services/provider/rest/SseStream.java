@@ -42,12 +42,12 @@ final class SseStream implements StreamingOutput {
 
 	private static final Logger LOG = Logger.getLogger(SseStream.class.getName());
 
-	/** How a value or a failure becomes the document of one event. */
+	/** How a value or a failure becomes the data of one event: a CloudEvents message ({@link RestStreams}). */
 	interface Encoder {
 
-		byte[] value(Object value) throws Exception;
+		String value(Object value) throws Exception;
 
-		byte[] failure(Throwable failure) throws Exception;
+		String failure(Throwable failure) throws Exception;
 	}
 
 	private static final Object END = new Object();
@@ -56,18 +56,15 @@ final class SseStream implements StreamingOutput {
 
 	private final Encoder encoder;
 
-	private final String contentType;
-
 	private final Runnable done;
 
 	/**
 	 * @param done run once the stream is over, however it ended — the
 	 *        service is held for the stream's lifetime and returned here
 	 */
-	SseStream(Flow.Publisher<Object> values, Encoder encoder, String contentType, Runnable done) {
+	SseStream(Flow.Publisher<Object> values, Encoder encoder, Runnable done) {
 		this.values = values;
 		this.encoder = encoder;
-		this.contentType = contentType;
 		this.done = done;
 	}
 
@@ -134,8 +131,8 @@ final class SseStream implements StreamingOutput {
 		}
 	}
 
-	private void send(OutputStream out, String event, byte[] document) throws IOException {
-		out.write(RestStreams.frame(event, document, contentType).getBytes(UTF_8));
+	private void send(OutputStream out, String event, String data) throws IOException {
+		out.write(RestStreams.frame(event, data).getBytes(UTF_8));
 		out.flush();
 	}
 

@@ -54,8 +54,6 @@ final class RestBroadcast {
 
 	private final SseStream.Encoder encoder;
 
-	private final String contentType;
-
 	private final OverflowPolicy policy;
 
 	private final int size;
@@ -72,11 +70,10 @@ final class RestBroadcast {
 	/**
 	 * @param source calls the service, once per run of the broadcast
 	 */
-	RestBroadcast(Supplier<Flow.Publisher<Object>> source, SseStream.Encoder encoder, String contentType,
-			OverflowPolicy policy, int size, String describe) {
+	RestBroadcast(Supplier<Flow.Publisher<Object>> source, SseStream.Encoder encoder, OverflowPolicy policy, int size,
+			String describe) {
 		this.source = source;
 		this.encoder = encoder;
-		this.contentType = contentType;
 		this.policy = policy == null ? OverflowPolicy.FAIL : policy;
 		this.size = size > 0 ? size : BUFFER;
 		this.describe = describe;
@@ -134,15 +131,15 @@ final class RestBroadcast {
 
 			@Override
 			public void onNext(Object value) {
-				byte[] document;
+				String message;
 				try {
-					document = encoder.value(value);
+					message = encoder.value(value);
 				} catch (Exception unwritable) {
 					LOG.log(Level.WARNING, "[DDSR-REST] a value of " + describe + " could not be written", unwritable);
 					mine[0].request(1);
 					return;
 				}
-				String frame = RestStreams.frame(RestStreams.VALUE, document, contentType);
+				String frame = RestStreams.frame(RestStreams.VALUE, message);
 				for (Receiver receiver : receivers) {
 					receiver.offer(frame);
 				}
@@ -153,16 +150,16 @@ final class RestBroadcast {
 			public void onError(Throwable failure) {
 				String frame;
 				try {
-					frame = RestStreams.frame(RestStreams.ERROR, encoder.failure(failure), contentType);
+					frame = RestStreams.frame(RestStreams.ERROR, encoder.failure(failure));
 				} catch (Exception unsayable) {
-					frame = RestStreams.frame(RestStreams.ERROR, null, contentType);
+					frame = RestStreams.frame(RestStreams.ERROR, null);
 				}
 				over(frame, mine[0]);
 			}
 
 			@Override
 			public void onComplete() {
-				over(RestStreams.frame(RestStreams.END, null, contentType), mine[0]);
+				over(RestStreams.frame(RestStreams.END, null), mine[0]);
 			}
 		});
 	}
@@ -214,9 +211,9 @@ final class RestBroadcast {
 							+ " values was full and the contract says a receiver that falls behind fails";
 					try {
 						last = RestStreams.frame(RestStreams.ERROR,
-								encoder.failure(new IllegalStateException(why)), contentType);
+								encoder.failure(new IllegalStateException(why)));
 					} catch (Exception unsayable) {
-						last = RestStreams.frame(RestStreams.ERROR, null, contentType);
+						last = RestStreams.frame(RestStreams.ERROR, null);
 					}
 					notifyAll();
 					return;

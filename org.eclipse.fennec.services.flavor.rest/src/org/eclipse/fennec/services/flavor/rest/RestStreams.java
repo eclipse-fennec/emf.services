@@ -13,11 +13,6 @@
 
 package org.eclipse.fennec.services.flavor.rest;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import java.util.Base64;
-import java.util.Locale;
-
 import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestOperationFlavor;
@@ -28,20 +23,19 @@ import org.eclipse.fennec.services.ServiceOperation;
  * per value, shared by the provider that writes them and the consumer that
  * reads them.
  *
- * <p>Every value is a {@code ServiceInvocationResult} in the encoding the
- * flavor says the operation produces — the same document a value has over
- * messaging, so a stream is one thing on every transport. The event names
- * say what the document is:
+ * <p>The data of an event is a CloudEvents message in structured mode —
+ * the same message a value is over a messaging broker: for a stream of its
+ * own an {@code invoke.reply}, for a stream every receiver shares a
+ * {@code broadcast}, each holding a {@code ServiceInvocationResult} in the
+ * encoding the flavor says the operation produces. The event names say
+ * what the message is:
  * <ul>
  * <li>{@value #VALUE} — the next value;</li>
  * <li>{@value #ERROR} — the last event of a stream that failed: the
- * document holds the Diagnostic, a declared error under its code;</li>
+ * result holds the Diagnostic, a declared error under its code;</li>
  * <li>{@value #END} — the stream is over, with no data. A connection that
  * closes without it broke off.</li>
  * </ul>
- * A document in a textual encoding (XML, JSON, text) is the data as it
- * is, one {@code data:} line per line; any other encoding (Protobuf)
- * travels Base64-encoded on one line.
  *
  * <p>The caller ends a stream by closing the connection; TCP is the
  * backpressure. The TypeScript twin is {@code rest-streams.ts}.
@@ -79,41 +73,16 @@ public final class RestStreams {
 				: operationFlavor.getProduces().get(0);
 	}
 
-	/** Whether a document in this encoding is text, and travels as it is. */
-	public static boolean isText(String contentType) {
-		if (contentType == null) {
-			return true;
-		}
-		String type = contentType.toLowerCase(Locale.ROOT);
-		int parameters = type.indexOf(';');
-		if (parameters >= 0) {
-			type = type.substring(0, parameters).trim();
-		}
-		return type.startsWith("text/") || type.equals("application/xml") || type.equals("application/json")
-				|| type.endsWith("+xml") || type.endsWith("+json");
-	}
-
-	/** One event: its name and the document as data, ready to be written. */
-	public static String frame(String event, byte[] document, String contentType) {
+	/** One event: its name and its data, one {@code data:} line per line, ready to be written. */
+	public static String frame(String event, String data) {
 		StringBuilder frame = new StringBuilder("event: ").append(event).append('\n');
-		if (document == null || document.length == 0) {
+		if (data == null || data.isEmpty()) {
 			frame.append("data:\n");
-		} else if (isText(contentType)) {
-			String text = new String(document, UTF_8).replace("\r\n", "\n").replace('\r', '\n');
-			for (String line : text.split("\n", -1)) {
+		} else {
+			for (String line : data.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1)) {
 				frame.append("data: ").append(line).append('\n');
 			}
-		} else {
-			frame.append("data: ").append(Base64.getEncoder().encodeToString(document)).append('\n');
 		}
 		return frame.append('\n').toString();
-	}
-
-	/** The document an event's data carries, the inverse of {@link #frame}. */
-	public static byte[] document(String data, String contentType) {
-		if (data == null || data.isEmpty()) {
-			return new byte[0];
-		}
-		return isText(contentType) ? data.getBytes(UTF_8) : Base64.getDecoder().decode(data.trim());
 	}
 }

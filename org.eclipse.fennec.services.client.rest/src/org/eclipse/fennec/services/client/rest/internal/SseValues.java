@@ -57,12 +57,12 @@ final class SseValues implements Flow.Publisher<Object> {
 		Opened open() throws Exception;
 	}
 
-	/** What the document of an event is to the caller. */
+	/** What the data of an event — a CloudEvents message ({@link RestStreams}) — is to the caller. */
 	interface Decoder {
 
-		Object value(byte[] document) throws Exception;
+		Object value(String message) throws Exception;
 
-		RuntimeException failure(byte[] document) throws Exception;
+		RuntimeException failure(String message) throws Exception;
 	}
 
 	private final String operationName;
@@ -71,16 +71,13 @@ final class SseValues implements Flow.Publisher<Object> {
 
 	private final Decoder decoder;
 
-	private final String contentType;
-
 	/**
 	 * @param request sends the call; asked once per subscriber
 	 */
-	SseValues(String operationName, Request request, Decoder decoder, String contentType) {
+	SseValues(String operationName, Request request, Decoder decoder) {
 		this.operationName = operationName;
 		this.request = request;
 		this.decoder = decoder;
-		this.contentType = contentType;
 	}
 
 	@Override
@@ -162,10 +159,10 @@ final class SseValues implements Flow.Publisher<Object> {
 				switch (event) {
 				case RestStreams.VALUE -> {
 					if (awaitDemand()) {
-						subscriber.onNext(decoder.value(RestStreams.document(data, contentType)));
+						subscriber.onNext(decoder.value(data));
 					}
 				}
-				case RestStreams.ERROR -> fail(decoder.failure(RestStreams.document(data, contentType)));
+				case RestStreams.ERROR -> fail(decoder.failure(data));
 				case RestStreams.END -> {
 					if (ended.compareAndSet(false, true) && running.get()) {
 						subscriber.onComplete();

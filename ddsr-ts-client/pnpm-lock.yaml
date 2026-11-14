@@ -33,6 +33,12 @@ importers:
       '@ddsr/stubs':
         specifier: workspace:*
         version: link:../../packages/ddsr-stubs
+      '@ddsr/tags-model':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-tags-model
+      '@ddsr/tags-stubs':
+        specifier: workspace:*
+        version: link:../../packages/ddsr-tags-stubs
       '@ddsr/telemetry-otel':
         specifier: workspace:*
         version: link:../../packages/ddsr-telemetry-otel
@@ -291,6 +297,50 @@ importers:
         version: 5.8.3
       vitest:
         specifier: ^4.0.0
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(vite@8.3.5(@types/node@24.13.3)(esbuild@0.28.0)(tsx@4.22.3)(yaml@2.9.1))
+
+  packages/ddsr-tags-model:
+    dependencies:
+      '@emfts/core':
+        specifier: 0.3.0-next.4
+        version: 0.3.0-next.4(sax@1.6.0)
+    devDependencies:
+      '@emfts/codegen':
+        specifier: 0.0.2-next.8
+        version: 0.0.2-next.8
+      sax:
+        specifier: ^1.4.3
+        version: 1.6.0
+      typescript:
+        specifier: ~5.8.0
+        version: 5.8.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(vite@8.3.5(@types/node@24.13.3)(esbuild@0.28.0)(tsx@4.22.3)(yaml@2.9.1))
+
+  packages/ddsr-tags-stubs:
+    dependencies:
+      '@ddsr/client':
+        specifier: workspace:*
+        version: link:../ddsr-client
+      '@ddsr/model':
+        specifier: workspace:*
+        version: link:../ddsr-model
+      '@ddsr/tags-model':
+        specifier: workspace:*
+        version: link:../ddsr-tags-model
+      '@emfts/core':
+        specifier: 0.3.0-next.4
+        version: 0.3.0-next.4(sax@1.6.0)
+    devDependencies:
+      '@ddsr/codegen':
+        specifier: workspace:*
+        version: link:../ddsr-codegen
+      typescript:
+        specifier: ~5.8.0
+        version: 5.8.3
+      vitest:
+        specifier: ^4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(vite@8.3.5(@types/node@24.13.3)(esbuild@0.28.0)(tsx@4.22.3)(yaml@2.9.1))
 
   packages/ddsr-telemetry:

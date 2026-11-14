@@ -27,6 +27,7 @@ header:
     - 'ddsr-ts-client/packages/ddsr-model/src/**'
     - 'ddsr-ts-client/packages/ddsr-stubs/src/**'
     - 'ddsr-ts-client/packages/ddsr-example-model/src/**'
+    - 'ddsr-ts-client/packages/ddsr-tags-model/src/org/**'
     - 'org.eclipse.fennec.services.examples.model/src/**'
     # container build files and configs
     - '**/Containerfile*'

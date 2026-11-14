@@ -1,0 +1,34 @@
+{
+  "name": "@ddsr/tags-stubs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TypeScript stubs for the Tags contract of the tag overlay, generated from tags-api.xmi through tags-ts.xmi (#280)",
+  "license": "EPL-2.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "generate": "node ../ddsr-codegen/dist/cli.js --binding binding/tags-ts.xmi --out .",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@ddsr/client": "workspace:*",
+    "@ddsr/model": "workspace:*",
+    "@emfts/core": "0.3.0-next.4",
+    "@ddsr/tags-model": "workspace:*"
+  },
+  "devDependencies": {
+    "@ddsr/codegen": "workspace:*",
+    "typescript": "~5.8.0",
+    "vitest": "^4.1.11"
+  }
+}

@@ -31,6 +31,7 @@ import org.eclipse.fennec.m2x.ocl.engine.internal.OclValidationDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Delivery;
+import org.eclipse.fennec.services.OverflowPolicy;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.ConsumerSession;
@@ -291,26 +292,76 @@ class DdsrBrokerOclTest {
 		assertThat(Diagnostician.INSTANCE.validate(contract).toString()).doesNotContain("modelsUnique");
 	}
 
-	/** A REST request is answered once; a stream needs a flavor that carries many answers (#251). */
+	/** Over REST a stream is served as Server-Sent Events, both kinds (#252). */
 	@Test
-	void aStreamHasNoRestBinding() {
+	void aStreamMayHaveARestBinding() {
+		for (Delivery delivery : new Delivery[] { Delivery.STREAM, Delivery.BROADCAST }) {
+			ServiceOperation readings = ServicesFactory.eINSTANCE.createServiceOperation();
+			readings.setName("readings");
+			Parameter result = ServicesFactory.eINSTANCE.createParameter();
+			result.setName("result");
+			result.setType("double");
+			result.setUpperBound(-1);
+			result.setDelivery(delivery);
+			readings.setReturnValue(result);
+			RestOperationFlavor overRest = ServicesFactory.eINSTANCE.createRestOperationFlavor();
+			overRest.setName("readings");
+			overRest.setPath("/readings");
+			overRest.setOperation(readings);
+
+			assertThat(Diagnostician.INSTANCE.validate(overRest).getSeverity()).as(delivery.getName())
+					.isEqualTo(Diagnostic.OK);
+		}
+	}
+
+	/** A broadcast is subscribed to: it is a return value, and nothing is handed over (#252). */
+	@Test
+	void aBroadcastIsAReturnValueOfAnOperationWithoutArguments() {
 		ServiceOperation readings = ServicesFactory.eINSTANCE.createServiceOperation();
 		readings.setName("readings");
+		Parameter sensor = ServicesFactory.eINSTANCE.createParameter();
+		sensor.setName("sensor");
+		sensor.setType("string");
+		sensor.setUpperBound(-1);
+		sensor.setDelivery(Delivery.BROADCAST);
+		readings.getParameters().add(sensor);
 		Parameter result = ServicesFactory.eINSTANCE.createParameter();
 		result.setName("result");
 		result.setType("double");
 		result.setUpperBound(-1);
-		result.setDelivery(Delivery.STREAM);
+		result.setDelivery(Delivery.BROADCAST);
 		readings.setReturnValue(result);
-		RestOperationFlavor overRest = ServicesFactory.eINSTANCE.createRestOperationFlavor();
-		overRest.setName("readings");
-		overRest.setPath("/readings");
-		overRest.setOperation(readings);
 
-		assertThat(Diagnostician.INSTANCE.validate(overRest).toString()).contains("noStreamOverRest");
+		String diagnosis = Diagnostician.INSTANCE.validate(readings).toString();
+		assertThat(diagnosis).contains("onlyAReturnValueIsBroadcast").contains("broadcastTakesNoArguments");
 
-		result.setDelivery(Delivery.VALUE);
-		assertThat(Diagnostician.INSTANCE.validate(overRest).toString()).doesNotContain("noStreamOverRest");
+		sensor.setDelivery(Delivery.VALUE);
+		sensor.setUpperBound(1);
+		diagnosis = Diagnostician.INSTANCE.validate(readings).toString();
+		assertThat(diagnosis).doesNotContain("onlyAReturnValueIsBroadcast").contains("broadcastTakesNoArguments");
+
+		readings.getParameters().clear();
+		assertThat(Diagnostician.INSTANCE.validate(readings).getSeverity()).isEqualTo(Diagnostic.OK);
+	}
+
+	/** Unbounded like a stream; only a broadcast says what a receiver may lose (#252). */
+	@Test
+	void aBroadcastIsUnboundedAndOnlyItStatesAnOverflowPolicy() {
+		Parameter result = ServicesFactory.eINSTANCE.createParameter();
+		result.setName("result");
+		result.setType("double");
+		result.setDelivery(Delivery.BROADCAST);
+		assertThat(Diagnostician.INSTANCE.validate(result).toString()).contains("streamIsUnbounded");
+
+		result.setUpperBound(-1);
+		result.setOverflow(OverflowPolicy.DISCARD_OLDEST);
+		assertThat(Diagnostician.INSTANCE.validate(result).getSeverity()).isEqualTo(Diagnostic.OK);
+
+		result.setDelivery(Delivery.STREAM);
+		assertThat(Diagnostician.INSTANCE.validate(result).toString()).contains("overflowOnlyOnBroadcast");
+
+		result.setOverflow(OverflowPolicy.FAIL);
+		assertThat(Diagnostician.INSTANCE.validate(result).getSeverity()).isEqualTo(Diagnostic.OK);
 	}
 
 	/** A promise is something that comes back; an argument is handed over, and is there when it is. */

@@ -165,6 +165,9 @@ final class SseValues implements Flow.Publisher<Object> {
 				case RestStreams.ERROR -> fail(decoder.failure(data));
 				case RestStreams.END -> {
 					if (ended.compareAndSet(false, true) && running.get()) {
+						// The connection first: a subscriber told the stream
+						// is over finds nothing of it still open.
+						close();
 						subscriber.onComplete();
 					}
 				}

@@ -19,6 +19,7 @@ import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
+import org.eclipse.fennec.tags.TagRegistry;
 
 /**
  * The tag overlay (#272): a tree of categories, put on things that live
@@ -109,6 +110,32 @@ public interface TagService {
 	 * path. A tag carried for two reasons is reported twice.
 	 */
 	List<EffectiveTag> tagsOf(String kind, String key);
+
+	/**
+	 * Every target of a kind whose properties match the filter carries the
+	 * tag (origin {@code RULE}). Applied when a query asks, so a rule covers
+	 * what is there already. Putting the same rule twice changes nothing.
+	 *
+	 * @param kind   which kind of target the rule looks at
+	 * @param filter an LDAP filter (RFC 4515, as in OSGi) over the
+	 *               target's properties, e.g. {@code (payment.scheme=card)}
+	 * @throws UnknownTagException when the tag does not exist
+	 * @throws InvalidTagException when the filter cannot be read
+	 */
+	void putRule(String path, String kind, String filter);
+
+	/**
+	 * Takes a rule away.
+	 *
+	 * @throws UnknownTagException when there is no such rule
+	 */
+	void removeRule(String path, String kind, String filter);
+
+	/**
+	 * The rules, in a registry that holds them together with the tree they
+	 * reference — a copy, as every answer is.
+	 */
+	TagRegistry rules();
 
 	/**
 	 * What targets asked for and may not give themselves — the tag does not

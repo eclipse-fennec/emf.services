@@ -24,6 +24,7 @@ import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
+import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagsPackage;
 import org.eclipse.fennec.tags.service.TagService;
 import org.eclipse.fennec.tags.service.TagSubjects;
@@ -144,6 +145,21 @@ public final class TagServiceComponent implements TagService {
 	@Override
 	public List<EffectiveTag> tagsOf(String kind, String key) {
 		return service.tagsOf(kind, key);
+	}
+
+	@Override
+	public void putRule(String path, String kind, String filter) {
+		service.putRule(path, kind, filter);
+	}
+
+	@Override
+	public void removeRule(String path, String kind, String filter) {
+		service.removeRule(path, kind, filter);
+	}
+
+	@Override
+	public TagRegistry rules() {
+		return service.rules();
 	}
 
 	@Override

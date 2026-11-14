@@ -76,22 +76,25 @@ GET http://localhost:8887/ddsr/rest/events
 Accept: text/event-stream
 ```
 
-- SSE event name: **`ddsr-service-event`** — the name of the stream,
-  unchanged, and one of the frozen wire names
-- data media type: `application/cloudevents+json` — the frame carries a
-  CloudEvent in structured mode; an SSE frame has no headers of its
-  own, so the envelope travels in the data. The event document is its
-  `data`, still XMI (`datacontenttype: application/xml`)
-- optional `?flavors=REST,MQTT` to be sent only events for those flavor
-  kinds. Unknown tokens are ignored with a warning rather than
-  rejecting the connection.
+The stream is the contract `BrokerEvents.events()`, a `ServiceEvent`
+every receiver shares (#252), served like any broadcast over REST:
+
+- every event is an SSE event `value` whose data is a CloudEvent
+  `org.eclipse.fennec.services.broadcast` in structured mode; it holds
+  a `ServiceInvocationResult` whose value is the event, with the
+  reference, implementation, provider and contracts beside it
+  ([Wire format](WIRE_FORMAT.md#sse-event-stream))
+- `end`: the broker could not deliver an event and ended the stream;
+  the connection closes, and the reconnect is the fresh snapshot (#124)
 - optional `?consumerId=…` to say who is listening. The SDK sends it
   automatically. It buys one thing: losing the connection then shortens
   that consumer's session deadline instead of waiting out the full
   expiry. Leaving it out changes nothing else.
+- what a consumer cannot call it does not need to hear: the receiver
+  filters by the flavors it speaks (`flavors` of the event source); the
+  stream itself is the same for everyone
 
-The stream sends a `: keepalive` comment every 10 seconds by default
-(`org.eclipse.fennec.services.broker.rest.sse`, `heartbeat.seconds`).
+The stream sends a `: keepalive` comment after 10 seconds of silence.
 That is not a liveness protocol. It keeps intermediaries from idling
 the connection out, it lets a blocked reader wake up so a client-side
 close can finish, and it is how the broker notices subscribers that
@@ -125,22 +128,17 @@ until configured — their configuration policy requires a configuration.
 
 The same events travel over an AMQP 0-9-1 broker: give either side an
 `amqp://` URL instead of a `tcp://` one. Nothing else changes but the
-spelling — a topic `ddsr/events/<interfaceName>` is the routing key
-`ddsr.events.<interfaceName>` on the topic exchange `amq.topic`, and a
-subscriber binds `ddsr.events.#`. An interface name with dots in it is
-several words of that key, which the binding hears all the same. What
-follows is written for MQTT and holds for both.
+spelling — the channel `ddsr/events` is the routing key `ddsr.events` on
+the topic exchange `amq.topic`, and a subscriber binds `ddsr.events.#`.
+What follows is written for MQTT and holds for both.
 
-- topic: `ddsr/events/<interfaceName>`, one publish per interface the
-  service serves
-- when the interface cannot be determined, which is the normal case for
-  `UNREGISTERING`: `ddsr/events/_unknown`
+- channel: `ddsr/events`, the one channel of the broadcast (#252) —
+  every event goes there, and a subscriber filters what it hears
 - QoS **0** by default, **not retained**
-- payload: the same message as SSE — a CloudEvent in structured mode
-  carrying the XMI document, UTF-8
-- `ddsr/events/_resync` says an event did not reach the wire and
-  everything should be re-read. It carries an envelope of type
-  `org.eclipse.fennec.services.resync` and no payload
+- payload: the same message as on SSE — a CloudEvent `broadcast` in
+  structured mode, the result whose value is the event, UTF-8
+- a `broadcast.end` says an event did not reach the wire and everything
+  should be re-read; it carries no payload
 
 Not retained is deliberate. An event describes a transition, not a
 state. A late subscriber must not be told about a registration that was
@@ -152,8 +150,8 @@ on the messaging broker — so what was published while it was away is
 gone, and the Java client takes a fresh snapshot each time the
 subscription is in place again, the first time included. The publisher
 keeps its sink registered through a loss of its own: an event it could
-not send is a `_resync` it owes, sent before the next one that gets
-through.
+not send is a `broadcast.end` it owes, sent before the next one that
+gets through.
 
 The subscriber takes `ddsr/events/#` — the whole subtree — because the
 `EventSource` contract carries no interest set. It works, and it moves

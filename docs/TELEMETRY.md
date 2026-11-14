@@ -80,7 +80,7 @@ brings its own providers, so the whiteboard's extension is never asked
 there — which is the same rule that once cost us an afternoon (#125)
 and here keeps a call from being traced twice.
 
-Because all three broker contracts are served generically since #88,
+Because all broker contracts are served generically (since #88, the events since #252),
 the broker's own lookups, publishes and withdrawals pass through the
 REST dispatcher like any other contract — so the two halves of, say, a
 publish carry the same name from both ends without either end being

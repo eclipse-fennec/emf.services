@@ -9,8 +9,9 @@ reference table.
 All wire names below are **frozen** (they predate the
 `org.eclipse.fennec.services` namespace and deliberately stayed
 stable): base path `/ddsr/rest`, header `X-DDSR-Requestor`, property
-prefix `ddsr.`, topic prefix `ddsr/events`, SSE event name
-`ddsr-service-event`.
+prefix `ddsr.`, topic prefix `ddsr/events`. The SSE event name
+`ddsr-service-event` is gone since #252: the events are a broadcast,
+and a broadcast's SSE events are `value` and `end`.
 
 ## REST endpoints
 
@@ -34,7 +35,7 @@ Base URL: `http://<host>:8887/ddsr/rest` — everything speaks
 | `PUT /consumers/{consumerId}` | session **full replace** | acquire = add a reference id and PUT, release = remove and PUT, heartbeat = unchanged PUT (idempotent) |
 | `GET /consumers/{consumerId}` | what the broker believes | session + acquired reference-id stubs |
 | `DELETE /consumers/{consumerId}` | shutdown-notify | releases all leases |
-| `GET /events` | SSE lifecycle stream | optional `?flavors=` narrows by flavor kind |
+| `GET /events` | `BrokerEvents.events()`, a broadcast over SSE (#252) | optional `?consumerId=` ties the connection to that consumer's session |
 | `PUT /models` | hand in a payload model (#256) | body: the Ecore of one package; `201` with the fingerprint the broker computed (`text/plain`, also in `X-Fennec-Model-Fingerprint`); `400` for a document that defines no package; needs `service-provider` |
 | `GET /models?nsURI=…[&fingerprint=fp1:…]` | fetch a payload model | the Ecore from the broker's model source (its own store, or the Model Atlas with `DDSR_MODELS=atlas`), `404` when it has no such version; needs `service-consumer` |
 
@@ -107,19 +108,24 @@ reason a consumer can address it at all.
 
 ## SSE event stream
 
-`GET /events` streams lifecycle events (frame name
-`ddsr-service-event`, media type `application/cloudevents+json`). Each
-frame is a CloudEvent in structured mode whose `data` is the
-self-contained event document: the event root plus the reference (and
-provider data) it refers to — an `UNREGISTERING` must be routable even
-by a consumer that never saw the registration. An SSE frame carries no
-headers of its own, which is why the envelope travels in the data here
-and not as `ce-*` (see [The envelope](#the-envelope-cloudevents-10)). A
-comment-line heartbeat every 10 s (PID
-`org.eclipse.fennec.services.broker.rest.sse`, `heartbeat.seconds`)
-keeps intermediaries from idling the connection out and bounds how long
-a dead consumer blocks the sender. On every (re)connect the client
-pulls a snapshot before processing events (FR-Sync-Reconnect).
+The broker's events are a contract since #252: `BrokerEvents`
+(`broker-events-api.xmi`) with one operation, `events()`, a
+`ServiceEvent` every receiver shares (`delivery = BROADCAST`, overflow
+`FAIL`). The generic REST distribution serves it at `GET /events` like
+any broadcast ([A stream over REST](#a-stream-over-rest)): every event
+is a `value` frame whose data is a CloudEvent `broadcast` in structured
+mode, holding a `ServiceInvocationResult` whose value is the event —
+and beside it, as further roots, the reference, implementation,
+provider and contracts it is about, so an `UNREGISTERING` is routable
+even by a consumer that never saw the registration. When the broker
+could not deliver an event it ends the stream (`end`), and every
+receiver takes a fresh snapshot when it connects again (#124). A
+`: keepalive` comment every 10 s keeps intermediaries from idling the
+connection out and notices a receiver that went away. On every
+(re)connect the client pulls a snapshot before processing events
+(FR-Sync-Reconnect). A receiver may name its consumer
+(`?consumerId=…`) to tie the connection to that consumer's session; it
+filters by the flavors it speaks itself.
 
 `MODIFIED` announces an in-place change of a registration — endpoint,
 properties, capabilities — under the **same** reference id (PUT
@@ -143,18 +149,18 @@ absent when unset.
 
 ## MQTT event transport
 
-The broker publishes the same messages — envelope and document — to
-`ddsr/events/<interface>` (QoS 0 by default, never retained — an event
-is a transition, not a state; late subscribers snapshot instead).
-Consumers subscribe `ddsr/events/#`. Both sides are dormant OSGi
-components (`configurationPolicy = REQUIRE`) with the PIDs
+The broker publishes the same broadcast on the one channel
+`ddsr/events` ([A stream every receiver shares](#a-stream-every-receiver-shares)):
+every event a `broadcast` message holding the result, the end of the
+stream — the broker lost an event, take a fresh snapshot — a
+`broadcast.end` (QoS 0 by default, never retained — an event is a
+transition, not a state; late subscribers snapshot instead). Consumers
+subscribe `ddsr/events/#`. Both sides are dormant OSGi components
+(`configurationPolicy = REQUIRE`) with the PIDs
 `org.eclipse.fennec.services.broker.mqtt` and
 `org.eclipse.fennec.services.client.mqtt` (`broker.url`,
 `topic.prefix`, `client.id`, `qos`, and on the broker side
-`event.source`). A message on `<prefix>/_resync` tells subscribers to
-take a fresh snapshot; since #101 it carries an envelope of type
-`org.eclipse.fennec.services.resync` and no payload, so a transport
-without topics could say the same thing. Which transport the SDK uses is
+`event.source`). Which transport the SDK uses is
 said in the client's own configuration — `eventSource.target` against
 the `ddsr.event.transport` property (`rest` or `mqtt`) — and
 deliberately **not** by `service.ranking`. A deployment that configures

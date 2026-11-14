@@ -28,6 +28,7 @@ import { FlavorKind, HttpMethod } from '@ddsr/model';
 import { buildRequest } from './request-builder.js';
 import { parseResponse } from './response-parser.js';
 import { NO_TRACER, carrierOver, type CallTracer } from '@ddsr/telemetry';
+import { STREAM_MEDIA_TYPE, eventsOf, streams, valuesOf } from './rest-streams.js';
 
 /**
  * REST FlavorPlugin — translates ServiceOperation invocations into
@@ -77,6 +78,8 @@ export interface RestFlavorPluginOptions {
 
 export class RestFlavorPlugin implements FlavorPlugin {
   readonly flavorKind = 'REST';
+  /** A stream comes back as Server-Sent Events (#252). */
+  readonly carriesStreams = true;
   private readonly fetchFn: typeof fetch;
   private readonly timeoutMillis: number;
   private readonly source: string;
@@ -119,6 +122,11 @@ export class RestFlavorPlugin implements FlavorPlugin {
     return this.tokenSupplier(audiences[0]);
   }
 
+  private streamOf(operation: ServiceOperation, restOpFlavor: RestOperationFlavor, url: string,
+    init: RequestInit): AsyncIterable<unknown> {
+    return streamValues(this.fetchFn, this.timeoutMillis, operation, restOpFlavor, url, init);
+  }
+
   canHandle(flavor: ServiceFlavor): boolean {
     return (
       flavor.kind === FlavorKind.REST ||
@@ -134,15 +142,10 @@ export class RestFlavorPlugin implements FlavorPlugin {
   ): Promise<unknown> {
     const restFlavor = flavor as RestFlavor;
     const restOpFlavor = operationFlavor as RestOperationFlavor;
-    // A stream (Parameter.delivery) is many answers to one call, and a
-    // REST call has one. Said before anything is sent - a messaging
-    // flavor of the same contract carries it.
-    if (String(operation.returnValue?.delivery ?? '') === 'STREAM') {
-      throw new DdsrClientError(
-        `${operation.name} returns a stream, and REST carries no streams - call it over a messaging flavor`);
-    }
-
     const request = buildRequest(operation, params, restFlavor, restOpFlavor);
+    // A stream (Parameter.delivery) comes back as Server-Sent Events,
+    // sent when the first value is asked for (#252).
+    const streamed = streams(operation);
     const bearer = await this.bearerFor(flavor, operation);
     // Binary mode (#101): the attributes as ce-* headers, the body
     // untouched. The envelope goes in FIRST, so a contract that binds a
@@ -173,8 +176,12 @@ export class RestFlavorPlugin implements FlavorPlugin {
         ...context,
         ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       },
-      ...(this.timeoutMillis > 0 ? { signal: AbortSignal.timeout(this.timeoutMillis) } : {}),
+      ...(this.timeoutMillis > 0 && !streamed ? { signal: AbortSignal.timeout(this.timeoutMillis) } : {}),
     };
+    if (streamed) {
+      span.end();
+      return this.streamOf(operation, restOpFlavor, request.url, init);
+    }
     let response: Response;
     try {
       response = await this.fetchFn(request.url, init);
@@ -219,6 +226,50 @@ export class RestFlavorPlugin implements FlavorPlugin {
     } finally {
       span.end();
     }
+  }
+}
+
+/**
+ * The values of a stream answered over REST. The request goes out when
+ * the first value is asked for; leaving the loop early aborts it, which
+ * closes the connection - the provider's sign that nobody listens.
+ */
+async function* streamValues(
+  fetchFn: typeof fetch, timeoutMillis: number, operation: ServiceOperation, restOpFlavor: RestOperationFlavor,
+  url: string, init: RequestInit,
+): AsyncGenerator<unknown> {
+  const connection = new AbortController();
+  const waiting = timeoutMillis > 0
+    ? setTimeout(() => connection.abort(new Error(`no answer within ${timeoutMillis}ms`)), timeoutMillis)
+    : undefined;
+  let response: Response;
+  try {
+    response = await fetchFn(url, {
+      ...init,
+      headers: { ...(init.headers as Record<string, string>), Accept: STREAM_MEDIA_TYPE },
+      signal: connection.signal,
+    });
+  } catch (error) {
+    throw new DdsrTransportError(`invoking ${operation.name} at ${url} failed: ${describe(error)}`, error);
+  } finally {
+    clearTimeout(waiting);
+  }
+  try {
+    if (!response.ok) {
+      const body = await response.text();
+      const declared = toArray<RestExceptionBinding>(restOpFlavor?.exceptionBindings)
+        .find(binding => Number(binding.status) === response.status && binding.exception);
+      throw declared
+        ? new DdsrServiceError(body || `${declared.exception.name} (${response.status})`,
+          declared.exception, response.status)
+        : new Error(`REST call failed: ${response.status} ${response.statusText} — ${url}\n${body}`);
+    }
+    if (!response.body) {
+      throw new DdsrTransportError(`the stream of ${operation.name} came without a body`);
+    }
+    yield* valuesOf(operation, eventsOf(response.body as unknown as AsyncIterable<Uint8Array>));
+  } finally {
+    connection.abort();
   }
 }
 

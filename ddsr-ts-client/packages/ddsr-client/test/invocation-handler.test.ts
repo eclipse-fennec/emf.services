@@ -87,7 +87,7 @@ describe('which flavor carries an operation', () => {
     const calls: string[] = [];
 
     await expect(invokeOperation('readings', {}, contract, flavors, [plugin('REST', false, calls)]))
-      .rejects.toThrow(/a stream travels over a messaging flavor/);
+      .rejects.toThrow(/carried by a plugin here that carries streams/);
     expect(calls).toEqual([]);
   });
 });

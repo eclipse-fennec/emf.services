@@ -14,8 +14,10 @@
 import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
 import type { RestFlavor, RestOperationFlavor, ServiceOperation } from '@ddsr/model';
-import { DdsrServiceError, DdsrTransportError } from '@ddsr/client';
+import { DdsrServiceError, DdsrTransportError, encodeFailure, encodeResult } from '@ddsr/client';
 import { RestFlavorPlugin } from '../src/rest-flavor-plugin';
+import { restDispatcher } from '../src/operation-dispatch';
+import { frame } from '../src/rest-streams';
 
 function charge(): { operation: ServiceOperation; flavor: RestFlavor; opFlavor: RestOperationFlavor } {
   const f = DDSRFactory.eINSTANCE;
@@ -327,23 +329,105 @@ describe('RestFlavorPlugin bearer', () => {
   });
 });
 
-// Parameter.delivery = STREAM: many answers to one call. A REST call
-// has one, so the plugin says so before it sends anything.
+// Parameter.delivery = STREAM: many answers to one call, over REST as
+// Server-Sent Events (#252).
 describe('RestFlavorPlugin and streams', () => {
-  it('refuses an operation that returns a stream, without calling', async () => {
-    let called = false;
-    const fetchFn = (async () => { called = true; return new Response('[]'); }) as unknown as typeof fetch;
-    const plugin = new RestFlavorPlugin({ fetchFn });
-    const { operation, flavor, opFlavor } = charge();
+  const streaming = () => {
+    const parts = charge();
     const ticks = DDSRFactory.eINSTANCE.createParameter();
     ticks.name = 'result';
     ticks.type = 'int';
     ticks.upperBound = -1;
     ticks.delivery = 'STREAM';
-    operation.returnValue = ticks;
+    parts.operation.returnValue = ticks;
+    return parts;
+  };
+  const sse = (...frames: string[]) => new Response(new ReadableStream({
+    start(controller) {
+      for (const f of frames) controller.enqueue(new TextEncoder().encode(f));
+      controller.close();
+    },
+  }), { headers: { 'Content-Type': 'text/event-stream' } });
 
-    await expect(plugin.invoke(operation, { amount: 1 }, flavor, opFlavor))
-      .rejects.toThrow(/charge returns a stream, and REST carries no streams/);
+  it('sends nothing before the first value is asked for', async () => {
+    let called = false;
+    const fetchFn = (async () => { called = true; return sse(frame('end')); }) as unknown as typeof fetch;
+    const { operation, flavor, opFlavor } = streaming();
+    const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
     expect(called).toBe(false);
+    const read = [];
+    for await (const value of values as AsyncIterable<unknown>) read.push(value);
+    expect(called).toBe(true);
+    expect(read).toEqual([]);
+  });
+
+  it('reads every value, asking for the stream as Server-Sent Events', async () => {
+    let accept: string | undefined;
+    const fetchFn = (async (_url: string, init: RequestInit) => {
+      accept = (init.headers as Record<string, string>).Accept;
+      return sse(frame('value', encodeResult(1)), frame('value', encodeResult(2)), frame('end'));
+    }) as unknown as typeof fetch;
+    const { operation, flavor, opFlavor } = streaming();
+    const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
+    const read = [];
+    for await (const value of values as AsyncIterable<unknown>) read.push(value);
+    expect(read).toEqual([1, 2]);
+    expect(accept).toBe('text/event-stream');
+  });
+
+  it('a stream that closes without end broke off', async () => {
+    const fetchFn = (async () => sse(frame('value', encodeResult(1)))) as unknown as typeof fetch;
+    const { operation, flavor, opFlavor } = streaming();
+    const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
+    const read: unknown[] = [];
+    await expect((async () => { for await (const v of values as AsyncIterable<unknown>) read.push(v); })())
+      .rejects.toThrow(/broke off/);
+    expect(read).toEqual([1]);
+  });
+
+  it('an error event fails the stream with what it says', async () => {
+    const fetchFn = (async () => sse(frame('error', encodeFailure('the sensor is gone')))) as unknown as typeof fetch;
+    const { operation, flavor, opFlavor } = streaming();
+    const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
+    await expect((async () => { for await (const _ of values as AsyncIterable<unknown>) { /* none */ } })())
+      .rejects.toThrow(/the sensor is gone/);
+  });
+
+  it('leaving the loop early closes the connection', async () => {
+    let aborted = false;
+    const fetchFn = (async (_url: string, init: RequestInit) => {
+      init.signal?.addEventListener('abort', () => { aborted = true; });
+      return sse(frame('value', encodeResult(1)), frame('value', encodeResult(2)), frame('end'));
+    }) as unknown as typeof fetch;
+    const { operation, flavor, opFlavor } = streaming();
+    const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
+    for await (const _ of values as AsyncIterable<unknown>) break;
+    expect(aborted).toBe(true);
+  });
+
+  it('round-trips through the dispatcher: what it writes, the plugin reads', async () => {
+    const { operation, flavor, opFlavor } = streaming();
+    let stopped = false;
+    const dispatch = restDispatcher(flavor, {
+      charge: async function* () {
+        try {
+          yield 7; yield 8; yield 9;
+        } finally {
+          stopped = true;
+        }
+      },
+    }, { auth: 'none' });
+    const fetchFn = (async () => {
+      const answer = await dispatch({ method: 'POST', url: '/payments/charge?amount=1' });
+      expect(answer?.contentType).toBe('text/event-stream');
+      const frames: string[] = [];
+      for await (const f of answer!.events!) frames.push(f);
+      return sse(...frames);
+    }) as unknown as typeof fetch;
+    const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
+    const read = [];
+    for await (const value of values as AsyncIterable<unknown>) read.push(value);
+    expect(read).toEqual([7, 8, 9]);
+    expect(stopped).toBe(true);
   });
 });

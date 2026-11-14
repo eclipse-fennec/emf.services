@@ -22,6 +22,7 @@ import type {
 import { HttpMethod, ParameterBinding } from '@ddsr/model';
 import { bearerScheme, demandsAuthentication, effectiveRequirement, mutualTlsScheme, raisesDeclared } from '@ddsr/client';
 import type { CertificateVerifier, ClientCertificate, JwtVerifier } from '@ddsr/client';
+import { STREAM_MEDIA_TYPE, framesOf, isAsyncIterable, streams } from './rest-streams.js';
 
 /**
  * The provider side of a REST flavor, in TypeScript (#154).
@@ -57,6 +58,13 @@ export interface DispatchRequest {
 export interface DispatchResult {
   status: number;
   body?: string;
+  /**
+   * The answer of an operation that streams (#252): Server-Sent Events,
+   * one chunk after the other, to be written as they come. A host stops
+   * reading them when the connection closes - `writeAnswer` does both -
+   * which ends the stream the implementation returned.
+   */
+  events?: AsyncIterable<string>;
   contentType: string;
   /** Headers the answer needs beyond its content type — `WWW-Authenticate` on a 401. */
   headers?: Record<string, string>;
@@ -171,6 +179,12 @@ export function restDispatcher(
     try {
       const ordered = parametersOf(operation).map(p => args[p.name ?? '']);
       const answer = await (method as (...args: unknown[]) => unknown).apply(implementation, ordered);
+      if (streams(operation)) {
+        if (!isAsyncIterable(answer)) {
+          throw new Error(`${operation.name} streams by its contract, and the implementation returned no async iterable`);
+        }
+        return { status: 200, contentType: STREAM_MEDIA_TYPE, events: framesOf(operation, answer) };
+      }
       return answerOf(match.opFlavor, answer);
     } catch (failure) {
       // A failing implementation is an answer, not a dropped request:
@@ -534,4 +548,43 @@ function toArray<T>(value: unknown): T[] {
     return Array.from({ length: list.size() }, (_, i) => list.get!(i));
   }
   return [...list];
+}
+
+/** The part of a `node:http` response an answer is written to. */
+export interface AnswerSink {
+  writeHead(status: number, headers: Record<string, string>): unknown;
+  write(chunk: string): boolean;
+  end(body?: string): unknown;
+  once(event: 'drain' | 'close', listener: () => void): unknown;
+}
+
+/**
+ * Writes an answer to a `node:http` response: a body at once, a stream
+ * event by event - waiting for the connection to take each one, and
+ * stopping when it closes, which ends the implementation's stream.
+ */
+export async function writeAnswer(answer: DispatchResult, response: AnswerSink): Promise<void> {
+  response.writeHead(answer.status, { 'Content-Type': answer.contentType, ...(answer.headers ?? {}) });
+  if (!answer.events) {
+    response.end(answer.body);
+    return;
+  }
+  let closed = false;
+  response.once('close', () => { closed = true; });
+  const events = answer.events[Symbol.asyncIterator]();
+  try {
+    while (!closed) {
+      const next = await events.next();
+      if (next.done || closed) break;
+      if (!response.write(next.value)) {
+        await new Promise<void>(resolve => {
+          response.once('drain', resolve);
+          response.once('close', resolve);
+        });
+      }
+    }
+  } finally {
+    await events.return?.(undefined);
+    response.end();
+  }
 }

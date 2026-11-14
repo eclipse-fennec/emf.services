@@ -698,7 +698,8 @@ expect_status 200 "$(curl -s -o /dev/null -w '%{http_code}' -H "X-Client-Cert: $
   "the admin's certificate handed on by the gateway"
 echo "  ✓ gateway: the certificate in the header counts from the gateway's address, nothing without it"
 # The Java client, with its certificate in a key store: it subscribes, and
-# the imported catalog proxy lists what the broker holds.
+# the example consumer's lookup of Payment is answered by the broker (#268:
+# the catalog round trip that used to prove it was an SDK debug component).
 (cd "$WORK" && mkdir -p client-mtls && cd client-mtls \
   && exec env -u DDSR_OAUTH_TOKEN_URI DDSR_TOKENS=none DDSR_BROKER_URL="$MTLS_URL" DDSR_CONSUMER_ID=java-client \
        DDSR_TLS_KEYSTORE="$TLS_DIR/java-client.p12" DDSR_TLS_KEYSTORE_PASSWORD=changeit \
@@ -706,7 +707,11 @@ echo "  ✓ gateway: the certificate in the header counts from the gateway's add
        java -Dgosh.args=--nointeractive -jar "$CLIENT_JAR") >"$WORK/client-mtls.log" 2>&1 &
 MTLS_CLIENT_PID=$!
 PIDS+=("$MTLS_CLIENT_PID")
-wait_for_line "$WORK/client-mtls.log" "RemoteServiceRegistry, [0-9]* catalog entries" 60
+wait_for_line "$WORK/client-mtls.log" "registered PaymentRemote proxy\|Payment has no providers yet\|PaymentRemote proxy registration FAILED" 60
+if grep -aq "PaymentRemote proxy registration FAILED" "$WORK/client-mtls.log"; then
+  echo "SCENARIO M FAILED: the Java client's lookup over TLS failed"; grep -a -A3 "registration FAILED" "$WORK/client-mtls.log" | head -5
+  exit 1
+fi
 grep -aq "subscribed to $MTLS_URL/events" "$WORK/client-mtls.log" \
   || { echo "SCENARIO M FAILED: the Java client did not subscribe over TLS"; exit 1; }
 if grep -aq "SSLHandshakeException\|event stream dropped" "$WORK/client-mtls.log"; then

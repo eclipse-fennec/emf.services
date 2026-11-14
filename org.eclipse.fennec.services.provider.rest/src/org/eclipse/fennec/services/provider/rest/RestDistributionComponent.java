@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.provider.rest;
 
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
@@ -252,6 +253,11 @@ public class RestDistributionComponent implements RestDistribution {
 					new XmiMessageBodyReader(resourceSets),
 					new XmiMessageBodyWriter(resourceSets),
 					new XmiBundleMessageBodyWriter(resourceSets));
+		}
+
+		@Override
+		public Map<String, Object> getProperties() {
+			return RestDispatcher.APPLICATION_PROPERTIES;
 		}
 	}
 

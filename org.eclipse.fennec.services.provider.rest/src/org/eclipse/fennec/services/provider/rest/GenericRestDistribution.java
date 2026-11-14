@@ -20,6 +20,7 @@ import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -591,6 +592,12 @@ public class GenericRestDistribution extends Application {
 		Resource document = resourceSet.getResource(URI.createURI(entry.toString()), true);
 		ServiceProvider provider = (ServiceProvider) document.getContents().get(0);
 		return provider.getImplementations().get(0);
+	}
+
+	/** Nothing of an answer held back, so that a stream flows ({@link RestDispatcher#APPLICATION_PROPERTIES}). */
+	@Override
+	public Map<String, Object> getProperties() {
+		return RestDispatcher.APPLICATION_PROPERTIES;
 	}
 
 	/**

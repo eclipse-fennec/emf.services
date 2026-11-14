@@ -167,6 +167,52 @@ confirmation (which means consumers received `UNREGISTERING`), and only
 across languages, and it is exactly what the harness asserts with
 millisecond timestamps — see [HARNESS.md](HARNESS.md).
 
+## 7. A contract on its own
+
+A contract does not need an implementation. It goes into the catalog
+alone, stays there whether anybody implements it or not, and outlives
+every implementation that comes and goes. Consumers can rely on it
+before the first provider exists — that is the point of keeping the
+contract apart from its implementations (#271).
+
+**Putting it in** needs the role `service-provider`:
+
+| From | How |
+| --- | --- |
+| REST | `POST /catalog` with the `ServiceInterface` as XMI; 200, or 409 with code 202 when the same content is already there |
+| Java | `BrokerCatalog.addCatalogEntry(contract, requestor)` — the Java provider of section 3 does exactly that before it publishes |
+| TypeScript | `client.catalog.ensureEntry(contract)`; an entry that is already there counts as success |
+
+**Taking it out** needs the role `service-admin`: `DELETE
+/catalog/{name}`, `BrokerCatalog.removeCatalogEntry` or
+`client.catalog.removeEntry(name)`. A contract nobody implements is
+removed; while an implementation still uses it — live or parked in the
+cold cache — the broker refuses with code 200 (`CATALOG_HAS_LIVE_IMPLS`,
+HTTP 409). Withdraw the implementations first. With two contracts of
+the same name, the sd1 fingerprint says which one (`?fingerprint=`, in
+TypeScript the last argument of `getEntry`/`deprecateEntry`/`removeEntry`).
+
+**What a consumer sees:**
+
+| When | Lookup | Events | A proxy |
+| --- | --- | --- | --- |
+| before the first implementation | none — an empty list, never an error | nothing yet | none: there is nothing to bind to |
+| an implementation arrives | it | `REGISTERED` | can be created now |
+| it goes, and no other is left | none again | `UNREGISTERING` | a call fails with `DdsrServiceUnavailableException` (TypeScript `DdsrServiceUnavailableError`) |
+| another one arrives | it | `REGISTERED` | the same proxy binds to it on the next call |
+
+The catalog itself raises no events. To wait for an implementation,
+listen for `REGISTERED` on the interface rather than calling in a loop;
+the Java example consumer does it this way (`PaymentProxyRegistrar`),
+and so does an RSA node that wants an interface before anybody exports
+it. A listener also hears what happened while its event stream was
+down: after a reconnect the SDK compares what it reads with what it
+knew and delivers the difference ([Eventing](EVENTING.md)).
+
+The catalog is read with `GET /catalog` and `GET /catalog/{name}` (any
+authenticated caller) or `client.catalog.getEntry(name)` in TypeScript.
+Harness scenarios B and V run all of this end to end.
+
 ## Where to go next
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — bundle layout, design decisions,

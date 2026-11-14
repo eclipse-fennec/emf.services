@@ -19,7 +19,18 @@ broker. Requirements and decisions:
   (TsPaymentDebug in examples.persons) calls getBalance/charge; on SIGTERM of the TS
   provider: the withdraw is acknowledged by the broker **before** the
   HTTP endpoint stops, and the broker no longer lists the provider
-  afterwards.
+  afterwards. The Java consumer starts **before** the TS provider: the
+  `Payment` contract outlived the Java provider of A and the lookup
+  answers none, the consumer waits, binds when the provider arrives and
+  drops its proxy when it goes — the contract stays (#271).
+- **V (host only) — a contract on its own (#271):**
+  `contract-first-probe.ts` adds a contract with nothing behind it,
+  looks it up (none, no error), serves it itself and hears the
+  `REGISTERED` it waited for, calls it, is refused removal while it
+  implements it (code 200), withdraws — the contract stays, the
+  listener hears `UNREGISTERING`, a call fails with
+  `DdsrServiceUnavailableError` — and removes the contract. Its client
+  `contract-first-ts` holds all three broker roles.
 - **T (host only, secured) — a TypeScript provider holds the roles:**
   `ledger-ts.ts` serves a guarded contract with a WebCrypto verifier;
   401 without a token, 403 without the role, 200 with it, and a broker

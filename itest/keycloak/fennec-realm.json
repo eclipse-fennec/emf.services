@@ -402,6 +402,27 @@
       "optionalClientScopes": [
         "ddsr-broker"
       ]
+    },
+    {
+      "clientId": "contract-first-ts",
+      "name": "contract-first-ts",
+      "description": "the TypeScript contract-first probe (V): adds a contract alone, serves it later, removes it again",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "contract-first-ts-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker"
+      ]
     }
   ],
   "users": [
@@ -497,6 +518,16 @@
       "realmRoles": [
         "service-provider",
         "service-consumer"
+      ]
+    },
+    {
+      "username": "service-account-contract-first-ts",
+      "enabled": true,
+      "serviceAccountClientId": "contract-first-ts",
+      "realmRoles": [
+        "service-provider",
+        "service-consumer",
+        "service-admin"
       ]
     }
   ]

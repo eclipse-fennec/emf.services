@@ -60,6 +60,7 @@ does:
 | `CUTOVER` | a hard cutover's grace window elapsed |
 | `COLDIFIED` | the idle sweep parked it; it comes back on the next lookup |
 | `PROVIDER_LOST` | the provider stopped answering |
+| `RESYNCED` | not from the broker: the client found it gone when it read again after a reconnect |
 
 `SESSION_EXPIRED` exists as a constant and is not emitted: sessions do
 not raise service events today.
@@ -105,6 +106,16 @@ numbers, and the broker keeps no per-client history. The client pulls
 instead: when the stream is established, the SDK re-reads the
 references for every interface it is listening to. That happens on the
 first connect as well as on every reconnect.
+
+Reading again is not enough for a listener that waits for something —
+an RSA node that wants an interface, a component that registers a
+proxy once a provider exists. It acts on an event, and the event was
+missed. So the SDK compares what it reads with what it knew and
+delivers the difference to the listeners: `REGISTERED` for a reference
+that is new, `UNREGISTERING` with reason `RESYNCED` for one that is no
+longer listed (#271, Java and TypeScript alike). Nothing else is
+synthesised: a missed `MODIFIED` shows up as the current state on the
+next lookup.
 
 The Java client reconnects on a fixed delay, 3 seconds by default
 (`org.eclipse.fennec.services.client.rest.events`,
@@ -194,7 +205,9 @@ in the gap reaches nobody.
 ## What you are not guaranteed
 
 - **No replay and no history.** Miss an event and you recover by
-  re-reading, not by resuming. That is why reconnect pulls a snapshot.
+  re-reading, not by resuming. That is why reconnect pulls a snapshot —
+  and why the SDK, not the broker, tells listeners what changed in
+  between.
 - **No cross-service ordering.** The ordering guarantee is per service.
 - **No delivery acknowledgement.** A subscriber that cannot be written
   to is dropped. MQTT at QoS 0 is at-most-once.
@@ -263,13 +276,14 @@ The harness runs all of this against real processes:
 | Scenario | What it proves |
 | --- | --- |
 | A | SSE end to end, `WITHDRAWN`, and that the consumer was told *before* the provider process was gone |
-| B | FR-P3 order from the TypeScript side: withdrawal confirmed before the endpoint stops |
+| B | FR-P3 order from the TypeScript side: withdrawal confirmed before the endpoint stops; a Java consumer started before any implementation hears it arrive and go |
 | C, D | the event document over real MQTT/TCP, and that the transport was chosen by target and not by ranking |
 | F | `MODIFIED` in place, same reference id, leases kept |
 | G | `UPGRADE_AVAILABLE`, drain, rebind |
 | H | SIGKILL with no withdraw, `PROVIDER_LOST` through the heartbeat |
+| V | a contract alone: a TypeScript listener waits, hears `REGISTERED` and `UNREGISTERING`, the contract stays |
 
-`./itest/run-harness.sh` runs A, B, F, G, H on the host;
+`./itest/run-harness.sh` runs A, B, F, G, H, V on the host;
 `./itest/run-harness-podman.sh` adds C, D, E in containers with a real
 Mosquitto.
 

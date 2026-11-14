@@ -177,10 +177,12 @@ class ImportWhatIsAskedForTest {
 	/** An admin that takes every endpoint and says which ones it was given. */
 	private static final class RecordingAdmin extends IdleAdmin {
 		final List<String> imported = new ArrayList<>();
+		final List<String> closed = new ArrayList<>();
 
 		@Override
 		public ImportRegistration importService(EndpointDescription endpoint) {
-			imported.add(endpoint.getId());
+			String id = endpoint.getId();
+			imported.add(id);
 			return new ImportRegistration() {
 				@Override
 				public ImportReference getImportReference() {
@@ -189,6 +191,7 @@ class ImportWhatIsAskedForTest {
 
 				@Override
 				public void close() {
+					closed.add(id);
 				}
 
 				@Override
@@ -202,6 +205,35 @@ class ImportWhatIsAskedForTest {
 				}
 			};
 		}
+	}
+
+	@Test
+	@DisplayName("wanted before contract or implementation exist: imported on arrival, closed on departure, again on return")
+	void anInterfaceWantedBeforeAnythingExistsFollowsItsImplementations() {
+		RecordingDiscovery discovery = new RecordingDiscovery();
+		RecordingAdmin admin = new RecordingAdmin();
+		ImportWhatIsAskedFor topology = new ImportWhatIsAskedFor().with(admin, discovery);
+
+		// #271: nothing in the broker yet, neither the contract nor an implementation
+		topology.added(List.of(listenerFor("(objectClass=com.acme.Thing)")));
+		assertThat(discovery.watched).containsExactly("Thing");
+		assertThat(admin.imported).isEmpty();
+
+		discovery.listener.appeared("ref-1", implementation("thing-1"));
+		assertThat(admin.imported).containsExactly("ref-1");
+
+		discovery.listener.gone("ref-1");
+		assertThat(admin.closed).as("the import goes with the implementation").containsExactly("ref-1");
+
+		discovery.listener.appeared("ref-2", implementation("thing-2"));
+		assertThat(admin.imported).as("the contract stayed; the next implementation is imported again")
+				.containsExactly("ref-1", "ref-2");
+	}
+
+	private static ServiceImplementation implementation(String id) {
+		ServiceImplementation implementation = ServicesFactory.eINSTANCE.createServiceImplementation();
+		implementation.setImplementationId(id);
+		return implementation;
 	}
 
 	@Test

@@ -139,6 +139,14 @@
         <returnValue name="result" type="double"/>
       </operations>
     </catalog>
+    <catalog name="BrokerEvents" version="1.0.0" description="What changes in the registry, as it happens, for everyone who listens. A consumer that falls behind, or connects anew, takes a fresh snapshot of what it looks up instead of catching up on events (FR-Sync-Reconnect)." addedBy="broker-self-publisher">
+      <operations name="events" description="Every lifecycle change of a registration: registered, modified, unregistering, retired, an upgrade available. A stream every receiver shares; the broker ends it when an event could not be delivered, and every receiver takes a fresh snapshot. A receiver that says which consumer it is (the request parameter consumerId) ties the connection to that consumer's session.">
+        <returnValue name="result" upperBound="-1" description="The event, with the reference, implementation, provider and contracts it is about." delivery="BROADCAST">
+          <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//ServiceEvent"/>
+        </returnValue>
+      </operations>
+      <security authenticated="true"/>
+    </catalog>
   </services:RemoteServiceRegistry>
   <services:ServiceProvider name="ddsr-broker" version="1.0.0" symbolicName="org.eclipse.fennec.services.broker">
     <implementations name="ddsr-broker-catalog" version="1.0.0" description="The broker's catalog API, served from this document by the generic REST distribution." implementationId="ddsr-broker:catalog:1.0.0" serviceInterfaces="/0/@catalog.0">

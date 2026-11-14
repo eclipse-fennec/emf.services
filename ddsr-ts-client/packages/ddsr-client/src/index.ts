@@ -51,7 +51,7 @@ export {
   newEnvelope, writeStructured, readStructured, toHeaders, fromHeaders, dataAsText,
   describing, isJson, isTextual, lifecycleTypeOf, lifecycleEventTypeOf,
   CE_SPEC_VERSION, CE_STRUCTURED_MEDIA_TYPE, CE_HEADER_PREFIX,
-  CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY, CE_TYPE_RESYNC,
+  CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY, CE_TYPE_RESYNC, CE_TYPE_BROADCAST, CE_TYPE_BROADCAST_END,
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO,
 } from './cloudevents/cloud-events.js';
 export type { CloudEventEnvelope, CloudEventMessage } from './cloudevents/cloud-events.js';

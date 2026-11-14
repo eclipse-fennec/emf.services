@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.invocation;
 
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 /**
@@ -110,6 +111,63 @@ public final class Flows {
 			@Override
 			public void onComplete() {
 				subscriber.onComplete();
+			}
+		});
+	}
+
+	/**
+	 * The same stream, running {@code done} once when it is over — it
+	 * completed, failed, or its subscriber cancelled it: what returns a
+	 * service that was held for as long as its stream ran.
+	 */
+	public static <T> Flow.Publisher<T> whenOver(Flow.Publisher<T> source, Runnable done) {
+		AtomicBoolean ran = new AtomicBoolean();
+		Runnable once = () -> {
+			if (ran.compareAndSet(false, true)) {
+				done.run();
+			}
+		};
+		return subscriber -> source.subscribe(new Flow.Subscriber<T>() {
+			@Override
+			public void onSubscribe(Flow.Subscription subscription) {
+				subscriber.onSubscribe(new Flow.Subscription() {
+					@Override
+					public void request(long n) {
+						subscription.request(n);
+					}
+
+					@Override
+					public void cancel() {
+						try {
+							subscription.cancel();
+						} finally {
+							once.run();
+						}
+					}
+				});
+			}
+
+			@Override
+			public void onNext(T element) {
+				subscriber.onNext(element);
+			}
+
+			@Override
+			public void onError(Throwable failure) {
+				try {
+					subscriber.onError(failure);
+				} finally {
+					once.run();
+				}
+			}
+
+			@Override
+			public void onComplete() {
+				try {
+					subscriber.onComplete();
+				} finally {
+					once.run();
+				}
 			}
 		});
 	}

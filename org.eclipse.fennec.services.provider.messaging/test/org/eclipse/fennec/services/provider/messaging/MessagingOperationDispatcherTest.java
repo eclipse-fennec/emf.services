@@ -27,6 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -52,6 +53,7 @@ import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
+import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -251,6 +253,11 @@ class MessagingOperationDispatcherTest {
 
 	private ServiceInvocationResult answerIn(CloudEventCodec.Message message) throws Exception {
 		assertThat(message.attributes().getType()).isEqualTo(CloudEvents.TYPE_INVOKE_REPLY);
+		return resultIn(message);
+	}
+
+	/** The result a message carries, whatever kind of message it is. */
+	private ServiceInvocationResult resultIn(CloudEventCodec.Message message) throws Exception {
 		XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), resourceSets);
 		for (EObject root : bundle.roots()) {
 			if (root instanceof ServiceInvocationResult result) {
@@ -516,6 +523,82 @@ class MessagingOperationDispatcherTest {
 
 		assertThat(answers).extracting(message -> Invocations.valueOf(answerIn(message)))
 				.containsExactly(2.0, 4.0, 6.0);
+	}
+
+	/** A sensor whose readings every receiver shares (Delivery.BROADCAST); counts how often it is asked. */
+	public static final class Sensor {
+
+		static final AtomicInteger asked = new AtomicInteger();
+
+		public Flow.Publisher<Double> readings() {
+			asked.incrementAndGet();
+			return subscriber -> {
+				SubmissionPublisher<Double> values = new SubmissionPublisher<>(Runnable::run, 8);
+				values.subscribe(subscriber);
+				values.submit(1.5);
+				values.submit(2.5);
+				values.close();
+			};
+		}
+
+		public Flow.Publisher<Double> broken() {
+			return Flows.failed(new IllegalStateException("the sensor is gone"));
+		}
+	}
+
+	private MessagingFlavor sensor(String operationName) {
+		Parameter result = F.createParameter();
+		result.setName("result");
+		result.setType("double");
+		result.setUpperBound(-1);
+		result.setDelivery(Delivery.BROADCAST);
+		ServiceOperation readings = F.createServiceOperation();
+		readings.setName(operationName);
+		readings.setReturnValue(result);
+		ServiceInterface contract = F.createServiceInterface();
+		contract.setName("Sensor");
+		contract.getOperations().add(readings);
+		MessagingFlavor flavor = F.createMessagingFlavor();
+		flavor.setName("sensor-mqtt");
+		flavor.getBrokers().add("tcp://fake:1883");
+		flavor.setChannel("ddsr/rpc/sensor");
+		MessagingOperationFlavor operationFlavor = F.createMessagingOperationFlavor();
+		operationFlavor.setName(operationName);
+		operationFlavor.setOperation(readings);
+		flavor.getOperationFlavors().add(operationFlavor);
+		return flavor;
+	}
+
+	/** A broadcast is not called: the service is asked once, and every value is a message for the channel. */
+	@Test
+	void a_broadcast_is_every_value_of_one_call_as_a_message_for_the_channel() throws Exception {
+		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(sensor("readings"), Sensor::new,
+				"/provider/Sensor", resourceSets);
+		assertThat(dispatcher.broadcasts("ddsr/rpc/sensor/readings")).isTrue();
+		assertThat(dispatcher.streams("ddsr/rpc/sensor/readings")).isFalse();
+		int before = Sensor.asked.get();
+
+		List<CloudEventCodec.Message> messages = sessionOf(dispatcher.broadcast("ddsr/rpc/sensor/readings"));
+
+		assertThat(Sensor.asked.get() - before).isEqualTo(1);
+		assertThat(messages).extracting(message -> message.attributes().getType())
+				.containsOnly(CloudEvents.TYPE_BROADCAST);
+		assertThat(messages).extracting(message -> Invocations.valueOf(resultIn(message))).containsExactly(1.5, 2.5);
+		assertThat(dispatcher.broadcastEnd().attributes().getType()).isEqualTo(CloudEvents.TYPE_BROADCAST_END);
+	}
+
+	/** A broadcast that fails ends with the message that says why, for every receiver. */
+	@Test
+	void a_broadcast_that_fails_ends_with_the_diagnostic() throws Exception {
+		MessagingOperationDispatcher dispatcher = new MessagingOperationDispatcher(sensor("broken"), Sensor::new,
+				"/provider/Sensor", resourceSets);
+
+		Throwable ended = endOf(dispatcher.broadcast("ddsr/rpc/sensor/broken"), new CopyOnWriteArrayList<>());
+
+		assertThat(ended).isInstanceOf(MessagingOperationDispatcher.BroadcastFailed.class);
+		CloudEventCodec.Message last = ((MessagingOperationDispatcher.BroadcastFailed) ended).last();
+		assertThat(last.attributes().getType()).isEqualTo(CloudEvents.TYPE_BROADCAST);
+		assertThat(resultIn(last).getDiagnostic().getMessage()).contains("the sensor is gone");
 	}
 
 	/** Fails after one value, with the error the contract declares. */

@@ -263,6 +263,47 @@ public final class MessagingLink implements AutoCloseable {
 	}
 
 	/**
+	 * The buffer a subscription holds what it has not handed on yet in,
+	 * and what happens when it is full: the Gecko Messaging
+	 * per-subscription buffer ({@code bufferSize}, {@code queuePolicy}).
+	 *
+	 * @param size   the messages it holds at most; zero or less for the
+	 *               instance's own size
+	 * @param policy {@code BLOCK}, {@code DISCARD_OLDEST} or {@code FAIL}
+	 */
+	public record Buffer(int size, String policy) {
+	}
+
+	/**
+	 * Subscribe to a topic filter through a buffer of its own (#252): what
+	 * the receiver has not taken yet waits there, and when it is full the
+	 * policy decides — wait, drop the oldest, or end the subscription.
+	 * The receiver may hold up delivery as long as it likes; that is what
+	 * fills the buffer.
+	 *
+	 * <p>A subscription that ends on its own — {@code FAIL} on a full
+	 * buffer — is not made again: {@code ended} is told why, once.
+	 *
+	 * @return closing it ends the subscription. Idempotent.
+	 * @throws IllegalStateException when the broker refuses it
+	 */
+	public AutoCloseable subscribe(String topicFilter, int qos, Buffer buffer, Receiver receiver,
+			Consumer<Throwable> ended) {
+		Subscribed subscribed = new Subscribed(topicFilter, qos, (instance, message) -> {
+			CloudEventCodec.Message carried = Envelopes.fromMessage(message);
+			if (carried != null) {
+				receiver.received(message.getContext().getChannel(), carried);
+			}
+		});
+		subscribed.buffer = buffer;
+		subscribed.onEnded = failure -> {
+			wanted.remove(subscribed);
+			ended.accept(failure);
+		};
+		return want(subscribed);
+	}
+
+	/**
 	 * Subscribe to requests: messages that say where their answer goes.
 	 *
 	 * <p>The receiver is handed a way back that already knows the reply
@@ -984,11 +1025,22 @@ public final class MessagingLink implements AutoCloseable {
 		}
 
 		MessageContext contextFor(String topicFilter, int qos) {
+			return contextFor(topicFilter, qos, null);
+		}
+
+		MessageContext contextFor(String topicFilter, int qos, Buffer buffer) {
 			MessageContextBuilder builder = builders.getService();
 			try {
-				return builder.channel(topicFilter)
-						.extensionEntry(MessagingConstants.EXTENSION_QOS, qos)
-						.buildContext();
+				builder.channel(topicFilter).extensionEntry(MessagingConstants.EXTENSION_QOS, qos);
+				if (buffer != null) {
+					if (buffer.size() > 0) {
+						builder.extensionEntry(MessagingConstants.EXTENSION_BUFFER_SIZE, buffer.size());
+					}
+					if (buffer.policy() != null) {
+						builder.extensionEntry(MessagingConstants.EXTENSION_QUEUE_POLICY, buffer.policy());
+					}
+				}
+				return builder.buildContext();
 			} finally {
 				builders.ungetService(builder);
 			}
@@ -1027,6 +1079,12 @@ public final class MessagingLink implements AutoCloseable {
 
 		private boolean ended;
 
+		/** A buffer of its own, or null for the instance's. */
+		Buffer buffer;
+
+		/** Told when the subscription ends on its own; null for one that is made again. */
+		Consumer<Throwable> onEnded;
+
 		Subscribed(String topicFilter, int qos, Handler handler) {
 			this.topicFilter = topicFilter;
 			this.qos = qos;
@@ -1038,7 +1096,7 @@ public final class MessagingLink implements AutoCloseable {
 			if (ended || on == target) {
 				return;
 			}
-			PushStream<Message> opened = target.subscription.subscribe(target.contextFor(topicFilter, qos));
+			PushStream<Message> opened = target.subscription.subscribe(target.contextFor(topicFilter, qos, buffer));
 			Promise<Void> running = opened.forEach(message -> deliver(target, message));
 			if (running.isDone()) {
 				Throwable refused;
@@ -1053,8 +1111,26 @@ public final class MessagingLink implements AutoCloseable {
 							+ topicFilter, refused);
 				}
 			}
-			running.onFailure(failed -> LOG.warning("[DDSR-MSG] the subscription to " + topicFilter
-					+ " on " + settings + " ended: " + failed));
+			running.onFailure(failed -> {
+				Consumer<Throwable> tell;
+				synchronized (this) {
+					tell = onEnded;
+					if (tell != null) {
+						// Ended on its own — a full buffer that fails. Not
+						// made again: whoever subscribed decides what next.
+						ended = true;
+						stream = null;
+						on = null;
+						onEnded = null;
+					}
+				}
+				if (tell != null) {
+					tell.accept(failed);
+				} else {
+					LOG.warning("[DDSR-MSG] the subscription to " + topicFilter + " on " + settings + " ended: "
+							+ failed);
+				}
+			});
 			on = target;
 			stream = opened;
 		}

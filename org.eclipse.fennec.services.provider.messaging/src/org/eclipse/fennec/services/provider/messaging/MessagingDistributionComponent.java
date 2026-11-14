@@ -18,13 +18,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
-import java.util.logging.Logger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceFlavor;
+import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.messaging.LinkSettings;
@@ -197,6 +200,13 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 				// the answer goes, because it read the request.
 				// An operation that answers with a stream is served in the
 				// messaging library's sessions, every other one per request.
+				if (dispatcher.broadcasts(channel)) {
+					// A stream every receiver shares (#252): nobody calls it,
+					// the service is asked once and what it sends is published.
+					subscriptions.add(broadcast(link, dispatcher, channel));
+					channels.add(channel);
+					continue;
+				}
 				subscriptions.add(dispatcher.streams(channel)
 						? link.serveSessions(channel, dispatcher.sessionChannelPrefix(channel), dispatcher.qosFor(channel),
 								dispatcher::onSession)
@@ -212,6 +222,76 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 		LOG.info("[DDSR-MSG] serving " + name + " over " + route.protocol() + " on " + link.url() + " — "
 				+ channels);
 		return new MessagingServed(channels, subscriptions, connection);
+	}
+
+	/**
+	 * Publishes a stream every receiver shares (#252), from the first
+	 * connection on: the service is called once and every value goes out
+	 * on the channel at the source's pace — the next is asked for when
+	 * the broker has the one before, never when a receiver is ready, so
+	 * no receiver slows the others down. A value that finds no connection
+	 * is lost, as it is for a receiver that was not there. The end, or
+	 * the failure, is the last message.
+	 */
+	private static AutoCloseable broadcast(MessagingLink link, MessagingOperationDispatcher dispatcher,
+			String channel) {
+		int qos = dispatcher.qosFor(channel);
+		AtomicBoolean open = new AtomicBoolean(true);
+		AtomicBoolean started = new AtomicBoolean();
+		AtomicReference<Flow.Subscription> running = new AtomicReference<>();
+		Flow.Subscriber<CloudEventCodec.Message> publisher = new Flow.Subscriber<>() {
+
+			@Override
+			public void onSubscribe(Flow.Subscription subscription) {
+				running.set(subscription);
+				if (open.get()) {
+					subscription.request(1);
+				} else {
+					subscription.cancel();
+				}
+			}
+
+			@Override
+			public void onNext(CloudEventCodec.Message message) {
+				link.publishLater(channel, message, qos).whenComplete((sent, lost) -> {
+					if (lost != null) {
+						LOG.fine(() -> "[DDSR-MSG] a value of the broadcast on " + channel + " was lost: " + lost);
+					}
+					if (open.get()) {
+						running.get().request(1);
+					}
+				});
+			}
+
+			@Override
+			public void onError(Throwable failure) {
+				if (failure instanceof MessagingOperationDispatcher.BroadcastFailed failed) {
+					link.publishLater(channel, failed.last(), qos);
+				} else {
+					LOG.log(Level.WARNING, "[DDSR-MSG] the broadcast on " + channel + " could not go on", failure);
+				}
+			}
+
+			@Override
+			public void onComplete() {
+				LOG.info("[DDSR-MSG] the broadcast on " + channel + " is over");
+				link.publishLater(channel, dispatcher.broadcastEnd(), qos);
+			}
+		};
+		AutoCloseable connects = link.onConnected(again -> {
+			if (open.get() && started.compareAndSet(false, true)) {
+				dispatcher.broadcast(channel).subscribe(publisher);
+			}
+		});
+		return () -> {
+			if (open.compareAndSet(true, false)) {
+				Flow.Subscription subscription = running.get();
+				if (subscription != null) {
+					subscription.cancel();
+				}
+				connects.close();
+			}
+		};
 	}
 
 	@Override

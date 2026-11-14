@@ -70,6 +70,13 @@ describe('ServiceDescriptionFingerprint (sd1) — cross-language golden', () => 
     expect(fingerprint(withDocs)).toBe(fingerprint(stripped));
   });
 
+  it('tags do not move the hash (#273)', () => {
+    const plain = goldenInterface();
+    const tagged = goldenInterface();
+    tagged.tags.push('payment/terms/instant');
+    expect(fingerprint(tagged)).toBe(fingerprint(plain));
+  });
+
   it('operation order moves the hash (declared order is contract)', () => {
     const si = goldenInterface();
     const first = si.operations.get ? (si.operations as any).get(0) : (si.operations as any)[0];

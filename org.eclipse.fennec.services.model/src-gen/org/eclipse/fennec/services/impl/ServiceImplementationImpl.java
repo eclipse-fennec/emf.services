@@ -15,6 +15,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
+import org.eclipse.emf.ecore.util.EDataTypeUniqueEList;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.EObjectResolvingEList;
 import org.eclipse.emf.ecore.util.InternalEList;
@@ -49,6 +50,7 @@ import org.eclipse.fennec.services.VersionedElement;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getReplaces <em>Replaces</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getCutoverGraceMillis <em>Cutover Grace Millis</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getCapabilities <em>Capabilities</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceImplementationImpl#getTags <em>Tags</em>}</li>
  * </ul>
  *
  * @generated
@@ -233,6 +235,16 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 	 * @ordered
 	 */
 	protected EList<Capability> capabilities;
+
+	/**
+	 * The cached value of the '{@link #getTags() <em>Tags</em>}' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getTags()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<String> tags;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -529,6 +541,19 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 	 * @generated
 	 */
 	@Override
+	public EList<String> getTags() {
+		if (tags == null) {
+			tags = new EDataTypeUniqueEList<String>(String.class, this, ServicesPackage.SERVICE_IMPLEMENTATION__TAGS);
+		}
+		return tags;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_IMPLEMENTATION__FLAVORS:
@@ -575,6 +600,8 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 				return getCutoverGraceMillis();
 			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
 				return getCapabilities();
+			case ServicesPackage.SERVICE_IMPLEMENTATION__TAGS:
+				return getTags();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -628,6 +655,10 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 				getCapabilities().clear();
 				getCapabilities().addAll((Collection<? extends Capability>)newValue);
 				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__TAGS:
+				getTags().clear();
+				getTags().addAll((Collection<? extends String>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -676,6 +707,9 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
 				getCapabilities().clear();
 				return;
+			case ServicesPackage.SERVICE_IMPLEMENTATION__TAGS:
+				getTags().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -712,6 +746,8 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 				return cutoverGraceMillis != CUTOVER_GRACE_MILLIS_EDEFAULT;
 			case ServicesPackage.SERVICE_IMPLEMENTATION__CAPABILITIES:
 				return capabilities != null && !capabilities.isEmpty();
+			case ServicesPackage.SERVICE_IMPLEMENTATION__TAGS:
+				return tags != null && !tags.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}
@@ -770,6 +806,8 @@ public class ServiceImplementationImpl extends MinimalEObjectImpl.Container impl
 		result.append(updatePolicy);
 		result.append(", cutoverGraceMillis: ");
 		result.append(cutoverGraceMillis);
+		result.append(", tags: ");
+		result.append(tags);
 		result.append(')');
 		return result.toString();
 	}

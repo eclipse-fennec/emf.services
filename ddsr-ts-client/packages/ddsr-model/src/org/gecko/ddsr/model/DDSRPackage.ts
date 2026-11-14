@@ -117,6 +117,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_INTERFACE__UPDATE_POLICY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__SECURITY: null as unknown as EAttribute | EReference,
     SERVICE_INTERFACE__MODELS: null as unknown as EAttribute | EReference,
+    SERVICE_INTERFACE__TAGS: null as unknown as EAttribute | EReference,
     MODEL_REFERENCE: null as unknown as EClass,
     MODEL_REFERENCE__NS_U_R_I: null as unknown as EAttribute | EReference,
     MODEL_REFERENCE__FINGERPRINT: null as unknown as EAttribute | EReference,
@@ -165,6 +166,7 @@ export class DDSRPackage extends BasicEPackage {
     SERVICE_IMPLEMENTATION__REPLACES: null as unknown as EAttribute | EReference,
     SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS: null as unknown as EAttribute | EReference,
     SERVICE_IMPLEMENTATION__CAPABILITIES: null as unknown as EAttribute | EReference,
+    SERVICE_IMPLEMENTATION__TAGS: null as unknown as EAttribute | EReference,
     SERVICE_FLAVOR: null as unknown as EClass,
     SERVICE_FLAVOR__KIND: null as unknown as EAttribute | EReference,
     SERVICE_FLAVOR__OPERATION_FLAVORS: null as unknown as EAttribute | EReference,
@@ -1064,6 +1066,14 @@ export class DDSRPackage extends BasicEPackage {
     serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_models);
     DDSRPackage.Literals.SERVICE_INTERFACE__MODELS = serviceInterface_models;
 
+    // Create tags feature
+    const serviceInterface_tags = new BasicEAttribute();
+    serviceInterface_tags.setName('tags');
+    serviceInterface_tags.setLowerBound(0);
+    serviceInterface_tags.setUpperBound(-1);
+    serviceInterfaceClass.getEStructuralFeatures().push(serviceInterface_tags);
+    DDSRPackage.Literals.SERVICE_INTERFACE__TAGS = serviceInterface_tags;
+
     // Create ModelReference class
     const modelReferenceClass = new BasicEClass();
     modelReferenceClass.setName('ModelReference');
@@ -1469,6 +1479,14 @@ export class DDSRPackage extends BasicEPackage {
     serviceImplementation_capabilities.setUpperBound(-1);
     serviceImplementationClass.getEStructuralFeatures().push(serviceImplementation_capabilities);
     DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CAPABILITIES = serviceImplementation_capabilities;
+
+    // Create tags feature
+    const serviceImplementation_tags = new BasicEAttribute();
+    serviceImplementation_tags.setName('tags');
+    serviceImplementation_tags.setLowerBound(0);
+    serviceImplementation_tags.setUpperBound(-1);
+    serviceImplementationClass.getEStructuralFeatures().push(serviceImplementation_tags);
+    DDSRPackage.Literals.SERVICE_IMPLEMENTATION__TAGS = serviceImplementation_tags;
 
     // Create ServiceFlavor class
     const serviceFlavorClass = new BasicEClass();
@@ -3015,6 +3033,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_INTERFACE__REPLACED_BY as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_INTERFACE);
     (DDSRPackage.Literals.SERVICE_INTERFACE__SECURITY as BasicEReference).setEType(DDSRPackage.Literals.SECURITY_REQUIREMENT);
     (DDSRPackage.Literals.SERVICE_INTERFACE__MODELS as BasicEReference).setEType(DDSRPackage.Literals.MODEL_REFERENCE);
+    (DDSRPackage.Literals.SERVICE_INTERFACE__TAGS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.MODEL_REFERENCE__NS_U_R_I as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.MODEL_REFERENCE__FINGERPRINT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.LIFECYCLE_HOOK__PARAMETER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EInt')!);
@@ -3045,6 +3064,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__REPLACES as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_IMPLEMENTATION);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('ELong')!);
     (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
+    (DDSRPackage.Literals.SERVICE_IMPLEMENTATION__TAGS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_FLAVOR__OPERATION_FLAVORS as BasicEReference).setEType(DDSRPackage.Literals.SERVICE_OPERATION_FLAVOR);
     (DDSRPackage.Literals.SERVICE_FLAVOR__CAPABILITIES as BasicEReference).setEType(DDSRPackage.Literals.CAPABILITY);
     (DDSRPackage.Literals.SERVICE_FLAVOR__SECURITY_SCHEMES as BasicEReference).setEType(DDSRPackage.Literals.SECURITY_SCHEME);

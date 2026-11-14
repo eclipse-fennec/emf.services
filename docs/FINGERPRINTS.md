@@ -41,6 +41,10 @@ divergence between the languages is a bug in one of them, never a
 - **Doc text never moves a hash**: `description` fields are excluded
   everywhere; im1 additionally excludes `componentDescription`
   (deployment detail, not endpoint identity).
+- **Tags never move a hash**: `ServiceInterface.tags` and
+  `ServiceImplementation.tags` are requests to the tag overlay (#272),
+  not part of what a contract or an implementation is — tagging
+  something does not readdress it.
 
 ## sd1 — contract fingerprint
 

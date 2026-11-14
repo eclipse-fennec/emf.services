@@ -30,5 +30,6 @@ export interface ServiceImplementation extends NamedElement, VersionedElement {
   replaces?: ServiceImplementation;
   cutoverGraceMillis?: number;
   capabilities: EList<Capability>;
+  tags: EList<string>;
 
 }

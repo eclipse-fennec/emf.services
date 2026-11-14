@@ -46,6 +46,23 @@ Two rules that are easy to get wrong:
   be maintained by hand in the same change, or generation will quietly
   produce the old shape.
 
+**A second model: tags.** `org.eclipse.fennec.tags.model/model/tags.ecore`
+(nsURI `http://eclipse.org/fennec/tags/1.0`, Java package
+`org.eclipse.fennec.tags`) is the tag overlay of #272 — `Tag` with its
+tree, assignments, rules and requested tags. It is generated the same
+way (`./gradlew :org.eclipse.fennec.tags.model:generate`) and knows no
+type of the services model: a target is a kind and a key, so the same
+model could tag models in the Model Atlas. A tag's `path` is derived
+in OCL (`if parent = null then id else parent.path + '/' + id endif`),
+so it needs the Fennec OCL engine at runtime, as the broker launch has;
+being derived, it never travels — a reader without an engine joins the
+ids itself. The TypeScript twin of this model follows with the
+TypeScript consumer of the tags (#280).
+
+Generation runs only when the genmodel is newer than the generated
+code: after an Ecore-only change, touch the genmodel (or run the task
+with `--rerun-tasks`) and check that `src-gen` actually changed.
+
 **Who changes the model.** The `.ecore` belongs to the model owner. A
 change to it is a decision about the wire, about fingerprints and about
 both languages at once, which is why it is not a routine edit.

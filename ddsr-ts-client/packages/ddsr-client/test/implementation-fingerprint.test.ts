@@ -97,6 +97,13 @@ describe('ServiceImplementationFingerprint (im1) — cross-language golden', () 
     expect(implementationFingerprint(withDocs)).toBe(implementationFingerprint(stripped));
   });
 
+  it('tags do not move the hash (#273)', () => {
+    const plain = goldenImplementation();
+    const tagged = goldenImplementation();
+    tagged.tags.push('payment/method/card');
+    expect(implementationFingerprint(tagged)).toBe(implementationFingerprint(plain));
+  });
+
   it('covers the messaging flavor fields (Java parity)', () => {
     const factory = DDSRFactory.eINSTANCE;
     const impl = factory.createServiceImplementation();

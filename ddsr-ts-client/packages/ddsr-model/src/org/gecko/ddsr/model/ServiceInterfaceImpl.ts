@@ -6,7 +6,7 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import { createContainmentEList } from '@emfts/core';
+import { createContainmentEList, createBasicEList } from '@emfts/core';
 import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
 import type { NamedElement } from './NamedElement.js';
 import type { VersionedElement } from './VersionedElement.js';
@@ -38,6 +38,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   static readonly UPDATE_POLICY: number = 11;
   static readonly SECURITY: number = 12;
   static readonly MODELS: number = 13;
+  static readonly TAGS: number = 14;
   static readonly NAME: number = 0;
   static readonly VERSION: number = 1;
 
@@ -54,6 +55,7 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
   private _updatePolicy: UpdatePolicy = UpdatePolicy.UNSPECIFIED;
   private _security?: SecurityRequirement;
   private _models!: EList<ModelReference>;
+  private _tags!: EList<string>;
   private _name: string = "";
   private _version?: string;
 
@@ -285,6 +287,13 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
     return this._models;
   }
 
+  get tags(): EList<string> {
+    if (!this._tags) {
+      this._tags = createBasicEList<any>(this, this.eClass().getEStructuralFeature('tags')!);
+    }
+    return this._tags;
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -333,6 +342,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this.security;
       case ServiceInterfaceImpl.MODELS:
         return this.models;
+      case ServiceInterfaceImpl.TAGS:
+        return this.tags;
       case ServiceInterfaceImpl.NAME:
         return this.name;
       case ServiceInterfaceImpl.VERSION:
@@ -400,6 +411,11 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         this.models.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
+      case ServiceInterfaceImpl.TAGS:
+        this.tags.clear();
+        this.tags.addAll(newValue as any[]);
+        super.eSet(feature, newValue);
+        break;
       case ServiceInterfaceImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -443,6 +459,8 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return this._security !== undefined;
       case ServiceInterfaceImpl.MODELS:
         return this._models !== undefined && !this._models.isEmpty();
+      case ServiceInterfaceImpl.TAGS:
+        return this._tags !== undefined && !this._tags.isEmpty();
       case ServiceInterfaceImpl.NAME:
         return this._name !== "";
       case ServiceInterfaceImpl.VERSION:
@@ -493,6 +511,9 @@ export class ServiceInterfaceImpl extends BasicEObject implements ServiceInterfa
         return;
       case ServiceInterfaceImpl.MODELS:
         if (this._models) this._models.clear();
+        return;
+      case ServiceInterfaceImpl.TAGS:
+        if (this._tags) this._tags.clear();
         return;
       case ServiceInterfaceImpl.NAME:
         this._name = "";

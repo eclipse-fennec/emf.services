@@ -249,6 +249,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/updatePolicy"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/security"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceInterface/models"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceInterface/tags"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//ModelReference">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ModelReference/nsURI"/>
@@ -304,6 +305,7 @@
       <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference services.ecore#//ServiceImplementation/replaces"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceImplementation/cutoverGraceMillis"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceImplementation/capabilities"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceImplementation/tags"/>
     </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//ServiceFlavor">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceFlavor/kind"/>

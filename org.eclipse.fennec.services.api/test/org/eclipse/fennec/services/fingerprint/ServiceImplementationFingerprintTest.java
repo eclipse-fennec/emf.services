@@ -211,6 +211,19 @@ class ServiceImplementationFingerprintTest {
 	}
 
 	@Test
+	void tagsAreOutsideIm1() throws Exception {
+		// #273: tagging an implementation, or its contract, does not
+		// change the registration.
+		ServiceImplementation implementation = loadFixtureImplementation();
+		String before = ServiceImplementationFingerprint.fingerprint(implementation);
+
+		implementation.getTags().add("payment/method/card");
+		implementation.getServiceInterfaces().get(0).getTags().add("payment/terms/instant");
+
+		assertThat(ServiceImplementationFingerprint.fingerprint(implementation)).isEqualTo(before);
+	}
+
+	@Test
 	void bindingsAreWireConfigurationAndMoveTheHash() throws Exception {
 		// They used to be left out: im1 was frozen with its tag, and a
 		// binding nobody read was decoration. Since #74 a consumer places

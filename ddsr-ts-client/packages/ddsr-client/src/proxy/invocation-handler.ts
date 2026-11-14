@@ -43,7 +43,8 @@ export async function invokeOperation(
 
   // 2. Find a flavor + operationFlavor + plugin that can handle it. An
   //    operation that streams needs a plugin that carries streams (#251).
-  const streams = String(operation.returnValue?.delivery ?? '') === 'STREAM';
+  const delivery = String(operation.returnValue?.delivery ?? '');
+  const streams = delivery === 'STREAM' || delivery === 'BROADCAST';
   for (const flavor of flavors) {
     const plugin = flavorPlugins.find(p => p.canHandle(flavor) && (!streams || p.carriesStreams === true));
     if (!plugin) continue;
@@ -58,8 +59,7 @@ export async function invokeOperation(
   if (streams) {
     throw new Error(
       `'${operationName}' on '${serviceInterface.name}' returns a stream, and none of the announced flavors ` +
-      `[${flavors.map(f => f.kind).join(', ')}] is carried by a plugin here that carries streams - ` +
-      'a stream travels over a messaging flavor');
+      `[${flavors.map(f => f.kind).join(', ')}] is carried by a plugin here that carries streams`);
   }
   throw new Error(
     `No FlavorPlugin can handle operation '${operationName}' on '${serviceInterface.name}'. ` +

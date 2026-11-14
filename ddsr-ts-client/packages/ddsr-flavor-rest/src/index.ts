@@ -13,5 +13,8 @@
 
 export { RestFlavorPlugin } from './rest-flavor-plugin.js';
 export { serializeToXmi, deserializeFromXmi } from './xmi-support.js';
-export { restDispatcher } from './operation-dispatch.js';
+export { restDispatcher, writeAnswer } from './operation-dispatch.js';
+export type { AnswerSink } from './operation-dispatch.js';
+export { STREAM_MEDIA_TYPE, eventsOf, frame, framesOf, streams, valuesOf } from './rest-streams.js';
+export type { StreamEvent } from './rest-streams.js';
 export type { DispatchRequest, DispatchResult, DispatchOptions, OperationTarget } from './operation-dispatch.js';

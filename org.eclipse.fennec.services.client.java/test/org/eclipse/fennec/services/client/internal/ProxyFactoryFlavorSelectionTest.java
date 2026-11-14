@@ -298,7 +298,7 @@ class ProxyFactoryFlavorSelectionTest {
 			}
 		});
 
-		assertThat(failed.join()).hasMessageContaining("a stream travels over a messaging flavor");
+		assertThat(failed.join()).hasMessageContaining("that this runtime can carry a stream over");
 		assertThat(rest.calls).isEmpty();
 	}
 

@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.provider.rest;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -25,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Flow;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -39,6 +41,7 @@ import org.eclipse.fennec.services.RestExceptionBinding;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceException;
+import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
@@ -48,6 +51,9 @@ import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.invocation.AsyncReturns;
+import org.eclipse.fennec.services.invocation.Flows;
+import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.invocation.PushStreams;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -55,6 +61,7 @@ import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestRoute;
+import org.eclipse.fennec.services.flavor.rest.RestStreams;
 import org.eclipse.fennec.services.xmi.codec.WireBody;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
@@ -360,6 +367,9 @@ public class RestDispatcher {
 			// answer as not being there, which is what it is.
 			return Response.status(503).entity("no service implements " + contract + " here").build();
 		}
+		if (RestStreams.streams(operation)) {
+			return stream(operationFlavor, operation, arguments, serviceObjects, service);
+		}
 		try {
 			// A service that answers later (osgi.async) is waited for here:
 			// an HTTP request is answered once, on the thread that took it.
@@ -381,6 +391,69 @@ public class RestDispatcher {
 				// caller did not have.
 				LOG.fine(() -> "[DDSR] the implementation of " + contract + " was gone before it was returned");
 			}
+		}
+	}
+
+	/**
+	 * An operation that answers with a stream (#252): the answer is the
+	 * stream, as Server-Sent Events ({@link RestStreams}), and the service
+	 * is held until it is over. A failure — thrown by the call or ending the
+	 * stream — is the last event, holding the Diagnostic a single answer
+	 * would have carried, a declared error under its code.
+	 */
+	private Response stream(RestOperationFlavor operationFlavor, ServiceOperation operation,
+			Map<String, Object> arguments, ServiceObjects<Object> serviceObjects, Object service) {
+		Flow.Publisher<Object> values;
+		try {
+			values = PushStreams.asPublisher(invoke(service, operation, arguments));
+			if (values == null) {
+				values = Flows.failed(new IllegalStateException("the service answered " + operation.getName()
+						+ " with no stream, although its contract says it streams"));
+			}
+		} catch (InvocationTargetException failure) {
+			values = Flows.failed(failure.getCause());
+		} catch (ReflectiveOperationException | RuntimeException failure) {
+			values = Flows.failed(failure);
+		}
+		String contentType = RestStreams.contentTypeOf(operationFlavor);
+		SseStream.Encoder encoder = new SseStream.Encoder() {
+
+			@Override
+			public byte[] value(Object value) throws Exception {
+				return document(Invocations.result(value), contentType);
+			}
+
+			@Override
+			public byte[] failure(Throwable failure) throws Exception {
+				return document(thrown(operation, failure), contentType);
+			}
+		};
+		SseStream body = new SseStream(values, encoder, contentType, () -> release(serviceObjects, service));
+		return Response.ok(body, RestStreams.MEDIA_TYPE).build();
+	}
+
+	private byte[] document(EObject root, String contentType) throws IOException {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		XmiCodec.write(out, resourceSets, contentType, List.of(root));
+		return out.toByteArray();
+	}
+
+	/** A failure as the result a messaging answer would carry: a declared error under its code. */
+	private static ServiceInvocationResult thrown(ServiceOperation operation,
+			Throwable failure) {
+		Optional<ServiceException> declared = DeclaredErrors.raisedBy(operation, failure);
+		if (declared.isEmpty()) {
+			return Invocations.failure(String.valueOf(failure), 0);
+		}
+		String message = failure.getMessage() == null ? declared.get().getName() : failure.getMessage();
+		return Invocations.failure(message, DeclaredErrors.codeOf(declared.get()).orElse(0));
+	}
+
+	private void release(ServiceObjects<Object> serviceObjects, Object service) {
+		try {
+			serviceObjects.ungetService(service);
+		} catch (IllegalArgumentException | IllegalStateException notCounted) {
+			LOG.fine(() -> "[DDSR] the implementation of " + contract + " was gone before it was returned");
 		}
 	}
 

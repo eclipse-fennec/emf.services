@@ -163,6 +163,12 @@ public class RestDistributionProvider implements FlavorDistribution {
 		return FlavorKind.REST;
 	}
 
+	/** A stream comes back as Server-Sent Events (#252). */
+	@Override
+	public boolean carriesStreams() {
+		return true;
+	}
+
 	/** {@code osgi.basic} and {@code osgi.async}, and {@code fennec.bearer} once there is an issuer to name. */
 	@Override
 	public String[] supportedIntents() {

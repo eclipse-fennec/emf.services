@@ -503,7 +503,7 @@ class ReflectiveServiceProxyFactoryRetryTest {
 		streaming(FlowBalances.class, new ScriptedInvoker()).getBalance("acc-1").subscribe(collecting);
 
 		assertThat(collecting.ended.get(5, TimeUnit.SECONDS))
-				.isInstanceOf(DdsrException.class).hasMessageContaining("a stream travels over a messaging flavor");
+				.isInstanceOf(DdsrException.class).hasMessageContaining("that this runtime can carry a stream over");
 	}
 
 	@Test

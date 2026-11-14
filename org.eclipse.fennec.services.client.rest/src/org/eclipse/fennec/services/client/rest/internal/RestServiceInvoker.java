@@ -13,20 +13,26 @@
 
 package org.eclipse.fennec.services.client.rest.internal;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.fennec.services.BearerTokenScheme;
+import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.HttpMethod;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.ServiceOperation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.client.DdsrException;
@@ -36,13 +42,18 @@ import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
 import org.eclipse.fennec.services.common.ClientOrigin;
+import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.flavor.rest.RestErrors;
 import org.eclipse.fennec.services.flavor.rest.RestPlacement;
+import org.eclipse.fennec.services.flavor.rest.RestStreams;
+import org.eclipse.fennec.services.invocation.Flows;
+import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
+import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
@@ -110,6 +121,130 @@ public final class RestServiceInvoker implements ServiceInvoker {
 
 	@Override
 	public Object invoke(ServiceLocator locator, String operationName, Map<String, Object> args) {
+		Call call = prepare(locator, operationName, args, null);
+		Response response;
+		try (CallSpan span = tracer().calling(call.subject(), TraceCarrier.over(call.headers()))) {
+			span.attribute("rpc.system", "fennec.services")
+					.attribute("rpc.method", operationName)
+					.attribute("server.address", call.url())
+					.attribute("fennec.flavor", "REST")
+					.attribute(ClientOrigin.ATTRIBUTE, tx.originToken());
+			try {
+				response = call.send();
+			} catch (ProcessingException unreachable) {
+				// Connect refused, connect/read timeout, reset: the provider is
+				// registered but not answering. Marked as a transport failure so
+				// the proxy can rebind and retry once (#59).
+				DdsrException failed = DdsrException.transport("invoking " + operationName + " at " + call.url()
+						+ " failed: " + unreachable.getMessage(), unreachable);
+				span.failed(failed);
+				throw failed;
+			}
+			span.attribute("http.response.status_code", String.valueOf(response.getStatus()));
+			checkCorrelation(call.envelope(), response, operationName);
+			return readResponse(response, call.operationFlavor());
+		}
+	}
+
+	/** A stream comes back as Server-Sent Events (#252). */
+	@Override
+	public boolean carriesStreams() {
+		return true;
+	}
+
+	/**
+	 * A call whose return value is a stream: sent when the stream has a
+	 * subscriber, answered as Server-Sent Events, every value the
+	 * document a messaging answer would carry ({@link RestStreams}).
+	 */
+	@Override
+	public Flow.Publisher<Object> invokeStream(ServiceLocator locator, String operationName,
+			Map<String, Object> args) {
+		Call call;
+		try {
+			call = prepare(locator, operationName, args, RestStreams.MEDIA_TYPE);
+		} catch (RuntimeException unsendable) {
+			return Flows.failed(unsendable);
+		}
+		String contentType = RestStreams.contentTypeOf(call.operationFlavor());
+		ServiceOperation operation = call.operationFlavor().getOperation();
+		SseValues.Decoder decoder = new SseValues.Decoder() {
+
+			@Override
+			public Object value(byte[] document) throws Exception {
+				ServiceInvocationResult result = resultOf(document, contentType, operationName);
+				if (result.getDiagnostic() != null) {
+					throw failureOf(operation, result.getDiagnostic(), operationName);
+				}
+				return Invocations.valueOf(result);
+			}
+
+			@Override
+			public RuntimeException failure(byte[] document) throws Exception {
+				ServiceInvocationResult result = resultOf(document, contentType, operationName);
+				return result.getDiagnostic() == null
+						? new DdsrException("the stream of " + operationName + " failed without saying why")
+						: failureOf(operation, result.getDiagnostic(), operationName);
+			}
+		};
+		return new SseValues(operationName, () -> {
+			Response response;
+			try {
+				response = call.send();
+			} catch (ProcessingException unreachable) {
+				throw DdsrException.transport("invoking " + operationName + " at " + call.url() + " failed: "
+						+ unreachable.getMessage(), unreachable);
+			}
+			if (response.getStatus() / 100 != 2) {
+				// The same failure a single answer would be: a declared
+				// error by its status, otherwise the status and the body.
+				readResponse(response, call.operationFlavor());
+				throw new DdsrException(operationName + " answered with no stream: HTTP " + response.getStatus());
+			}
+			return new SseValues.Opened(response.readEntity(InputStream.class), response::close);
+		}, decoder, contentType);
+	}
+
+	private ServiceInvocationResult resultOf(byte[] document, String contentType, String operationName)
+			throws IOException {
+		XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(document), tx.resourceSets(), contentType);
+		for (EObject root : bundle.roots()) {
+			if (root instanceof ServiceInvocationResult result) {
+				return result;
+			}
+		}
+		throw new DdsrException("a value of the stream of " + operationName + " carried no result");
+	}
+
+	/**
+	 * What a failing value of a stream is to the caller: the declared
+	 * error of its code, or a failure nobody announced — the rule the
+	 * messaging invoker applies to the same document.
+	 */
+	static DdsrException failureOf(ServiceOperation operation, Diagnostic diagnostic, String operationName) {
+		Optional<ServiceException> declared = DeclaredErrors.byCode(operation, diagnostic.getCode());
+		if (declared.isPresent()) {
+			return new DdsrServiceException(diagnostic.getMessage() == null
+					? declared.get().getName() : diagnostic.getMessage(), declared.get(), diagnostic);
+		}
+		return new DdsrException(operationName + " failed: " + diagnostic.getMessage());
+	}
+
+	/** Everything a call needs before it is sent, the same for a single answer and a stream. */
+	private record Call(String url, String subject, CloudEvent envelope, Map<String, String> headers,
+			RestOperationFlavor operationFlavor, WebTarget target, HttpMethod method, RestPlacement placement,
+			String accept, String contentType) {
+
+		Response send() {
+			return RestServiceInvoker.send(target, method, placement, accept, contentType, headers);
+		}
+	}
+
+	/**
+	 * @param accept what the answer is asked for in; {@code null} for the
+	 *        first type the flavor produces, XMI otherwise
+	 */
+	private Call prepare(ServiceLocator locator, String operationName, Map<String, Object> args, String accept) {
 		if (locator == null || operationName == null) {
 			throw new DdsrException("locator and operationName must not be null");
 		}
@@ -127,9 +262,11 @@ public final class RestServiceInvoker implements ServiceInvoker {
 
 		// Accept header reflects what the OperationFlavor advertises;
 		// xml fallback covers the broker's own catalog/registry/etc.
-		String accept = !op.getProduces().isEmpty()
-				? op.getProduces().get(0)
-				: MediaType.APPLICATION_XML;
+		if (accept == null) {
+			accept = !op.getProduces().isEmpty()
+					? op.getProduces().get(0)
+					: MediaType.APPLICATION_XML;
+		}
 
 		// What the body is written AS, which is a different question from
 		// what we accept back (#100): consumes is the provider's statement
@@ -168,28 +305,7 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		if (bearer != null) {
 			headers.put(HttpHeaders.AUTHORIZATION, "Bearer " + bearer);
 		}
-		Response response;
-		try (CallSpan span = tracer().calling(subject, TraceCarrier.over(headers))) {
-			span.attribute("rpc.system", "fennec.services")
-					.attribute("rpc.method", operationName)
-					.attribute("server.address", url)
-					.attribute("fennec.flavor", "REST")
-					.attribute(ClientOrigin.ATTRIBUTE, tx.originToken());
-			try {
-				response = send(target, method, placement, accept, contentType, headers);
-			} catch (ProcessingException unreachable) {
-				// Connect refused, connect/read timeout, reset: the provider is
-				// registered but not answering. Marked as a transport failure so
-				// the proxy can rebind and retry once (#59).
-				DdsrException failed = DdsrException.transport("invoking " + operationName + " at " + url
-						+ " failed: " + unreachable.getMessage(), unreachable);
-				span.failed(failed);
-				throw failed;
-			}
-			span.attribute("http.response.status_code", String.valueOf(response.getStatus()));
-			checkCorrelation(envelope, response, operationName);
-			return readResponse(response, op);
-		}
+		return new Call(url, subject, envelope, headers, op, target, method, placement, accept, contentType);
 	}
 
 	/**

@@ -59,5 +59,23 @@ public class TickerCaller {
 				.onSuccess(left -> LOG.info("[RSA-Consumer] took " + some + " of forever and left"))
 				.onFailure(broken -> LOG.log(Level.WARNING, "[RSA-Consumer] forever broke off after " + some,
 						broken));
+		// The beats every listener shares (#252): nothing is called, this
+		// side listens. Taken as fast as they come, fifty of them follow
+		// one another without a gap — the ticker's pace is this one's.
+		List<Integer> beats = new CopyOnWriteArrayList<>();
+		ticker.beats().limit(50L).forEach(beats::add)
+				.onSuccess(heard -> LOG.info("[RSA-Consumer] heard " + beats.size() + " beats"
+						+ (inARow(beats) ? " in a row" : " with gaps " + beats)))
+				.onFailure(broken -> LOG.log(Level.WARNING, "[RSA-Consumer] the beats broke off after " + beats,
+						broken));
+	}
+
+	private static boolean inARow(List<Integer> beats) {
+		for (int i = 1; i < beats.size(); i++) {
+			if (beats.get(i) != beats.get(i - 1) + 1) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

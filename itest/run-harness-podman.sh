@@ -427,6 +427,22 @@ ticker_from_typescript() {
     || { echo "$scenario FAILED: TypeScript did not take three of forever"; cat "$WORK/$name.log"; exit 1; }
   grep -q "slowly took 30 of 30 through a buffer of 4" "$WORK/$name.log" \
     || { echo "$scenario FAILED: a slow TypeScript caller lost values — no credit?"; cat "$WORK/$name.log"; exit 1; }
+  # The beats every listener shares (#252): two TypeScript listeners at
+  # once, the fast one hears every beat, the slow one skips to the latest.
+  grep -q "heard 50 beats in a row" "$WORK/$name.log" \
+    || { echo "$scenario FAILED: the fast TypeScript listener missed beats"; cat "$WORK/$name.log"; exit 1; }
+  grep -qE "slowly heard 10 beats, skipped [1-9]" "$WORK/$name.log" \
+    || { echo "$scenario FAILED: the slow TypeScript listener did not skip to the latest"; cat "$WORK/$name.log"; exit 1; }
+}
+
+# The Java consumer of a scenario heard fifty beats of the broadcast in a
+# row (#252): container, log file, scenario.
+beats_heard_in_java() {
+  local container="$1" log="$2" scenario="$3"
+  wait_for_log "$container" "heard .* beats" 60
+  podman logs "$container" >"$log" 2>&1
+  grep -q "heard 50 beats in a row" "$log" \
+    || { echo "$scenario FAILED: the Java listener did not hear the beats in a row"; grep "RSA-Consumer" "$log"; exit 1; }
 }
 
 # The exporting framework stopped forever twice: once for the Java
@@ -499,6 +515,8 @@ podman logs ddsr-rsa-import >"$WORK/rsa-import.log" 2>&1
 grep -q "took \[1, 2, 3\] of forever and left" "$WORK/rsa-import.log" \
   || { echo "SCENARIO I FAILED: the consumer did not take three of forever"; grep "RSA-Consumer" "$WORK/rsa-import.log"; exit 1; }
 echo "  ✓ stream-cancel-over-mqtt: the caller left after three, and the provider's stream stopped"
+beats_heard_in_java ddsr-rsa-import "$WORK/rsa-import.log" "SCENARIO I"
+echo "  ✓ broadcast-over-mqtt: fifty beats in a row, heard in another framework"
 # The same stream across the language border: a TypeScript consumer
 # looks the derived contract up, reads STREAM off its return value and
 # iterates what the Java service's PushStream brings.
@@ -507,6 +525,7 @@ echo "  ✓ stream-java-to-ts-over-mqtt: a PushStream iterated as an AsyncIterab
 echo "  ✓ stream-credit-ts-to-java-over-mqtt: thirty values through a buffer of four, the provider held back"
 forever_stopped_twice ddsr-rsa-export "SCENARIO I"
 echo "  ✓ stream-cancel-ts-to-java-over-mqtt: TypeScript left, and the Java service's stream stopped"
+echo "  ✓ broadcast-java-to-ts-over-mqtt: one source, a fast listener heard every beat, a slow one skipped to the latest"
 # Two MQTT versions on one call (#138): the exporting node serves over
 # MQTT 5, the importing node calls over 3.1.1. The request's reply
 # address and correlation are in the envelope, which is why neither has
@@ -590,6 +609,8 @@ podman logs ddsr-rsa-import-amqp >"$WORK/rsa-import-amqp.log" 2>&1
 grep -q "took \[1, 2, 3\] of forever and left" "$WORK/rsa-import-amqp.log" \
   || { echo "SCENARIO R FAILED: the consumer did not take three of forever"; grep "RSA-Consumer" "$WORK/rsa-import-amqp.log"; exit 1; }
 echo "  ✓ stream-cancel-over-amqp: the caller left after three, and the provider's stream stopped"
+beats_heard_in_java ddsr-rsa-import-amqp "$WORK/rsa-import-amqp.log" "SCENARIO R"
+echo "  ✓ broadcast-over-amqp: fifty beats in a row, heard in another framework"
 # And from TypeScript, where the consumer brings the place for answers:
 # a routing key of its own, bound to a queue only it reads.
 ticker_from_typescript ddsr-ticker-ts-amqp AMQP "SCENARIO R"
@@ -597,6 +618,7 @@ echo "  ✓ stream-java-to-ts-over-amqp: a PushStream iterated as an AsyncIterab
 echo "  ✓ stream-credit-ts-to-java-over-amqp: thirty values through a buffer of four, the provider held back"
 forever_stopped_twice ddsr-rsa-export-amqp "SCENARIO R"
 echo "  ✓ stream-cancel-ts-to-java-over-amqp: TypeScript left, and the Java service's stream stopped"
+echo "  ✓ broadcast-java-to-ts-over-amqp: one source, a fast listener heard every beat, a slow one skipped to the latest"
 grep -q "under ddsr.rpc\." "$WORK/rsa-export-amqp.log" \
   || { echo "SCENARIO R FAILED: the export did not listen under a routing key"; cat "$WORK/rsa-export-amqp.log"; exit 1; }
 # The guarded Ledger is asked to be exported here too, and for the same

@@ -81,6 +81,7 @@ and the binding's to name:
 | `VALUE` (default) | the type itself, `List<T>` when multi-valued | `Promise<T>` — every call is one |
 | `PROMISE` (return value only) | `CompletionStage<T>` | `Promise<T>`, as for a value |
 | `STREAM` (return value or argument) | `Flow.Publisher<T>` | `AsyncIterable<T>` |
+| `BROADCAST` (return value of an operation without arguments) | `@Broadcast(overflow = "…") Flow.Publisher<T>` | `AsyncIterable<T>` |
 
 The Java types are the JDK's and need no dependency. A binding that
 wants others names them with the mechanism it has — a `typeMapping`
@@ -92,10 +93,15 @@ for the neutral names `promise` and `stream`:
 ```
 
 Generated code states the signature; what carries it is the transport.
-A stream that comes back travels over a messaging flavor, in both
-languages. A stream over REST and a stream as an argument are refused
-with a message naming the slot
-(see [Remote Service Admin](RSA.md#streams)).
+A stream that comes back travels over every transport, in both
+languages — over REST as Server-Sent Events, over messaging in a
+session; a broadcast is published once for every receiver. A stream as
+an argument is refused with a message naming the slot
+(see [Remote Service Admin](RSA.md#streams)). The `@Broadcast`
+annotation (`org.eclipse.fennec.services.derive`) carries the overflow
+policy, so that a contract derived back from the generated interface is
+the same contract; the TypeScript generator writes the policy into the
+contract it builds.
 
 Generation is again a bnd instruction, with the generator `fennecM2T`.
 One caveat worth knowing before you add a second one: the fileset in

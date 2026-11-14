@@ -29,9 +29,16 @@
  * by itself, and leaves: closing the session is what stops the Java
  * service's stream.
  *
+ * Then it listens to `beats`, the stream every receiver shares (#252),
+ * twice at once: a fast listener hears fifty beats in a row, a slow one
+ * (a buffer of four, a tenth of a second per beat) skips to the latest,
+ * as the contract's DISCARD_OLDEST allows - and the source does not slow
+ * down for it.
+ *
  * Output contract (parsed by the harness): a line `ticks [1, 2, 3] — the
- * stream ended`, a line `took [1, 2, 3] of forever and left`, then
- * PROBE_OK, or PROBE_FAIL <reason>.
+ * stream ended`, a line `took [1, 2, 3] of forever and left`, a line
+ * `heard 50 beats in a row`, a line `slowly heard 10 beats, skipped N`,
+ * then PROBE_OK, or PROBE_FAIL <reason>.
  */
 
 import { MqttFlavorPlugin } from '@ddsr/transport-mqtt';
@@ -52,6 +59,7 @@ function fail(reason: string): never {
 interface Ticker {
   count(upTo: number): AsyncIterable<number>;
   forever(everyMillis: number): AsyncIterable<number>;
+  beats(): AsyncIterable<number>;
 }
 
 async function main(): Promise<void> {
@@ -109,6 +117,30 @@ async function main(): Promise<void> {
   if (slow.join(',') !== Array.from({ length: 30 }, (_, i) => i + 1).join(',')) {
     fail(`the slow stream brought [${slow.join(', ')}]`);
   }
+
+  // The beats every receiver shares: one source, two listeners here and
+  // whoever else listens (the Java consumer of the same scenario).
+  const beats = toArray<ServiceOperation>(locator.serviceInterface.operations)
+    .find(operation => operation.name === 'beats');
+  const shared = `${String(beats?.returnValue?.delivery ?? '')}/${String(beats?.returnValue?.overflow ?? 'FAIL')}`;
+  console.log(`  ${shared === 'BROADCAST/DISCARD_OLDEST' ? '✓' : '✗'} contract-says-broadcast: beats returns ${shared}`);
+  if (shared !== 'BROADCAST/DISCARD_OLDEST') fail(`the derived contract says ${shared} for beats`);
+  const listen = async (count: number, pause: number): Promise<number[]> => {
+    const heard: number[] = [];
+    for await (const beat of serviceProxy<Ticker>(locator).beats()) {
+      heard.push(Number(beat));
+      if (heard.length === count) break;
+      if (pause > 0) await new Promise(resolve => setTimeout(resolve, pause));
+    }
+    return heard;
+  };
+  const [fast, slowly] = await Promise.all([listen(50, 0), listen(10, 100)]);
+  const gaps = (heard: number[]) => heard.slice(1).filter((beat, i) => beat !== heard[i] + 1).length;
+  const skipped = slowly[slowly.length - 1] - slowly[0] + 1 - slowly.length;
+  console.log(gaps(fast) === 0 ? `heard ${fast.length} beats in a row` : `heard beats with gaps [${fast.join(', ')}]`);
+  console.log(`slowly heard ${slowly.length} beats, skipped ${skipped}`);
+  if (gaps(fast) !== 0) fail(`the fast listener missed beats: [${fast.join(', ')}]`);
+  if (skipped <= 0) fail(`the slow listener skipped nothing: [${slowly.join(', ')}]`);
 
   await plugin.close();
   await client.close();

@@ -34,10 +34,11 @@ import org.osgi.util.pushstream.PushStreamProvider;
  *
  * <p>Nothing here knows how the stream travels. Over a messaging broker
  * each number is an answer of its own, and the next one is asked of
- * this stream when the broker has the one before. A transport that
- * answers a request once cannot carry it — asked to export this service
- * over REST, the remote service admin refuses, and says which slot it
- * is about.
+ * this stream when the broker has the one before; over REST each is an
+ * event of one answer.
+ *
+ * <p>{@link #beats} is asked for once, by the distribution, and what it
+ * sends every listener hears.
  */
 @Component(
 		service = Ticker.class,
@@ -66,6 +67,16 @@ public class TickerImpl implements Ticker {
 	@Override
 	public PushStream<Integer> forever(long everyMillis) {
 		LOG.info("[RSA-Example] forever(" + everyMillis + ") — a stream that ends when its caller leaves");
+		return ticking(everyMillis, "forever stopped after %d — its caller left");
+	}
+
+	@Override
+	public PushStream<Integer> beats() {
+		LOG.info("[RSA-Example] beats() — one beat every 20 ms, for every listener");
+		return ticking(20, "beats stopped after %d");
+	}
+
+	private PushStream<Integer> ticking(long everyMillis, String stopped) {
 		PushEventSource<Integer> ticking = consumer -> {
 			AtomicInteger next = new AtomicInteger();
 			ScheduledExecutorService clock = Executors.newSingleThreadScheduledExecutor();
@@ -80,7 +91,7 @@ public class TickerImpl implements Ticker {
 			}, 0, everyMillis, TimeUnit.MILLISECONDS);
 			return () -> {
 				clock.shutdownNow();
-				LOG.info("[RSA-Example] forever stopped after " + next.get() + " — its caller left");
+				LOG.info("[RSA-Example] " + String.format(stopped, next.get()));
 			};
 		};
 		return streams.buildStream(ticking).unbuffered().build();

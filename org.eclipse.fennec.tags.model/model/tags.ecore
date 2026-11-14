@@ -176,4 +176,43 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="tags" upperBound="-1"
         eType="#//EffectiveTag" containment="true"/>
   </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TagChangeKind">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="What changed in the tag registry."/>
+    </eAnnotations>
+    <eLiterals name="TAG_PUT"/>
+    <eLiterals name="TAG_MOVED" value="1"/>
+    <eLiterals name="TAG_REMOVED" value="2"/>
+    <eLiterals name="ASSIGNED" value="3"/>
+    <eLiterals name="UNASSIGNED" value="4"/>
+    <eLiterals name="RULE_PUT" value="5"/>
+    <eLiterals name="RULE_REMOVED" value="6"/>
+    <eLiterals name="REQUESTED" value="7"/>
+    <eLiterals name="REQUEST_ACCEPTED" value="8"/>
+    <eLiterals name="REQUEST_DISCARDED" value="9"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TagChange">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One change to the tag registry, as the changes broadcast reports it — after it was kept. What it says depends on its kind: a tag by its path (and, moved, the path it had), an assignment or request with its target, a rule with its kind and filter."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//TagChangeKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The tag's path as it is after the change; for a removed tag, the path it had."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="formerPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="TAG_MOVED: the path the tag had before."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" eType="#//TagTarget" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="ruleKind" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="RULE_PUT, RULE_REMOVED: the kind of target the rule looks at."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="filter" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="at" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"/>
+  </eClassifiers>
 </ecore:EPackage>

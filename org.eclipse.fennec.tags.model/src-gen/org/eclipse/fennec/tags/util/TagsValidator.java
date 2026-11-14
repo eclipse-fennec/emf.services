@@ -104,10 +104,14 @@ public class TagsValidator extends EObjectValidator {
 				return validateFoundTargets((FoundTargets)value, diagnostics, context);
 			case TagsPackage.TAGGED_TARGET:
 				return validateTaggedTarget((TaggedTarget)value, diagnostics, context);
+			case TagsPackage.TAG_CHANGE:
+				return validateTagChange((TagChange)value, diagnostics, context);
 			case TagsPackage.MATCH_MODE:
 				return validateMatchMode((MatchMode)value, diagnostics, context);
 			case TagsPackage.TAG_ORIGIN:
 				return validateTagOrigin((TagOrigin)value, diagnostics, context);
+			case TagsPackage.TAG_CHANGE_KIND:
+				return validateTagChangeKind((TagChangeKind)value, diagnostics, context);
 			default:
 				return true;
 		}
@@ -307,6 +311,15 @@ public class TagsValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	public boolean validateTagChange(TagChange tagChange, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(tagChange, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public boolean validateMatchMode(MatchMode matchMode, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
@@ -317,6 +330,15 @@ public class TagsValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateTagOrigin(TagOrigin tagOrigin, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateTagChangeKind(TagChangeKind tagChangeKind, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

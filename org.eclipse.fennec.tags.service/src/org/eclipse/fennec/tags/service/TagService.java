@@ -14,11 +14,13 @@
 package org.eclipse.fennec.tags.service;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
+import org.eclipse.fennec.tags.TagChange;
 import org.eclipse.fennec.tags.TagRegistry;
 
 /**
@@ -136,6 +138,16 @@ public interface TagService {
 	 * reference — a copy, as every answer is.
 	 */
 	TagRegistry rules();
+
+	/**
+	 * Tells the listener about every change, after it was kept and in the
+	 * order it was made: a tag put, moved or removed, an assignment, a
+	 * rule, a request filed, accepted or discarded. A change that was
+	 * refused or rolled back is not reported.
+	 *
+	 * @return closing it stops the notifications
+	 */
+	AutoCloseable onChange(Consumer<TagChange> listener);
 
 	/**
 	 * What targets asked for and may not give themselves — the tag does not

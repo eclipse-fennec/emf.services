@@ -17,6 +17,8 @@ import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
 import org.eclipse.fennec.tags.TagAssignment;
+import org.eclipse.fennec.tags.TagChange;
+import org.eclipse.fennec.tags.TagChangeKind;
 import org.eclipse.fennec.tags.TagOrigin;
 import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagRule;
@@ -102,6 +104,13 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass tagChangeEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EEnum matchModeEEnum = null;
 
 	/**
@@ -110,6 +119,13 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 	 * @generated
 	 */
 	private EEnum tagOriginEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum tagChangeKindEEnum = null;
 
 	/**
 	 * Creates an instance of the model <b>Package</b>, registered with
@@ -587,6 +603,86 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 	 * @generated
 	 */
 	@Override
+	public EClass getTagChange() {
+		return tagChangeEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTagChange_Kind() {
+		return (EAttribute)tagChangeEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTagChange_Path() {
+		return (EAttribute)tagChangeEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTagChange_FormerPath() {
+		return (EAttribute)tagChangeEClass.getEStructuralFeatures().get(2);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getTagChange_Target() {
+		return (EReference)tagChangeEClass.getEStructuralFeatures().get(3);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTagChange_RuleKind() {
+		return (EAttribute)tagChangeEClass.getEStructuralFeatures().get(4);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTagChange_Filter() {
+		return (EAttribute)tagChangeEClass.getEStructuralFeatures().get(5);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getTagChange_At() {
+		return (EAttribute)tagChangeEClass.getEStructuralFeatures().get(6);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getMatchMode() {
 		return matchModeEEnum;
 	}
@@ -599,6 +695,16 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 	@Override
 	public EEnum getTagOrigin() {
 		return tagOriginEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EEnum getTagChangeKind() {
+		return tagChangeKindEEnum;
 	}
 
 	/**
@@ -679,9 +785,19 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 		createEReference(taggedTargetEClass, TAGGED_TARGET__TARGET);
 		createEReference(taggedTargetEClass, TAGGED_TARGET__TAGS);
 
+		tagChangeEClass = createEClass(TAG_CHANGE);
+		createEAttribute(tagChangeEClass, TAG_CHANGE__KIND);
+		createEAttribute(tagChangeEClass, TAG_CHANGE__PATH);
+		createEAttribute(tagChangeEClass, TAG_CHANGE__FORMER_PATH);
+		createEReference(tagChangeEClass, TAG_CHANGE__TARGET);
+		createEAttribute(tagChangeEClass, TAG_CHANGE__RULE_KIND);
+		createEAttribute(tagChangeEClass, TAG_CHANGE__FILTER);
+		createEAttribute(tagChangeEClass, TAG_CHANGE__AT);
+
 		// Create enums
 		matchModeEEnum = createEEnum(MATCH_MODE);
 		tagOriginEEnum = createEEnum(TAG_ORIGIN);
+		tagChangeKindEEnum = createEEnum(TAG_CHANGE_KIND);
 	}
 
 	/**
@@ -763,6 +879,15 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 		initEReference(getTaggedTarget_Target(), this.getTagTarget(), null, "target", null, 1, 1, TaggedTarget.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getTaggedTarget_Tags(), this.getEffectiveTag(), null, "tags", null, 0, -1, TaggedTarget.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
+		initEClass(tagChangeEClass, TagChange.class, "TagChange", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getTagChange_Kind(), this.getTagChangeKind(), "kind", null, 1, 1, TagChange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getTagChange_Path(), ecorePackage.getEString(), "path", null, 0, 1, TagChange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getTagChange_FormerPath(), ecorePackage.getEString(), "formerPath", null, 0, 1, TagChange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getTagChange_Target(), this.getTagTarget(), null, "target", null, 0, 1, TagChange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getTagChange_RuleKind(), ecorePackage.getEString(), "ruleKind", null, 0, 1, TagChange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getTagChange_Filter(), ecorePackage.getEString(), "filter", null, 0, 1, TagChange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getTagChange_At(), ecorePackage.getEDate(), "at", null, 0, 1, TagChange.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
 		// Initialize enums and add enum literals
 		initEEnum(matchModeEEnum, MatchMode.class, "MatchMode");
 		addEEnumLiteral(matchModeEEnum, MatchMode.ANY);
@@ -772,6 +897,18 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 		addEEnumLiteral(tagOriginEEnum, TagOrigin.SOURCE);
 		addEEnumLiteral(tagOriginEEnum, TagOrigin.ADMIN);
 		addEEnumLiteral(tagOriginEEnum, TagOrigin.RULE);
+
+		initEEnum(tagChangeKindEEnum, TagChangeKind.class, "TagChangeKind");
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.TAG_PUT);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.TAG_MOVED);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.TAG_REMOVED);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.ASSIGNED);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.UNASSIGNED);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.RULE_PUT);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.RULE_REMOVED);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.REQUESTED);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.REQUEST_ACCEPTED);
+		addEEnumLiteral(tagChangeKindEEnum, TagChangeKind.REQUEST_DISCARDED);
 
 		// Create resource
 		createResource(eNS_URI);
@@ -946,6 +1083,36 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 		   source,
 		   new String[] {
 			   "documentation", "One target with the tags it carries, each with where it comes from, sorted by path."
+		   });
+		addAnnotation
+		  (tagChangeKindEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "What changed in the tag registry."
+		   });
+		addAnnotation
+		  (tagChangeEClass,
+		   source,
+		   new String[] {
+			   "documentation", "One change to the tag registry, as the changes broadcast reports it \u2014 after it was kept. What it says depends on its kind: a tag by its path (and, moved, the path it had), an assignment or request with its target, a rule with its kind and filter."
+		   });
+		addAnnotation
+		  (getTagChange_Path(),
+		   source,
+		   new String[] {
+			   "documentation", "The tag\'s path as it is after the change; for a removed tag, the path it had."
+		   });
+		addAnnotation
+		  (getTagChange_FormerPath(),
+		   source,
+		   new String[] {
+			   "documentation", "TAG_MOVED: the path the tag had before."
+		   });
+		addAnnotation
+		  (getTagChange_RuleKind(),
+		   source,
+		   new String[] {
+			   "documentation", "RULE_PUT, RULE_REMOVED: the kind of target the rule looks at."
 		   });
 	}
 

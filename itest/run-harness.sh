@@ -19,7 +19,8 @@
 #             broker; on an open one a provider brings tags (one carried
 #             by itself, one filed and accepted), a contract and an
 #             implementation are tagged and found, a rule over properties
-#             tags, and the tags survive a restart.
+#             tags, an administrator hears the changes as a broadcast, and
+#             the tags survive a restart.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
 #             removal while implemented, withdrawn (contract stays, a
@@ -630,6 +631,11 @@ start_tags_broker broker-tags
 TAGS_PROVIDER_PID=$!
 PIDS+=("$TAGS_PROVIDER_PID")
 wait_for_line "$WORK/provider-tags.log" "published as reference" 60
+# The changes broadcast (#278): an administrator listens from here on.
+(exec curl -sN "$TAGS_URL/tags/changes") >"$WORK/tags-changes.sse" 2>&1 &
+TAGS_CHANGES_PID=$!
+PIDS+=("$TAGS_CHANGES_PID")
+wait_for_line "$WORK/tags-changes.sse" ": connected" 30
 for tag in "id=payment" "parent=payment&id=method" "parent=payment/method&id=card&selfAssignable=true" \
            "parent=payment&id=terms" "parent=payment/terms&id=instant"; do
   tags_status 200 PUT "$TAGS_URL/tags/tag?$tag"
@@ -654,6 +660,12 @@ OF=$(curl -sf "$TAGS_URL/tags/of?kind=implementation&key=payments-ts/Payment")
 grep -q 'path="payment/terms/instant" origin="ADMIN"' <<<"$OF" \
   || { echo "SCENARIO W FAILED: the accepted request is not carried"; echo "$OF"; exit 1; }
 echo "  ✓ tags-from-the-provider: self-assignable carried at once, the other filed and carried once accepted"
+wait_for_line "$WORK/tags-changes.sse" "REQUEST_ACCEPTED" 30
+kill "$TAGS_CHANGES_PID" 2>/dev/null || true
+wait "$TAGS_CHANGES_PID" 2>/dev/null || true
+grep -q "^event: value" "$WORK/tags-changes.sse" \
+  || { echo "SCENARIO W FAILED: the changes broadcast carries no value"; exit 1; }
+echo "  ✓ tags-changes: the administrator heard the changes as they were kept, over SSE"
 tags_status 204 PUT "$TAGS_URL/tags/assignment?path=payment/terms/instant&kind=contract&key=Payment"
 tags_status 204 PUT "$TAGS_URL/tags/assignment?path=payment/method/card&kind=implementation&key=payments-ts/Payment"
 tags_find() { # query

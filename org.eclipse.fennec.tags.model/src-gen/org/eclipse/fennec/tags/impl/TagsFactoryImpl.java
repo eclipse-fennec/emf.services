@@ -66,6 +66,7 @@ public class TagsFactoryImpl extends EFactoryImpl implements TagsFactory {
 			case TagsPackage.EFFECTIVE_TAG: return createEffectiveTag();
 			case TagsPackage.FOUND_TARGETS: return createFoundTargets();
 			case TagsPackage.TAGGED_TARGET: return createTaggedTarget();
+			case TagsPackage.TAG_CHANGE: return createTagChange();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -83,6 +84,8 @@ public class TagsFactoryImpl extends EFactoryImpl implements TagsFactory {
 				return createMatchModeFromString(eDataType, initialValue);
 			case TagsPackage.TAG_ORIGIN:
 				return createTagOriginFromString(eDataType, initialValue);
+			case TagsPackage.TAG_CHANGE_KIND:
+				return createTagChangeKindFromString(eDataType, initialValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -100,6 +103,8 @@ public class TagsFactoryImpl extends EFactoryImpl implements TagsFactory {
 				return convertMatchModeToString(eDataType, instanceValue);
 			case TagsPackage.TAG_ORIGIN:
 				return convertTagOriginToString(eDataType, instanceValue);
+			case TagsPackage.TAG_CHANGE_KIND:
+				return convertTagChangeKindToString(eDataType, instanceValue);
 			default:
 				throw new IllegalArgumentException("The datatype '" + eDataType.getName() + "' is not a valid classifier");
 		}
@@ -209,6 +214,17 @@ public class TagsFactoryImpl extends EFactoryImpl implements TagsFactory {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	@Override
+	public TagChange createTagChange() {
+		TagChangeImpl tagChange = new TagChangeImpl();
+		return tagChange;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	public MatchMode createMatchModeFromString(EDataType eDataType, String initialValue) {
 		MatchMode result = MatchMode.get(initialValue);
 		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
@@ -241,6 +257,26 @@ public class TagsFactoryImpl extends EFactoryImpl implements TagsFactory {
 	 * @generated
 	 */
 	public String convertTagOriginToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public TagChangeKind createTagChangeKindFromString(EDataType eDataType, String initialValue) {
+		TagChangeKind result = TagChangeKind.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertTagChangeKindToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

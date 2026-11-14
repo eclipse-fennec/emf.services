@@ -106,6 +106,15 @@ public interface TagsFactory extends EFactory {
 	TaggedTarget createTaggedTarget();
 
 	/**
+	 * Returns a new object of class '<em>Tag Change</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Tag Change</em>'.
+	 * @generated
+	 */
+	TagChange createTagChange();
+
+	/**
 	 * Returns the package supported by this factory.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

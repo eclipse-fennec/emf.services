@@ -14,9 +14,11 @@
 package org.eclipse.fennec.tags.ddsr;
 
 import java.util.List;
+import java.util.concurrent.Flow;
 
 import org.eclipse.fennec.tags.FoundTargets;
 import org.eclipse.fennec.tags.MatchMode;
+import org.eclipse.fennec.tags.TagChange;
 import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagTarget;
 import org.eclipse.fennec.tags.TaggedTarget;
@@ -24,6 +26,7 @@ import org.eclipse.fennec.tags.TagsFactory;
 import org.eclipse.fennec.tags.service.TagService;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
@@ -44,9 +47,32 @@ public final class TagsEndpoint {
 
 	private final TagService tags;
 
+	private final ChangesBroadcast changes = new ChangesBroadcast();
+
+	private final AutoCloseable listening;
+
 	@Activate
 	public TagsEndpoint(@Reference TagService tags) {
 		this.tags = tags;
+		this.listening = tags.onChange(changes);
+	}
+
+	@Deactivate
+	void deactivate() {
+		try {
+			listening.close();
+		} catch (Exception closeFailure) {
+			// nothing left to tell
+		}
+		changes.close();
+	}
+
+	/**
+	 * Every change to the tag registry, from now on, for every receiver —
+	 * after it was kept and in the order it was made (#278).
+	 */
+	public Flow.Publisher<TagChange> changes() {
+		return changes.publisher();
 	}
 
 	public TagRegistry tags() {

@@ -6,10 +6,17 @@ Bundle-Description: \
 	implementations as targets. Installing this bundle with the tag model \
 	and the tag service is all a broker needs to serve tags.
 
--library: enableEMF
+-library: enableJakartaREST,\
+	enableEMF
 
 -buildpath: \
+	org.osgi.framework;version=latest,\
+	org.osgi.service.component;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.jakartars;version=latest,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec.jakartars;version=snapshot,\
+	org.eclipse.fennec.services.provider.rest;version=snapshot,\
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.api;version=snapshot,\

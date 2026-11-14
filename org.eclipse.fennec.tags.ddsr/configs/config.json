@@ -4,6 +4,12 @@
 	{
 		"store.file": "$[env:DDSR_TAGS_FILE;default=broker-tags.xmi]"
 	},
+	"org.eclipse.fennec.tags.ddsr.facade":
+	{
+		"auth.mode": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
+	},
 	"org.eclipse.fennec.services.provider.rest~tags":
 	{
 		"ddsr.contract": "Tags",

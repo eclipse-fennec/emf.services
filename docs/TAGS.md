@@ -12,8 +12,9 @@ The design is collected in issue #272; this page grows with its
 sub-issues. What exists today: the model (#273), the tag service (#274),
 the `Tags` contract served beside the broker (#275) and the tags a
 provider brings, with requests for the ones it may not give itself
-(#276), rules over properties (#277) and the change broadcast (#278).
-The consumer facade and the TypeScript side follow.
+(#276), rules over properties (#277), the change broadcast (#278) and
+the consumer facade (#279). The TypeScript side of the tag contract
+follows.
 
 ## The tree
 
@@ -171,6 +172,55 @@ requests first, then listens. It is meant for an administrator's UI —
 only `service-admin` may listen; what a consumer may see is the
 facade's business (#279). In Java, `TagService.onChange(listener)` is
 the same stream without a transport.
+
+## The facade: the registry under a tag
+
+`<broker>/scoped/<tag>` answers the broker's consumer API — `/references`,
+`/events`, `/catalog` and `/consumers` — with only what the tag covers.
+A consumer needs no code for it: its broker URL is the facade's.
+
+```bash
+DDSR_BROKER_URL=http://broker:8887/ddsr/rest/scoped/payment   # the Java client
+BROKER_URL=http://broker:8887/ddsr/rest/scoped/payment        # a TypeScript consumer
+```
+
+- **What is visible**: a registration whose implementation or contract
+  carries a tag at or under the path — by an administrator, the provider
+  or a rule. A tag covers its descendants, so `/scoped/payment` shows
+  what `/scoped/payment/method/card` shows and more.
+- **The broker's own contracts** (`BrokerLookup`, `BrokerEvents`,
+  `BrokerCatalog`) are always visible, and answered at the facade's
+  address: a consumer that finds the broker's API through the facade
+  stays in the facade.
+- **Events** under a tag are the registrations it covers and what becomes
+  of them; a registration tagged after it was announced is found by the
+  next lookup, not heard.
+- **Sessions** are the consumer's, not a tag's: `/consumers` is handed
+  through.
+- **Read only**: the catalog offers listing and reading one entry, the
+  lookup no heartbeat. Publishing and curating stay on the broker's own
+  API.
+
+The facade answers exactly as the broker does because it runs the
+broker's own documents — copied per tag, through the same dispatcher the
+generic distribution uses. In the copies, the role the broker's
+documents ask for, `service-consumer`, becomes **`tags-consumer`**.
+
+| Role | Raw broker API (`/references`, …) | Facade (`/scoped/<tag>/…`) |
+| --- | --- | --- |
+| `service-consumer` | yes | no |
+| `tags-consumer` | no | yes |
+
+An end consumer that is to see the registry only through tags holds
+`tags-consumer` and nothing else; admins, providers and internal clients
+keep `service-consumer`. Existing configurations do not change.
+
+**Who may see which tag** is not the facade's decision. It narrows answers
+to the tag in the path; a gateway in front of it (APISIX) asks a policy
+decision point (OPA) whether the caller may use that path (#282). Without
+one, every caller holding `tags-consumer` may use every tag. The facade
+still verifies the caller's token itself, and the broker should be
+reachable only through the gateway.
 
 ## On the broker: the `Tags` contract
 

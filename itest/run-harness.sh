@@ -19,7 +19,8 @@
 #             broker; on an open one a provider brings tags (one carried
 #             by itself, one filed and accepted), a contract and an
 #             implementation are tagged and found, a rule over properties
-#             tags, an administrator hears the changes as a broadcast, and
+#             tags, an administrator hears the changes as a broadcast,
+#             consumers read through the facade /scoped/<tag> (#279), and
 #             the tags survive a restart.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
@@ -607,6 +608,13 @@ if secured; then
   tags_status 200 PUT "$BROKER_URL/tags/tag?id=harness" -H "Authorization: Bearer $ADMIN_TOKEN"
   tags_status 204 DELETE "$BROKER_URL/tags/tag?path=harness" -H "Authorization: Bearer $ADMIN_TOKEN"
   echo "  ✓ tags-roles: no token 401, a consumer reads and may not change (403), an administrator changes"
+  # The facade (#279): whoever holds only tags-consumer reads the registry
+  # through it and not around it.
+  VIEWER_TOKEN=$(token_for tags-viewer)
+  tags_status 403 GET "$BROKER_URL/references?interface=BrokerLookup" -H "Authorization: Bearer $VIEWER_TOKEN"
+  tags_status 200 GET "$BROKER_URL/scoped/any/references?interface=BrokerLookup" -H "Authorization: Bearer $VIEWER_TOKEN"
+  tags_status 403 GET "$BROKER_URL/scoped/any/references?interface=BrokerLookup" -H "Authorization: Bearer $CONSUMER_TOKEN"
+  echo "  ✓ tags-facade-roles: tags-consumer is refused the raw lookup (403) and served through the facade; service-consumer alone is not"
 fi
 
 TAGS_URL="http://localhost:8897/ddsr/rest"
@@ -695,6 +703,27 @@ OF=$(curl -sf "$TAGS_URL/tags/of?kind=implementation&key=payments-ts/Payment")
 grep -q 'path="payment/sandbox" origin="RULE"' <<<"$OF" \
   || { echo "SCENARIO W FAILED: the rule's tag is not reported with origin RULE"; echo "$OF"; exit 1; }
 echo "  ✓ tags-rules: an LDAP filter over the implementation's properties tags it; an unreadable filter is refused"
+
+# The facade (#279): consumers whose broker URL is <broker>/scoped/<tag>
+# see only what the tag covers, with no code of their own.
+tags_status 200 PUT "$TAGS_URL/tags/tag?id=other"
+for scope in "payment 1" "other 0"; do
+  set -- $scope
+  if ! (cd "$TS/examples/payment" && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$TAGS_URL/scoped/$1" \
+       EXPECT_PAYMENT="$2" corepack pnpm exec tsx facade-probe.ts) >"$WORK/facade-probe-$1.log" 2>&1; then
+    echo "SCENARIO W FAILED: the TS consumer through the facade under $1"; cat "$WORK/facade-probe-$1.log"; exit 1
+  fi
+done
+grep -E '  [✓✗]' "$WORK/facade-probe-payment.log"
+(cd "$WORK" && mkdir -p client-facade && cd client-facade \
+  && exec env -u DDSR_OAUTH_TOKEN_URI -u DDSR_TOKENS DDSR_BROKER_URL="$TAGS_URL/scoped/payment" \
+       java -Dgosh.args=--nointeractive -jar "$CLIENT_JAR") >"$WORK/client-facade.log" 2>&1 &
+FACADE_CLIENT_PID=$!
+PIDS+=("$FACADE_CLIENT_PID")
+wait_for_line "$WORK/client-facade.log" 'ts.charge(10.0, "EUR") =' 90
+kill "$FACADE_CLIENT_PID" 2>/dev/null || true
+wait "$FACADE_CLIENT_PID" 2>/dev/null || true
+echo "  ✓ tags-facade: TS and Java consumers through /scoped/payment find and call Payment; under another tag nothing"
 
 tags_status 200 POST "$TAGS_URL/tags/tag/move?path=payment&id=billing"
 # The provider first, so it withdraws; then the broker.

@@ -29,8 +29,8 @@ import org.osgi.annotation.versioning.ProviderType;
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceOperation()
- * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='onlyAReturnValueIsPromised'"
- *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 onlyAReturnValueIsPromised='parameters-&gt;forAll(p | p.delivery &lt;&gt; Delivery::PROMISE)'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='onlyAReturnValueIsPromised onlyAReturnValueIsBroadcast broadcastTakesNoArguments'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 onlyAReturnValueIsPromised='parameters-&gt;forAll(p | p.delivery &lt;&gt; Delivery::PROMISE)' onlyAReturnValueIsBroadcast='parameters-&gt;forAll(p | p.delivery &lt;&gt; Delivery::BROADCAST)' broadcastTakesNoArguments='returnValue = null or returnValue.delivery &lt;&gt; Delivery::BROADCAST or parameters-&gt;isEmpty()'"
  * @generated
  */
 @ProviderType

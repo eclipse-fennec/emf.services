@@ -12,7 +12,8 @@
 export const Delivery = {
   VALUE: 'VALUE',
   PROMISE: 'PROMISE',
-  STREAM: 'STREAM'
+  STREAM: 'STREAM',
+  BROADCAST: 'BROADCAST'
 } as const;
 
 export type Delivery = typeof Delivery[keyof typeof Delivery];
@@ -31,5 +32,6 @@ export function getDeliveryByLiteral(literal: string): Delivery | undefined {
   if (literal === 'VALUE') return Delivery.VALUE;
   if (literal === 'PROMISE') return Delivery.PROMISE;
   if (literal === 'STREAM') return Delivery.STREAM;
+  if (literal === 'BROADCAST') return Delivery.BROADCAST;
   return undefined;
 }

@@ -8,6 +8,7 @@
 import type { EObject, EList, EClassifier, BasicEObject, EClass, EStructuralFeature } from '@emfts/core';
 import type { NamedElement } from './NamedElement.js';
 import type { Delivery } from './Delivery.js';
+import type { OverflowPolicy } from './OverflowPolicy.js';
 import type { ParameterConstraint } from './ParameterConstraint.js';
 
 /**
@@ -24,6 +25,7 @@ export interface Parameter extends NamedElement {
   defaultValue?: string;
   description?: string;
   delivery: Delivery;
+  overflow: OverflowPolicy;
   constraints: EList<ParameterConstraint>;
 
 }

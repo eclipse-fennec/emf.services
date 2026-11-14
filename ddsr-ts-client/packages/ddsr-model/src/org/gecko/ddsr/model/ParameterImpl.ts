@@ -11,6 +11,7 @@ import type { EClass, EStructuralFeature, EList, EReference, EClassifier } from 
 import type { NamedElement } from './NamedElement.js';
 import type { ParameterConstraint } from './ParameterConstraint.js';
 import { Delivery } from './Delivery.js';
+import { OverflowPolicy } from './OverflowPolicy.js';
 import type { Parameter } from './Parameter.js';
 import { DDSRPackage } from './DDSRPackage.js';
 
@@ -29,7 +30,8 @@ export class ParameterImpl extends BasicEObject implements Parameter {
   static readonly DEFAULT_VALUE: number = 7;
   static readonly DESCRIPTION: number = 8;
   static readonly DELIVERY: number = 9;
-  static readonly CONSTRAINTS: number = 10;
+  static readonly OVERFLOW: number = 10;
+  static readonly CONSTRAINTS: number = 11;
   static readonly NAME: number = 0;
 
   // Private fields
@@ -42,6 +44,7 @@ export class ParameterImpl extends BasicEObject implements Parameter {
   private _defaultValue?: string;
   private _description?: string;
   private _delivery: Delivery = Delivery.VALUE;
+  private _overflow: OverflowPolicy = OverflowPolicy.FAIL;
   private _constraints!: EList<ParameterConstraint>;
   private _name: string = "";
 
@@ -269,6 +272,30 @@ export class ParameterImpl extends BasicEObject implements Parameter {
     }
   }
 
+  get overflow(): OverflowPolicy {
+    return this._overflow!;
+  }
+
+  set overflow(value: OverflowPolicy) {
+    const oldValue = this._overflow;
+    this._overflow = value;
+    if (this.eDeliver()) {
+      this.eNotify({
+        getNotifier: () => this,
+        getEventType: () => 1, // SET
+        getFeature: () => this.eClass().getEStructuralFeature(ParameterImpl.OVERFLOW),
+        getOldValue: () => oldValue,
+        getNewValue: () => value,
+        getPosition: () => -1,
+        wasSet: () => true,
+        isTouch: () => false,
+        isReset: () => false,
+        getFeatureID: () => ParameterImpl.OVERFLOW,
+        merge: () => false
+      });
+    }
+  }
+
   get constraints(): EList<ParameterConstraint> {
     if (!this._constraints) {
       this._constraints = createContainmentEList<any>(this, this.eClass().getEStructuralFeature('constraints') as EReference);
@@ -310,6 +337,8 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         return this.description;
       case ParameterImpl.DELIVERY:
         return this.delivery;
+      case ParameterImpl.OVERFLOW:
+        return this.overflow;
       case ParameterImpl.CONSTRAINTS:
         return this.constraints;
       case ParameterImpl.NAME:
@@ -361,6 +390,10 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         this.delivery = newValue as Delivery;
         super.eSet(feature, newValue);
         break;
+      case ParameterImpl.OVERFLOW:
+        this.overflow = newValue as OverflowPolicy;
+        super.eSet(feature, newValue);
+        break;
       case ParameterImpl.CONSTRAINTS:
         this.constraints.clear();
         this.constraints.addAll(newValue as any[]);
@@ -399,6 +432,8 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         return this._description !== undefined;
       case ParameterImpl.DELIVERY:
         return this._delivery !== Delivery.VALUE;
+      case ParameterImpl.OVERFLOW:
+        return this._overflow !== OverflowPolicy.FAIL;
       case ParameterImpl.CONSTRAINTS:
         return this._constraints !== undefined && !this._constraints.isEmpty();
       case ParameterImpl.NAME:
@@ -440,6 +475,9 @@ export class ParameterImpl extends BasicEObject implements Parameter {
         return;
       case ParameterImpl.DELIVERY:
         this._delivery = Delivery.VALUE;
+        return;
+      case ParameterImpl.OVERFLOW:
+        this._overflow = OverflowPolicy.FAIL;
         return;
       case ParameterImpl.CONSTRAINTS:
         if (this._constraints) this._constraints.clear();

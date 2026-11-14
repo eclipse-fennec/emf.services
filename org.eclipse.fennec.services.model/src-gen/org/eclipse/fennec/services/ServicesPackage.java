@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:e9c1aaac8c0739bd0ad76a22359911d18f8696d9d286126a9c2237d9296d8cb6", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:62450676fc1bd508641615bb61b175ee93f54dd17ae3513e6ce7528b81206391", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -796,13 +796,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int PARAMETER__DELIVERY = NAMED_ELEMENT_FEATURE_COUNT + 8;
 
 	/**
+	 * The feature id for the '<em><b>Overflow</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int PARAMETER__OVERFLOW = NAMED_ELEMENT_FEATURE_COUNT + 9;
+
+	/**
 	 * The feature id for the '<em><b>Constraints</b></em>' containment reference list.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER__CONSTRAINTS = NAMED_ELEMENT_FEATURE_COUNT + 9;
+	int PARAMETER__CONSTRAINTS = NAMED_ELEMENT_FEATURE_COUNT + 10;
 
 	/**
 	 * The number of structural features of the '<em>Parameter</em>' class.
@@ -811,7 +820,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 * @ordered
 	 */
-	int PARAMETER_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 10;
+	int PARAMETER_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 11;
 
 	/**
 	 * The number of operations of the '<em>Parameter</em>' class.
@@ -5343,6 +5352,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int DELIVERY = 87;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.OverflowPolicy <em>Overflow Policy</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.OverflowPolicy
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getOverflowPolicy()
+	 * @generated
+	 */
+	int OVERFLOW_POLICY = 88;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -5350,7 +5369,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingQos()
 	 * @generated
 	 */
-	int MESSAGING_QOS = 88;
+	int MESSAGING_QOS = 89;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.RegistryKind <em>Registry Kind</em>}' enum.
@@ -5360,7 +5379,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRegistryKind()
 	 * @generated
 	 */
-	int REGISTRY_KIND = 89;
+	int REGISTRY_KIND = 90;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ExpressionLanguage <em>Expression Language</em>}' enum.
@@ -5370,7 +5389,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getExpressionLanguage()
 	 * @generated
 	 */
-	int EXPRESSION_LANGUAGE = 90;
+	int EXPRESSION_LANGUAGE = 91;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CatalogStatus <em>Catalog Status</em>}' enum.
@@ -5380,7 +5399,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCatalogStatus()
 	 * @generated
 	 */
-	int CATALOG_STATUS = 91;
+	int CATALOG_STATUS = 92;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.UpdatePolicy <em>Update Policy</em>}' enum.
@@ -5390,7 +5409,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getUpdatePolicy()
 	 * @generated
 	 */
-	int UPDATE_POLICY = 92;
+	int UPDATE_POLICY = 93;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConnectionState <em>Connection State</em>}' enum.
@@ -5400,7 +5419,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConnectionState()
 	 * @generated
 	 */
-	int CONNECTION_STATE = 93;
+	int CONNECTION_STATE = 94;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.SecuritySchemeKind <em>Security Scheme Kind</em>}' enum.
@@ -5410,7 +5429,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecuritySchemeKind()
 	 * @generated
 	 */
-	int SECURITY_SCHEME_KIND = 94;
+	int SECURITY_SCHEME_KIND = 95;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ApiType <em>Api Type</em>}' enum.
@@ -5420,7 +5439,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiType()
 	 * @generated
 	 */
-	int API_TYPE = 95;
+	int API_TYPE = 96;
 
 
 	/**
@@ -5859,6 +5878,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EAttribute getParameter_Delivery();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.services.Parameter#getOverflow <em>Overflow</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Overflow</em>'.
+	 * @see org.eclipse.fennec.services.Parameter#getOverflow()
+	 * @see #getParameter()
+	 * @generated
+	 */
+	EAttribute getParameter_Overflow();
 
 	/**
 	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.services.Parameter#getConstraints <em>Constraints</em>}'.
@@ -9030,6 +9060,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EEnum getDelivery();
 
 	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.OverflowPolicy <em>Overflow Policy</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Overflow Policy</em>'.
+	 * @see org.eclipse.fennec.services.OverflowPolicy
+	 * @generated
+	 */
+	EEnum getOverflowPolicy();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -9487,6 +9527,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute PARAMETER__DELIVERY = eINSTANCE.getParameter_Delivery();
+
+		/**
+		 * The meta object literal for the '<em><b>Overflow</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute PARAMETER__OVERFLOW = eINSTANCE.getParameter_Overflow();
 
 		/**
 		 * The meta object literal for the '<em><b>Constraints</b></em>' containment reference list feature.
@@ -12011,6 +12059,16 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum DELIVERY = eINSTANCE.getDelivery();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.OverflowPolicy <em>Overflow Policy</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.OverflowPolicy
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getOverflowPolicy()
+		 * @generated
+		 */
+		EEnum OVERFLOW_POLICY = eINSTANCE.getOverflowPolicy();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}' enum.

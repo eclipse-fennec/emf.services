@@ -16,7 +16,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * and utility methods for working with them.
  * <!-- end-user-doc -->
  * <!-- begin-model-doc -->
- * How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint — the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language's: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable.
+ * How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint — the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language's: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable. BROADCAST = a stream that one source sends to every receiver at once, at its own pace (#252): it is subscribed to, not called, so it has no arguments and no session, and only a return value can be one. The source never learns how fast a receiver is — there is no backpressure — and each receiver protects itself with a buffer whose overflow the contract states (Parameter.overflow). BROADCAST is part of the sd1 fingerprint, together with the overflow policy.
  * <!-- end-model-doc -->
  * @see org.eclipse.fennec.services.ServicesPackage#getDelivery()
  * @model
@@ -52,7 +52,17 @@ public enum Delivery implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	STREAM(2, "STREAM", "STREAM");
+	STREAM(2, "STREAM", "STREAM"),
+
+	/**
+	 * The '<em><b>BROADCAST</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #BROADCAST_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	BROADCAST(3, "BROADCAST", "BROADCAST");
 
 	/**
 	 * The '<em><b>VALUE</b></em>' literal value.
@@ -88,6 +98,17 @@ public enum Delivery implements Enumerator {
 	public static final int STREAM_VALUE = 2;
 
 	/**
+	 * The '<em><b>BROADCAST</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #BROADCAST
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int BROADCAST_VALUE = 3;
+
+	/**
 	 * An array of all the '<em><b>Delivery</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -98,6 +119,7 @@ public enum Delivery implements Enumerator {
 			VALUE,
 			PROMISE,
 			STREAM,
+			BROADCAST,
 		};
 
 	/**
@@ -157,6 +179,7 @@ public enum Delivery implements Enumerator {
 			case VALUE_VALUE: return VALUE;
 			case PROMISE_VALUE: return PROMISE;
 			case STREAM_VALUE: return STREAM;
+			case BROADCAST_VALUE: return BROADCAST;
 		}
 		return null;
 	}

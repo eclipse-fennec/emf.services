@@ -152,11 +152,20 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Delivery">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint — the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language's: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable."/>
+      <details key="documentation" value="How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint — the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language's: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable. BROADCAST = a stream that one source sends to every receiver at once, at its own pace (#252): it is subscribed to, not called, so it has no arguments and no session, and only a return value can be one. The source never learns how fast a receiver is — there is no backpressure — and each receiver protects itself with a buffer whose overflow the contract states (Parameter.overflow). BROADCAST is part of the sd1 fingerprint, together with the overflow policy."/>
     </eAnnotations>
     <eLiterals name="VALUE"/>
     <eLiterals name="PROMISE" value="1"/>
     <eLiterals name="STREAM" value="2"/>
+    <eLiterals name="BROADCAST" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="OverflowPolicy">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="What a receiver of a BROADCAST does when its buffer is full (Parameter.overflow). The values follow the per-subscription buffer of Gecko Messaging. FAIL = the receiver must not lose a value: its subscription ends with an error and it starts over, e.g. from a snapshot; the default, so a contract that says nothing promises no loss. DISCARD_OLDEST = latest wins: the oldest buffered value is dropped for the new one, for readings where only the current value counts. BLOCK = the receiver holds up its own delivery until there is room; nothing is lost, but a messaging broker may drop or disconnect a receiver that stays slow. A receiver may make the policy stricter (replace DISCARD_OLDEST with FAIL or BLOCK), never looser."/>
+    </eAnnotations>
+    <eLiterals name="FAIL"/>
+    <eLiterals name="DISCARD_OLDEST" value="1"/>
+    <eLiterals name="BLOCK" value="2"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="MessagingQos">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -304,10 +313,12 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ServiceOperation" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="onlyAReturnValueIsPromised"/>
+      <details key="constraints" value="onlyAReturnValueIsPromised onlyAReturnValueIsBroadcast broadcastTakesNoArguments"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
       <details key="onlyAReturnValueIsPromised" value="parameters->forAll(p | p.delivery &lt;> Delivery::PROMISE)"/>
+      <details key="onlyAReturnValueIsBroadcast" value="parameters->forAll(p | p.delivery &lt;> Delivery::BROADCAST)"/>
+      <details key="broadcastTakesNoArguments" value="returnValue = null or returnValue.delivery &lt;> Delivery::BROADCAST or parameters->isEmpty()"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A single language-neutral operation on a ServiceInterface: parameters in order, optional return type with constraints, declared exceptions. The Code Publisher uses ServiceOperations to emit typed method signatures in Java/TS/Python stub artifacts."/>
@@ -356,7 +367,7 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Parameter" eSuperTypes="#//NamedElement">
     <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
-      <details key="constraints" value="typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded"/>
+      <details key="constraints" value="typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded overflowOnlyOnBroadcast"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="A typed, named, positional input to a ServiceOperation — and, as ServiceOperation.returnValue, its return slot. Constraints attach as containments. The parameter name appears as the argument name in generated stubs (subject to language-specific keyword escaping)."/>
@@ -365,7 +376,8 @@
       <details key="typeOrEType" value="type &lt;> null or eType &lt;> null"/>
       <details key="boundsOrdered" value="upperBound = -1 or upperBound >= lowerBound"/>
       <details key="requiredSlotHasLowerBound" value="optional or lowerBound >= 1"/>
-      <details key="streamIsUnbounded" value="delivery &lt;> Delivery::STREAM or upperBound = -1"/>
+      <details key="streamIsUnbounded" value="(delivery &lt;> Delivery::STREAM and delivery &lt;> Delivery::BROADCAST) or upperBound = -1"/>
+      <details key="overflowOnlyOnBroadcast" value="delivery = Delivery::BROADCAST or overflow = OverflowPolicy::FAIL"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="index" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -413,7 +425,13 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" lowerBound="1" eType="#//Delivery"
         defaultValueLiteral="VALUE">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-        <details key="documentation" value="How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot — a list — in that a list arrives complete."/>
+        <details key="documentation" value="How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot — a list — in that a list arrives complete. BROADCAST, only on a return value of an operation without arguments, is a stream shared by every receiver; it is unbounded as well."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="overflow" lowerBound="1"
+        eType="#//OverflowPolicy" defaultValueLiteral="FAIL">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="What a receiver of a BROADCAST may lose when it falls behind: FAIL (the default) nothing, it fails and starts over; DISCARD_OLDEST the oldest buffered values, latest wins; BLOCK nothing, it holds up its own delivery. Only meaningful on a BROADCAST slot and left at the default everywhere else (constraint overflowOnlyOnBroadcast). It is the receiver's default for its buffer, which a receiver may only make stricter, and it is part of the sd1 fingerprint of a BROADCAST slot."/>
       </eAnnotations>
     </eStructuralFeatures>
     <eStructuralFeatures xsi:type="ecore:EReference" name="constraints" upperBound="-1"
@@ -1063,7 +1081,7 @@
       <details key="constraints" value="bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException noStreamOverRest"/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
-      <details key="documentation" value="REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings). A request is answered once, so an operation whose return value is a stream (Delivery::STREAM) has no REST binding (constraint noStreamOverRest); a messaging flavor carries it."/>
+      <details key="documentation" value="REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings). A request is answered once, so an operation whose return value is a stream (Delivery::STREAM or Delivery::BROADCAST) has no REST binding (constraint noStreamOverRest); a messaging flavor carries it."/>
     </eAnnotations>
     <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
       <details key="bindingsReferenceOperationParameters" value="parameterBindings->forAll(b | operation.parameters->includes(b.parameter))"/>
@@ -1071,7 +1089,7 @@
       <details key="pathBindingsNeedPath" value="parameterBindings->forAll(b | b.binding.toString() &lt;> 'PATH' or path &lt;> null)"/>
       <details key="exceptionBindingsReferenceOperationExceptions" value="exceptionBindings->forAll(b | operation.exceptions->includes(b.exception))"/>
       <details key="oneBindingPerException" value="exceptionBindings->isUnique(b | b.exception)"/>
-      <details key="noStreamOverRest" value="operation = null or operation.returnValue = null or operation.returnValue.delivery &lt;> Delivery::STREAM"/>
+      <details key="noStreamOverRest" value="operation = null or operation.returnValue = null or (operation.returnValue.delivery &lt;> Delivery::STREAM and operation.returnValue.delivery &lt;> Delivery::BROADCAST)"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1"
         eType="#//HttpMethod">

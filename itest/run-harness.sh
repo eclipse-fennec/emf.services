@@ -920,4 +920,4 @@ kill "$MTLS_PID" 2>/dev/null || true
 wait "$MTLS_PID" 2>/dev/null || true
 echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client$(secured && echo '; discovery by certificate, calls by token')"
 
-log "HARNESS PASSED (A + B + F + G + H + T + N + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"
+log "HARNESS PASSED (A + B + V + F + G + H + T + N + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"

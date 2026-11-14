@@ -12,7 +12,13 @@
 # Scenario B: broker + TS provider    → JAVA consumer (client.bndrun:
 #             TsPaymentDebug calls getBalance + charge), then TS
 #             provider shutdown: withdraw confirmed BEFORE the endpoint
-#             stops, and the broker no longer lists the provider.
+#             stops, and the broker no longer lists the provider. The
+#             Java consumer starts before the TS provider: the contract
+#             outlived A's provider, the consumer waits and binds later.
+# Scenario V: a contract alone (#271), from TypeScript: added with
+#             nothing behind it, looked up (none), served later, refused
+#             removal while implemented, withdrawn (contract stays, a
+#             call fails as unavailable), removed.
 #
 # Runs everything as host processes; see containers/ for the
 # containerized variant. Secured by default (SECURITY.md §7a): the broker
@@ -297,6 +303,26 @@ grep -E '  [✓✗]' "$WORK/probe-a.log" || true
 
 # ============================================================ Scenario B
 log "Scenario B: TS provider -> Java consumer"
+# The Java provider of A is gone, its contract is not (#271): a contract
+# stands on its own and outlives its implementations. The Java consumer
+# starts now, before anything implements Payment again — it finds the
+# contract with no provider, waits, and binds when the TS provider below
+# arrives.
+CATALOG=$(curl_broker -sf "$BROKER_URL/catalog/Payment") \
+  || { echo "SCENARIO B FAILED: Payment left the catalog with its last implementation"; exit 1; }
+grep -q 'name="Payment"' <<<"$CATALOG" \
+  || { echo "SCENARIO B FAILED: the catalog does not answer with Payment"; echo "$CATALOG"; exit 1; }
+NOBODY=$(curl_broker -sf "$BROKER_URL/references?interface=Payment") \
+  || { echo "SCENARIO B FAILED: a lookup of a contract nobody implements did not answer"; exit 1; }
+if grep -q '<references' <<<"$NOBODY"; then
+  echo "SCENARIO B FAILED: the lookup still lists an implementation of Payment"; echo "$NOBODY"; exit 1
+fi
+echo "  ✓ contract-outlives-its-implementation: Payment in the catalog, the lookup answers none"
+as_client java-client start_jar client "$CLIENT_JAR" "$WORK/client"
+CLIENT_PID=$LAST_PID
+wait_for_line "$WORK/client.log" "Payment has no providers yet" 90
+echo "  ✓ java-consumer-waits: started before any implementation, no proxy yet"
+
 # exec node directly (no pnpm/corepack wrappers): the SIGTERM of the
 # FR-P3 check must reach the node process itself, wrapper chains do not
 # reliably forward signals.
@@ -307,9 +333,8 @@ TS_PROVIDER_PID=$!
 PIDS+=("$TS_PROVIDER_PID")
 wait_for_line "$WORK/provider-ts.log" "published as reference" 60
 
-as_client java-client start_jar client "$CLIENT_JAR" "$WORK/client"
-CLIENT_PID=$LAST_PID
 wait_for_line "$WORK/client.log" 'ts.charge(10.0, "EUR") =' 90
+echo "  ✓ java-consumer-binds-on-arrival: the waiting consumer called the implementation that came later"
 echo "Java consumer called the TS provider:"
 grep -E 'ts\.(getBalance|charge)' "$WORK/client.log"
 # That call is the mixed-binding proof in the other direction (#82): the
@@ -361,8 +386,27 @@ if grep -q 'payments-ts' <<<"$LISTED"; then
   echo "SCENARIO B FAILED: broker still lists payments-ts after withdraw"; exit 1
 fi
 echo "Scenario B OK: withdraw confirmed before endpoint stop; broker no longer lists payments-ts"
+wait_for_line "$WORK/client.log" "took the PaymentRemote proxy of" 30
+curl_broker -sf -o /dev/null "$BROKER_URL/catalog/Payment" \
+  || { echo "SCENARIO B FAILED: Payment left the catalog with the TS provider"; exit 1; }
+echo "  ✓ java-consumer-lets-go: the proxy went with the implementation, the contract stayed"
 
 kill "$CLIENT_PID" 2>/dev/null || true
+
+# ============================================================ Scenario V
+# A contract stands on its own (#271), from TypeScript end to end: added
+# with nothing behind it, looked up (none, no error), served later and
+# heard by the waiting listener, refused removal while implemented,
+# withdrawn (the contract stays, a call fails as "unavailable"), removed.
+log "Scenario V: a contract first, its implementation later, then neither"
+require_port_free 9093
+if ! (cd "$TS/examples/payment" && export_client contract-first-ts \
+  && BROKER_URL="$BROKER_URL" SERVICE_URL="http://localhost:9093/contract-first" \
+     corepack pnpm exec tsx contract-first-probe.ts) >"$WORK/contract-first.log" 2>&1; then
+  echo "SCENARIO V FAILED"; cat "$WORK/contract-first.log"; exit 1
+fi
+grep -E '  [✓✗]' "$WORK/contract-first.log"
+echo "Scenario V OK"
 # ============================================================ Scenario F
 # A second instance of the SAME (name, version) on another port while a TS
 # consumer holds a tracked locator and a lease (#58, #57, #55): the SDK's

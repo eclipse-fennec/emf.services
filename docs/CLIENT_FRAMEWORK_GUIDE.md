@@ -279,8 +279,11 @@ public interface DdsrConsumer {
      */
     List<ServiceLocator> find(String interfaceName, String filter);
 
-    /** Subscribe to lifecycle events (REGISTERED / MODIFIED / UNREGISTERING). */
-    Subscription subscribe(String interfaceName, ServiceListener listener);
+    /** The first of find(), or empty. */
+    Optional<ServiceLocator> findFirst(String interfaceName, String filter);
+
+    /** Lifecycle events (REGISTERED / MODIFIED / UNREGISTERING / …) for one interface. */
+    AutoCloseable addServiceListener(String interfaceName, String filter, DdsrServiceListener listener);
 }
 
 /**
@@ -304,7 +307,17 @@ endpoint reads `…/charge/{amount}` and is not a URL until a call closes
 the template — `java.net.URI` rejects the braces outright. Build requests
 from `endpointFor`; treat `urlFor` as "is this a fixed address?".
 
-`subscribe(...)` is a no-op stub until Increment 3 lands SSE — implementation can return a `Subscription` whose `cancel()` is a no-op, and document the gap.
+**A contract with no implementation (#271).** `find` answers an empty
+list, never an error, and `findFirst` an empty `Optional` — whether the
+contract is in the catalog or not; the lookup does not consult the
+catalog. With no locator there is no proxy: to wait for an
+implementation, register a listener and act on `REGISTERED`
+(`PaymentProxyRegistrar` in `examples.persons` does). When the stream
+comes (back) up, the SDK reads every listened-to interface again and
+delivers what the listeners missed — `REGISTERED` for a new reference,
+`UNREGISTERING` with reason `RESYNCED` for one that is gone
+([Eventing](EVENTING.md)). Without an event transport, listeners are
+accepted and hear nothing.
 
 **Locators follow their service (#57, #59).** Every `ServiceLocator` from
 `find()` is a `TrackedServiceLocator`: it is bound to one registration and
@@ -325,7 +338,13 @@ REST transport, defaults 3 s / 10 s), it asks the locator to rebind away
 from the failed registration and retries exactly once. A second failure,
 an HTTP error answered by the provider, or a locator with nothing else to
 bind to propagate to the caller as `DdsrException`
-(`isTransportFailure()` tells the two apart). An answer that is one of
+(`isTransportFailure()` tells the two apart). When the bound
+implementation went away and the lookup finds no other, the call fails
+with `DdsrServiceUnavailableException` (`interfaceName()`, `parked()`):
+the contract may well still be there, and the same proxy binds to the
+next implementation that is registered. Without an event stream a proxy
+does not learn that its implementation went; the next call then fails
+as a transport failure instead. An answer that is one of
 the errors the contract declares is a `DdsrServiceException` — over
 REST and over messaging alike — and the proxy throws it as the
 exception class the method declares for it
@@ -489,8 +508,9 @@ export interface DdsrProvider {
 }
 
 export interface DdsrConsumer {
-  find(interfaceName: string, filter?: string): Promise<ServiceLocator[]>;
-  subscribe(interfaceName: string, listener: ServiceListener): Subscription;
+  find(interfaceName: string, filter?: string, fingerprint?: string): Promise<ServiceLocator[]>;
+  findOne(interfaceName: string, filter?: string, fingerprint?: string): Promise<ServiceLocator | undefined>;
+  addServiceListener(interfaceName: string, filter: string | undefined, listener: DdsrServiceListener): () => void;
 }
 ```
 
@@ -501,6 +521,18 @@ is the `greedy_rebind` twin, `locator.invoke()` (and therefore every
 `getService()` proxy) rebinds and retries once on a `DdsrTransportError`,
 and `new RestFlavorPlugin({ timeoutMillis })` turns a provider that does
 not answer into that error via `AbortSignal.timeout` (default 10 s).
+
+A contract with no implementation behaves as in Java (#271): `find`
+answers `[]`, `findOne` and `getService` `undefined`; a call whose
+implementation went with no other left fails with
+`DdsrServiceUnavailableError`, and the same locator binds to the next
+one; a rebind keeps the fingerprint the locator was found with. After a
+reconnect the listeners hear what they missed (`REGISTERED`, or
+`UNREGISTERING` with `RESYNCED`). The catalog is `client.catalog`:
+`ensureEntry` (adds, an existing entry is success), `getEntry`,
+`deprecateEntry` and `removeEntry`, the last three with an optional
+fingerprint; `removeEntry` returns the refusal (code 200) while
+something still implements the contract.
 
 Use `ecore.ts` for the EMF POJOs (they should be generated from the same `ddsr.ecore` we already use in Java). HTTP: `fetch` (Node 18+ / browser). XMI parsing: piggy-back on `ecore.ts` if it exposes a resource loader, otherwise a small DOM parser + factory dispatch.
 
@@ -757,10 +789,10 @@ These are not in scope for the Day-1 SDK but the SDK must not lock us out of the
 
 | Gap | Impact on SDK | Mitigation |
 |---|---|---|
-| **SSE event stream** | `consumer.subscribe()` is a stub. | Define the listener interface today, swallow no-op until Increment 3. |
+| **SSE event stream** | Closed: `addServiceListener` (Java and TS) over SSE or MQTT/AMQP. | — |
 | **LDAP filter evaluation** | `find(...)` ignores the `filter` arg. | Accept it, pass to broker; broker ignores; document. |
 | **Service ranking** | Lookup order is registration order. | Document; do not bake order-sensitive logic into tests. |
-| **`getServiceReference` (singular)** | Broker exposes only the list form via REST. | SDK can offer a `findOne` that calls `find` and returns first or null. |
+| **`getServiceReference` (singular)** | Broker exposes only the list form via REST. | Closed in the SDKs: `findFirst` (Java, `Optional`) and `findOne` (TS, `undefined` when none). |
 | **Reference-id discovery on publish** | Broker's publish response is a Diagnostic without the reference id. | SDK does a follow-up lookup. **TODO**: ask broker to include the reference id in the OK diagnostic. |
 | **Authentication / PDP** | Closed for the broker: `TokenSupplier` (Java) and `tokenSupplier` (TS), §5.4a. | Tokens for calls to *providers* follow the contract's own requirement — slice 3 of [Security](SECURITY.md). |
 | **Broker reads single-root XMI on POST /implementations** | Java SDK sends multi-root XMI (provider + interface stubs). `ImplementationsResource.readProviderWithImpl` currently throws on multi-root. | **First task tomorrow**: change `XmiSupport.fromXmi` / `fromXmiResource` so the implementations resource picks the first `ServiceProvider` root from the parsed resource, regardless of how many sibling roots are present. |

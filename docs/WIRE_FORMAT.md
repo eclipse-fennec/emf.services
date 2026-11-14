@@ -142,7 +142,9 @@ immediately), `COLDIFIED` (the idle sweep parked the entry in the cold
 cache; it stays discoverable and rehydrates on the next lookup with a
 fresh `REGISTERED`), `CUTOVER` (a HARD_CUTOVER grace window elapsed)
 and `PROVIDER_LOST` (the provider stopped answering; two missed
-heartbeats). `SESSION_EXPIRED` is the one constant that exists and is
+heartbeats). `RESYNCED` never travels: a client gives it to the
+listeners itself when, after a reconnect, it reads again and a
+reference it knew is gone. `SESSION_EXPIRED` is the one constant that exists and is
 never emitted — sessions raise no service events today. `REGISTERED`
 and `MODIFIED` carry no reason; the attribute is additive and simply
 absent when unset.

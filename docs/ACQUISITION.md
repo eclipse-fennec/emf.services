@@ -157,6 +157,17 @@ GET    /consumers/{consumerId}    → diagnostics (what does the broker believe 
 - The broker may forget leases at any time (a restart, §6). Consumers
   have to cope with `RETIRED`/`UNREGISTERING` despite holding a lease —
   the lease is protection *within the policy*, not a contract.
+- **A contract outlives its implementations (#271).** Discovery is
+  about implementations; the catalog is about contracts, and the two
+  live apart. A contract is put into the catalog alone, and nothing that
+  forgets an implementation forgets it: not the last withdrawal, not a
+  lost provider, not the cold sweep, not a restart. Only the catalog's
+  own governance removes it, refused while an implementation (live or
+  parked) still uses it. A lookup of a contract nobody implements
+  answers none, never an error, and so does a lookup of a name the
+  catalog does not know — the lookup does not consult the catalog. What
+  a consumer sees at each step is in
+  [Getting Started](GETTING_STARTED.md#7-a-contract-on-its-own).
 
 ## 6. Persistence: deliberately not
 

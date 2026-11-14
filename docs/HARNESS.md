@@ -11,7 +11,7 @@ over a real wire.
 ## Running it
 
 ```bash
-# host processes (scenarios A + B + F + G + H + N); podman only for Keycloak
+# host processes (scenarios A + B + V + F + G + H + N); podman only for Keycloak
 ./itest/run-harness.sh
 
 # containerized incl. Mosquitto and RabbitMQ (scenarios A–K, Q–S, U) — podman is the
@@ -164,7 +164,8 @@ version, balance and the refused record come out as in K.
 | | What runs | What is asserted |
 |---|---|---|
 | **A** | Java provider → TS consumer | discovery; sd1 golden + broker/local fingerprint match; im1 decoration; all 8 typed property kinds round-trip; REST invocation; session visible at the broker; contract-addressed lookup (exact sd1 hits, foreign sd1 empty); **UNREGISTERING reaches the consumer measurably BEFORE the provider process exits** |
-| **B** | TS provider → Java consumer | reflective REST invocation from Java; withdraw is confirmed by the broker before the TS endpoint stops; the broker no longer lists the provider afterwards |
+| **B** | TS provider → Java consumer | reflective REST invocation from Java; withdraw is confirmed by the broker before the TS endpoint stops; the broker no longer lists the provider afterwards. On the host the Java consumer starts first: `Payment` outlived A's provider (catalog yes, lookup none), the consumer waits, binds on arrival and drops its proxy on departure (#271) |
+| **V** | TS contract-first probe (host) | a contract alone (#271): added with no implementation, lookup answers none, a waiting listener hears `REGISTERED` once the probe serves it, the call succeeds, removal is refused while implemented (code 200), after the withdraw the contract stays, `UNREGISTERING` is heard and a call fails as `DdsrServiceUnavailableError`, then the contract is removed |
 | **C** | TS MQTT wire probe | a broker-shaped event document is delivered and decoded over a real Mosquitto TCP connection |
 | **D** | Java broker sink + Java client source over Mosquitto | lifecycle events (REGISTERED + UNREGISTERING) delivered over real MQTT/TCP; ordering control pins the events onto the MQTT path (the last stream (re)open before the events is the MQTT subscription — the SDK hands the stream over when a higher-ranked transport appears). Since #138 the registry speaks MQTT 5 to Mosquitto here and for the rest of the run, while every subscriber speaks 3.1.1 or is TypeScript; in the RSA-over-MQTT scenario (I, see `itest/README.md`) the exporting node serves over MQTT 5 and the importing node calls over 3.1.1 |
 | **P** | Java provider → Java consumer, protobuf body | a modelled argument and a modelled result travel in the encoding the contract declares (#100): `PersonStore` says `consumes`/`produces` = `application/x-protobuf`, and neither side mentions an encoding in code. **Java on both ends on purpose** — the TypeScript track has no protobuf-to-EMF binding, so this contract is one a TS consumer cannot read |

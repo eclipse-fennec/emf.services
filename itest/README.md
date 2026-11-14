@@ -90,7 +90,11 @@ broker. Requirements and decisions:
   `AsyncIterable`. `Ticker.forever` does not end by itself: both
   consumers take three numbers and leave, and the exporting framework
   must log twice that it stopped — the session closed by the caller
-  reached the provider.
+  reached the provider. `Ticker.beats` is a broadcast every listener
+  shares (#252), where latest wins: the importing framework hears fifty
+  beats in a row, and of two TypeScript listeners at once the fast one
+  hears every beat while the slow one — a buffer of four, a tenth of a
+  second per beat — skips to the latest.
 - **R (podman only) — RSA over AMQP:** scenario I on the third
   transport (#138). The same service is exported over AMQP 0-9-1 by one
   framework and bound with `@Reference` in another, over a RabbitMQ
@@ -100,8 +104,8 @@ broker. Requirements and decisions:
   so what makes it import is the `REGISTERED` event on the routing key;
   the exporting node serves over AMQP and announces over REST. The
   guarded `Ledger` is refused here as it is over MQTT, and the
-  `Ticker`'s stream arrives here as it does there — in the importing
-  framework and in TypeScript.
+  `Ticker`'s streams and its broadcast arrive here as they do there —
+  in the importing framework and in TypeScript.
 - **S (podman only) — a call encoded as JSON:** scenario R again, with
   the exporting node told `encoding=application/json`. The payload is
   written and read by the resource factory registered for that content

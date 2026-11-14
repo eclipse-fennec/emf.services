@@ -364,6 +364,47 @@ second root describing the operation being called, and the references
 resolve inside it. Self-contained, like every other document on this
 wire.
 
+### A stream over REST
+
+An operation whose return value is a stream (`delivery = STREAM` or
+`BROADCAST`) answers `200` with `Content-Type: text/event-stream`, and
+the body is one Server-Sent Event per value (`RestStreams` in Java,
+`rest-streams.ts` in TypeScript):
+
+| Event | Data |
+| --- | --- |
+| `value` | the next value: a `ServiceInvocationResult` in the encoding the flavor produces (XMI by default) — the document a value has over messaging |
+| `error` | the last event of a stream that failed: the result holding the `Diagnostic`, a declared error under its `code` |
+| `end` | the stream is over; no data |
+
+A document in a textual encoding is the data as it is, one `data:` line
+per line; any other encoding (Protobuf) is Base64 on one line. A
+connection that closes without `end` broke off. The caller asks with
+`Accept: text/event-stream` and ends a `STREAM` by closing the
+connection; the provider writes the next value when the one before was
+taken, so TCP is the backpressure. For a `BROADCAST` every open
+connection is a receiver of one run of the service, with a buffer of
+its own on the provider's side: `DISCARD_OLDEST` drops its oldest
+value, `FAIL` ends it with an `error` event that says it fell behind,
+`BLOCK` holds the source.
+
+### A stream every receiver shares
+
+An operation whose return value is a `BROADCAST` is not called over a
+messaging broker. The provider publishes on the operation's channel:
+
+| Message | Envelope |
+| --- | --- |
+| a value | type `org.eclipse.fennec.services.broadcast`, a `ServiceInvocationResult` holding the one value |
+| a failure | the same type, the result holding the `Diagnostic`; the last message |
+| the end | type `org.eclipse.fennec.services.broadcast.end`, no document |
+
+There is no correlation, no session and no credit. A receiver
+subscribes to the channel through a buffer of its own: Gecko
+Messaging's subscription extensions `osgi.messaging.bufferSize` and
+`osgi.messaging.queuePolicy`, the policy being the contract's
+`overflow`. A receiver that joins late hears what is sent from then on.
+
 ### A stream as the answer
 
 An operation whose return value is delivered as a stream

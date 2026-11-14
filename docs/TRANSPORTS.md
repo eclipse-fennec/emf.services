@@ -293,9 +293,24 @@ is one message of the session
 is asked for when the connection has taken the one before and the
 caller has credit left: a slow caller holds the service back. When the
 caller closes the session or goes silent for its lease, the service's
-stream is closed. REST carries no stream, and no transport carries one
-as an argument yet: such a contract is refused when it is served, by
-slot ([Remote Service Admin](RSA.md#streams)).
+stream is closed. No transport carries a stream as an argument yet: such
+a contract is refused when it is served, by slot
+([Remote Service Admin](RSA.md#streams)).
+
+A stream every receiver shares (`delivery="BROADCAST"`, #252) is not
+called at all: the distribution asks the service for it once, when it
+is connected, and publishes every value on the operation's channel; a
+receiver subscribes there through a buffer of its own under the
+contract's overflow policy
+([Wire format](WIRE_FORMAT.md#a-stream-every-receiver-shares)).
+
+Over REST both kinds are Server-Sent Events: a `STREAM` is the answer to
+its call, a `BROADCAST` goes from one run of the service to every open
+connection, each with a buffer of its own
+([Wire format](WIRE_FORMAT.md#a-stream-over-rest)). A TypeScript host
+writes such an answer with `writeAnswer(answer, response)` from
+`@ddsr/flavor-rest`, which waits for the connection and stops the
+stream when it closes.
 
 Connections are pooled per broker URL (and exchange), opened with the
 first export and closed with the last. Who the node is to a broker is

@@ -105,8 +105,12 @@ void feed(String sensorId, PushStream<Double> in);   // the caller streams to th
 A stream is another exchange than a list of the same type and therefore
 another contract: `STREAM` is part of the fingerprint.
 
-**A stream a service returns travels over a messaging broker**, MQTT
-and AMQP alike, in a **duplex session** of Gecko Messaging: the call
+**A stream a service returns travels over every transport.** Over REST
+it is the answer to the call as Server-Sent Events, one event per value
+([the wire](WIRE_FORMAT.md#a-stream-over-rest)): the caller ends it by
+closing the connection, and TCP holds the provider back while the
+caller reads slowly. Over a messaging broker, MQTT and AMQP alike, it
+travels in a **duplex session** of Gecko Messaging: the call
 opens it, the provider accepts it, and every value is one message of
 the session until the stream is over
 ([the wire](WIRE_FORMAT.md#a-stream-as-the-answer)). On the other side
@@ -125,20 +129,13 @@ by default); a side that hears nothing for a lease ends it. So a caller
 that goes away without a word — a crash, a lost network — is noticed
 too, and a slow stream lives on as long as both sides are there.
 
-A service that streams is also called over the right flavor: where it
-announces REST first and a messaging flavor beside it, the proxy calls
-the stream over the messaging flavor and everything else as before.
+A service that streams is called over the first flavor it announces
+whose transport carries streams — REST and messaging both do now.
 
-What is refused, each time with the slots named, rather than accepted
-and failing on the first call:
-
-- **a stream over REST**, at the export, at the broker's validation
-  gate (a `RestOperationFlavor` for a streaming operation breaks the
-  constraint `noStreamOverRest`) and in the consumer: a request there is
-  answered once;
-- **a stream as an argument**, on every transport: the session can
-  carry it, and nothing here sends one yet
-  ([#248](https://github.com/eclipse-fennec/emf.services/issues/248)).
+What is refused, with the slots named, rather than accepted and failing
+on the first call: **a stream as an argument**, on every transport: the
+session can carry it, and nothing here sends one yet
+([#248](https://github.com/eclipse-fennec/emf.services/issues/248)).
 
 The same holds for a contract document served by the generic REST or
 messaging distribution.
@@ -159,15 +156,63 @@ Limits worth knowing before you build on it:
   tree, the provider below the operation's request channel
   ([Security](SECURITY.md)). A flavor that names no reply tree gets a
   channel the messaging library generates.
-- **Streams to many receivers at once** are a different exchange and
-  not built yet ([#252](https://github.com/eclipse-fennec/emf.services/issues/252)).
 
-The example's `Ticker` is this: `count` (`PushStream<Integer>`) ends by
-itself, `forever` does not. The harness runs both over MQTT and AMQP —
-bound by `@Reference` in a second framework and iterated by a
-TypeScript consumer as an `AsyncIterable<number>` — and checks that the
-provider's `forever` stops when each of the two callers leaves after
-three numbers.
+#### A stream every receiver shares
+
+Some streams have one source and many listeners at once — readings,
+prices, a live ledger. Calling once per listener would run the source
+once per listener, and holding the source back for the slowest would
+slow down everyone. For these the contract says `BROADCAST`
+([#252](https://github.com/eclipse-fennec/emf.services/issues/252)), and
+a Java interface says it with `@Broadcast`:
+
+```java
+@Broadcast(overflow = "DISCARD_OLDEST")   // org.eclipse.fennec.services.derive
+PushStream<Integer> beats();
+```
+
+A broadcast is a return value of a method **without arguments**: it is
+subscribed to, not called. The service is asked for the stream once, and
+what it sends goes to every listener at the source's pace. There is **no
+backpressure and no credit**: the source never learns how fast a
+listener is. Each listener protects itself with a buffer of its own, and
+the contract's **overflow policy** (`Parameter.overflow`) says what may
+be lost when it is full:
+
+| Policy | A listener that falls behind | For |
+| --- | --- | --- |
+| `FAIL` (default) | loses nothing: once it has taken what its buffer holds, its stream fails ("fell behind") and it starts over | postings, anything that must not be lost |
+| `DISCARD_OLDEST` | skips: the oldest value it holds makes room for the newest — latest wins | readings, where only the current value counts |
+| `BLOCK` | loses nothing and holds up its own delivery; a messaging broker may drop a listener that stays slow, and over REST it holds the source | rarely what you want |
+
+The policy is part of the fingerprint: a contract that changes what a
+listener may lose is another contract. A listener may make the policy
+stricter, never looser.
+
+How it travels:
+
+- **over a messaging broker** the provider publishes every value on the
+  operation's channel; a listener subscribes to it through Gecko
+  Messaging's per-subscription buffer (`bufferSize`, `queuePolicy`). A
+  Java listener's buffer is `broadcast.buffer` of the messaging invoker
+  (256 values), a TypeScript one's the plugin's `streamBuffer.size`.
+  TypeScript cannot hold up a single mqtt.js or amqplib subscription, so
+  `BLOCK` fails there too.
+- **over REST** the provider is the distribution point: every listener
+  holds a connection, the service is asked when the first one comes and
+  its stream is cancelled when the last one goes. The listener's buffer
+  is on the provider's side of the connection (256 values).
+
+The example's `Ticker` has all of this: `count` (`PushStream<Integer>`)
+ends by itself, `forever` does not, and `beats` is a broadcast where
+latest wins. The harness runs them over MQTT and AMQP — bound by
+`@Reference` in a second framework and iterated by a TypeScript
+consumer as an `AsyncIterable<number>` — and checks that the provider's
+`forever` stops when each of the two callers leaves after three
+numbers, that a Java listener hears fifty beats in a row, and that of
+two TypeScript listeners at once the fast one hears every beat while
+the slow one (a buffer of four, a tenth of a second per beat) skips to
+the latest.
 
 The one thing a consumer of a possibly remote service should not do is
 call it from `activate`: the call waits for a connection and an answer

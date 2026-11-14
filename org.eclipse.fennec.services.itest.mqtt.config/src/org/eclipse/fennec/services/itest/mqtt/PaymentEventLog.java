@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.client.internal;
+package org.eclipse.fennec.services.itest.mqtt;
 
 import java.util.logging.Logger;
 
@@ -23,17 +23,17 @@ import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * Smoke check for the event stream (A1): registers a listener for
- * {@code Payment} and prints what arrives.
+ * Podman scenario D's eyes: a listener for {@code Payment} that logs every
+ * event the client hears — over MQTT in this launch — so the harness can
+ * read the {@code EVENT REGISTERED} and {@code EVENT UNREGISTERING} lines.
  * <p>
- * Sibling of {@link ClientRoundtripDebug} and equally throwaway — it
- * exists so the end-to-end path is visible in a launch log. Delete it
- * once the stream is no longer interesting.
+ * It used to live in the SDK and started in every framework with a client
+ * (#268); a harness bundle is where it belongs.
  */
 @Component(immediate = true)
-public final class ServiceEventDebug {
+public final class PaymentEventLog {
 
-	private static final Logger LOG = Logger.getLogger(ServiceEventDebug.class.getName());
+	private static final Logger LOG = Logger.getLogger(PaymentEventLog.class.getName());
 
 	private static final String INTERFACE = "Payment";
 
@@ -45,7 +45,7 @@ public final class ServiceEventDebug {
 	@Activate
 	void activate() {
 		subscription = client.consumer().addServiceListener(INTERFACE, null, this::onEvent);
-		LOG.info("[DDSR-Client] ServiceEventDebug listening for " + INTERFACE);
+		LOG.info("[DDSR-Client] PaymentEventLog listening for " + INTERFACE);
 	}
 
 	private void onEvent(ServiceEvent event) {

@@ -265,14 +265,14 @@ org.eclipse.fennec.services.examples.payment # the demo Java provider
                                     #   Its own launch: payment-provider.bndrun
 ```
 
-Demo classes in `client.java/internal/` (they go away once code
-generation is here):
-- `BrokerCatalogRemote` + `BrokerCatalogProxyRegistrar`
-- `PaymentRemote` + `PaymentProxyRegistrar` (registers one proxy per
-  provider with the property `ddsr.provider.name=<name>`)
-- `ClientRoundtripDebug` (exercises `BrokerCatalogRemote.listCatalog()`)
-- `PaymentDebug` (against `payments-java`)
-- `TsPaymentDebug` (against `payments-ts`)
+The SDK starts nothing nobody configured (#268). What the harness needs
+of an example lives beside the examples:
+- `examples.persons` (the Java client launch): `PaymentRemote` +
+  `PaymentProxyRegistrar` (registers one proxy per provider with the
+  property `ddsr.provider.name=<name>`) and `TsPaymentDebug` (calls the
+  TypeScript provider)
+- `itest.mqtt.config` (the MQTT client launch): `PaymentEventLog`, the
+  listener whose `EVENT` lines podman scenario D reads
 
 ---
 
@@ -626,9 +626,6 @@ host as in the container — see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 4. **Start the client**: `client.bndrun` from
    `org.eclipse.fennec.services.client.java`. What to expect in the log:
-   - `BrokerCatalogRemote.listCatalog()` → 4 catalog entries
-   - `PaymentDebug.payment.getBalance("42")` against the Java provider →
-     `STARTING_BALANCE`
    - `TsPaymentDebug.ts.getBalance("account-1")` against the TS provider →
      its balance
    - `ts.charge(10.0, "EUR")` → the new balance

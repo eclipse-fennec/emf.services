@@ -64,7 +64,7 @@ confirmation, then stop the MQTT dispatcher and the HTTP server.
   over topics instead (the plugin reads the broker address from the
   announced `MessagingFlavor.brokers`).
 - **Java:** the client launch registers a typed `PaymentRemote` proxy
-  per discovered provider (`PaymentProxyRegistrar` +
+  per discovered provider (`PaymentProxyRegistrar` in `examples.persons` +
   `ServiceProxyFactory`) — application code calls
   `payment.charge(10.0, "EUR")` without knowing the transport.
 

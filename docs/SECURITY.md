@@ -140,8 +140,8 @@ axis:
 | Token role | May | Object-level rule |
 | --- | --- | --- |
 | `service-provider` | everything on `BrokerImplementations`; heartbeat; add a contract | withdraw, modify and heartbeat only on registrations whose `principal` is its own |
-| `service-consumer` | look up, `BrokerSessions` (`/consumers`) | only its own session |
-| `service-admin` | curate the catalog (deprecate, remove), the registry snapshot (`/registry`) | everything |
+| `service-consumer` | look up, `BrokerSessions` (`/consumers`), read the tags (`Tags`: tree, `find`, `tagsOf`) | only its own session |
+| `service-admin` | curate the catalog (deprecate, remove), the registry snapshot (`/registry`), change the tags ([Tags](TAGS.md)) | everything |
 | *any authenticated caller* | read the catalog, the event stream | — |
 
 Built (§7c): the names are what the token carries in the verifier's

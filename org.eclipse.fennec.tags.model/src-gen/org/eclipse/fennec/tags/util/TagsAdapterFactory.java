@@ -96,6 +96,14 @@ public class TagsAdapterFactory extends AdapterFactoryImpl {
 				return createEffectiveTagAdapter();
 			}
 			@Override
+			public Adapter caseFoundTargets(FoundTargets object) {
+				return createFoundTargetsAdapter();
+			}
+			@Override
+			public Adapter caseTaggedTarget(TaggedTarget object) {
+				return createTaggedTargetAdapter();
+			}
+			@Override
 			public Adapter defaultCase(EObject object) {
 				return createEObjectAdapter();
 			}
@@ -210,6 +218,34 @@ public class TagsAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createEffectiveTagAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.tags.FoundTargets <em>Found Targets</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.tags.FoundTargets
+	 * @generated
+	 */
+	public Adapter createFoundTargetsAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.tags.TaggedTarget <em>Tagged Target</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.tags.TaggedTarget
+	 * @generated
+	 */
+	public Adapter createTaggedTargetAdapter() {
 		return null;
 	}
 

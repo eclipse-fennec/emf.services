@@ -100,6 +100,10 @@ public class TagsValidator extends EObjectValidator {
 				return validateRequestedTag((RequestedTag)value, diagnostics, context);
 			case TagsPackage.EFFECTIVE_TAG:
 				return validateEffectiveTag((EffectiveTag)value, diagnostics, context);
+			case TagsPackage.FOUND_TARGETS:
+				return validateFoundTargets((FoundTargets)value, diagnostics, context);
+			case TagsPackage.TAGGED_TARGET:
+				return validateTaggedTarget((TaggedTarget)value, diagnostics, context);
 			case TagsPackage.MATCH_MODE:
 				return validateMatchMode((MatchMode)value, diagnostics, context);
 			case TagsPackage.TAG_ORIGIN:
@@ -278,6 +282,24 @@ public class TagsValidator extends EObjectValidator {
 	 */
 	public boolean validateEffectiveTag(EffectiveTag effectiveTag, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(effectiveTag, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateFoundTargets(FoundTargets foundTargets, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(foundTargets, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateTaggedTarget(TaggedTarget taggedTarget, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(taggedTarget, diagnostics, context);
 	}
 
 	/**

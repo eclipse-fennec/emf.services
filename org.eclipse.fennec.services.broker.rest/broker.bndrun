@@ -29,6 +29,7 @@ jersey.deps:
 	bnd.identity;id='org.eclipse.fennec.services.security.jwt',\
 	bnd.identity;id='org.eclipse.fennec.services.security.mtls',\
 	bnd.identity;id='org.eclipse.fennec.services.models.atlas',\
+	bnd.identity;id='org.eclipse.fennec.tags.ddsr',\
 	bnd.identity;id='org.eclipse.fennec.model.atlas.rest.client.impl'
 # we need to run our project
 -runbundles.project: \
@@ -111,6 +112,9 @@ jersey.deps:
 	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.runtime;version=snapshot,\
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
+	org.eclipse.fennec.tags.model;version=snapshot,\
+	org.eclipse.fennec.tags.service;version=snapshot,\
+	org.eclipse.fennec.tags.ddsr;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec.jakartars;version=snapshot,\

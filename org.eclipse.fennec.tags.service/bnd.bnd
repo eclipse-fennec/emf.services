@@ -12,6 +12,8 @@ Bundle-Description: \
 # No org.eclipse.fennec.services.* here, on purpose (#272): the boundary
 # to DDSR is enforced by the build.
 -buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
 	org.eclipse.fennec.tags.model;version=snapshot
 
 # The derived Tag.path runs on the Fennec OCL engine; the tests register

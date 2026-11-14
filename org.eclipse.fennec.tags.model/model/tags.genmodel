@@ -57,5 +57,13 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//EffectiveTag/path"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//EffectiveTag/origin"/>
     </genClasses>
+    <genClasses ecoreClass="tags.ecore#//FoundTargets">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//FoundTargets/kind"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//FoundTargets/keys"/>
+    </genClasses>
+    <genClasses ecoreClass="tags.ecore#//TaggedTarget">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tags.ecore#//TaggedTarget/target"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tags.ecore#//TaggedTarget/tags"/>
+    </genClasses>
   </genPackages>
 </genmodel:GenModel>

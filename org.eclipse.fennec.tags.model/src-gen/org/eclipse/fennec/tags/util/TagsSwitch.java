@@ -108,6 +108,18 @@ public class TagsSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case TagsPackage.FOUND_TARGETS: {
+				FoundTargets foundTargets = (FoundTargets)theEObject;
+				T result = caseFoundTargets(foundTargets);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
+			case TagsPackage.TAGGED_TARGET: {
+				TaggedTarget taggedTarget = (TaggedTarget)theEObject;
+				T result = caseTaggedTarget(taggedTarget);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			default: return defaultCase(theEObject);
 		}
 	}
@@ -214,6 +226,36 @@ public class TagsSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseEffectiveTag(EffectiveTag object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Found Targets</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Found Targets</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseFoundTargets(FoundTargets object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Tagged Target</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Tagged Target</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseTaggedTarget(TaggedTarget object) {
 		return null;
 	}
 

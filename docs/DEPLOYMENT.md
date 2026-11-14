@@ -171,6 +171,10 @@ every acknowledged mutation, to `broker-state.xmi` in its working
 directory — which in the image **is** the volume mount point
 `/opt/services/data`. On start it restores the snapshot if one is there,
 so a restart keeps catalog, providers and implementations.
+The tags beside the broker ([Tags](TAGS.md)) are kept in a file of their
+own on the same volume, `broker-tags.xmi` (`DDSR_TAGS_FILE` names
+another); a registry snapshot that cannot be read any more does not take
+them along.
 
 A snapshot is only readable by the model version that wrote it. EMF
 rejects a document carrying a feature the current model no longer has —

@@ -15,6 +15,9 @@
 #             stops, and the broker no longer lists the provider. The
 #             Java consumer starts before the TS provider: the contract
 #             outlived A's provider, the consumer waits and binds later.
+# Scenario W: tags beside the broker (#275): roles on the secured broker,
+#             a contract and an implementation tagged and found on an open
+#             one, and the tags survive its restart.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
 #             removal while implemented, withdrawn (contract stays, a
@@ -579,6 +582,97 @@ kill "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 wait "$OPEN_PROVIDER_PID" "$OPEN_PID" 2>/dev/null || true
 echo "Scenario N OK: no token anywhere — published, and listed to a caller without one"
 
+# ============================================================ Scenario W
+log "Scenario W: tags beside the broker"
+# The tag overlay (#272, #275): the Tags contract is served beside every
+# broker from its document. On the secured broker its roles hold — a
+# consumer reads, only an administrator changes. On an open broker of its
+# own, a contract and an implementation are tagged and found, and the
+# tags survive a restart of the broker.
+tags_status() { # expected method url [curl args...]
+  local expected="$1" method="$2" url="$3"; shift 3
+  local got
+  got=$(curl -s -o /dev/null -w '%{http_code}' -X "$method" "$@" "$url")
+  [ "$got" = "$expected" ] || { echo "SCENARIO W FAILED: $method $url answered $got, expected $expected"; exit 1; }
+}
+if secured; then
+  CONSUMER_TOKEN=$(token_for java-client)
+  ADMIN_TOKEN=$(token_for harness)
+  tags_status 401 GET "$BROKER_URL/tags/tree"
+  tags_status 200 GET "$BROKER_URL/tags/tree" -H "Authorization: Bearer $CONSUMER_TOKEN"
+  tags_status 403 PUT "$BROKER_URL/tags/tag?id=harness" -H "Authorization: Bearer $CONSUMER_TOKEN"
+  tags_status 200 PUT "$BROKER_URL/tags/tag?id=harness" -H "Authorization: Bearer $ADMIN_TOKEN"
+  tags_status 204 DELETE "$BROKER_URL/tags/tag?path=harness" -H "Authorization: Bearer $ADMIN_TOKEN"
+  echo "  ✓ tags-roles: no token 401, a consumer reads and may not change (403), an administrator changes"
+fi
+
+TAGS_URL="http://localhost:8897/ddsr/rest"
+require_port_free 8897
+require_port_free 9093
+start_tags_broker() { # log
+  (cd "$WORK" && mkdir -p broker-tags && cd broker-tags \
+    && exec env -u DDSR_AUTH_MODE -u DDSR_JWT_ISSUER DDSR_HTTP_PORT=8897 DDSR_PUBLIC_URL="$TAGS_URL" \
+         java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/$1.log" 2>&1 &
+  TAGS_BROKER_PID=$!
+  PIDS+=("$TAGS_BROKER_PID")
+  wait_for_url "$TAGS_URL/catalog" 60
+  wait_for_broker_contracts "$TAGS_URL"
+  wait_for_url "$TAGS_URL/tags/tree" 60
+}
+rm -rf "$WORK/broker-tags"
+start_tags_broker broker-tags
+(cd "$TS/examples/payment" \
+  && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$TAGS_URL" SERVICE_URL="http://localhost:9093/payments" \
+       node --import tsx provider.ts) >"$WORK/provider-tags.log" 2>&1 &
+TAGS_PROVIDER_PID=$!
+PIDS+=("$TAGS_PROVIDER_PID")
+wait_for_line "$WORK/provider-tags.log" "published as reference" 60
+for tag in "id=payment" "parent=payment&id=method" "parent=payment/method&id=card&selfAssignable=true" \
+           "parent=payment&id=terms" "parent=payment/terms&id=instant"; do
+  tags_status 200 PUT "$TAGS_URL/tags/tag?$tag"
+done
+tags_status 204 PUT "$TAGS_URL/tags/assignment?path=payment/terms/instant&kind=contract&key=Payment"
+tags_status 204 PUT "$TAGS_URL/tags/assignment?path=payment/method/card&kind=implementation&key=payments-ts/Payment"
+tags_find() { # query
+  curl -sf "$TAGS_URL/tags/find?$1" || { echo "SCENARIO W FAILED: find?$1 did not answer"; exit 1; }
+}
+FOUND=$(tags_find "path=payment&kind=contract")
+grep -q '<keys>Payment</keys>' <<<"$FOUND" \
+  || { echo "SCENARIO W FAILED: the contract is not found under payment"; echo "$FOUND"; exit 1; }
+FOUND=$(tags_find "path=payment/method&kind=implementation")
+grep -q '<keys>payments-ts/Payment</keys>' <<<"$FOUND" \
+  || { echo "SCENARIO W FAILED: the implementation is not found under payment/method"; echo "$FOUND"; exit 1; }
+FOUND=$(tags_find "path=payment/terms/instant&path=payment/method&mode=ALL&kind=contract")
+if grep -q '<keys>' <<<"$FOUND"; then
+  echo "SCENARIO W FAILED: ALL matched a contract that carries only one of the tags"; echo "$FOUND"; exit 1
+fi
+echo "  ✓ tags-find: the contract under payment, the implementation under payment/method, ALL is strict"
+
+tags_status 200 POST "$TAGS_URL/tags/tag/move?path=payment&id=billing"
+# The provider first, so it withdraws; then the broker.
+kill "$TAGS_PROVIDER_PID" 2>/dev/null || true
+wait "$TAGS_PROVIDER_PID" 2>/dev/null || true
+kill "$TAGS_BROKER_PID" 2>/dev/null || true
+wait "$TAGS_BROKER_PID" 2>/dev/null || true
+[ -s "$WORK/broker-tags/broker-tags.xmi" ] \
+  || { echo "SCENARIO W FAILED: no broker-tags.xmi beside broker-state.xmi"; exit 1; }
+start_tags_broker broker-tags-restarted
+FOUND=$(tags_find "path=payment/terms&kind=contract")
+grep -q '<keys>Payment</keys>' <<<"$FOUND" \
+  || { echo "SCENARIO W FAILED: after the restart the contract is not found by its former path"; echo "$FOUND"; exit 1; }
+OF=$(curl -sf "$TAGS_URL/tags/of?kind=implementation&key=payments-ts/Payment") \
+  || { echo "SCENARIO W FAILED: tagsOf did not answer after the restart"; exit 1; }
+grep -q 'path="billing/method/card" origin="ADMIN"' <<<"$OF" \
+  || { echo "SCENARIO W FAILED: the assignment did not survive the restart under the new path"; echo "$OF"; exit 1; }
+FOUND=$(tags_find "path=billing&kind=implementation")
+if grep -q '<keys>' <<<"$FOUND"; then
+  echo "SCENARIO W FAILED: an implementation nobody serves any more is still found"; echo "$FOUND"; exit 1
+fi
+kill "$TAGS_BROKER_PID" 2>/dev/null || true
+wait "$TAGS_BROKER_PID" 2>/dev/null || true
+echo "  ✓ tags-survive-a-restart: renamed tree, former paths and assignments kept; only what exists is found"
+echo "Scenario W OK"
+
 # ============================================================ Scenario L
 log "Scenario L: payload models from the Model Atlas"
 # The broker's other source of payload models (#256): a Model Atlas holds
@@ -920,4 +1014,4 @@ kill "$MTLS_PID" 2>/dev/null || true
 wait "$MTLS_PID" 2>/dev/null || true
 echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client$(secured && echo '; discovery by certificate, calls by token')"
 
-log "HARNESS PASSED (A + B + V + F + G + H + T + N + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"
+log "HARNESS PASSED (A + B + V + F + G + H + T + N + W + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"

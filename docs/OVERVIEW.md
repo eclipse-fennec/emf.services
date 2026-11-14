@@ -145,6 +145,9 @@ never edit them by hand.
 - `org.eclipse.fennec.tags.service` — the tag service as a library:
   tree, assignments, queries, the `TagSubjects` and `TagStore` seams,
   an XMI store (#274)
+- `org.eclipse.fennec.tags.ddsr` — the `Tags` contract beside the
+  broker, and the registry's contracts and implementations as targets
+  (#275)
 
 **The broker**
 - `…broker.core` — the registry itself. `DdsrBroker` is the façade over

@@ -35,7 +35,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = TagsPackage.eNS_URI, fingerprint = "fp1:fccc8a988a371825a4c4f014c0709148bf88ba58ae51187a6c3762b44224fb1b", genModel = "/model/tags.genmodel", genModelSourceLocations = {"model/tags.genmodel","org.eclipse.fennec.tags.model/model/tags.genmodel"}, ecore = "/model/tags.ecore", ecoreSourceLocations = "/model/tags.ecore")
+@EPackage(uri = TagsPackage.eNS_URI, fingerprint = "fp1:6ab5492f72b5630c552be839b73e983d1776da2766e125cebf1a075ca8d5f20d", genModel = "/model/tags.genmodel", genModelSourceLocations = {"model/tags.genmodel","org.eclipse.fennec.tags.model/model/tags.genmodel"}, ecore = "/model/tags.ecore", ecoreSourceLocations = "/model/tags.ecore")
 public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -509,6 +509,98 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	int EFFECTIVE_TAG_OPERATION_COUNT = 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.tags.impl.FoundTargetsImpl <em>Found Targets</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.tags.impl.FoundTargetsImpl
+	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getFoundTargets()
+	 * @generated
+	 */
+	int FOUND_TARGETS = 7;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOUND_TARGETS__KIND = 0;
+
+	/**
+	 * The feature id for the '<em><b>Keys</b></em>' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOUND_TARGETS__KEYS = 1;
+
+	/**
+	 * The number of structural features of the '<em>Found Targets</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOUND_TARGETS_FEATURE_COUNT = 2;
+
+	/**
+	 * The number of operations of the '<em>Found Targets</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int FOUND_TARGETS_OPERATION_COUNT = 0;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.tags.impl.TaggedTargetImpl <em>Tagged Target</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.tags.impl.TaggedTargetImpl
+	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTaggedTarget()
+	 * @generated
+	 */
+	int TAGGED_TARGET = 8;
+
+	/**
+	 * The feature id for the '<em><b>Target</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAGGED_TARGET__TARGET = 0;
+
+	/**
+	 * The feature id for the '<em><b>Tags</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAGGED_TARGET__TAGS = 1;
+
+	/**
+	 * The number of structural features of the '<em>Tagged Target</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAGGED_TARGET_FEATURE_COUNT = 2;
+
+	/**
+	 * The number of operations of the '<em>Tagged Target</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAGGED_TARGET_OPERATION_COUNT = 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.tags.MatchMode <em>Match Mode</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -516,7 +608,7 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getMatchMode()
 	 * @generated
 	 */
-	int MATCH_MODE = 7;
+	int MATCH_MODE = 9;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.tags.TagOrigin <em>Tag Origin</em>}' enum.
@@ -526,7 +618,7 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTagOrigin()
 	 * @generated
 	 */
-	int TAG_ORIGIN = 8;
+	int TAG_ORIGIN = 10;
 
 
 	/**
@@ -897,6 +989,70 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	EAttribute getEffectiveTag_Origin();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.tags.FoundTargets <em>Found Targets</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Found Targets</em>'.
+	 * @see org.eclipse.fennec.tags.FoundTargets
+	 * @generated
+	 */
+	EClass getFoundTargets();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.tags.FoundTargets#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.tags.FoundTargets#getKind()
+	 * @see #getFoundTargets()
+	 * @generated
+	 */
+	EAttribute getFoundTargets_Kind();
+
+	/**
+	 * Returns the meta object for the attribute list '{@link org.eclipse.fennec.tags.FoundTargets#getKeys <em>Keys</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute list '<em>Keys</em>'.
+	 * @see org.eclipse.fennec.tags.FoundTargets#getKeys()
+	 * @see #getFoundTargets()
+	 * @generated
+	 */
+	EAttribute getFoundTargets_Keys();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.tags.TaggedTarget <em>Tagged Target</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Tagged Target</em>'.
+	 * @see org.eclipse.fennec.tags.TaggedTarget
+	 * @generated
+	 */
+	EClass getTaggedTarget();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.tags.TaggedTarget#getTarget <em>Target</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Target</em>'.
+	 * @see org.eclipse.fennec.tags.TaggedTarget#getTarget()
+	 * @see #getTaggedTarget()
+	 * @generated
+	 */
+	EReference getTaggedTarget_Target();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.tags.TaggedTarget#getTags <em>Tags</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Tags</em>'.
+	 * @see org.eclipse.fennec.tags.TaggedTarget#getTags()
+	 * @see #getTaggedTarget()
+	 * @generated
+	 */
+	EReference getTaggedTarget_Tags();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.tags.MatchMode <em>Match Mode</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1224,6 +1380,58 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EAttribute EFFECTIVE_TAG__ORIGIN = eINSTANCE.getEffectiveTag_Origin();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.tags.impl.FoundTargetsImpl <em>Found Targets</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.tags.impl.FoundTargetsImpl
+		 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getFoundTargets()
+		 * @generated
+		 */
+		EClass FOUND_TARGETS = eINSTANCE.getFoundTargets();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute FOUND_TARGETS__KIND = eINSTANCE.getFoundTargets_Kind();
+
+		/**
+		 * The meta object literal for the '<em><b>Keys</b></em>' attribute list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute FOUND_TARGETS__KEYS = eINSTANCE.getFoundTargets_Keys();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.tags.impl.TaggedTargetImpl <em>Tagged Target</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.tags.impl.TaggedTargetImpl
+		 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTaggedTarget()
+		 * @generated
+		 */
+		EClass TAGGED_TARGET = eINSTANCE.getTaggedTarget();
+
+		/**
+		 * The meta object literal for the '<em><b>Target</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference TAGGED_TARGET__TARGET = eINSTANCE.getTaggedTarget_Target();
+
+		/**
+		 * The meta object literal for the '<em><b>Tags</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference TAGGED_TARGET__TAGS = eINSTANCE.getTaggedTarget_Tags();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.tags.MatchMode <em>Match Mode</em>}' enum.

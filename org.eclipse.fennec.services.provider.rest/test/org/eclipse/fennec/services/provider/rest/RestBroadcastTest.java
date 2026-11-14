@@ -41,13 +41,13 @@ class RestBroadcastTest {
 	private static final SseStream.Encoder TEXT = new SseStream.Encoder() {
 
 		@Override
-		public byte[] value(Object value) {
-			return String.valueOf(value).getBytes(UTF_8);
+		public String value(Object value) {
+			return String.valueOf(value);
 		}
 
 		@Override
-		public byte[] failure(Throwable failure) {
-			return String.valueOf(failure.getMessage()).getBytes(UTF_8);
+		public String failure(Throwable failure) {
+			return String.valueOf(failure.getMessage());
 		}
 	};
 
@@ -138,8 +138,7 @@ class RestBroadcastTest {
 	@Test
 	void latestWinsTheFastReceiverGetsEverythingTheSlowOneWhatItsBufferHeld() throws Exception {
 		Source source = new Source(50);
-		RestBroadcast broadcast = new RestBroadcast(source::run, TEXT, "text/plain", OverflowPolicy.DISCARD_OLDEST,
-				4, "readings");
+		RestBroadcast broadcast = new RestBroadcast(source::run, TEXT, OverflowPolicy.DISCARD_OLDEST, 4, "readings");
 		ByteArrayOutputStream fast = new ByteArrayOutputStream();
 		Stuck slow = new Stuck();
 		Future<?> fastDone = receive(broadcast.receiver(), fast);
@@ -163,8 +162,7 @@ class RestBroadcastTest {
 	@Test
 	void mustNotLoseTheSlowReceiverFailsAndTheFastOneGoesOn() throws Exception {
 		Source source = new Source(50);
-		RestBroadcast broadcast = new RestBroadcast(source::run, TEXT, "text/plain", OverflowPolicy.FAIL, 4,
-				"readings");
+		RestBroadcast broadcast = new RestBroadcast(source::run, TEXT, OverflowPolicy.FAIL, 4, "readings");
 		ByteArrayOutputStream fast = new ByteArrayOutputStream();
 		Stuck slow = new Stuck();
 		Future<?> fastDone = receive(broadcast.receiver(), fast);

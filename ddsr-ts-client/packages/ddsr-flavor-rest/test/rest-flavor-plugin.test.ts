@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import { DDSRFactory } from '@ddsr/model';
 import type { RestFlavor, RestOperationFlavor, ServiceOperation } from '@ddsr/model';
-import { DdsrServiceError, DdsrTransportError, encodeFailure, encodeResult } from '@ddsr/client';
+import { DdsrServiceError, DdsrTransportError, encodeFailure, encodeResult, newEnvelope, writeStructured } from '@ddsr/client';
 import { RestFlavorPlugin } from '../src/rest-flavor-plugin';
 import { restDispatcher } from '../src/operation-dispatch';
 import { frame } from '../src/rest-streams';
@@ -331,6 +331,10 @@ describe('RestFlavorPlugin bearer', () => {
 
 // Parameter.delivery = STREAM: many answers to one call, over REST as
 // Server-Sent Events (#252).
+/** A result document as the CloudEvents message an SSE event carries. */
+const ce = (document: string) =>
+  new TextDecoder().decode(writeStructured(newEnvelope('org.eclipse.fennec.services.invoke.reply', '/test', 'application/xml'), document));
+
 describe('RestFlavorPlugin and streams', () => {
   const streaming = () => {
     const parts = charge();
@@ -365,7 +369,7 @@ describe('RestFlavorPlugin and streams', () => {
     let accept: string | undefined;
     const fetchFn = (async (_url: string, init: RequestInit) => {
       accept = (init.headers as Record<string, string>).Accept;
-      return sse(frame('value', encodeResult(1)), frame('value', encodeResult(2)), frame('end'));
+      return sse(frame('value', ce(encodeResult(1))), frame('value', ce(encodeResult(2))), frame('end'));
     }) as unknown as typeof fetch;
     const { operation, flavor, opFlavor } = streaming();
     const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
@@ -376,7 +380,7 @@ describe('RestFlavorPlugin and streams', () => {
   });
 
   it('a stream that closes without end broke off', async () => {
-    const fetchFn = (async () => sse(frame('value', encodeResult(1)))) as unknown as typeof fetch;
+    const fetchFn = (async () => sse(frame('value', ce(encodeResult(1))))) as unknown as typeof fetch;
     const { operation, flavor, opFlavor } = streaming();
     const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
     const read: unknown[] = [];
@@ -386,7 +390,7 @@ describe('RestFlavorPlugin and streams', () => {
   });
 
   it('an error event fails the stream with what it says', async () => {
-    const fetchFn = (async () => sse(frame('error', encodeFailure('the sensor is gone')))) as unknown as typeof fetch;
+    const fetchFn = (async () => sse(frame('error', ce(encodeFailure('the sensor is gone'))))) as unknown as typeof fetch;
     const { operation, flavor, opFlavor } = streaming();
     const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);
     await expect((async () => { for await (const _ of values as AsyncIterable<unknown>) { /* none */ } })())
@@ -397,7 +401,7 @@ describe('RestFlavorPlugin and streams', () => {
     let aborted = false;
     const fetchFn = (async (_url: string, init: RequestInit) => {
       init.signal?.addEventListener('abort', () => { aborted = true; });
-      return sse(frame('value', encodeResult(1)), frame('value', encodeResult(2)), frame('end'));
+      return sse(frame('value', ce(encodeResult(1))), frame('value', ce(encodeResult(2))), frame('end'));
     }) as unknown as typeof fetch;
     const { operation, flavor, opFlavor } = streaming();
     const values = await new RestFlavorPlugin({ fetchFn }).invoke(operation, { amount: 1 }, flavor, opFlavor);

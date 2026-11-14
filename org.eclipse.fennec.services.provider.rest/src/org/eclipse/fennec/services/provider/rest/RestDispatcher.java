@@ -421,20 +421,8 @@ public class RestDispatcher {
 		} catch (ReflectiveOperationException | RuntimeException failure) {
 			values = Flows.failed(failure);
 		}
-		String contentType = RestStreams.contentTypeOf(operationFlavor);
-		SseStream.Encoder encoder = new SseStream.Encoder() {
-
-			@Override
-			public byte[] value(Object value) throws Exception {
-				return document(Invocations.result(value), contentType);
-			}
-
-			@Override
-			public byte[] failure(Throwable failure) throws Exception {
-				return document(thrown(operation, failure), contentType);
-			}
-		};
-		SseStream body = new SseStream(values, encoder, contentType, () -> release(serviceObjects, service));
+		SseStream body = new SseStream(values, encoderFor(operationFlavor, operation, CloudEvents.TYPE_INVOKE_REPLY),
+				() -> release(serviceObjects, service));
 		return Response.ok(body, RestStreams.MEDIA_TYPE).build();
 	}
 
@@ -444,24 +432,41 @@ public class RestDispatcher {
 	 * is the service, held for as long as a run of the broadcast lasts.
 	 */
 	private RestBroadcast broadcastOf(RestOperationFlavor operationFlavor, ServiceOperation operation) {
-		return broadcasts.computeIfAbsent(operation.getName(), name -> {
-			String contentType = RestStreams.contentTypeOf(operationFlavor);
-			SseStream.Encoder encoder = new SseStream.Encoder() {
+		return broadcasts.computeIfAbsent(operation.getName(),
+				name -> new RestBroadcast(() -> broadcastSource(operation),
+						encoderFor(operationFlavor, operation, CloudEvents.TYPE_BROADCAST),
+						operation.getReturnValue().getOverflow(), RestBroadcast.BUFFER,
+						"the broadcast of " + contract + "/" + name));
+	}
 
-				@Override
-				public byte[] value(Object value) throws Exception {
-					return document(Invocations.result(value), contentType);
-				}
+	/**
+	 * Every value of a stream, and its failure, as the CloudEvents message
+	 * it is over a messaging broker too: structured mode, of the type given,
+	 * holding a {@code ServiceInvocationResult} in the encoding the flavor
+	 * produces — with whatever the value needs to be readable beside it
+	 * ({@link ResultDocument}).
+	 */
+	private SseStream.Encoder encoderFor(RestOperationFlavor operationFlavor, ServiceOperation operation,
+			String type) {
+		String contentType = RestStreams.contentTypeOf(operationFlavor);
+		String source = "/provider/" + contract;
+		return new SseStream.Encoder() {
 
-				@Override
-				public byte[] failure(Throwable failure) throws Exception {
-					return document(thrown(operation, failure), contentType);
-				}
-			};
-			return new RestBroadcast(() -> broadcastSource(operation), encoder, contentType,
-					operation.getReturnValue().getOverflow(), RestBroadcast.BUFFER,
-					"the broadcast of " + contract + "/" + name);
-		});
+			@Override
+			public String value(Object value) throws Exception {
+				return message(Invocations.result(value));
+			}
+
+			@Override
+			public String failure(Throwable failure) throws Exception {
+				return message(thrown(operation, failure));
+			}
+
+			private String message(ServiceInvocationResult result) throws IOException {
+				CloudEvent envelope = CloudEvents.describing(CloudEvents.newEnvelope(type, source, contentType), result);
+				return new String(CloudEventCodec.writeStructured(envelope, document(result, contentType)), UTF_8);
+			}
+		};
 	}
 
 	private Flow.Publisher<Object> broadcastSource(ServiceOperation operation) {
@@ -487,7 +492,7 @@ public class RestDispatcher {
 
 	private byte[] document(EObject root, String contentType) throws IOException {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		XmiCodec.write(out, resourceSets, contentType, List.of(root));
+		XmiCodec.write(out, resourceSets, contentType, ResultDocument.roots(root));
 		return out.toByteArray();
 	}
 

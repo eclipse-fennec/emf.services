@@ -13,20 +13,22 @@
 
 import type { ServiceOperation } from '@ddsr/model';
 import {
-  DdsrClientError, DdsrServiceError, DdsrTransportError, declaredByCode, declaredCode, declaredRaisedBy,
-  decodeResult, encodeFailure, encodeResult,
+  CE_TYPE_BROADCAST, CE_TYPE_INVOKE_REPLY, DdsrClientError, DdsrServiceError, DdsrTransportError, dataAsText,
+  declaredByCode, declaredCode, declaredRaisedBy, decodeResult, encodeFailure, encodeResult, newEnvelope,
+  readStructured, writeStructured,
 } from '@ddsr/client';
 
 /**
  * How a stream travels over REST (#252): as Server-Sent Events, one
  * event per value - the twin of the Java `RestStreams`.
  *
- * Every value is a `ServiceInvocationResult` document, the same one a
- * value has over messaging. `value` is the next value, `error` the last
- * event of a stream that failed (the document holds the Diagnostic, a
- * declared error under its code), `end` says the stream is over. A
- * connection that closes without `end` broke off. The document is XMI
- * here, one `data:` line per line.
+ * The data of an event is a CloudEvents message in structured mode - the
+ * same message a value is over a messaging broker: `invoke.reply` for a
+ * stream of its own, `broadcast` for one every receiver shares, each
+ * holding a `ServiceInvocationResult` (XMI here). `value` is the next
+ * value, `error` the last event of a stream that failed (the result holds
+ * the Diagnostic, a declared error under its code), `end` says the stream
+ * is over. A connection that closes without `end` broke off.
  *
  * The caller ends a stream by closing the connection; TCP is the
  * backpressure.
@@ -42,10 +44,10 @@ export function streams(operation: ServiceOperation | undefined): boolean {
   return delivery === 'STREAM' || delivery === 'BROADCAST';
 }
 
-/** One event: its name and the document as data. */
-export function frame(event: string, document?: string): string {
-  if (!document) return `event: ${event}\ndata:\n\n`;
-  const lines = document.replace(/\r\n?/g, '\n').split('\n');
+/** One event: its name and its data, one `data:` line per line. */
+export function frame(event: string, data?: string): string {
+  if (!data) return `event: ${event}\ndata:\n\n`;
+  const lines = data.replace(/\r\n?/g, '\n').split('\n');
   return `event: ${event}\n${lines.map(line => `data: ${line}`).join('\n')}\n\n`;
 }
 
@@ -102,7 +104,7 @@ export async function* valuesOf(
 ): AsyncGenerator<unknown> {
   for await (const { event, data } of events) {
     if (event === EVENT_VALUE || event === EVENT_ERROR) {
-      const result = decodeResult(data);
+      const result = decodeResult(dataAsText(readStructured(data)));
       if (result.error !== undefined) {
         const declared = declaredByCode(operation, result.code);
         if (declared) throw new DdsrServiceError(result.error, declared);
@@ -131,10 +133,10 @@ export async function* framesOf(
 ): AsyncGenerator<string> {
   try {
     for await (const value of values) {
-      yield frame(EVENT_VALUE, encodeResult(value));
+      yield frame(EVENT_VALUE, message(CE_TYPE_INVOKE_REPLY, encodeResult(value)));
     }
   } catch (failure) {
-    yield failureFrame(operation, failure);
+    yield failureFrame(operation, failure, CE_TYPE_INVOKE_REPLY);
     return;
   }
   yield frame(EVENT_END);
@@ -199,7 +201,7 @@ export class RestBroadcast {
     try {
       iterator = (await this.source())[Symbol.asyncIterator]();
     } catch (failure) {
-      this.over(failureFrame(this.operation, failure));
+      this.over(failureFrame(this.operation, failure, CE_TYPE_BROADCAST));
       return;
     }
     if (!this.active) {
@@ -210,12 +212,12 @@ export class RestBroadcast {
     try {
       for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
         if (this.running !== iterator) return;
-        const frame_ = frame(EVENT_VALUE, encodeResult(next.value));
+        const frame_ = frame(EVENT_VALUE, message(CE_TYPE_BROADCAST, encodeResult(next.value)));
         for (const receiver of this.receivers) await receiver.offer(frame_);
       }
       if (this.running === iterator) this.over(frame(EVENT_END));
     } catch (failure) {
-      if (this.running === iterator) this.over(failureFrame(this.operation, failure));
+      if (this.running === iterator) this.over(failureFrame(this.operation, failure, CE_TYPE_BROADCAST));
     }
   }
 
@@ -226,11 +228,16 @@ export class RestBroadcast {
   }
 }
 
-function failureFrame(operation: ServiceOperation | undefined, failure: unknown): string {
+function failureFrame(operation: ServiceOperation | undefined, failure: unknown, type: string): string {
   const declared = declaredRaisedBy(operation, failure);
-  return frame(EVENT_ERROR, declared
+  return frame(EVENT_ERROR, message(type, declared
     ? encodeFailure((failure as Error)?.message || declared.name || 'declared error', declaredCode(declared) ?? 0)
-    : encodeFailure(String(failure), 0));
+    : encodeFailure(String(failure), 0)));
+}
+
+/** A result document as the CloudEvents message an SSE event carries. */
+function message(type: string, document: string): string {
+  return new TextDecoder().decode(writeStructured(newEnvelope(type, '/provider/ts', 'application/xml'), document));
 }
 
 /** One receiver of a broadcast: its buffer, and the last event once there is one. */
@@ -255,7 +262,8 @@ class Receiver {
         if (this.left) return;
       } else {
         this.final = failureFrame(this.operation, new Error(`the broadcast of ${this.operation?.name} fell behind:`
-          + ` its buffer of ${this.size} values was full and the contract says a receiver that falls behind fails`));
+          + ` its buffer of ${this.size} values was full and the contract says a receiver that falls behind fails`),
+          CE_TYPE_BROADCAST);
         this.notify();
         return;
       }

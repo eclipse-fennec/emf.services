@@ -13,7 +13,6 @@
 
 package org.eclipse.fennec.services.flavor.rest;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.eclipse.fennec.services.Delivery;
@@ -43,23 +42,13 @@ class RestStreamsTest {
 	}
 
 	@Test
-	void textTravelsAsItIsOneDataLinePerLine() {
-		String frame = RestStreams.frame(RestStreams.VALUE, "<a>\r\n<b/>\n</a>".getBytes(UTF_8), "application/xml");
-		assertThat(frame).isEqualTo("event: value\ndata: <a>\ndata: <b/>\ndata: </a>\n\n");
-		assertThat(RestStreams.document("<a>\n<b/>\n</a>", "application/xml")).isEqualTo("<a>\n<b/>\n</a>".getBytes(UTF_8));
+	void dataTravelsOneLinePerLine() {
+		String frame = RestStreams.frame(RestStreams.VALUE, "{\"a\":1}\r\n{\"b\":2}");
+		assertThat(frame).isEqualTo("event: value\ndata: {\"a\":1}\ndata: {\"b\":2}\n\n");
 	}
 
 	@Test
-	void whatIsTextIsSaidByTheMediaType() {
-		assertThat(RestStreams.isText("application/xml")).isTrue();
-		assertThat(RestStreams.isText("application/json; charset=utf-8")).isTrue();
-		assertThat(RestStreams.isText("application/vnd.example+json")).isTrue();
-		assertThat(RestStreams.isText("text/plain")).isTrue();
-		assertThat(RestStreams.isText("application/x-protobuf")).isFalse();
-	}
-
-	@Test
-	void anEventWithoutDocumentCarriesEmptyData() {
-		assertThat(RestStreams.frame(RestStreams.END, null, "application/xml")).isEqualTo("event: end\ndata:\n\n");
+	void anEventWithoutDataCarriesEmptyData() {
+		assertThat(RestStreams.frame(RestStreams.END, null)).isEqualTo("event: end\ndata:\n\n");
 	}
 }

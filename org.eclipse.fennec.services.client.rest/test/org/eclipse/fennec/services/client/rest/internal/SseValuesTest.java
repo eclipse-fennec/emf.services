@@ -16,13 +16,11 @@ package org.eclipse.fennec.services.client.rest.internal;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
-import java.io.StringReader;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -39,18 +37,16 @@ import org.junit.jupiter.api.Test;
 /** A stream read from Server-Sent Events, as the subscriber asks for it (#252). */
 class SseValuesTest {
 
-	private static final String TEXT = "text/plain";
-
 	private static final SseValues.Decoder STRINGS = new SseValues.Decoder() {
 
 		@Override
-		public Object value(byte[] document) {
-			return new String(document, UTF_8);
+		public Object value(String message) {
+			return message;
 		}
 
 		@Override
-		public RuntimeException failure(byte[] document) {
-			return new DdsrException(new String(document, UTF_8));
+		public RuntimeException failure(String message) {
+			return new DdsrException(message);
 		}
 	};
 
@@ -59,7 +55,7 @@ class SseValuesTest {
 	}
 
 	private static String value(String text) {
-		return RestStreams.frame(RestStreams.VALUE, text.getBytes(UTF_8), TEXT);
+		return RestStreams.frame(RestStreams.VALUE, text);
 	}
 
 	/** Records what arrives and asks for one value at a time, as told. */
@@ -96,13 +92,13 @@ class SseValuesTest {
 	}
 
 	private static SseValues over(InputStream body, AtomicBoolean closed) {
-		return new SseValues("readings", () -> new SseValues.Opened(body, () -> closed.set(true)), STRINGS, TEXT);
+		return new SseValues("readings", () -> new SseValues.Opened(body, () -> closed.set(true)), STRINGS);
 	}
 
 	@Test
 	void valuesArriveInOrderAndEndCompletes() throws Exception {
 		AtomicBoolean closed = new AtomicBoolean();
-		String body = events(value("1"), value("two\nlines"), RestStreams.frame(RestStreams.END, null, TEXT));
+		String body = events(value("1"), value("two\nlines"), RestStreams.frame(RestStreams.END, null));
 		Recorder recorder = new Recorder();
 		over(new ByteArrayInputStream(body.getBytes(UTF_8)), closed).subscribe(recorder);
 		recorder.subscription.get().request(Long.MAX_VALUE);
@@ -114,7 +110,7 @@ class SseValuesTest {
 
 	@Test
 	void aValueIsReadOnlyWhenOneIsAskedFor() throws Exception {
-		String body = events(value("1"), value("2"), RestStreams.frame(RestStreams.END, null, TEXT));
+		String body = events(value("1"), value("2"), RestStreams.frame(RestStreams.END, null));
 		Recorder recorder = new Recorder();
 		over(new ByteArrayInputStream(body.getBytes(UTF_8)), new AtomicBoolean()).subscribe(recorder);
 		recorder.subscription.get().request(1);
@@ -132,7 +128,7 @@ class SseValuesTest {
 	@Test
 	void anErrorEventFailsTheStreamWithWhatItSays() throws Exception {
 		String body = events(value("1"),
-				RestStreams.frame(RestStreams.ERROR, "the sensor is gone".getBytes(UTF_8), TEXT));
+				RestStreams.frame(RestStreams.ERROR, "the sensor is gone"));
 		Recorder recorder = new Recorder();
 		over(new ByteArrayInputStream(body.getBytes(UTF_8)), new AtomicBoolean()).subscribe(recorder);
 		recorder.subscription.get().request(Long.MAX_VALUE);
@@ -175,19 +171,9 @@ class SseValuesTest {
 		Recorder recorder = new Recorder();
 		new SseValues("readings", () -> {
 			throw refused;
-		}, STRINGS, TEXT).subscribe(recorder);
+		}, STRINGS).subscribe(recorder);
 		recorder.subscription.get().request(1);
 
 		assertThat(recorder.ended.get(5, TimeUnit.SECONDS)).isSameAs(refused);
-	}
-
-	@Test
-	void aBinaryDocumentTravelsAsBase64() throws IOException {
-		byte[] document = { 0, 1, 2, (byte) 0xff, '\n' };
-		String frame = RestStreams.frame(RestStreams.VALUE, document, "application/x-protobuf");
-		List<String> data = new CopyOnWriteArrayList<>();
-		SseFrames.pumpEvents(new BufferedReader(new StringReader(frame)), () -> true,
-				(event, text) -> data.add(text));
-		assertThat(RestStreams.document(data.get(0), "application/x-protobuf")).containsExactly(document);
 	}
 }

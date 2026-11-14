@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.client.rest.internal;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -166,13 +167,12 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		} catch (RuntimeException unsendable) {
 			return Flows.failed(unsendable);
 		}
-		String contentType = RestStreams.contentTypeOf(call.operationFlavor());
 		ServiceOperation operation = call.operationFlavor().getOperation();
 		SseValues.Decoder decoder = new SseValues.Decoder() {
 
 			@Override
-			public Object value(byte[] document) throws Exception {
-				ServiceInvocationResult result = resultOf(document, contentType, operationName);
+			public Object value(String message) throws Exception {
+				ServiceInvocationResult result = resultOf(message, operationName);
 				if (result.getDiagnostic() != null) {
 					throw failureOf(operation, result.getDiagnostic(), operationName);
 				}
@@ -180,8 +180,8 @@ public final class RestServiceInvoker implements ServiceInvoker {
 			}
 
 			@Override
-			public RuntimeException failure(byte[] document) throws Exception {
-				ServiceInvocationResult result = resultOf(document, contentType, operationName);
+			public RuntimeException failure(String message) throws Exception {
+				ServiceInvocationResult result = resultOf(message, operationName);
 				return result.getDiagnostic() == null
 						? new DdsrException("the stream of " + operationName + " failed without saying why")
 						: failureOf(operation, result.getDiagnostic(), operationName);
@@ -202,12 +202,17 @@ public final class RestServiceInvoker implements ServiceInvoker {
 				throw new DdsrException(operationName + " answered with no stream: HTTP " + response.getStatus());
 			}
 			return new SseValues.Opened(response.readEntity(InputStream.class), response::close);
-		}, decoder, contentType);
+		}, decoder);
 	}
 
-	private ServiceInvocationResult resultOf(byte[] document, String contentType, String operationName)
-			throws IOException {
-		XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(document), tx.resourceSets(), contentType);
+	/** The result a value's CloudEvents message carries, read in the encoding the message names. */
+	private ServiceInvocationResult resultOf(String message, String operationName) throws IOException {
+		CloudEventCodec.Message read = CloudEventCodec.readStructured(message.getBytes(StandardCharsets.UTF_8));
+		if (read.data() == null) {
+			throw new DdsrException("a value of the stream of " + operationName + " carried no document");
+		}
+		XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(read.data()), tx.resourceSets(),
+				read.attributes().getDatacontenttype());
 		for (EObject root : bundle.roots()) {
 			if (root instanceof ServiceInvocationResult result) {
 				return result;

@@ -6,3 +6,5 @@ export * from './BrokerLookup.js';
 export * from './BrokerLookupProvider.js';
 export * from './Payment.js';
 export * from './PaymentProvider.js';
+export * from './BrokerEvents.js';
+export * from './BrokerEventsProvider.js';

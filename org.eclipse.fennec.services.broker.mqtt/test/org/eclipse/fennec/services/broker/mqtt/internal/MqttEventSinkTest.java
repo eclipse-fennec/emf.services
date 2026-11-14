@@ -38,6 +38,7 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
+import org.eclipse.fennec.services.messaging.Channels;
 import org.junit.jupiter.api.Test;
 
 import io.cloudevents.model.ce.CloudEvent;
@@ -193,6 +194,18 @@ class MqttEventSinkTest {
 	 * reference is a detached copy whose provider subtree carries exactly
 	 * the withdrawn implementation — and that subtree travels with it.
 	 */
+	/** Over AMQP the channel is a routing key, spelled the way that broker does (found by podman scenario R). */
+	@Test
+	void overAmqpTheChannelIsARoutingKey() {
+		MqttEventSink amqp = new MqttEventSink(publisher, lookup, new ResourceSetObjects(), "ddsr/events", "/test/broker",
+				Channels.AMQP);
+
+		amqp.publish(registered("ref-1", "Payment"));
+		amqp.resyncRequired();
+
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr.events", "ddsr.events");
+	}
+
 	@Test
 	void aSelfContainedWithdrawalCarriesTheInterface() {
 		ServiceEvent event = registered("ref-42", "Payment");

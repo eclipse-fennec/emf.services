@@ -20,7 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,10 +31,7 @@ import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
-import org.eclipse.fennec.services.ServiceEvent;
-import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
-import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.tags.service.TagSubjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -59,18 +55,18 @@ import org.osgi.service.component.annotations.Reference;
  * implementation parked in the cold cache is not in the registry and is
  * not answered until a lookup brings it back.
  *
- * <p>It also listens to the broker's events, as an {@link EventSink} —
- * the in-process side of the {@code BrokerEvents} contract. A
+ * <p>It also hears the broker's registrations ({@link RegistrationEvents},
+ * the in-process side of the {@code BrokerEvents} contract). A
  * {@code REGISTERED} event is a provider registering an implementation,
  * and that is when the implementation and the contracts it serves ask for
  * their tags (#276).
  */
-@Component(service = { TagSubjects.class, EventSink.class })
-public final class DdsrTagSubjects implements TagSubjects, EventSink {
+@Component(service = TagSubjects.class)
+public final class DdsrTagSubjects implements TagSubjects {
 
 	private static final Logger LOG = Logger.getLogger(DdsrTagSubjects.class.getName());
 
-	private final List<Consumer<Collection<Subject>>> listeners = new CopyOnWriteArrayList<>();
+	private final RegistrationEvents registrations;
 
 	public static final String CONTRACT = "contract";
 	public static final String IMPLEMENTATION = "implementation";
@@ -78,8 +74,9 @@ public final class DdsrTagSubjects implements TagSubjects, EventSink {
 	private final BrokerCatalog catalog;
 
 	@Activate
-	public DdsrTagSubjects(@Reference BrokerCatalog catalog) {
+	public DdsrTagSubjects(@Reference BrokerCatalog catalog, @Reference RegistrationEvents registrations) {
 		this.catalog = catalog;
+		this.registrations = registrations;
 	}
 
 	@Override
@@ -133,23 +130,16 @@ public final class DdsrTagSubjects implements TagSubjects, EventSink {
 
 	@Override
 	public AutoCloseable onRegistered(Consumer<Collection<Subject>> registered) {
-		listeners.add(registered);
-		return () -> listeners.remove(registered);
+		return registrations.onRegistered(provider -> registered.accept(asking(provider)));
 	}
 
 	/**
 	 * A registration: the implementation it carries asks for its tags, and
 	 * so do the contracts it serves, as the catalog holds them.
 	 */
-	@Override
-	public void publish(ServiceEvent event) {
+	Collection<Subject> asking(ServiceProvider provider) {
+		List<Subject> asking = new ArrayList<>();
 		try {
-			if (event.getType() != ServiceEventType.REGISTERED || event.getReference() == null
-					|| !(event.getReference().getProvider() instanceof ServiceProvider provider)
-					|| listeners.isEmpty()) {
-				return;
-			}
-			List<Subject> asking = new ArrayList<>();
 			Map<String, ServiceInterface> catalogByName = new LinkedHashMap<>();
 			RemoteServiceRegistry registry = catalog.getRegistry();
 			if (registry != null) {
@@ -170,13 +160,10 @@ public final class DdsrTagSubjects implements TagSubjects, EventSink {
 					asking.add(new Subject(CONTRACT, name, Map.of(), List.copyOf(contract.getTags())));
 				}
 			}
-			for (Consumer<Collection<Subject>> listener : listeners) {
-				listener.accept(asking);
-			}
 		} catch (RuntimeException failure) {
-			// A sink must not throw: the broker's mutation is committed.
 			LOG.log(Level.WARNING, "[Tags] a registration could not be read for its tags", failure);
 		}
+		return asking;
 	}
 
 	/** How an implementation is named here: provider and contract, joined by '/'. */

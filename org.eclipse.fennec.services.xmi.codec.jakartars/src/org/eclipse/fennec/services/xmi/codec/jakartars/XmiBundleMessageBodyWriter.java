@@ -11,15 +11,16 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.xmi.codec;
+package org.eclipse.fennec.services.xmi.codec.jakartars;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
-import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
+import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -34,36 +35,30 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.ext.MessageBodyWriter;
 import jakarta.ws.rs.ext.Provider;
 
-/**
- * Writes any {@link EObject} as a single-root XMI document. DS-
- * registered on the server side; constructable directly for client-
- * side use against a {@code jakarta.ws.rs.client.Client}.
- */
+/** Multi-root counterpart to {@link XmiMessageBodyWriter}. */
 @Component(service = MessageBodyWriter.class)
 @JakartarsExtension
-@JakartarsName("ddsr-xmi-writer")
+@JakartarsName("ddsr-xmi-bundle-writer")
 @Provider
-// See the reader: XML plus whatever the deployment registered (#100).
-@Produces({ MediaType.APPLICATION_XML, MediaType.WILDCARD })
-public class XmiMessageBodyWriter implements MessageBodyWriter<EObject> {
+@Produces(MediaType.APPLICATION_XML)
+public class XmiBundleMessageBodyWriter implements MessageBodyWriter<XmiBundle> {
 
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Activate
-	public XmiMessageBodyWriter(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
+	public XmiBundleMessageBodyWriter(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
 		this.rsObjects = rsObjects;
 	}
 
 	@Override
 	public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
-		return EObject.class.isAssignableFrom(type)
-				&& XmiCodec.canDecode(rsObjects, XmiMessageBodyReader.contentTypeOf(mediaType));
+		return XmiBundle.class.isAssignableFrom(type);
 	}
 
 	@Override
-	public void writeTo(EObject eo, Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType,
-			MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream)
+	public void writeTo(XmiBundle bundle, Class<?> type, Type genericType, Annotation[] annotations,
+			MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream)
 			throws IOException, WebApplicationException {
-		XmiCodec.write(entityStream, rsObjects, XmiMessageBodyReader.contentTypeOf(mediaType), java.util.List.of(eo));
+		XmiCodec.write(entityStream, rsObjects, bundle.roots());
 	}
 }

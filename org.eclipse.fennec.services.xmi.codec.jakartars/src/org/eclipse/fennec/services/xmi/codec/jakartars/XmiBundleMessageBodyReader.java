@@ -11,14 +11,17 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.xmi.codec;
+package org.eclipse.fennec.services.xmi.codec.jakartars;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
+import org.eclipse.fennec.services.xmi.codec.XmiCodec;
+import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -26,37 +29,45 @@ import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsExtension;
 import org.osgi.service.jakartars.whiteboard.propertytypes.JakartarsName;
 
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedMap;
-import jakarta.ws.rs.ext.MessageBodyWriter;
+import jakarta.ws.rs.ext.MessageBodyReader;
 import jakarta.ws.rs.ext.Provider;
 
-/** Multi-root counterpart to {@link XmiMessageBodyWriter}. */
-@Component(service = MessageBodyWriter.class)
+/**
+ * Multi-root counterpart to {@link XmiMessageBodyReader}. Lets a
+ * client deserialise a response that contains multiple top-level
+ * EObjects (envelope + sibling roots) into an {@link XmiBundle}.
+ */
+@Component(service = MessageBodyReader.class)
 @JakartarsExtension
-@JakartarsName("ddsr-xmi-bundle-writer")
+@JakartarsName("ddsr-xmi-bundle-reader")
 @Provider
-@Produces(MediaType.APPLICATION_XML)
-public class XmiBundleMessageBodyWriter implements MessageBodyWriter<XmiBundle> {
+@Consumes(MediaType.APPLICATION_XML)
+public class XmiBundleMessageBodyReader implements MessageBodyReader<XmiBundle> {
 
 	private final ComponentServiceObjects<ResourceSet> rsObjects;
 
 	@Activate
-	public XmiBundleMessageBodyWriter(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
+	public XmiBundleMessageBodyReader(@Reference(target = "(emf.name=services)") ComponentServiceObjects<ResourceSet> rsObjects) {
 		this.rsObjects = rsObjects;
 	}
 
 	@Override
-	public boolean isWriteable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
+	public boolean isReadable(Class<?> type, Type genericType, Annotation[] annotations, MediaType mediaType) {
 		return XmiBundle.class.isAssignableFrom(type);
 	}
 
 	@Override
-	public void writeTo(XmiBundle bundle, Class<?> type, Type genericType, Annotation[] annotations,
-			MediaType mediaType, MultivaluedMap<String, Object> httpHeaders, OutputStream entityStream)
+	public XmiBundle readFrom(Class<XmiBundle> type, Type genericType, Annotation[] annotations, MediaType mediaType,
+			MultivaluedMap<String, String> httpHeaders, InputStream entityStream)
 			throws IOException, WebApplicationException {
-		XmiCodec.write(entityStream, rsObjects, bundle.roots());
+		try {
+			return XmiCodec.readBundle(entityStream, rsObjects);
+		} catch (XmiCodecException refusal) {
+			throw XmiHttpErrors.toHttp(refusal);
+		}
 	}
 }

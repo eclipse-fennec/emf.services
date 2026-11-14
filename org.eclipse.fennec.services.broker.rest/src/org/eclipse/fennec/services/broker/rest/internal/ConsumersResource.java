@@ -29,7 +29,7 @@ import org.eclipse.fennec.services.xmi.codec.WireBody;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
-import org.eclipse.fennec.services.xmi.codec.XmiHttpErrors;
+import org.eclipse.fennec.services.xmi.codec.jakartars.XmiHttpErrors;
 import org.eclipse.fennec.services.security.jwt.SecurityNames;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Component;

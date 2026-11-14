@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.xmi.codec;
+package org.eclipse.fennec.services.xmi.codec.jakartars;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,6 +20,8 @@ import java.lang.reflect.Type;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.xmi.codec.XmiCodec;
+import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
 import org.osgi.service.component.ComponentServiceObjects;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;

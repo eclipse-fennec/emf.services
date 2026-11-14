@@ -1,0 +1,21 @@
+Bundle-Name: Fennec Services XMI Codec for Jakarta REST
+Bundle-Description: \
+	The XMI codec as Jakarta REST message body providers, and the mapping \
+	of its refusals to HTTP statuses. Used by broker.rest and \
+	provider.rest (server side, picked up by the Jakarta REST whiteboard) \
+	and by client.rest (registered on a Jakarta REST client). Apart from \
+	the codec so that a node that only speaks over a messaging broker \
+	needs no Jakarta REST whiteboard (#265).
+
+-library: enableJakartaREST, enableEMF
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.component;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec;version=snapshot
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.glassfish.jersey.core.jersey-common;version=latest

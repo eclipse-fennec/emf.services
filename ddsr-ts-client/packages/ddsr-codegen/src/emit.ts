@@ -155,11 +155,10 @@ export function emitConsumer(serviceInterface: ServiceInterface, binding: Bindin
     const returned = slotType(operation.returnValue, binding);
     imports.add(returned);
 
-    const parameters = sortedParameters(operation).map(parameter => {
+    const parameters = sortedParameters(operation).map((parameter, at, all) => {
       const mapped = slotType(parameter, binding);
       imports.add(mapped);
-      const optional = parameter.optional === true ? '?' : '';
-      return `${identifier(parameter.name, 'arg')}${optional}: ${mapped.text}`;
+      return parameterDeclaration(parameter, mapped.text, at, all);
     });
 
     const throws = toArray<ServiceException>(operation.exceptions).map(raised => {
@@ -319,10 +318,10 @@ export function emitProvider(serviceInterface: ServiceInterface, binding: Bindin
     const method = identifier(operation.name, 'operation');
     const returned = slotType(operation.returnValue, binding);
     imports.add(returned);
-    const parameters = sortedParameters(operation).map(parameter => {
+    const parameters = sortedParameters(operation).map((parameter, at, all) => {
       const mapped = slotType(parameter, binding);
       imports.add(mapped);
-      return `${identifier(parameter.name, 'arg')}${parameter.optional === true ? '?' : ''}: ${mapped.text}`;
+      return parameterDeclaration(parameter, mapped.text, at, all);
     });
     const result = isStream(operation.returnValue) ? returned.text
       : returned.text === 'void' ? 'void | Promise<void>' : `${returned.text} | Promise<${returned.text}>`;
@@ -607,4 +606,18 @@ function wrap(text: string, width: number): string[] {
 
 function quote(text: string): string {
   return `'${text.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n')}'`;
+}
+
+/**
+ * One parameter of a method. An optional one is written `name?: T` only
+ * where every parameter after it is optional too — TypeScript allows no
+ * required parameter after an optional one. Earlier, it is
+ * `name: T | undefined`: the caller passes `undefined` to leave it out,
+ * as a REST query or header left out (#280).
+ */
+function parameterDeclaration(parameter: Parameter, type: string, at: number, all: readonly Parameter[]): string {
+  const name = identifier(parameter.name, 'arg');
+  if (parameter.optional !== true) return `${name}: ${type}`;
+  const trailing = all.slice(at + 1).every(after => after.optional === true);
+  return trailing ? `${name}?: ${type}` : `${name}: ${type} | undefined`;
 }

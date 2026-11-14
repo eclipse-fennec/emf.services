@@ -20,7 +20,8 @@
 #             by itself, one filed and accepted), a contract and an
 #             implementation are tagged and found, a rule over properties
 #             tags, an administrator hears the changes as a broadcast,
-#             consumers read through the facade /scoped/<tag> (#279), and
+#             consumers read through the facade /scoped/<tag> (#279), a
+#             TypeScript consumer uses Tags through its stubs (#280), and
 #             the tags survive a restart.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
@@ -731,6 +732,15 @@ wait_for_line "$WORK/client-facade.log" 'ts.charge(10.0, "EUR") =' 90
 kill "$FACADE_CLIENT_PID" 2>/dev/null || true
 wait "$FACADE_CLIENT_PID" 2>/dev/null || true
 echo "  ✓ tags-facade: TS and Java consumers through /scoped/payment find and call Payment; under another tag nothing"
+
+# The tag service from TypeScript (#280): found by lookup, through the
+# generated stubs and the tag model — the tree, a change heard on the
+# broadcast, find and tagsOf.
+if ! (cd "$TS/examples/payment" && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$TAGS_URL" \
+     corepack pnpm exec tsx tags-probe.ts) >"$WORK/tags-probe.log" 2>&1; then
+  echo "SCENARIO W FAILED: the TypeScript consumer of Tags"; cat "$WORK/tags-probe.log"; exit 1
+fi
+grep -E '  [✓✗]' "$WORK/tags-probe.log"
 
 tags_status 200 POST "$TAGS_URL/tags/tag/move?path=payment&id=billing"
 # The provider first, so it withdraws; then the broker.

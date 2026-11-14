@@ -56,8 +56,14 @@ model could tag models in the Model Atlas. A tag's `path` is derived
 in OCL (`if parent = null then id else parent.path + '/' + id endif`),
 so it needs the Fennec OCL engine at runtime, as the broker launch has;
 being derived, it never travels — a reader without an engine joins the
-ids itself. The TypeScript twin of this model follows with the
-TypeScript consumer of the tags (#280).
+ids itself. Its TypeScript twin is `@ddsr/tags-model`, generated with
+`pnpm --filter @ddsr/tags-model generate` from a copy kept byte-identical
+by a test; `tagPath` there joins the ids the derived path is made of.
+
+In TypeScript, an optional parameter is written `name?: T` only where
+every parameter after it is optional too; before a required one it is
+`name: T | undefined`, and the caller passes `undefined` to leave it out
+(#280 — the `Tags` contract has such operations).
 
 Generation runs only when the genmodel is newer than the generated
 code: after an Ecore-only change, touch the genmodel (or run the task

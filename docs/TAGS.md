@@ -12,9 +12,9 @@ The design is collected in issue #272; this page grows with its
 sub-issues. What exists today: the model (#273), the tag service (#274),
 the `Tags` contract served beside the broker (#275) and the tags a
 provider brings, with requests for the ones it may not give itself
-(#276), rules over properties (#277), the change broadcast (#278) and
-the consumer facade (#279). The TypeScript side of the tag contract
-follows.
+(#276), rules over properties (#277), the change broadcast (#278), the
+consumer facade (#279), the announcement of the contract (#287) and its
+TypeScript side (#280). The Payment example follows.
 
 ## The tree
 
@@ -301,6 +301,37 @@ The file is kept apart from the broker state on purpose. Tags are an
 administrator's hand work; a change to the registry model that starts
 the broker empty (the providers simply publish again) must not take
 them along. The file depends on the tag model only.
+
+## From TypeScript
+
+Two packages in `ddsr-ts-client`:
+
+- **`@ddsr/tags-model`** — the tag model generated from a copy of
+  `tags.ecore` (a test keeps it byte-identical to the Java one). Importing
+  it registers the package, which reading an answer of the contract needs.
+  `tagPath(tag)` joins a tag's path from the ids — the path is derived in
+  Java and never travels — and `tagsByPath(roots)` indexes a tree by it.
+- **`@ddsr/tags-stubs`** — the typed `Tags` interface, generated from
+  `tags-api.xmi` through the binding `tags-ts.xmi` (its types from
+  `@ddsr/tags-model`). `getTags(consumer)` finds the service by lookup,
+  bound by the contract's sd1.
+
+```ts
+import { tagsByPath, TagChangeKind } from '@ddsr/tags-model';
+import { getTags } from '@ddsr/tags-stubs';
+
+const tags = await getTags(client.consumer);
+const tree = tagsByPath((await tags!.tags()).tags);
+await tags!.assign('payment/method/card', 'implementation', 'payments-ts/Payment');
+for await (const change of tags!.changes()) { /* an administrator's UI */ }
+```
+
+Every operation is there, the administrator's included; whether a call
+is allowed is the broker's decision, by role. `changes()` is an
+`AsyncIterable` — listen before you change, the broadcast has no replay.
+A TypeScript provider asks for tags with `implementation.tags` (the
+example provider takes `PROVIDER_TAGS`); TypeScript does not serve the
+tag service itself.
 
 ## The two seams
 

@@ -16,7 +16,6 @@ package org.eclipse.fennec.services.provider.messaging;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +45,7 @@ import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.invocation.PushStreams;
+import org.eclipse.fennec.services.invocation.ServiceMethods;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -283,14 +283,7 @@ public final class MessagingOperationDispatcher {
 		for (Parameter parameter : operation.getParameters()) {
 			values.add(arguments.get(parameter.getName()));
 		}
-		for (Method method : target.getClass().getMethods()) {
-			if (method.getName().equals(operation.getName()) && method.getParameterCount() == values.size()) {
-				return method.invoke(target, values.toArray());
-			}
-		}
-		throw new NoSuchMethodException("the service behind this contract, a "
-				+ target.getClass().getName() + ", has no method '" + operation.getName()
-				+ "' taking " + values.size() + " argument(s)");
+		return ServiceMethods.require(target, operation.getName(), values.size()).invoke(target, values.toArray());
 	}
 
 	private void answer(CloudEvent request, String channel, MessagingRoute.Operation placed,
@@ -365,17 +358,7 @@ public final class MessagingOperationDispatcher {
 			if (target == null) {
 				throw new IllegalStateException("no service implements this contract here");
 			}
-			Method method = null;
-			for (Method candidate : target.getClass().getMethods()) {
-				if (candidate.getName().equals(operation.getName()) && candidate.getParameterCount() == 0) {
-					method = candidate;
-				}
-			}
-			if (method == null) {
-				throw new NoSuchMethodException("the service behind this contract, a " + target.getClass().getName()
-						+ ", has no method '" + operation.getName() + "' without arguments");
-			}
-			values = PushStreams.asPublisher(method.invoke(target));
+			values = PushStreams.asPublisher(ServiceMethods.require(target, operation.getName(), 0).invoke(target));
 			if (values == null) {
 				throw new IllegalStateException("the service answered " + spanNameOf(placed)
 						+ " with no stream, although its contract says it broadcasts");

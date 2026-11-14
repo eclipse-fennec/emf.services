@@ -82,6 +82,13 @@ class RestBroadcastTest {
 				}
 				for (int i = 0; i < count; i++) {
 					values.submit(i);
+					try {
+						// A source with a pace of its own, which a receiver
+						// that writes at once keeps up with.
+						Thread.sleep(2);
+					} catch (InterruptedException interrupted) {
+						return;
+					}
 				}
 				values.close();
 			}).start();

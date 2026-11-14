@@ -12,18 +12,20 @@
  ********************************************************************/
 
 import type { ServiceEvent } from '@ddsr/model';
-import { deserializeFromXmi } from '../xmi/xmi-support.js';
-import { asRoots, firstOfClass } from '../internal/emf-util.js';
 import { SseParser } from './sse-parser.js';
+import { heardBy, readBroadcastEvent } from './broadcast-events.js';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from './event-source.js';
 import { clientOrigin, withOrigin } from '../internal/client-origin.js';
 import { withBearer, type TokenSupplier } from '../internal/bearer-token.js';
-import { dataAsText, lifecycleEventTypeOf, readStructured } from '../cloudevents/cloud-events.js';
 
 export interface RestEventSourceOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
   brokerUrl: string;
-  /** CSV FlavorKind filter for ?flavors= (empty string = no filter). */
+  /**
+   * CSV of the FlavorKinds this consumer speaks: it hears only events about
+   * services it can call (empty string = everything). The events are one
+   * stream every receiver shares (#252), so the filter is this side's.
+   */
   flavors?: string;
   /** Flat reconnect delay — same fixed-delay policy as the Java client. */
   reconnectSeconds?: number;
@@ -54,16 +56,14 @@ export interface RestEventSourceOptions {
  */
 export class RestEventSource implements DdsrEventSource {
   private readonly url: string;
+  private readonly spoken: string[];
   private readonly reconnectMillis: number;
   private readonly fetchFn: typeof fetch;
   private readonly log: (message: string) => void;
 
   constructor(options: RestEventSourceOptions) {
-    const flavors = options.flavors ?? 'REST';
-    const base = options.brokerUrl.replace(/\/+$/, '');
-    this.url = flavors.trim()
-      ? `${base}/events?flavors=${encodeURIComponent(flavors)}`
-      : `${base}/events`;
+    this.spoken = (options.flavors ?? 'REST').split(',').filter(kind => kind.trim().length > 0);
+    this.url = `${options.brokerUrl.replace(/\/+$/, '')}/events`;
     this.reconnectMillis = (options.reconnectSeconds ?? 3) * 1000;
     this.fetchFn = withOrigin(
       withBearer(options.fetchFn ?? globalThis.fetch.bind(globalThis), options.tokenSupplier),
@@ -151,31 +151,22 @@ export class RestEventSource implements DdsrEventSource {
 
   private deliver(payload: string, handler: EventSourceHandler): void {
     if (!payload.trim()) return;
-    let event: ServiceEvent | undefined;
+    let event: ServiceEvent;
     try {
-      // An SSE frame has no headers, so the envelope is in the data:
-      // a CloudEvent in structured mode, carrying the document this
-      // client already knows (#101).
-      const message = readStructured(payload);
-      if (!lifecycleEventTypeOf(message.attributes.type)) {
-        this.log(`ignoring a '${message.attributes.type}' event — this stream is read for`
-          + ' lifecycle events');
+      // A value of the broadcast (#252): a CloudEvent in structured mode,
+      // the result whose value is the event. `end` carries no data; the
+      // connection closes after it, and the reconnect is the snapshot.
+      const read = readBroadcastEvent(payload);
+      if (read.kind !== 'event') {
+        if (read.kind === 'other') this.log(`ignoring a '${read.type}' message on the event stream`);
         return;
       }
-      const document = dataAsText(message);
-      if (!document) {
-        this.log('a lifecycle event arrived without its document, ignoring');
-        return;
-      }
-      event = firstOfClass<ServiceEvent>(asRoots(deserializeFromXmi(document)), 'ServiceEvent');
+      event = read.event;
     } catch (error) {
       this.log(`undecodable event payload skipped: ${String(error)}`);
       return;
     }
-    if (!event) {
-      this.log('event payload without ServiceEvent root ignored');
-      return;
-    }
+    if (!heardBy(event, this.spoken)) return;
     try {
       handler.onEvent(event);
     } catch (error) {

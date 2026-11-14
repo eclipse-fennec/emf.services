@@ -14,7 +14,7 @@
 import type { ServiceInterface, ServiceProvider, ServiceImplementation } from '@ddsr/model';
 import { DDSRFactory } from '@ddsr/model';
 import { serializeToXmi } from '../src/xmi/xmi-support';
-import { lifecycleTypeOf, newEnvelope, writeStructured } from '../src/cloudevents/cloud-events';
+import { CE_TYPE_BROADCAST, newEnvelope, writeStructured } from '../src/cloudevents/cloud-events';
 
 const factory = DDSRFactory.eINSTANCE;
 
@@ -118,14 +118,26 @@ export function lookupResultXmi(providerName = 'payments-ts', referenceId = 'ref
 }
 
 /**
- * One event as it travels since #101: the document inside a CloudEvent
- * in structured mode. Built with the production writer, so a change on
- * the writing side reaches every test that reads.
+ * One event as it travels since #252: a value of the broker's broadcast -
+ * a CloudEvent `broadcast` in structured mode, the result whose value is
+ * the event, its context beside it. Built with the production writer.
  */
-export function lifecycleMessage(document: string, type = 'UNREGISTERING'): string {
-  const envelope = newEnvelope(lifecycleTypeOf(type), '/test/broker', 'application/xml');
-  envelope.subject = 'ref-42';
-  return new TextDecoder().decode(writeStructured(envelope, document));
+export function lifecycleMessage(document: string): string {
+  const envelope = newEnvelope(CE_TYPE_BROADCAST, '/test/broker', 'application/xml');
+  return new TextDecoder().decode(writeStructured(envelope, broadcastDocument(document)));
+}
+
+/**
+ * The event document (the event first, its context after it) as the
+ * broadcast carries it: the event becomes the value of a result, which
+ * keeps every root at its place, so the references inside stay right.
+ */
+export function broadcastDocument(eventDocument: string): string {
+  const declared = eventDocument.includes('xmlns:xsi=') ? eventDocument
+    : eventDocument.replace('<xmi:XMI ', '<xmi:XMI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ');
+  return declared.replace(/<services:ServiceEvent\b([^>]*?)\/>/,
+    (_whole, attributes) => '<services:ServiceInvocationResult><value xsi:type="services:EObjectProperty" name="result">'
+      + `<value xsi:type="services:ServiceEvent"${attributes}/></value></services:ServiceInvocationResult>`);
 }
 
 /** The exact UNREGISTERING document shape the broker-side sink produces. */

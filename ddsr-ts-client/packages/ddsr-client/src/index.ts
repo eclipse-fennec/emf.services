@@ -47,6 +47,8 @@ export type { DdsrEventSource, EventSourceHandler, EventSubscription } from './e
 export { RestEventSource } from './events/rest-event-source.js';
 export type { RestEventSourceOptions } from './events/rest-event-source.js';
 export { SseParser } from './events/sse-parser.js';
+export { heardBy, readBroadcastEvent } from './events/broadcast-events.js';
+export type { BroadcastEvent } from './events/broadcast-events.js';
 export {
   newEnvelope, writeStructured, readStructured, toHeaders, fromHeaders, dataAsText,
   describing, isJson, isTextual, lifecycleTypeOf, lifecycleEventTypeOf,

@@ -18,9 +18,7 @@ import type { AmqpConnectOptions } from './amqp-client.js';
 import type { TlsOptions } from '@ddsr/client';
 import type { ServiceEvent } from '@ddsr/model';
 import type { DdsrEventSource, EventSourceHandler, EventSubscription } from '@ddsr/client';
-import {
-  asRoots, dataAsText, deserializeFromXmi, firstOfClass, lifecycleEventTypeOf, readStructured,
-} from '@ddsr/client';
+import { readBroadcastEvent } from '@ddsr/client';
 
 /**
  * The slice of the mqtt.js client this source needs — injectable for
@@ -55,13 +53,6 @@ export interface MqttEventSourceOptions {
 
 export const DEFAULT_TOPIC_PREFIX = 'ddsr/events';
 
-/**
- * Topic segment on which the broker says an event did not reach the
- * wire and subscribers have to take a fresh snapshot (#124). Named on
- * the broker side in `MqttEventSink`; one string on each side of a
- * wire, like the topic prefix itself.
- */
-export const RESYNC_TOPIC_SEGMENT = '_resync';
 
 /**
  * MQTT implementation of the event source — the TS mirror of the Java
@@ -69,19 +60,18 @@ export const RESYNC_TOPIC_SEGMENT = '_resync';
  *
  * - Subscribes `<prefix>/#`: EventSource.open carries no interest set
  *   (documented A2 finding), routing happens in the SDK's listener
- *   registry — including the `_unknown` topic for events whose
- *   interface could not be determined.
- * - The message is a CloudEvent in structured mode (#101), carrying the
- *   same self-contained XMI document as on SSE; the first ServiceEvent
- *   root is delivered. Empty payloads are ignored, undecodable ones and
+ *   registry. The broker publishes every event on the one channel.
+ * - The message is a value of the broker's broadcast (#252): a CloudEvent
+ *   `broadcast` in structured mode, the result whose value is the event.
+ *   Empty payloads are ignored, undecodable ones and
  *   events of a type that is not ours are logged and skipped.
  * - onStreamEstablished() fires after every (re)connect+subscribe —
  *   mqtt.js emits 'connect' again after its automatic reconnect, which
  *   triggers the SDK's snapshot refresh (FR-Sync-Reconnect), and it is
  *   awaited before messages of that connection are delivered.
- * - A message on `<prefix>/_resync` means the broker lost an event and
- *   the only recovery is to read everything again (#124). It fires the
- *   same hook a reconnect does, because that is the same recovery.
+ * - A `broadcast.end` means the broker lost an event and the only
+ *   recovery is to read everything again (#124). It fires the same hook
+ *   a reconnect does, because that is the same recovery.
  */
 export class MqttEventSource implements DdsrEventSource {
   private readonly options: MqttEventSourceOptions;
@@ -92,10 +82,6 @@ export class MqttEventSource implements DdsrEventSource {
     this.log = options.log ?? ((m) => console.error(`[ddsr-mqtt] ${m}`));
   }
 
-  /** Is this the topic on which the broker admits a loss? */
-  private isResync(topic: string | undefined): boolean {
-    return typeof topic === 'string' && topic.endsWith(`${this.separator()}${RESYNC_TOPIC_SEGMENT}`);
-  }
 
   /**
    * `/` on MQTT, `.` on AMQP - said by the scheme of the broker URL
@@ -154,17 +140,14 @@ export class MqttEventSource implements DdsrEventSource {
       client.on('message', (topic, payload) => {
         if (closed) return;
         pipeline = pipeline.then(async () => {
-          if (this.isResync(topic)) {
-            // Something was lost between the broker and here, and there
-            // is no way to find out what: the broker keeps no per-client
-            // history and the stream carries no sequence numbers.
-            // Reading everything again is the recovery, and it is
-            // exactly what a reconnect already does.
+          if (this.deliver(payload, handler) === 'end') {
+            // The broker ended the broadcast: something was lost between
+            // it and here, and there is no way to find out what - no
+            // per-client history, no sequence numbers. Reading everything
+            // again is the recovery, and it is what a reconnect does (#124).
             this.log('the broker lost an event — taking a fresh snapshot');
             await handler.onStreamEstablished();
-            return;
           }
-          this.deliver(payload, handler);
         });
       });
     };
@@ -185,39 +168,29 @@ export class MqttEventSource implements DdsrEventSource {
     };
   }
 
-  private deliver(payload: Uint8Array, handler: EventSourceHandler): void {
+  /** One message of the broadcast (#252); says when it was the end. */
+  private deliver(payload: Uint8Array, handler: EventSourceHandler): 'end' | undefined {
     const text = new TextDecoder().decode(payload);
-    if (!text.trim()) return;
-    let event: ServiceEvent | undefined;
+    if (!text.trim()) return undefined;
+    let event: ServiceEvent;
     try {
-      // Structured mode: the envelope and the document in one JSON
-      // message, which is what a transport carrying nothing but
-      // messages gets (#101).
-      const message = readStructured(text);
-      if (!lifecycleEventTypeOf(message.attributes.type)) {
-        this.log(`ignoring a '${message.attributes.type}' message — this subscription is for`
-          + ' lifecycle events');
-        return;
+      const read = readBroadcastEvent(text);
+      if (read.kind === 'end') return 'end';
+      if (read.kind === 'other') {
+        this.log(`ignoring a '${read.type}' message — this subscription is for the broker's events`);
+        return undefined;
       }
-      const document = dataAsText(message);
-      if (!document) {
-        this.log('a lifecycle event arrived without its document, ignoring');
-        return;
-      }
-      event = firstOfClass<ServiceEvent>(asRoots(deserializeFromXmi(document)), 'ServiceEvent');
+      event = read.event;
     } catch (error) {
       this.log(`undecodable event payload skipped: ${String(error)}`);
-      return;
-    }
-    if (!event) {
-      this.log('event payload without ServiceEvent root ignored');
-      return;
+      return undefined;
     }
     try {
       handler.onEvent(event);
     } catch (error) {
       this.log(`event handler failed: ${String(error)}`);
     }
+    return undefined;
   }
 }
 

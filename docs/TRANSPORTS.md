@@ -245,6 +245,7 @@ the node is to a broker:
 | Property | Default |
 | --- | --- |
 | `reply.timeout.seconds` | `10` |
+| `connect.timeout.seconds` | `30` — how long a call waits for the connection to the messaging broker; the first call to a broker opens it, and that is waited for on its own before the reply timeout starts (#286) |
 | `max.body.bytes` | `0` — an answer's document up to 1 MiB |
 | `username`, `password` | empty — the broker's default user |
 | `tls.keystore`, `tls.truststore` and their passwords | empty; used on a TLS URL (`ssl://`, `amqps://`) |

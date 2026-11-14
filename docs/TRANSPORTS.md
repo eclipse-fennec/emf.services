@@ -108,7 +108,7 @@ real target would be taken down and rebuilt, with everything above it.
 
 | Property | Default |
 | --- | --- |
-| `flavors` | `REST` — becomes the `?flavors=` filter on the stream |
+| `flavors` | `REST` — what this consumer hears: events about services it can call (the broadcast is the same for everyone, #252) |
 | `reconnect.seconds` | `3` |
 
 It needs a `jakarta.ws.rs.client.ClientBuilder` service in the
@@ -459,9 +459,9 @@ actually reach, because it is written into the flavor the broker
 publishes for itself. Behind a container port mapping or a proxy, that
 is not the address it binds.
 
-Also configurable: `heartbeat.seconds` on
-`org.eclipse.fennec.services.broker.rest.sse`, default `10`, the SSE
-keepalive.
+The event stream is the broker's fourth contract, `BrokerEvents`
+(#252), served like the other three; its keepalive comes every 10 s of
+silence, as for every broadcast over REST.
 
 ## `broker.mqtt` — the same events over a messaging broker
 

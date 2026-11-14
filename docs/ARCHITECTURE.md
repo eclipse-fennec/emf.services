@@ -135,10 +135,10 @@ org.eclipse.fennec.services.broker.rest         # JAX-RS endpoints
                                    #     /implementations/withdraw (POST — canonical, D15)
                                    #   /references?interface=&filter=&flavors=&consumerId=&fingerprint=
                                    #   /consumers/{id} (sessions, PUT/GET/DELETE)
-                                   #   /events (SSE; heartbeat PID
-                                   #     org.eclipse.fennec.services.broker.rest.sse)
+                                   #   /events (BrokerEvents.events(), a broadcast
+                                   #     over SSE, #252)
                                    #   /registry
-                                   #   BrokerSelfPublisher: reads the three
+                                   #   BrokerSelfPublisher: reads the four
                                    #     API documents, puts every contract into
                                    #     the catalog and publishes the
                                    #     implementation — no flavor in code any more
@@ -147,8 +147,9 @@ org.eclipse.fennec.services.broker.rest         # JAX-RS endpoints
                                    #     makes a multi-root answer describable,
                                    #     and BrokerLookupRest is the adapter with
                                    #     the signature the contract states
-                                   #   EventsResource stays hand-written: SSE is
-                                   #     not a call
+                                   #   /events is generic too since #252: the
+                                   #     contract BrokerEvents, events() a
+                                   #     broadcast; BrokerEventsRest is its source
 
 org.eclipse.fennec.services.xmi.codec           # shared: server and client side, no transport
                                    #   XmiCodec (CSO<ResourceSet>)
@@ -611,7 +612,7 @@ host as in the container — see [DEPLOYMENT.md](DEPLOYMENT.md).
    `org.eclipse.fennec.services.broker.rest` in Eclipse, or
    `./gradlew :org.eclipse.fennec.services.broker.rest:run.broker`.
    It listens on `http://192.168.1.6:8887/ddsr/rest` and self-publishes
-   its three broker APIs.
+   its four broker APIs.
 
 2. **Start the Java payment provider**: `payment-provider.bndrun` from
    `org.eclipse.fennec.services.examples.payment`. It listens on

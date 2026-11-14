@@ -21,6 +21,9 @@ import java.util.ArrayDeque;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,10 +55,12 @@ final class RestBroadcast {
 
 	/**
 	 * How long a connection may stay silent before it gets an SSE comment:
-	 * a proxy keeps it open, and a receiver that went away without a word
-	 * is noticed by the failed write instead of at the next value.
+	 * a proxy keeps it open, a receiver that went away without a word is
+	 * noticed by the failed write instead of at the next value, and a
+	 * reader with a read timeout — the Java client's is 10 s — never waits
+	 * that long for a byte.
 	 */
-	static final long KEEPALIVE_MILLIS = 10_000;
+	static final long KEEPALIVE_MILLIS = 5_000;
 
 	private final Supplier<Flow.Publisher<Object>> source;
 
@@ -196,8 +201,20 @@ final class RestBroadcast {
 		}
 	}
 
-	/** One connection: its buffer, written as fast as it takes it. */
+	/**
+	 * One connection: its buffer, written as fast as it takes it.
+	 *
+	 * <p>Waits on a lock and its condition, never on a monitor: the HTTP
+	 * server may serve a connection on a virtual thread, and on Java 21 one
+	 * that waits inside {@code synchronized} holds its carrier thread — a
+	 * dozen quiet receivers would take every carrier, and the next request
+	 * would hang (found by the harness).
+	 */
 	private final class Receiver {
+
+		private final ReentrantLock lock = new ReentrantLock();
+
+		private final Condition changed = lock.newCondition();
 
 		private final ArrayDeque<String> buffer = new ArrayDeque<>();
 
@@ -205,7 +222,16 @@ final class RestBroadcast {
 
 		private boolean gone;
 
-		synchronized void offer(String frame) {
+		void offer(String frame) {
+			lock.lock();
+			try {
+				offerLocked(frame);
+			} finally {
+				lock.unlock();
+			}
+		}
+
+		private void offerLocked(String frame) {
 			if (gone || last != null) {
 				return;
 			}
@@ -214,7 +240,7 @@ final class RestBroadcast {
 				case DISCARD_OLDEST -> buffer.pollFirst();
 				case BLOCK -> {
 					try {
-						wait();
+						changed.await();
 					} catch (InterruptedException interrupted) {
 						Thread.currentThread().interrupt();
 						return;
@@ -234,33 +260,42 @@ final class RestBroadcast {
 					} catch (Exception unsayable) {
 						last = RestStreams.frame(RestStreams.ERROR, null);
 					}
-					notifyAll();
+					changed.signalAll();
 					return;
 				}
 				}
 			}
 			buffer.addLast(frame);
-			notifyAll();
+			changed.signalAll();
 		}
 
-		synchronized void last(String frame) {
-			if (last == null) {
-				last = frame;
+		void last(String frame) {
+			lock.lock();
+			try {
+				if (last == null) {
+					last = frame;
+				}
+				changed.signalAll();
+			} finally {
+				lock.unlock();
 			}
-			notifyAll();
 		}
 
 		void write(OutputStream out) throws IOException {
 			try {
+				// At once, before any value: the answer's headers go out with
+				// it, so the receiver knows the stream stands — the moment it
+				// takes its snapshot — instead of when the first value comes.
+				out.write(": connected\n\n".getBytes(UTF_8));
+				out.flush();
 				while (true) {
 					String frame;
 					boolean closing;
-					synchronized (this) {
-						long waited = 0;
-						while (buffer.isEmpty() && last == null && waited < KEEPALIVE_MILLIS) {
-							long since = System.nanoTime();
-							wait(KEEPALIVE_MILLIS - waited);
-							waited += (System.nanoTime() - since) / 1_000_000;
+					lock.lock();
+					try {
+						long remaining = TimeUnit.MILLISECONDS.toNanos(KEEPALIVE_MILLIS);
+						while (buffer.isEmpty() && last == null && remaining > 0) {
+							remaining = changed.awaitNanos(remaining);
 						}
 						if (buffer.isEmpty() && last == null) {
 							closing = false;
@@ -269,7 +304,9 @@ final class RestBroadcast {
 							closing = buffer.isEmpty();
 							frame = closing ? last : buffer.pollFirst();
 						}
-						notifyAll();
+						changed.signalAll();
+					} finally {
+						lock.unlock();
 					}
 					out.write(frame.getBytes(UTF_8));
 					out.flush();
@@ -282,9 +319,12 @@ final class RestBroadcast {
 			} catch (IOException gone) {
 				LOG.fine(() -> "[DDSR-REST] a receiver of " + describe + " went away: " + gone.getMessage());
 			} finally {
-				synchronized (this) {
+				lock.lock();
+				try {
 					this.gone = true;
-					notifyAll();
+					changed.signalAll();
+				} finally {
+					lock.unlock();
 				}
 			}
 		}

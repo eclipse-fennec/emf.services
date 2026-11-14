@@ -569,6 +569,9 @@ function toArray<T>(value: unknown): T[] {
   return [...list];
 }
 
+/** How long a stream may stay silent before its connection gets an SSE comment. */
+const KEEPALIVE_MILLIS = 5_000;
+
 /** The part of a `node:http` response an answer is written to. */
 export interface AnswerSink {
   writeHead(status: number, headers: Record<string, string>): unknown;
@@ -591,10 +594,24 @@ export async function writeAnswer(answer: DispatchResult, response: AnswerSink):
   let closed = false;
   response.once('close', () => { closed = true; });
   const events = answer.events[Symbol.asyncIterator]();
+  // The headers at once, and a comment whenever the stream stays quiet:
+  // a caller with a read timeout (the Java client's is 10 s) must not take
+  // a slow stream for a dead one. The twin of the Java SseStream.
+  response.write(': connected\n\n');
   try {
+    let pending = events.next();
     while (!closed) {
-      const next = await events.next();
-      if (next.done || closed) break;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const quiet = new Promise<'quiet'>(resolve => { timer = setTimeout(() => resolve('quiet'), KEEPALIVE_MILLIS); });
+      const next = await Promise.race([pending, quiet]);
+      clearTimeout(timer);
+      if (closed) break;
+      if (next === 'quiet') {
+        response.write(': keepalive\n\n');
+        continue;
+      }
+      if (next.done) break;
+      pending = events.next();
       if (!response.write(next.value)) {
         await new Promise<void>(resolve => {
           response.once('drain', resolve);
@@ -603,7 +620,9 @@ export async function writeAnswer(answer: DispatchResult, response: AnswerSink):
       }
     }
   } finally {
-    await events.return?.(undefined);
+    // Not awaited: a value may still be pending, and the stream returns
+    // once it settles - the connection need not wait for that.
+    void events.return?.(undefined);
     response.end();
   }
 }

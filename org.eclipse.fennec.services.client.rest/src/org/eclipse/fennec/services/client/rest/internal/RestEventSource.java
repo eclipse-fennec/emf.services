@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,10 +30,15 @@ import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.ServiceInvocationResult;
+import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.flavor.rest.RestStreams;
+import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -99,7 +105,7 @@ public final class RestEventSource implements EventSource {
 	@Reference(target = "(emf.name=services)")
 	ComponentServiceObjects<ResourceSet> rsObjects;
 
-	private String flavors;
+	String flavors;
 
 	private int reconnectSeconds;
 
@@ -143,9 +149,6 @@ public final class RestEventSource implements EventSource {
 	@Override
 	public AutoCloseable open(Handler handler, String consumerId) {
 		WebTarget target = transport.target().path("events");
-		if (flavors != null && !flavors.isBlank()) {
-			target = target.queryParam("flavors", flavors);
-		}
 		if (consumerId != null && !consumerId.isBlank()) {
 			target = target.queryParam("consumerId", consumerId);
 		}
@@ -273,14 +276,18 @@ public final class RestEventSource implements EventSource {
 		}
 
 		/**
-		 * Accumulates {@code data:} lines until a blank line ends the
-		 * event, then hands the joined payload on. Other SSE fields
-		 * ({@code event:}, {@code id:}, comments) are read and ignored —
-		 * the payload carries the type, so nothing depends on them.
+		 * Reads the broadcast's events: every {@code value} is the next
+		 * event, {@code end} — the broker lost one — is followed by the
+		 * connection closing, and the reconnect is the fresh snapshot.
+		 * Comments (the keepalive) are read and ignored.
 		 */
 		private void pump(InputStream in) throws IOException {
-			SseFrames.pump(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)),
-					running::get, data -> deliver(handler, data));
+			SseFrames.pumpEvents(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)),
+					running::get, (event, data) -> {
+						if (RestStreams.VALUE.equals(event)) {
+							deliver(handler, data);
+						}
+					});
 		}
 
 		/**
@@ -336,32 +343,48 @@ public final class RestEventSource implements EventSource {
 		}
 	}
 
+	/** The flavors this consumer speaks, as configured; none named means all. */
+	private Set<FlavorKind> spoken() {
+		Set<FlavorKind> kinds = EnumSet.noneOf(FlavorKind.class);
+		if (flavors != null) {
+			for (String name : flavors.split(",")) {
+				try {
+					if (!name.isBlank()) {
+						kinds.add(FlavorKind.valueOf(name.trim().toUpperCase()));
+					}
+				} catch (IllegalArgumentException unknown) {
+					// a flavor this runtime has never heard of filters nothing
+				}
+			}
+		}
+		return kinds;
+	}
+
 	void deliver(Handler handler, String payload) {
 		if (payload == null || payload.isBlank()) {
 			return;
 		}
 		try {
-			// An SSE frame carries no headers, so the envelope is in the
-			// data: a CloudEvent in structured mode, with the document
-			// this client already knows as its payload (#101).
+			// A value of the broadcast (#252): a CloudEvent in structured
+			// mode, holding the result whose value is the event — beside it
+			// the reference, provider and contracts it is about.
 			CloudEventCodec.Message message = CloudEventCodec.readStructured(
 					payload.getBytes(StandardCharsets.UTF_8));
-			if (CloudEvents.eventTypeOf(message.attributes().getType()) == null) {
+			if (!CloudEvents.TYPE_BROADCAST.equals(message.attributes().getType()) || message.data() == null) {
 				LOG.fine(() -> "[DDSR-Client] ignoring a '" + message.attributes().getType()
-						+ "' event — this stream is read for lifecycle events");
+						+ "' message — this stream is read for the broker's events");
 				return;
 			}
-			if (message.data() == null) {
-				LOG.warning("[DDSR-Client] a lifecycle event arrived without its document, ignoring");
-				return;
-			}
-			// Multi-root document: the event plus the reference, provider
-			// and interfaces it needs to be self-contained.
-			XmiBundle bundle = XmiCodec.readBundle(
-					new ByteArrayInputStream(message.data()), rsObjects);
+			XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), rsObjects,
+					message.attributes().getDatacontenttype());
 			for (EObject root : bundle.roots()) {
-				if (root instanceof ServiceEvent serviceEvent) {
-					handler.onEvent(serviceEvent);
+				if (root instanceof ServiceInvocationResult result
+						&& Invocations.valueOf(result) instanceof ServiceEvent serviceEvent) {
+					// The events are one stream every receiver shares; what
+					// this consumer cannot call, it does not need to hear.
+					if (EventDocument.heardBy(serviceEvent, spoken())) {
+						handler.onEvent(serviceEvent);
+					}
 					return;
 				}
 			}

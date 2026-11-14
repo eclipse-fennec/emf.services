@@ -66,7 +66,8 @@ class BrokerRoleMatrixTest {
 				Arguments.of("broker-implementations-api.xmi", "modifyImplementation", List.of(BrokerRoles.PROVIDER)),
 				Arguments.of("broker-implementations-api.xmi", "withdrawImplementation", List.of(BrokerRoles.PROVIDER)),
 				Arguments.of("broker-lookup-api.xmi", "getServiceReferences", List.of(BrokerRoles.CONSUMER)),
-				Arguments.of("broker-lookup-api.xmi", "heartbeat", List.of(BrokerRoles.PROVIDER)));
+				Arguments.of("broker-lookup-api.xmi", "heartbeat", List.of(BrokerRoles.PROVIDER)),
+				Arguments.of("broker-events-api.xmi", "events", List.of()));
 	}
 
 	@ParameterizedTest(name = "{1} needs {2}")

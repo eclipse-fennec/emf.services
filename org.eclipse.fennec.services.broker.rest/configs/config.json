@@ -117,6 +117,16 @@
 		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
 		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
 	},
+	"org.eclipse.fennec.services.provider.rest~brokerEvents":
+	{
+		"ddsr.contract": "BrokerEvents",
+		"service.filter": "(ddsr.contract=BrokerEvents)",
+		"model.bundle": "org.eclipse.fennec.services.broker.rest",
+		"model.entry": "broker-events-api.xmi",
+		"osgi.jakartars.application.base": "/events",
+		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
+	},
 	"org.eclipse.fennec.services.provider.rest~brokerLookup":
 	{
 		"ddsr.contract": "BrokerLookup",

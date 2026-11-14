@@ -144,6 +144,34 @@ public final class EventDocument {
 		return kinds;
 	}
 
+	/**
+	 * Whether a receiver that speaks these flavors hears this event — the
+	 * filter of the receiving side, since the events are one stream every
+	 * receiver shares (#252). Read from the document the event arrived in:
+	 * the flavors of the provider's implementations. Unknown flavors, or a
+	 * receiver that names none, hear it: over-deliver rather than drop,
+	 * the rule the registry follows on both sides.
+	 */
+	public static boolean heardBy(ServiceEvent event, Set<FlavorKind> spoken) {
+		if (spoken == null || spoken.isEmpty() || event.getReference() == null
+				|| event.getReference().getProvider() == null) {
+			return true;
+		}
+		Set<FlavorKind> offered = EnumSet.noneOf(FlavorKind.class);
+		for (ServiceImplementation impl : event.getReference().getProvider().getImplementations()) {
+			for (ServiceFlavor flavor : impl.getFlavors()) {
+				if (flavor.getKind() != null) {
+					offered.add(flavor.getKind());
+				}
+			}
+		}
+		if (offered.isEmpty()) {
+			return true;
+		}
+		offered.retainAll(spoken);
+		return !offered.isEmpty();
+	}
+
 	/** Interface names the event's service serves, or empty if unknown. */
 	public static Set<String> interfaceNamesOf(ServiceEvent event, BrokerLookup lookup) {
 		Set<String> names = new LinkedHashSet<>();

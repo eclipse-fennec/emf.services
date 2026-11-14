@@ -16,6 +16,9 @@ package org.eclipse.fennec.services.client.messaging.internal;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +31,13 @@ import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.ServiceInvocationResult;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.invocation.ResultDocument;
+import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.junit.jupiter.api.Test;
 
 import io.cloudevents.model.ce.CloudEvent;
@@ -99,14 +107,24 @@ class MqttEventSourceTest {
 		}
 	}
 
-	/** The wire format the broker-side sink produces. */
-	private static final String EVENT_XMI = """
-			<?xml version="1.0" encoding="UTF-8"?>
-			<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:services="%s">
-			  <services:ServiceEvent type="UNREGISTERING" reference="/1"/>
-			  <services:ServiceReference id="ref-42"/>
-			</xmi:XMI>
-			""".formatted(NS);
+	/** A value of the broker's broadcast, as the broker-side sink writes it. */
+	private static String eventDocument() {
+		org.eclipse.fennec.services.ServiceReference reference = ServicesFactory.eINSTANCE.createServiceReference();
+		reference.setId("ref-42");
+		ServiceEvent event = ServicesFactory.eINSTANCE.createServiceEvent();
+		event.setType(ServiceEventType.UNREGISTERING);
+		event.setReference(reference);
+		ServiceInvocationResult result = Invocations.result(event);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		try {
+			XmiCodec.write(out, new ResourceSetObjects(), "application/xml", ResultDocument.roots(result));
+		} catch (IOException unwritable) {
+			throw new UncheckedIOException(unwritable);
+		}
+		return out.toString(StandardCharsets.UTF_8);
+	}
+
+	private static final String EVENT_XMI = eventDocument();
 
 	private final FakeSubscriber subscriber = new FakeSubscriber();
 
@@ -188,7 +206,21 @@ class MqttEventSourceTest {
 	}
 
 	private static byte[] lifecycleMessage(String document) {
-		return message(document, CloudEvents.typeOf(ServiceEventType.UNREGISTERING));
+		return message(document, CloudEvents.TYPE_BROADCAST);
+	}
+
+	/** The broker lost an event and ended the broadcast: every receiver re-reads (#124). */
+	@Test
+	void theEndOfTheBroadcastIsAFreshSnapshot() {
+		source("ddsr/events").open(handler);
+		subscriber.established.run();
+		established.clear();
+
+		subscriber.push("ddsr/events", CloudEventCodec.writeStructured(
+				CloudEvents.newEnvelope(CloudEvents.TYPE_BROADCAST_END, "/test/broker", null), null));
+
+		assertThat(established).hasSize(1);
+		assertThat(received).isEmpty();
 	}
 
 	@Test
@@ -220,7 +252,7 @@ class MqttEventSourceTest {
 	void aMessageThatIsNotACloudEventIsSkipped() {
 		source("ddsr/events").open(handler);
 
-		subscriber.push("ddsr/events/Payment", EVENT_XMI.getBytes(StandardCharsets.UTF_8));
+		subscriber.push("ddsr/events/Payment", "<a-bare-document/>".getBytes(StandardCharsets.UTF_8));
 		subscriber.push("ddsr/events/Payment", lifecycleMessage(EVENT_XMI));
 
 		assertThat(received)

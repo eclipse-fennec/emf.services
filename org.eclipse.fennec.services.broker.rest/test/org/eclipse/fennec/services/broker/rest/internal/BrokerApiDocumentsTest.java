@@ -54,7 +54,8 @@ class BrokerApiDocumentsTest {
 	private final RestTestSupport.ResourceSets rsObjects = new RestTestSupport.ResourceSets();
 
 	static Stream<String> documents() {
-		return Stream.of("broker-catalog-api.xmi", "broker-implementations-api.xmi", "broker-lookup-api.xmi");
+		return Stream.of("broker-catalog-api.xmi", "broker-implementations-api.xmi", "broker-lookup-api.xmi",
+				"broker-events-api.xmi");
 	}
 
 	/**
@@ -190,8 +191,8 @@ class BrokerApiDocumentsTest {
 	}
 
 	@Test
-	void theThreeContractsMountUnderDifferentPaths() throws IOException {
-		// They are three applications in one deployment; a shared base
+	void theFourContractsMountUnderDifferentPaths() throws IOException {
+		// They are four applications in one deployment; a shared base
 		// path would make them collide at the root.
 		assertThat(documents().map(document -> {
 			try {
@@ -199,7 +200,7 @@ class BrokerApiDocumentsTest {
 			} catch (IOException unreadable) {
 				throw new IllegalStateException(unreadable);
 			}
-		})).containsExactly("/catalog", "/implementations", "/references");
+		})).containsExactly("/catalog", "/implementations", "/references", "/events");
 	}
 
 	private static List<RestOperationFlavor> operationFlavors(List<EObject> roots) {

@@ -30,12 +30,13 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.Parameter#getDefaultValue <em>Default Value</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getDescription <em>Description</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getDelivery <em>Delivery</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.Parameter#getOverflow <em>Overflow</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.Parameter#getConstraints <em>Constraints</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getParameter()
- * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded'"
- *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 typeOrEType='type &lt;&gt; null or eType &lt;&gt; null' boundsOrdered='upperBound = -1 or upperBound &gt;= lowerBound' requiredSlotHasLowerBound='optional or lowerBound &gt;= 1' streamIsUnbounded='delivery &lt;&gt; Delivery::STREAM or upperBound = -1'"
+ * @model annotation="http://www.eclipse.org/emf/2002/Ecore constraints='typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded overflowOnlyOnBroadcast'"
+ *        annotation="http://www.eclipse.org/fennec/m2x/ocl/1.0 typeOrEType='type &lt;&gt; null or eType &lt;&gt; null' boundsOrdered='upperBound = -1 or upperBound &gt;= lowerBound' requiredSlotHasLowerBound='optional or lowerBound &gt;= 1' streamIsUnbounded='(delivery &lt;&gt; Delivery::STREAM and delivery &lt;&gt; Delivery::BROADCAST) or upperBound = -1' overflowOnlyOnBroadcast='delivery = Delivery::BROADCAST or overflow = OverflowPolicy::FAIL'"
  * @generated
  */
 @ProviderType
@@ -250,7 +251,7 @@ public interface Parameter extends NamedElement {
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * <!-- begin-model-doc -->
-	 * How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot — a list — in that a list arrives complete.
+	 * How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot — a list — in that a list arrives complete. BROADCAST, only on a return value of an operation without arguments, is a stream shared by every receiver; it is unbounded as well.
 	 * <!-- end-model-doc -->
 	 * @return the value of the '<em>Delivery</em>' attribute.
 	 * @see org.eclipse.fennec.services.Delivery
@@ -271,6 +272,35 @@ public interface Parameter extends NamedElement {
 	 * @generated
 	 */
 	void setDelivery(Delivery value);
+
+	/**
+	 * Returns the value of the '<em><b>Overflow</b></em>' attribute.
+	 * The default value is <code>"FAIL"</code>.
+	 * The literals are from the enumeration {@link org.eclipse.fennec.services.OverflowPolicy}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * What a receiver of a BROADCAST may lose when it falls behind: FAIL (the default) nothing, it fails and starts over; DISCARD_OLDEST the oldest buffered values, latest wins; BLOCK nothing, it holds up its own delivery. Only meaningful on a BROADCAST slot and left at the default everywhere else (constraint overflowOnlyOnBroadcast). It is the receiver's default for its buffer, which a receiver may only make stricter, and it is part of the sd1 fingerprint of a BROADCAST slot.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Overflow</em>' attribute.
+	 * @see org.eclipse.fennec.services.OverflowPolicy
+	 * @see #setOverflow(OverflowPolicy)
+	 * @see org.eclipse.fennec.services.ServicesPackage#getParameter_Overflow()
+	 * @model default="FAIL" required="true"
+	 * @generated
+	 */
+	OverflowPolicy getOverflow();
+
+	/**
+	 * Sets the value of the '{@link org.eclipse.fennec.services.Parameter#getOverflow <em>Overflow</em>}' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @param value the new value of the '<em>Overflow</em>' attribute.
+	 * @see org.eclipse.fennec.services.OverflowPolicy
+	 * @see #getOverflow()
+	 * @generated
+	 */
+	void setOverflow(OverflowPolicy value);
 
 	/**
 	 * Returns the value of the '<em><b>Constraints</b></em>' containment reference list.

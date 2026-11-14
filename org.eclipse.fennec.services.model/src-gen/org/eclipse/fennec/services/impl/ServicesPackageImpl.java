@@ -58,6 +58,7 @@ import org.eclipse.fennec.services.ModelReference;
 import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.NamedElement;
 import org.eclipse.fennec.services.NumericRangeConstraint;
+import org.eclipse.fennec.services.OverflowPolicy;
 import org.eclipse.fennec.services.PackageMapping;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ParameterBinding;
@@ -741,6 +742,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EEnum overflowPolicyEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EEnum messagingQosEEnum = null;
 
 	/**
@@ -1278,8 +1286,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getParameter_Overflow() {
+		return (EAttribute)parameterEClass.getEStructuralFeatures().get(9);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EReference getParameter_Constraints() {
-		return (EReference)parameterEClass.getEStructuralFeatures().get(9);
+		return (EReference)parameterEClass.getEStructuralFeatures().get(10);
 	}
 
 	/**
@@ -4248,6 +4266,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EEnum getOverflowPolicy() {
+		return overflowPolicyEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getMessagingQos() {
 		return messagingQosEEnum;
 	}
@@ -4405,6 +4433,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(parameterEClass, PARAMETER__DEFAULT_VALUE);
 		createEAttribute(parameterEClass, PARAMETER__DESCRIPTION);
 		createEAttribute(parameterEClass, PARAMETER__DELIVERY);
+		createEAttribute(parameterEClass, PARAMETER__OVERFLOW);
 		createEReference(parameterEClass, PARAMETER__CONSTRAINTS);
 
 		parameterConstraintEClass = createEClass(PARAMETER_CONSTRAINT);
@@ -4762,6 +4791,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		httpMethodEEnum = createEEnum(HTTP_METHOD);
 		parameterBindingEEnum = createEEnum(PARAMETER_BINDING);
 		deliveryEEnum = createEEnum(DELIVERY);
+		overflowPolicyEEnum = createEEnum(OVERFLOW_POLICY);
 		messagingQosEEnum = createEEnum(MESSAGING_QOS);
 		registryKindEEnum = createEEnum(REGISTRY_KIND);
 		expressionLanguageEEnum = createEEnum(EXPRESSION_LANGUAGE);
@@ -4906,6 +4936,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getParameter_DefaultValue(), ecorePackage.getEString(), "defaultValue", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getParameter_Description(), ecorePackage.getEString(), "description", null, 0, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getParameter_Delivery(), this.getDelivery(), "delivery", "VALUE", 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getParameter_Overflow(), this.getOverflowPolicy(), "overflow", "FAIL", 1, 1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getParameter_Constraints(), this.getParameterConstraint(), null, "constraints", null, 0, -1, Parameter.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(parameterConstraintEClass, ParameterConstraint.class, "ParameterConstraint", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
@@ -5403,6 +5434,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(deliveryEEnum, Delivery.VALUE);
 		addEEnumLiteral(deliveryEEnum, Delivery.PROMISE);
 		addEEnumLiteral(deliveryEEnum, Delivery.STREAM);
+		addEEnumLiteral(deliveryEEnum, Delivery.BROADCAST);
+
+		initEEnum(overflowPolicyEEnum, OverflowPolicy.class, "OverflowPolicy");
+		addEEnumLiteral(overflowPolicyEEnum, OverflowPolicy.FAIL);
+		addEEnumLiteral(overflowPolicyEEnum, OverflowPolicy.DISCARD_OLDEST);
+		addEEnumLiteral(overflowPolicyEEnum, OverflowPolicy.BLOCK);
 
 		initEEnum(messagingQosEEnum, MessagingQos.class, "MessagingQos");
 		addEEnumLiteral(messagingQosEEnum, MessagingQos.AT_MOST_ONCE);
@@ -5583,7 +5620,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (deliveryEEnum,
 		   source,
 		   new String[] {
-			   "documentation", "How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint \u2014 the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language\'s: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable."
+			   "documentation", "How the value of a slot arrives (Parameter.delivery). VALUE = at once and complete; the default, so a slot that says nothing is a value and the literal is not serialized. PROMISE = one value that arrives later, as an event: the operation may take its time, and a caller should not wait for it on a thread or with a short timeout. Only a return value can be a promise. It says WHEN the value comes and nothing about what it is, so it is not part of the sd1 fingerprint \u2014 the same contract may be read synchronously. STREAM = any number of values, one after the other, over time: their number is not known in advance, the stream ends or fails, and either end may stop it. A return value that is a stream flows from the provider to the caller, an argument that is one flows from the caller to the provider, and an operation may have both. STREAM changes what is exchanged and is part of the sd1 fingerprint. What the kinds are called in a language is the language\'s: Java PushStream or Flow.Publisher for a stream and Promise or CompletionStage for a promise, TypeScript AsyncIterable and Promise, Python AsyncIterator and Awaitable. BROADCAST = a stream that one source sends to every receiver at once, at its own pace (#252): it is subscribed to, not called, so it has no arguments and no session, and only a return value can be one. The source never learns how fast a receiver is \u2014 there is no backpressure \u2014 and each receiver protects itself with a buffer whose overflow the contract states (Parameter.overflow). BROADCAST is part of the sd1 fingerprint, together with the overflow policy."
+		   });
+		addAnnotation
+		  (overflowPolicyEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "What a receiver of a BROADCAST does when its buffer is full (Parameter.overflow). The values follow the per-subscription buffer of Gecko Messaging. FAIL = the receiver must not lose a value: its subscription ends with an error and it starts over, e.g. from a snapshot; the default, so a contract that says nothing promises no loss. DISCARD_OLDEST = latest wins: the oldest buffered value is dropped for the new one, for readings where only the current value counts. BLOCK = the receiver holds up its own delivery until there is room; nothing is lost, but a messaging broker may drop or disconnect a receiver that stays slow. A receiver may make the policy stricter (replace DISCARD_OLDEST with FAIL or BLOCK), never looser."
 		   });
 		addAnnotation
 		  (messagingQosEEnum,
@@ -5823,7 +5866,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (getParameter_Delivery(),
 		   source,
 		   new String[] {
-			   "documentation", "How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot \u2014 a list \u2014 in that a list arrives complete."
+			   "documentation", "How the value of this slot arrives: VALUE (the default) at once, PROMISE later as one event, STREAM as any number of values over time. On ServiceOperation.returnValue it describes what comes back; on a parameter it describes what the caller hands over, where only VALUE and STREAM make sense. A STREAM slot is unbounded (upperBound = -1): how many values there will be is exactly what a stream does not say in advance. It differs from a multi-valued VALUE slot \u2014 a list \u2014 in that a list arrives complete. BROADCAST, only on a return value of an operation without arguments, is a stream shared by every receiver; it is unbounded as well."
+		   });
+		addAnnotation
+		  (getParameter_Overflow(),
+		   source,
+		   new String[] {
+			   "documentation", "What a receiver of a BROADCAST may lose when it falls behind: FAIL (the default) nothing, it fails and starts over; DISCARD_OLDEST the oldest buffered values, latest wins; BLOCK nothing, it holds up its own delivery. Only meaningful on a BROADCAST slot and left at the default everywhere else (constraint overflowOnlyOnBroadcast). It is the receiver\'s default for its buffer, which a receiver may only make stricter, and it is part of the sd1 fingerprint of a BROADCAST slot."
 		   });
 		addAnnotation
 		  (getParameter_Constraints(),
@@ -6483,7 +6532,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings). A request is answered once, so an operation whose return value is a stream (Delivery::STREAM) has no REST binding (constraint noStreamOverRest); a messaging flavor carries it."
+			   "documentation", "REST binding for one operation: HTTP method + path under the RestFlavor.basePath + expected success status codes + optional per-parameter wire placement (parameterBindings) + the status a declared error travels as (exceptionBindings). An operation whose return value is a stream (Delivery::STREAM or Delivery::BROADCAST) is served as Server-Sent Events: a STREAM as the response to the call, one event per value, ended by the provider or by the caller closing the connection; a BROADCAST to every open subscription, at the provider\'s pace, each receiver buffering by its overflow policy."
 		   });
 		addAnnotation
 		  (getRestOperationFlavor_Method(),
@@ -7702,13 +7751,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (serviceOperationEClass,
 		   source,
 		   new String[] {
-			   "constraints", "onlyAReturnValueIsPromised"
+			   "constraints", "onlyAReturnValueIsPromised onlyAReturnValueIsBroadcast broadcastTakesNoArguments"
 		   });
 		addAnnotation
 		  (parameterEClass,
 		   source,
 		   new String[] {
-			   "constraints", "typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded"
+			   "constraints", "typeOrEType boundsOrdered requiredSlotHasLowerBound streamIsUnbounded overflowOnlyOnBroadcast"
 		   });
 		addAnnotation
 		  (numericRangeConstraintEClass,
@@ -7744,7 +7793,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (restOperationFlavorEClass,
 		   source,
 		   new String[] {
-			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException noStreamOverRest"
+			   "constraints", "bindingsReferenceOperationParameters oneBindingPerParameter pathBindingsNeedPath exceptionBindingsReferenceOperationExceptions oneBindingPerException"
 		   });
 		addAnnotation
 		  (securityRequirementEClass,
@@ -7802,7 +7851,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		  (serviceOperationEClass,
 		   source,
 		   new String[] {
-			   "onlyAReturnValueIsPromised", "parameters->forAll(p | p.delivery <> Delivery::PROMISE)"
+			   "onlyAReturnValueIsPromised", "parameters->forAll(p | p.delivery <> Delivery::PROMISE)",
+			   "onlyAReturnValueIsBroadcast", "parameters->forAll(p | p.delivery <> Delivery::BROADCAST)",
+			   "broadcastTakesNoArguments", "returnValue = null or returnValue.delivery <> Delivery::BROADCAST or parameters->isEmpty()"
 		   });
 		addAnnotation
 		  (parameterEClass,
@@ -7811,7 +7862,8 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "typeOrEType", "type <> null or eType <> null",
 			   "boundsOrdered", "upperBound = -1 or upperBound >= lowerBound",
 			   "requiredSlotHasLowerBound", "optional or lowerBound >= 1",
-			   "streamIsUnbounded", "delivery <> Delivery::STREAM or upperBound = -1"
+			   "streamIsUnbounded", "(delivery <> Delivery::STREAM and delivery <> Delivery::BROADCAST) or upperBound = -1",
+			   "overflowOnlyOnBroadcast", "delivery = Delivery::BROADCAST or overflow = OverflowPolicy::FAIL"
 		   });
 		addAnnotation
 		  (numericRangeConstraintEClass,
@@ -7861,8 +7913,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "oneBindingPerParameter", "parameterBindings->isUnique(b | b.parameter)",
 			   "pathBindingsNeedPath", "parameterBindings->forAll(b | b.binding.toString() <> \'PATH\' or path <> null)",
 			   "exceptionBindingsReferenceOperationExceptions", "exceptionBindings->forAll(b | operation.exceptions->includes(b.exception))",
-			   "oneBindingPerException", "exceptionBindings->isUnique(b | b.exception)",
-			   "noStreamOverRest", "operation = null or operation.returnValue = null or operation.returnValue.delivery <> Delivery::STREAM"
+			   "oneBindingPerException", "exceptionBindings->isUnique(b | b.exception)"
 		   });
 		addAnnotation
 		  (securityRequirementEClass,

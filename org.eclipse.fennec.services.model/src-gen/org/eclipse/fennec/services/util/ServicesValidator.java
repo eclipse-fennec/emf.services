@@ -261,6 +261,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateParameterBinding((ParameterBinding)value, diagnostics, context);
 			case ServicesPackage.DELIVERY:
 				return validateDelivery((Delivery)value, diagnostics, context);
+			case ServicesPackage.OVERFLOW_POLICY:
+				return validateOverflowPolicy((OverflowPolicy)value, diagnostics, context);
 			case ServicesPackage.MESSAGING_QOS:
 				return validateMessagingQos((MessagingQos)value, diagnostics, context);
 			case ServicesPackage.REGISTRY_KIND:
@@ -445,6 +447,8 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validate_EveryKeyUnique(serviceOperation, diagnostics, context);
 		if (result || diagnostics != null) result &= validate_EveryMapEntryUnique(serviceOperation, diagnostics, context);
 		if (result || diagnostics != null) result &= validateServiceOperation_onlyAReturnValueIsPromised(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceOperation_onlyAReturnValueIsBroadcast(serviceOperation, diagnostics, context);
+		if (result || diagnostics != null) result &= validateServiceOperation_broadcastTakesNoArguments(serviceOperation, diagnostics, context);
 		return result;
 	}
 
@@ -478,6 +482,64 @@ public class ServicesValidator extends EObjectValidator {
 	}
 
 	/**
+	 * The cached validation expression for the onlyAReturnValueIsBroadcast constraint of '<em>Service Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_OPERATION__ONLY_ARETURN_VALUE_IS_BROADCAST__EEXPRESSION = "parameters->forAll(p | p.delivery <> Delivery::BROADCAST)";
+
+	/**
+	 * Validates the onlyAReturnValueIsBroadcast constraint of '<em>Service Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceOperation_onlyAReturnValueIsBroadcast(ServiceOperation serviceOperation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_OPERATION,
+				 serviceOperation,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "onlyAReturnValueIsBroadcast",
+				 SERVICE_OPERATION__ONLY_ARETURN_VALUE_IS_BROADCAST__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the broadcastTakesNoArguments constraint of '<em>Service Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String SERVICE_OPERATION__BROADCAST_TAKES_NO_ARGUMENTS__EEXPRESSION = "returnValue = null or returnValue.delivery <> Delivery::BROADCAST or parameters->isEmpty()";
+
+	/**
+	 * Validates the broadcastTakesNoArguments constraint of '<em>Service Operation</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateServiceOperation_broadcastTakesNoArguments(ServiceOperation serviceOperation, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.SERVICE_OPERATION,
+				 serviceOperation,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "broadcastTakesNoArguments",
+				 SERVICE_OPERATION__BROADCAST_TAKES_NO_ARGUMENTS__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
@@ -496,6 +558,7 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateParameter_boundsOrdered(parameter, diagnostics, context);
 		if (result || diagnostics != null) result &= validateParameter_requiredSlotHasLowerBound(parameter, diagnostics, context);
 		if (result || diagnostics != null) result &= validateParameter_streamIsUnbounded(parameter, diagnostics, context);
+		if (result || diagnostics != null) result &= validateParameter_overflowOnlyOnBroadcast(parameter, diagnostics, context);
 		return result;
 	}
 
@@ -592,7 +655,7 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	protected static final String PARAMETER__STREAM_IS_UNBOUNDED__EEXPRESSION = "delivery <> Delivery::STREAM or upperBound = -1";
+	protected static final String PARAMETER__STREAM_IS_UNBOUNDED__EEXPRESSION = "(delivery <> Delivery::STREAM and delivery <> Delivery::BROADCAST) or upperBound = -1";
 
 	/**
 	 * Validates the streamIsUnbounded constraint of '<em>Parameter</em>'.
@@ -610,6 +673,35 @@ public class ServicesValidator extends EObjectValidator {
 				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
 				 "streamIsUnbounded",
 				 PARAMETER__STREAM_IS_UNBOUNDED__EEXPRESSION,
+				 org.eclipse.emf.common.util.Diagnostic.ERROR,
+				 DIAGNOSTIC_SOURCE,
+				 0);
+	}
+
+	/**
+	 * The cached validation expression for the overflowOnlyOnBroadcast constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	protected static final String PARAMETER__OVERFLOW_ONLY_ON_BROADCAST__EEXPRESSION = "delivery = Delivery::BROADCAST or overflow = OverflowPolicy::FAIL";
+
+	/**
+	 * Validates the overflowOnlyOnBroadcast constraint of '<em>Parameter</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateParameter_overflowOnlyOnBroadcast(Parameter parameter, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return
+			validate
+				(ServicesPackage.Literals.PARAMETER,
+				 parameter,
+				 diagnostics,
+				 context,
+				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
+				 "overflowOnlyOnBroadcast",
+				 PARAMETER__OVERFLOW_ONLY_ON_BROADCAST__EEXPRESSION,
 				 org.eclipse.emf.common.util.Diagnostic.ERROR,
 				 DIAGNOSTIC_SOURCE,
 				 0);
@@ -1311,7 +1403,6 @@ public class ServicesValidator extends EObjectValidator {
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_pathBindingsNeedPath(restOperationFlavor, diagnostics, context);
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_exceptionBindingsReferenceOperationExceptions(restOperationFlavor, diagnostics, context);
 		if (result || diagnostics != null) result &= validateRestOperationFlavor_oneBindingPerException(restOperationFlavor, diagnostics, context);
-		if (result || diagnostics != null) result &= validateRestOperationFlavor_noStreamOverRest(restOperationFlavor, diagnostics, context);
 		return result;
 	}
 
@@ -1455,35 +1546,6 @@ public class ServicesValidator extends EObjectValidator {
 				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
 				 "oneBindingPerException",
 				 REST_OPERATION_FLAVOR__ONE_BINDING_PER_EXCEPTION__EEXPRESSION,
-				 org.eclipse.emf.common.util.Diagnostic.ERROR,
-				 DIAGNOSTIC_SOURCE,
-				 0);
-	}
-
-	/**
-	 * The cached validation expression for the noStreamOverRest constraint of '<em>Rest Operation Flavor</em>'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	protected static final String REST_OPERATION_FLAVOR__NO_STREAM_OVER_REST__EEXPRESSION = "operation = null or operation.returnValue = null or operation.returnValue.delivery <> Delivery::STREAM";
-
-	/**
-	 * Validates the noStreamOverRest constraint of '<em>Rest Operation Flavor</em>'.
-	 * <!-- begin-user-doc -->
-	 * <!-- end-user-doc -->
-	 * @generated
-	 */
-	public boolean validateRestOperationFlavor_noStreamOverRest(RestOperationFlavor restOperationFlavor, DiagnosticChain diagnostics, Map<Object, Object> context) {
-		return
-			validate
-				(ServicesPackage.Literals.REST_OPERATION_FLAVOR,
-				 restOperationFlavor,
-				 diagnostics,
-				 context,
-				 "http://www.eclipse.org/fennec/m2x/ocl/1.0",
-				 "noStreamOverRest",
-				 REST_OPERATION_FLAVOR__NO_STREAM_OVER_REST__EEXPRESSION,
 				 org.eclipse.emf.common.util.Diagnostic.ERROR,
 				 DIAGNOSTIC_SOURCE,
 				 0);
@@ -2311,6 +2373,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateDelivery(Delivery delivery, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateOverflowPolicy(OverflowPolicy overflowPolicy, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

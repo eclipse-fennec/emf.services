@@ -101,6 +101,12 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//Delivery/VALUE"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//Delivery/PROMISE"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//Delivery/STREAM"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//Delivery/BROADCAST"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//OverflowPolicy">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//OverflowPolicy/FAIL"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//OverflowPolicy/DISCARD_OLDEST"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//OverflowPolicy/BLOCK"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//MessagingQos">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//MessagingQos/AT_MOST_ONCE"/>
@@ -192,6 +198,7 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/defaultValue"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/description"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/delivery"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Parameter/overflow"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//Parameter/constraints"/>
     </genClasses>
     <genClasses image="false" ecoreClass="services.ecore#//ParameterConstraint"/>

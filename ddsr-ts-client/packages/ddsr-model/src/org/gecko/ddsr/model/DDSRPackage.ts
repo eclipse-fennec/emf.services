@@ -74,6 +74,7 @@ export class DDSRPackage extends BasicEPackage {
     PARAMETER__DEFAULT_VALUE: null as unknown as EAttribute | EReference,
     PARAMETER__DESCRIPTION: null as unknown as EAttribute | EReference,
     PARAMETER__DELIVERY: null as unknown as EAttribute | EReference,
+    PARAMETER__OVERFLOW: null as unknown as EAttribute | EReference,
     PARAMETER__CONSTRAINTS: null as unknown as EAttribute | EReference,
     PARAMETER_CONSTRAINT: null as unknown as EClass,
     REQUIRED_CONSTRAINT: null as unknown as EClass,
@@ -700,6 +701,14 @@ export class DDSRPackage extends BasicEPackage {
     parameter_delivery.setUpperBound(1);
     parameterClass.getEStructuralFeatures().push(parameter_delivery);
     DDSRPackage.Literals.PARAMETER__DELIVERY = parameter_delivery;
+
+    // Create overflow feature
+    const parameter_overflow = new BasicEAttribute();
+    parameter_overflow.setName('overflow');
+    parameter_overflow.setLowerBound(1);
+    parameter_overflow.setUpperBound(1);
+    parameterClass.getEStructuralFeatures().push(parameter_overflow);
+    DDSRPackage.Literals.PARAMETER__OVERFLOW = parameter_overflow;
 
     // Create constraints feature
     const parameter_constraints = new BasicEReference();

@@ -161,6 +161,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createParameterBindingFromString(eDataType, initialValue);
 			case ServicesPackage.DELIVERY:
 				return createDeliveryFromString(eDataType, initialValue);
+			case ServicesPackage.OVERFLOW_POLICY:
+				return createOverflowPolicyFromString(eDataType, initialValue);
 			case ServicesPackage.MESSAGING_QOS:
 				return createMessagingQosFromString(eDataType, initialValue);
 			case ServicesPackage.REGISTRY_KIND:
@@ -222,6 +224,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertParameterBindingToString(eDataType, instanceValue);
 			case ServicesPackage.DELIVERY:
 				return convertDeliveryToString(eDataType, instanceValue);
+			case ServicesPackage.OVERFLOW_POLICY:
+				return convertOverflowPolicyToString(eDataType, instanceValue);
 			case ServicesPackage.MESSAGING_QOS:
 				return convertMessagingQosToString(eDataType, instanceValue);
 			case ServicesPackage.REGISTRY_KIND:
@@ -1209,6 +1213,26 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	public String convertDeliveryToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public OverflowPolicy createOverflowPolicyFromString(EDataType eDataType, String initialValue) {
+		OverflowPolicy result = OverflowPolicy.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertOverflowPolicyToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

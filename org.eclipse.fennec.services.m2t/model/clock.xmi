@@ -15,6 +15,9 @@
     <parameters name="everyMillis" type="long" description="How far apart the ticks are."/>
     <returnValue name="result" type="instant" upperBound="-1" delivery="STREAM"/>
   </operations>
+  <operations name="seconds" description="The beat of the clock, one instant a second, the same for everyone who listens; a listener that falls behind skips to the latest.">
+    <returnValue name="result" type="instant" upperBound="-1" delivery="BROADCAST" overflow="DISCARD_OLDEST"/>
+  </operations>
   <operations name="between" description="Milliseconds from one instant to another.">
     <parameters name="from" type="instant" description="Where to count from."/>
     <parameters name="to" index="1" type="instant" optional="true" description="Where to count to; now when left out."/>

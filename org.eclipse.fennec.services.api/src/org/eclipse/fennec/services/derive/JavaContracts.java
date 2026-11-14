@@ -34,6 +34,7 @@ import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.fennec.services.Delivery;
+import org.eclipse.fennec.services.OverflowPolicy;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.SecurityRequirement;
 import org.eclipse.fennec.services.ServiceException;
@@ -196,6 +197,25 @@ public final class JavaContracts {
                 // leaves PROMISE out), but one that generates code or
                 // sets a timeout knows the answer is an event.
                 result.setDelivery(Delivery.PROMISE);
+            }
+            Broadcast broadcast = method.getAnnotation(Broadcast.class);
+            if (broadcast != null) {
+                // A stream every receiver shares (#252): subscribed to,
+                // so it takes nothing, and what a receiver may lose is
+                // part of what it is promised.
+                if (result.getDelivery() != Delivery.STREAM || method.getParameterCount() > 0) {
+                    throw new IllegalArgumentException(method.getDeclaringClass().getSimpleName() + "."
+                            + method.getName() + " is a @Broadcast, which is a stream returned by a method without"
+                            + " arguments");
+                }
+                OverflowPolicy overflow = OverflowPolicy.get(broadcast.overflow());
+                if (overflow == null) {
+                    throw new IllegalArgumentException(method.getDeclaringClass().getSimpleName() + "."
+                            + method.getName() + ": '" + broadcast.overflow()
+                            + "' is no overflow policy — FAIL, DISCARD_OLDEST or BLOCK");
+                }
+                result.setDelivery(Delivery.BROADCAST);
+                result.setOverflow(overflow);
             }
             operation.setReturnValue(result);
         }

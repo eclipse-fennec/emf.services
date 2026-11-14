@@ -22,6 +22,7 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.Future;
 
 import org.eclipse.fennec.services.Delivery;
+import org.eclipse.fennec.services.OverflowPolicy;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
@@ -149,6 +150,48 @@ class JavaContractsTest {
         assertThat(samples.getDelivery()).as("a stream the caller hands over").isEqualTo(Delivery.STREAM);
         assertThat(operation(sensor, "history").getReturnValue().getDelivery())
                 .as("a list arrives complete").isEqualTo(Delivery.VALUE);
+    }
+
+    /** Readings every receiver shares (#252). */
+    interface Station {
+
+        @Broadcast(overflow = "DISCARD_OLDEST")
+        Flow.Publisher<Double> temperature();
+
+        @Broadcast
+        Flow.Publisher<String> alarms();
+    }
+
+    interface BroadcastWithArguments {
+
+        @Broadcast
+        Flow.Publisher<Double> temperature(String room);
+    }
+
+    interface BroadcastOfOne {
+
+        @Broadcast
+        double temperature();
+    }
+
+    @Test
+    void aBroadcastIsAStreamEveryReceiverSharesWithWhatItMayLose() {
+        ServiceInterface station = JavaContracts.contractOf(Station.class, "1.0.0");
+
+        Parameter temperature = operation(station, "temperature").getReturnValue();
+        assertThat(temperature.getDelivery()).isEqualTo(Delivery.BROADCAST);
+        assertThat(temperature.getOverflow()).isEqualTo(OverflowPolicy.DISCARD_OLDEST);
+        assertThat(temperature.getUpperBound()).isEqualTo(-1);
+        assertThat(operation(station, "alarms").getReturnValue().getOverflow())
+                .as("a contract that says nothing promises no loss").isEqualTo(OverflowPolicy.FAIL);
+    }
+
+    @Test
+    void aBroadcastIsAStreamWithoutArguments() {
+        assertThatThrownBy(() -> JavaContracts.contractOf(BroadcastWithArguments.class, "1.0.0"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("without arguments");
+        assertThatThrownBy(() -> JavaContracts.contractOf(BroadcastOfOne.class, "1.0.0"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("@Broadcast");
     }
 
     @Test

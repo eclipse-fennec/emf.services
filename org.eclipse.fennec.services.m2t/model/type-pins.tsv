@@ -32,6 +32,7 @@ Clock	now	return	false	Instant	Date
 Clock	soon	return	false	CompletionStage<Instant>	Date
 Clock	ticks	everyMillis	false	long	number
 Clock	ticks	return	false	Publisher<Instant>	AsyncIterable<Date>
+Clock	seconds	return	false	Publisher<Instant>	AsyncIterable<Date>
 Clock	between	from	false	Instant	Date
 Clock	between	to	true	Instant	Date
 Clock	between	return	false	long	number

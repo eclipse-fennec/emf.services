@@ -40,6 +40,12 @@ export interface Clock {
   ticks(everyMillis: number): AsyncIterable<Date>;
 
   /**
+   * The beat of the clock, one instant a second, the same for everyone
+   * who listens; a listener that falls behind skips to the latest.
+   */
+  seconds(): AsyncIterable<Date>;
+
+  /**
    * Milliseconds from one instant to another.
    * @param from Where to count from.
    * @param to Where to count to; now when left out.
@@ -59,7 +65,7 @@ export const ClockVersion = '1.0.0';
  * hashes to exactly this - compatibility by identity, so a provider
  * that changed its operations is not called with these signatures.
  */
-export const ClockFingerprint = 'sd1:7d41a49a5c38ca57e35cb235612c6c3c08f2d6be66aa83f996801ee4ddb7809c';
+export const ClockFingerprint = 'sd1:471a9c3394b0ab9c431ecad146729916f97f73594836136c283fe727189b3d82';
 
 /**
  * Resolve one, contract-addressed. Returns undefined when the broker

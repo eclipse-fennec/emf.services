@@ -102,12 +102,13 @@ A slot renders as its element type, or as a List of it when multi-valued.
 An OPTIONAL slot is one that may be absent, so its Java type has to be able
 to say so: a primitive cannot be null, and the boxed type takes its place.
 
-A slot that is a stream (Parameter.delivery = STREAM) renders as a stream of
-its element type — values one after the other, not a List that arrives
-complete. It applies to an argument as to a return value.
+A slot that is a stream (Parameter.delivery = STREAM, or BROADCAST for one
+every receiver shares) renders as a stream of its element type — values one
+after the other, not a List that arrives complete. It applies to an argument
+as to a return value.
 [/comment]
 [query public slotType(binding : JavaBinding, slot : Parameter) : String =
-	if slot.delivery = Delivery::STREAM
+	if slot.delivery = Delivery::STREAM or slot.delivery = Delivery::BROADCAST
 		then simpleName(holderType(binding, 'stream')).concat('<').concat(boxed(elementType(binding, slot))).concat('>')
 	else if slot.upperBound <> 1 then 'List<'.concat(boxed(elementType(binding, slot))).concat('>')
 	else if slot.optional then boxed(elementType(binding, slot))
@@ -227,8 +228,10 @@ its suffix, a string its quotes, a string list becomes List.of(...).
 
 [comment]The holder types of the slots that are streams or promised.[/comment]
 [query public holderImports(binding : JavaBinding, service : ServiceInterface) : Sequence(String) =
-	(if slots(service)->exists(s | s.delivery = Delivery::STREAM)
+	(if slots(service)->exists(s | s.delivery = Delivery::STREAM or s.delivery = Delivery::BROADCAST)
 		then Sequence{holderType(binding, 'stream')} else Sequence{} endif)
+	->union(if slots(service)->exists(s | s.delivery = Delivery::BROADCAST)
+		then Sequence{'org.eclipse.fennec.services.derive.Broadcast'} else Sequence{} endif)
 	->union(if service.operations->collect(o | o.returnValue)->reject(s | s.oclIsUndefined())
 			->exists(s | s.delivery = Delivery::PROMISE)
 		then Sequence{holderType(binding, 'promise')} else Sequence{} endif) /]
@@ -255,7 +258,8 @@ set.
 		else '' endif endif endif /]
 
 [query public listImport(service : ServiceInterface) : Sequence(String) =
-	if slots(service)->exists(s | s.upperBound <> 1 and s.delivery <> Delivery::STREAM)
+	if slots(service)->exists(s | s.upperBound <> 1 and s.delivery <> Delivery::STREAM
+			and s.delivery <> Delivery::BROADCAST)
 	then Sequence{'java.util.List'} else Sequence{} endif /]
 
 [query public apiAnnotation(binding : JavaBinding) : String =

@@ -639,7 +639,9 @@ done
 # carried by itself; instant is not, and stays a request until accepted.
 OF=$(curl -sf "$TAGS_URL/tags/of?kind=implementation&key=payments-ts/Payment") \
   || { echo "SCENARIO W FAILED: tagsOf did not answer"; exit 1; }
-grep -q 'path="payment/method/card" origin="SOURCE"' <<<"$OF" \
+# SOURCE is the first literal of TagOrigin, so XMI leaves it out as the
+# default: the tag without an origin attribute is the one it carries itself.
+grep -Eq 'path="payment/method/card"( origin="SOURCE")?/>' <<<"$OF" \
   || { echo "SCENARIO W FAILED: the provider's self-assignable tag is not carried"; echo "$OF"; exit 1; }
 REQUESTS=$(curl -sf "$TAGS_URL/tags/requests") || { echo "SCENARIO W FAILED: requestedTags did not answer"; exit 1; }
 grep -q 'path="payment/terms/instant"' <<<"$REQUESTS" \

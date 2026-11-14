@@ -137,6 +137,9 @@ mode.
 | `requestedTags` | `GET /tags/requests` | `service-admin` | a `TagRegistry` holding only the open requests |
 | `acceptRequestedTag` / `discardRequestedTag` | `PUT` / `DELETE /tags/request?path=&kind=&key=` | `service-admin` | 204 |
 
+In XMI an `EffectiveTag` without an `origin` attribute carries `SOURCE`:
+it is the first literal and so the default, which XMI leaves out.
+
 The refusals are declared errors of the contract: `UnknownTag` (code
 300, HTTP 404 — also for a request nobody filed), `InvalidTag` (301, 409), `TagNotKept` (302, 503).
 

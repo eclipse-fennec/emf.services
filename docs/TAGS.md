@@ -9,10 +9,11 @@ contract or an implementation is — no fingerprint moves when something
 is tagged ([Fingerprints](FINGERPRINTS.md)).
 
 The design is collected in issue #272; this page grows with its
-sub-issues. What exists today: the model (#273), the tag service (#274)
-and the `Tags` contract served beside the broker (#275). Provider tags
-filed as requests, rules, the change broadcast, the consumer facade and
-the TypeScript side follow.
+sub-issues. What exists today: the model (#273), the tag service (#274),
+the `Tags` contract served beside the broker (#275) and the tags a
+provider brings, with requests for the ones it may not give itself
+(#276). Rules, the change broadcast, the consumer facade and the
+TypeScript side follow.
 
 ## The tree
 
@@ -70,10 +71,49 @@ and an assignment to a target that does not exist yet waits for it.
 | `assign(path, kind, key)` / `unassign(path, kind, key)` | an administrator's assignment; doing it twice changes nothing, unassigning leaves tags carried for another reason |
 | `find(paths, mode, kind)` | the keys of the targets of a kind that carry the tags, sorted. `ANY`: at least one path, `ALL`: every one. Only targets their source knows right now; a path no tag has matches nothing |
 | `tagsOf(kind, key)` | the tags a target carries, with their origin |
+| `requestedTags()` | what targets asked for and may not give themselves, oldest first |
+| `acceptRequestedTag(path, kind, key)` | grant a request: the tag is created where missing (with its parents, none self-assignable) and assigned |
+| `discardRequestedTag(path, kind, key)` | turn a request down; it comes back with the next registration that asks |
 
 `find` answers keys only. What a contract or an implementation looks
 like still comes from the lookup, so there is one source for it — and a
 later access check sits in one place.
+
+## Tags a provider brings
+
+A provider asks for tags when it registers: the paths in
+`ServiceImplementation.tags` for the implementation, and in
+`ServiceInterface.tags` for the contracts it serves.
+
+```java
+implementation.getTags().add("payment/method/card");   // Java SDK: the model as it is published
+```
+
+```ts
+implementation.tags.push('payment/method/card');       // TypeScript, the same field
+```
+
+What happens to each path:
+
+| The tag | |
+| --- | --- |
+| exists and is `selfAssignable` | carried at once, origin `SOURCE` — nobody has to do anything |
+| exists, not self-assignable | filed as a request |
+| does not exist | filed as a request |
+
+An administrator lists the requests (`requestedTags`) and accepts one —
+the tag is created where it is missing and assigned to the target — or
+discards it. Nothing is blocked: a discarded request comes back with the
+next registration that asks for it. A request is not filed for a tag the
+target already carries, and one whose tag has become self-assignable
+since is no longer open.
+
+When a target asks: on the services registry, whenever a provider
+registers an implementation (the broker's `REGISTERED` event); that
+registration asks for the implementation's tags and for those of the
+contracts it serves. Targets that are there when the tag service starts
+ask once at that moment, so a request discarded before a restart of the
+broker is filed again.
 
 ## On the broker: the `Tags` contract
 
@@ -94,9 +134,11 @@ mode.
 | `assign` / `unassign` | `PUT` / `DELETE /tags/assignment?path=&kind=&key=` | `service-admin` | 204 |
 | `find` | `GET /tags/find?path=…&path=…&mode=ANY\|ALL&kind=` | `service-consumer` | `FoundTargets` (kind, keys) |
 | `tagsOf` | `GET /tags/of?kind=&key=` | `service-consumer` | `TaggedTarget` (target, tags with origin) |
+| `requestedTags` | `GET /tags/requests` | `service-admin` | a `TagRegistry` holding only the open requests |
+| `acceptRequestedTag` / `discardRequestedTag` | `PUT` / `DELETE /tags/request?path=&kind=&key=` | `service-admin` | 204 |
 
 The refusals are declared errors of the contract: `UnknownTag` (code
-300, HTTP 404), `InvalidTag` (301, 409), `TagNotKept` (302, 503).
+300, HTTP 404 — also for a request nobody filed), `InvalidTag` (301, 409), `TagNotKept` (302, 503).
 
 ```bash
 B=http://localhost:8887/ddsr/rest
@@ -148,8 +190,10 @@ implementations plug in:
 
 - **`TagSubjects`** — where the targets come from: the kinds a source
   knows, the targets of a kind that exist right now, each with its
-  properties (for rules) and the tags it asks for. The services
-  registry offers contracts and implementations through it (#275).
+  properties (for rules) and the tags it asks for, and — optionally —
+  when targets register, which is when they ask. The services registry
+  offers contracts and implementations through it (#275) and says when
+  they register by listening to the broker's events (#276).
 - **`TagStore`** — where the registry is kept. `XmiTagStore` is the
   first; a database or a search index can take over later.
 
@@ -165,7 +209,8 @@ for services, and the tags are built to serve it as well. Its scopes
 say who owns a model; a tag would classify models across scopes. What
 it would take is a `TagSubjects` of kind `model` (key: nsURI and scope)
 reading the atlas's scope service, with the tags a model asks for read
-from an annotation on its EPackage. Tree, assignments, queries and the
+from an annotation on its EPackage and a model reaching a stage as the
+moment it asks (where requests are filed). Tree, assignments, queries and the
 store would stay as they are. The model (`org.eclipse.fennec.tags.model`)
 and the service (`org.eclipse.fennec.tags.service`) carry no services
 type for that reason — the build enforces it — and move to a repository

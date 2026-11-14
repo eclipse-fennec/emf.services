@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.util.EcoreUtil;
@@ -34,6 +35,7 @@ import org.eclipse.fennec.m2x.ocl.engine.internal.OclSettingDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;
 import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
+import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
 import org.eclipse.fennec.tags.TagOrigin;
 import org.eclipse.fennec.tags.TagRegistry;
@@ -90,6 +92,21 @@ class TagServiceTest {
 	/** Targets of two kinds, changeable by the test. */
 	private static final class FakeSubjects implements TagSubjects {
 		final List<Subject> subjects = new ArrayList<>();
+		Consumer<Collection<Subject>> listener;
+
+		/** A target registers (anew): the source says so. */
+		void register(String kind, String key, String... requestedTags) {
+			Subject subject = new Subject(kind, key, Map.of(), List.of(requestedTags));
+			subjects.removeIf(s -> s.kind().equals(kind) && s.key().equals(key));
+			subjects.add(subject);
+			listener.accept(List.of(subject));
+		}
+
+		@Override
+		public AutoCloseable onRegistered(Consumer<Collection<Subject>> registered) {
+			listener = registered;
+			return () -> listener = null;
+		}
 
 		void add(String kind, String key, String... requestedTags) {
 			subjects.add(new Subject(kind, key, Map.of(), List.of(requestedTags)));
@@ -326,5 +343,89 @@ class TagServiceTest {
 				.containsExactly("things/sensors");
 		assertThat(restarted.find(List.of("iot/sensors"), MatchMode.ANY, CONTRACT))
 				.as("former paths survive the restart").containsExactly("Thermometer");
+	}
+
+	// ------------------------------------------------------------- requests
+
+	@Test
+	void whatATargetMayNotGiveItselfIsFiledWhenItRegisters() {
+		subjects.register(IMPLEMENTATION, "card-provider", "payment/method/card", "payment/terms/instant", "iot/sensors");
+
+		assertThat(tags.requestedTags()).extracting(RequestedTag::getPath)
+				.as("card is self-assignable and carried; instant is not self-assignable; iot does not exist")
+				.containsExactly("payment/terms/instant", "iot/sensors");
+		assertThat(tags.tagsOf(IMPLEMENTATION, "card-provider")).extracting(EffectiveTag::getPath)
+				.containsExactly("payment/method/card");
+		assertThat(store.kept.getRequests()).as("requests are kept").hasSize(2);
+	}
+
+	@Test
+	void theSameRequestIsFiledOnce() {
+		subjects.register(IMPLEMENTATION, "card-provider", "iot/sensors");
+		subjects.register(IMPLEMENTATION, "card-provider", "iot/sensors");
+
+		assertThat(tags.requestedTags()).hasSize(1);
+	}
+
+	@Test
+	void targetsPresentWhenTheSourceArrivesAskToo() {
+		FakeSubjects late = new FakeSubjects();
+		late.add(CONTRACT, "Thermometer", "iot/sensors");
+
+		tags.addSubjects(late);
+
+		assertThat(tags.requestedTags()).extracting(r -> r.getTarget().getKey()).containsExactly("Thermometer");
+	}
+
+	@Test
+	void acceptingCreatesTheTagWithItsParentsAndAssignsIt() {
+		subjects.register(CONTRACT, "Thermometer", "iot/sensors");
+
+		tags.acceptRequestedTag("iot/sensors", CONTRACT, "Thermometer");
+
+		assertThat(tags.requestedTags()).isEmpty();
+		assertThat(tags.tagsOf(CONTRACT, "Thermometer")).extracting(EffectiveTag::getPath, EffectiveTag::getOrigin)
+				.containsExactly(tuple("iot/sensors", TagOrigin.ADMIN));
+		assertThat(tags.tags()).extracting(Tag::getId).containsExactly("payment", "iot");
+		assertThat(tags.tags().get(1).getChildren().get(0).isSelfAssignable())
+				.as("created by accepting, not opened to everyone").isFalse();
+	}
+
+	@Test
+	void aDiscardedRequestComesBackWithTheNextRegistration() {
+		subjects.register(IMPLEMENTATION, "card-provider", "payment/terms/instant");
+
+		tags.discardRequestedTag("payment/terms/instant", IMPLEMENTATION, "card-provider");
+		assertThat(tags.requestedTags()).isEmpty();
+
+		subjects.register(IMPLEMENTATION, "card-provider", "payment/terms/instant");
+		assertThat(tags.requestedTags()).extracting(RequestedTag::getPath).containsExactly("payment/terms/instant");
+	}
+
+	@Test
+	void anAcceptedRequestIsNotFiledAgain() {
+		subjects.register(CONTRACT, "Thermometer", "iot/sensors");
+		tags.acceptRequestedTag("iot/sensors", CONTRACT, "Thermometer");
+
+		subjects.register(CONTRACT, "Thermometer", "iot/sensors");
+
+		assertThat(tags.requestedTags()).as("the target carries it now").isEmpty();
+	}
+
+	@Test
+	void aRequestWhoseTagBecameSelfAssignableIsNoLongerOpen() {
+		subjects.register(IMPLEMENTATION, "card-provider", "payment/terms/instant");
+
+		tags.putTag("payment/terms", "instant", "Instant", null, true);
+
+		assertThat(tags.requestedTags()).isEmpty();
+		assertThat(tags.tagsOf(IMPLEMENTATION, "card-provider")).extracting(EffectiveTag::getOrigin)
+				.containsExactly(TagOrigin.SOURCE);
+	}
+
+	@Test
+	void acceptingOrDiscardingWhatNobodyAskedForIsRefused() {
+		assertThatThrownBy(() -> tags.acceptRequestedTag("iot", CONTRACT, "Nobody")).isInstanceOf(UnknownTagException.class);
+		assertThatThrownBy(() -> tags.discardRequestedTag("iot", CONTRACT, "Nobody")).isInstanceOf(UnknownTagException.class);
 	}
 }

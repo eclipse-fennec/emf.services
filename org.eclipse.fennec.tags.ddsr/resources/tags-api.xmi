@@ -75,6 +75,28 @@
           <parameterBindings parameter="/1/@operations.7/@parameters.0" binding="QUERY"/>
           <parameterBindings parameter="/1/@operations.7/@parameters.1" binding="QUERY"/>
         </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="requestedTags"
+            method="GET" path="/requests" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.8"/>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="acceptRequestedTag"
+            method="PUT" path="/request" returnCodes="204"
+            operation="/1/@operations.9">
+          <parameterBindings parameter="/1/@operations.9/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.9/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.9/@parameters.2" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="409"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="discardRequestedTag"
+            method="DELETE" path="/request" returnCodes="204"
+            operation="/1/@operations.10">
+          <parameterBindings parameter="/1/@operations.10/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.10/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.10/@parameters.2" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
       </flavors>
     </implementations>
   </services:ServiceProvider>
@@ -154,9 +176,30 @@
       </returnValue>
       <security authenticated="true" scopes="service-consumer"/>
     </operations>
+    <operations name="requestedTags"
+        description="What targets asked for at registration and may not give themselves — the tag does not exist or is not self-assignable — oldest first: a registry holding only the open requests.">
+      <returnValue name="result">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/tags/1.0#//TagRegistry"/>
+      </returnValue>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="acceptRequestedTag" exceptions="/1/@exceptions.0 /1/@exceptions.1 /1/@exceptions.2"
+        description="Grant a request: the tag is created where it is missing, with the parents it needs, and assigned to the target.">
+      <parameters name="path" index="0" type="string"/>
+      <parameters name="kind" index="1" type="string"/>
+      <parameters name="key" index="2" type="string"/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="discardRequestedTag" exceptions="/1/@exceptions.0 /1/@exceptions.2"
+        description="Turn a request down. Nothing is blocked: it comes back with the next registration that asks for it.">
+      <parameters name="path" index="0" type="string"/>
+      <parameters name="kind" index="1" type="string"/>
+      <parameters name="key" index="2" type="string"/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
 
     <exceptions name="UnknownTag" type="UnknownTagException"
-        description="No tag has this path, neither now nor before a rename.">
+        description="No tag has this path, neither now nor before a rename — or no such request.">
       <properties xsi:type="services:IntProperty" name="code" value="300"/>
     </exceptions>
     <exceptions name="InvalidTag" type="InvalidTagException"

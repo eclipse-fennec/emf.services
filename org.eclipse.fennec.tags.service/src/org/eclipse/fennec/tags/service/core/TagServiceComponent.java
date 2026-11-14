@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
+import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
 import org.eclipse.fennec.tags.TagsPackage;
 import org.eclipse.fennec.tags.service.TagService;
@@ -143,5 +144,20 @@ public final class TagServiceComponent implements TagService {
 	@Override
 	public List<EffectiveTag> tagsOf(String kind, String key) {
 		return service.tagsOf(kind, key);
+	}
+
+	@Override
+	public List<RequestedTag> requestedTags() {
+		return service.requestedTags();
+	}
+
+	@Override
+	public void acceptRequestedTag(String path, String kind, String key) {
+		service.acceptRequestedTag(path, kind, key);
+	}
+
+	@Override
+	public void discardRequestedTag(String path, String kind, String key) {
+		service.discardRequestedTag(path, kind, key);
 	}
 }

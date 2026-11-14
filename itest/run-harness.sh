@@ -15,9 +15,11 @@
 #             stops, and the broker no longer lists the provider. The
 #             Java consumer starts before the TS provider: the contract
 #             outlived A's provider, the consumer waits and binds later.
-# Scenario W: tags beside the broker (#275): roles on the secured broker,
-#             a contract and an implementation tagged and found on an open
-#             one, and the tags survive its restart.
+# Scenario W: tags beside the broker (#275, #276): roles on the secured
+#             broker; on an open one a provider brings tags (one carried
+#             by itself, one filed and accepted), a contract and an
+#             implementation are tagged and found, and the tags survive a
+#             restart.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
 #             removal while implemented, withdrawn (contract stays, a
@@ -623,6 +625,7 @@ rm -rf "$WORK/broker-tags"
 start_tags_broker broker-tags
 (cd "$TS/examples/payment" \
   && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$TAGS_URL" SERVICE_URL="http://localhost:9093/payments" \
+       PROVIDER_TAGS="payment/method/card,payment/terms/instant" \
        node --import tsx provider.ts) >"$WORK/provider-tags.log" 2>&1 &
 TAGS_PROVIDER_PID=$!
 PIDS+=("$TAGS_PROVIDER_PID")
@@ -631,6 +634,24 @@ for tag in "id=payment" "parent=payment&id=method" "parent=payment/method&id=car
            "parent=payment&id=terms" "parent=payment/terms&id=instant"; do
   tags_status 200 PUT "$TAGS_URL/tags/tag?$tag"
 done
+# The provider asked for both tags when it registered, before either
+# existed (#276): both were filed. Now card is self-assignable and is
+# carried by itself; instant is not, and stays a request until accepted.
+OF=$(curl -sf "$TAGS_URL/tags/of?kind=implementation&key=payments-ts/Payment") \
+  || { echo "SCENARIO W FAILED: tagsOf did not answer"; exit 1; }
+grep -q 'path="payment/method/card" origin="SOURCE"' <<<"$OF" \
+  || { echo "SCENARIO W FAILED: the provider's self-assignable tag is not carried"; echo "$OF"; exit 1; }
+REQUESTS=$(curl -sf "$TAGS_URL/tags/requests") || { echo "SCENARIO W FAILED: requestedTags did not answer"; exit 1; }
+grep -q 'path="payment/terms/instant"' <<<"$REQUESTS" \
+  || { echo "SCENARIO W FAILED: the provider's request for a tag it may not give itself was not filed"; echo "$REQUESTS"; exit 1; }
+if grep -q 'path="payment/method/card"' <<<"$REQUESTS"; then
+  echo "SCENARIO W FAILED: a request the provider now carries by itself is still open"; echo "$REQUESTS"; exit 1
+fi
+tags_status 204 PUT "$TAGS_URL/tags/request?path=payment/terms/instant&kind=implementation&key=payments-ts/Payment"
+OF=$(curl -sf "$TAGS_URL/tags/of?kind=implementation&key=payments-ts/Payment")
+grep -q 'path="payment/terms/instant" origin="ADMIN"' <<<"$OF" \
+  || { echo "SCENARIO W FAILED: the accepted request is not carried"; echo "$OF"; exit 1; }
+echo "  ✓ tags-from-the-provider: self-assignable carried at once, the other filed and carried once accepted"
 tags_status 204 PUT "$TAGS_URL/tags/assignment?path=payment/terms/instant&kind=contract&key=Payment"
 tags_status 204 PUT "$TAGS_URL/tags/assignment?path=payment/method/card&kind=implementation&key=payments-ts/Payment"
 tags_find() { # query

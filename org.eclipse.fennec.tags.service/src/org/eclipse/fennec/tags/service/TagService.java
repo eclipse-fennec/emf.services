@@ -17,6 +17,7 @@ import java.util.List;
 
 import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
+import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
 
 /**
@@ -108,4 +109,30 @@ public interface TagService {
 	 * path. A tag carried for two reasons is reported twice.
 	 */
 	List<EffectiveTag> tagsOf(String kind, String key);
+
+	/**
+	 * What targets asked for and may not give themselves — the tag does not
+	 * exist, or it is not self-assignable — oldest first. A request whose
+	 * tag became self-assignable since is not answered: the target carries
+	 * it now.
+	 */
+	List<RequestedTag> requestedTags();
+
+	/**
+	 * An administrator grants a request: the tag is created where it is
+	 * missing (with the parents it needs, none of them self-assignable)
+	 * and assigned to the target, and the request is gone.
+	 *
+	 * @throws UnknownTagException when there is no such request
+	 * @throws InvalidTagException when the path is not a valid one
+	 */
+	void acceptRequestedTag(String path, String kind, String key);
+
+	/**
+	 * An administrator turns a request down. Nothing is blocked: the
+	 * request comes back with the next registration that asks for it.
+	 *
+	 * @throws UnknownTagException when there is no such request
+	 */
+	void discardRequestedTag(String path, String kind, String key);
 }

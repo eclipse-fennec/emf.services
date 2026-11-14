@@ -50,7 +50,7 @@ public interface [service.name/] {
 	 * [line/]
 [/for]
 	 */
-	[returnType(binding, operation)/] [operation.name/]([for (parameter : Parameter | operation.parameters->sortedBy(p | p.index)) separator(', ')][slotType(binding, parameter)/] [parameter.name/][/for])[if (operation.exceptions->notEmpty())] throws [for (raised : ServiceException | operation.exceptions->sortedBy(e | e.name)) separator(', ')][simpleName(exceptionType(binding, raised))/][/for][/if];
+	[broadcastAnnotation(operation)/][returnType(binding, operation)/] [operation.name/]([for (parameter : Parameter | operation.parameters->sortedBy(p | p.index)) separator(', ')][slotType(binding, parameter)/] [parameter.name/][/for])[if (operation.exceptions->notEmpty())] throws [for (raised : ServiceException | operation.exceptions->sortedBy(e | e.name)) separator(', ')][simpleName(exceptionType(binding, raised))/][/for][/if];
 [/for]
 }
 [/file]
@@ -109,6 +109,17 @@ public class [simpleName(exceptionType(binding, raised))/] extends Exception {
 package [binding.targetPackage/];
 [/file]
 [/template]
+
+[comment]A stream every receiver shares (#252): the interface says so, and with what a receiver may lose.[/comment]
+[comment]
+On the line of the method: a block that renders nothing still leaves its line
+behind, so the annotation is a prefix that is empty for every other operation.
+[/comment]
+[query public broadcastAnnotation(operation : ServiceOperation) : String =
+	if operation.returnValue.oclIsUndefined() then ''
+	else if operation.returnValue.delivery = Delivery::BROADCAST
+		then '@Broadcast(overflow = "'.concat(operation.returnValue.overflow.toString()).concat('") ')
+		else '' endif endif /]
 
 [comment]===================== javadoc =====================[/comment]
 

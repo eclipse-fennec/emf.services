@@ -12,6 +12,7 @@ package org.eclipse.fennec.services.m2t.example;
 import java.time.Instant;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow.Publisher;
+import org.eclipse.fennec.services.derive.Broadcast;
 import org.osgi.annotation.versioning.ProviderType;
 
 /**
@@ -38,6 +39,11 @@ public interface Clock {
 	 * @param everyMillis How far apart the ticks are.
 	 */
 	Publisher<Instant> ticks(long everyMillis);
+
+	/**
+	 * The beat of the clock, one instant a second, the same for everyone who listens; a listener that falls behind skips to the latest.
+	 */
+	@Broadcast(overflow = "DISCARD_OLDEST") Publisher<Instant> seconds();
 
 	/**
 	 * Milliseconds from one instant to another.

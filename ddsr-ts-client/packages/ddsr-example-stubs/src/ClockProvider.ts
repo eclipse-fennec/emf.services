@@ -43,6 +43,12 @@ export interface ClockImplementation {
   ticks(everyMillis: number): AsyncIterable<Date>;
 
   /**
+   * The beat of the clock, one instant a second, the same for everyone
+   * who listens; a listener that falls behind skips to the latest.
+   */
+  seconds(): AsyncIterable<Date>;
+
+  /**
    * Milliseconds from one instant to another.
    * @param from Where to count from.
    * @param to Where to count to; now when left out.
@@ -51,7 +57,7 @@ export interface ClockImplementation {
 }
 
 /** The operation names, for wiring a transport that dispatches by name. */
-export const ClockOperationNames = ['now', 'soon', 'ticks', 'between'] as const;
+export const ClockOperationNames = ['now', 'soon', 'ticks', 'seconds', 'between'] as const;
 
 /**
  * The contract as a model object, exactly as the catalog has it.
@@ -101,25 +107,37 @@ export function buildClockInterface(): ServiceInterface {
   serviceInterface.operations.push(operation2);
 
   const operation3 = factory.createServiceOperation();
-  operation3.name = 'between';
-  operation3.description = 'Milliseconds from one instant to another.';
+  operation3.name = 'seconds';
+  operation3.description = 'The beat of the clock, one instant a second, the same for everyone who listens; a listener that falls behind skips to the latest.';
   const operation3Result = factory.createParameter();
   operation3Result.name = 'result';
-  operation3Result.type = 'long';
+  operation3Result.type = 'instant';
+  operation3Result.upperBound = -1;
+  operation3Result.delivery = 'BROADCAST';
+  operation3Result.overflow = 'DISCARD_OLDEST';
   operation3.returnValue = operation3Result;
-  const operation3Parameter0 = factory.createParameter();
-  operation3Parameter0.name = 'from';
-  operation3Parameter0.type = 'instant';
-  operation3Parameter0.description = 'Where to count from.';
-  operation3.parameters.push(operation3Parameter0);
-  const operation3Parameter1 = factory.createParameter();
-  operation3Parameter1.name = 'to';
-  operation3Parameter1.type = 'instant';
-  operation3Parameter1.description = 'Where to count to; now when left out.';
-  operation3Parameter1.index = 1;
-  operation3Parameter1.optional = true;
-  operation3.parameters.push(operation3Parameter1);
   serviceInterface.operations.push(operation3);
+
+  const operation4 = factory.createServiceOperation();
+  operation4.name = 'between';
+  operation4.description = 'Milliseconds from one instant to another.';
+  const operation4Result = factory.createParameter();
+  operation4Result.name = 'result';
+  operation4Result.type = 'long';
+  operation4.returnValue = operation4Result;
+  const operation4Parameter0 = factory.createParameter();
+  operation4Parameter0.name = 'from';
+  operation4Parameter0.type = 'instant';
+  operation4Parameter0.description = 'Where to count from.';
+  operation4.parameters.push(operation4Parameter0);
+  const operation4Parameter1 = factory.createParameter();
+  operation4Parameter1.name = 'to';
+  operation4Parameter1.type = 'instant';
+  operation4Parameter1.description = 'Where to count to; now when left out.';
+  operation4Parameter1.index = 1;
+  operation4Parameter1.optional = true;
+  operation4.parameters.push(operation4Parameter1);
+  serviceInterface.operations.push(operation4);
   return serviceInterface;
 }
 

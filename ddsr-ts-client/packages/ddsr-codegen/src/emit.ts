@@ -487,6 +487,10 @@ function buildSlot(local: string, slot: Parameter, at: number): string[] {
     // rebuilt from this file has to hash to the fingerprint beside it.
     ...(slot.delivery && String(slot.delivery) !== 'VALUE'
       ? [`  ${local}.delivery = ${quote(String(slot.delivery))};`] : []),
+    // What a receiver of a broadcast may lose (#252) - in the sd1, so the
+    // contract built here must say it as the document does.
+    ...(slot.overflow && String(slot.overflow) !== 'FAIL'
+      ? [`  ${local}.overflow = ${quote(String(slot.overflow))};`] : []),
     ...(uri !== undefined ? [`  ${local}.eType = eTypeProxy(${quote(uri)});`] : []),
   ];
 }
@@ -514,9 +518,10 @@ function slotType(slot: Parameter | undefined, binding: Binding): MappedType {
   return many && !mapped.text.endsWith('[]') ? { ...mapped, text: `${mapped.text}[]` } : mapped;
 }
 
-/** Whether a slot's values arrive as a stream. */
+/** Whether a slot's values arrive as a stream - of its own, or one every receiver shares (#252). */
 function isStream(slot: Parameter | undefined): boolean {
-  return String(slot?.delivery ?? '') === 'STREAM';
+  const delivery = String(slot?.delivery ?? '');
+  return delivery === 'STREAM' || delivery === 'BROADCAST';
 }
 
 /** A bound as a number; absent means the model default of 1. */

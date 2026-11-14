@@ -88,6 +88,24 @@ public interface TagsFactory extends EFactory {
 	EffectiveTag createEffectiveTag();
 
 	/**
+	 * Returns a new object of class '<em>Found Targets</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Found Targets</em>'.
+	 * @generated
+	 */
+	FoundTargets createFoundTargets();
+
+	/**
+	 * Returns a new object of class '<em>Tagged Target</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Tagged Target</em>'.
+	 * @generated
+	 */
+	TaggedTarget createTaggedTarget();
+
+	/**
 	 * Returns the package supported by this factory.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

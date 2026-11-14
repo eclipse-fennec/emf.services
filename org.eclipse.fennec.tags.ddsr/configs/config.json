@@ -1,0 +1,17 @@
+{
+	":configurator:resource-version": 1,
+	"org.eclipse.fennec.tags.service":
+	{
+		"store.file": "$[env:DDSR_TAGS_FILE;default=broker-tags.xmi]"
+	},
+	"org.eclipse.fennec.services.provider.rest~tags":
+	{
+		"ddsr.contract": "Tags",
+		"service.filter": "(ddsr.contract=Tags)",
+		"model.bundle": "org.eclipse.fennec.tags.ddsr",
+		"model.entry": "tags-api.xmi",
+		"osgi.jakartars.application.base": "/tags",
+		"fennec.auth": "$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]]",
+		"osgi.jakartars.extension.select": "(osgi.jakartars.name=fennec-auth-$[env:DDSR_AUTH_MODE;default=$[prop:fennec.auth.mode;default=bearer]])"
+	}
+}

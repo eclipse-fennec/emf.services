@@ -64,6 +64,8 @@ public class TagsFactoryImpl extends EFactoryImpl implements TagsFactory {
 			case TagsPackage.TAG_RULE: return createTagRule();
 			case TagsPackage.REQUESTED_TAG: return createRequestedTag();
 			case TagsPackage.EFFECTIVE_TAG: return createEffectiveTag();
+			case TagsPackage.FOUND_TARGETS: return createFoundTargets();
+			case TagsPackage.TAGGED_TARGET: return createTaggedTarget();
 			default:
 				throw new IllegalArgumentException("The class '" + eClass.getName() + "' is not a valid classifier");
 		}
@@ -178,6 +180,28 @@ public class TagsFactoryImpl extends EFactoryImpl implements TagsFactory {
 	public EffectiveTag createEffectiveTag() {
 		EffectiveTagImpl effectiveTag = new EffectiveTagImpl();
 		return effectiveTag;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public FoundTargets createFoundTargets() {
+		FoundTargetsImpl foundTargets = new FoundTargetsImpl();
+		return foundTargets;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public TaggedTarget createTaggedTarget() {
+		TaggedTargetImpl taggedTarget = new TaggedTargetImpl();
+		return taggedTarget;
 	}
 
 	/**

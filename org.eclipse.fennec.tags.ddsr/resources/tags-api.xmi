@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="ddsr-tags" version="1.0.0">
+    <implementations name="ddsr-tags" version="1.0.0"
+        implementationId="ddsr-tags:tags:1.0.0"
+        description="The tag overlay (#272) beside the broker, served from this document by the generic REST distribution."
+        serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="tags-rest" kind="REST" basePath="/tags"
+          contentTypes="application/xml">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="tags"
+            method="GET" path="/tree" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.0"/>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="putTag"
+            method="PUT" path="/tag" returnCodes="200" produces="text/plain"
+            operation="/1/@operations.1">
+          <parameterBindings parameter="/1/@operations.1/@parameters.0" binding="QUERY" wireName="parent"/>
+          <parameterBindings parameter="/1/@operations.1/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.1/@parameters.2" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.1/@parameters.3" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.1/@parameters.4" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="409"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="moveTag"
+            method="POST" path="/tag/move" returnCodes="200" produces="text/plain"
+            operation="/1/@operations.2">
+          <parameterBindings parameter="/1/@operations.2/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.2/@parameters.1" binding="QUERY" wireName="parent"/>
+          <parameterBindings parameter="/1/@operations.2/@parameters.2" binding="QUERY" wireName="id"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="409"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="removeTag"
+            method="DELETE" path="/tag" returnCodes="204"
+            operation="/1/@operations.3">
+          <parameterBindings parameter="/1/@operations.3/@parameters.0" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="assign"
+            method="PUT" path="/assignment" returnCodes="204"
+            operation="/1/@operations.4">
+          <parameterBindings parameter="/1/@operations.4/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.4/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.4/@parameters.2" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="409"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="unassign"
+            method="DELETE" path="/assignment" returnCodes="204"
+            operation="/1/@operations.5">
+          <parameterBindings parameter="/1/@operations.5/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.5/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.5/@parameters.2" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="find"
+            method="GET" path="/find" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.6">
+          <parameterBindings parameter="/1/@operations.6/@parameters.0" binding="QUERY" wireName="path"/>
+          <parameterBindings parameter="/1/@operations.6/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.6/@parameters.2" binding="QUERY"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="tagsOf"
+            method="GET" path="/of" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.7">
+          <parameterBindings parameter="/1/@operations.7/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.7/@parameters.1" binding="QUERY"/>
+        </operationFlavors>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+
+  <services:ServiceInterface name="Tags" version="1.0.0"
+      description="The tag overlay (#272): a tree of categories put on contracts and implementations. Reading needs service-consumer, changing service-admin. A tag is named by its path, the ids from the root down joined by '/'; a path a tag had before a rename is accepted too, and answers carry the current one.">
+    <security authenticated="true"/>
+    <operations name="tags"
+        description="The whole tree: a registry holding only the tags, without assignments.">
+      <returnValue name="result">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/tags/1.0#//TagRegistry"/>
+      </returnValue>
+      <security authenticated="true" scopes="service-consumer"/>
+    </operations>
+    <operations name="putTag" exceptions="/1/@exceptions.0 /1/@exceptions.1 /1/@exceptions.2"
+        description="Create a tag, or change name, description and selfAssignable of the one that is there.">
+      <parameters name="parentPath" index="0" type="string" optional="true"
+          description="The parent; empty for a root."/>
+      <parameters name="id" index="1" type="string"
+          description="The tag's id: no '/', unique among its siblings."/>
+      <parameters name="name" index="2" type="string" optional="true"/>
+      <parameters name="description" index="3" type="string" optional="true"/>
+      <parameters name="selfAssignable" index="4" type="boolean" optional="true" defaultValue="false"
+          description="Whether a target may give itself this tag."/>
+      <returnValue name="result" type="string" description="The tag's path."/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="moveTag" exceptions="/1/@exceptions.0 /1/@exceptions.1 /1/@exceptions.2"
+        description="Rename a tag, move it under another parent, or both. The tag and every descendant remember the path they had.">
+      <parameters name="path" index="0" type="string"/>
+      <parameters name="newParentPath" index="1" type="string" optional="true"
+          description="The new parent; empty for a root."/>
+      <parameters name="newId" index="2" type="string" optional="true"
+          description="The new id; empty keeps it."/>
+      <returnValue name="result" type="string" description="The tag's new path."/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="removeTag" exceptions="/1/@exceptions.0 /1/@exceptions.2"
+        description="Remove a tag with its subtree and every assignment to any of them.">
+      <parameters name="path" index="0" type="string"/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="assign" exceptions="/1/@exceptions.0 /1/@exceptions.1 /1/@exceptions.2"
+        description="Put a tag on a target. Twice changes nothing; the target need not exist yet.">
+      <parameters name="path" index="0" type="string"/>
+      <parameters name="kind" index="1" type="string" description="contract or implementation"/>
+      <parameters name="key" index="2" type="string"
+          description="A contract's interface name, or provider name and contract name joined by '/'."/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="unassign" exceptions="/1/@exceptions.0 /1/@exceptions.2"
+        description="Take an administrator's assignment away; tags carried for another reason stay.">
+      <parameters name="path" index="0" type="string"/>
+      <parameters name="kind" index="1" type="string"/>
+      <parameters name="key" index="2" type="string"/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="find"
+        description="The keys of the targets of a kind that carry the tags. A tag counts for its ancestors. Only targets the registry holds right now; a path no tag has matches nothing.">
+      <parameters name="paths" index="0" type="string" upperBound="-1"/>
+      <parameters name="mode" index="1" optional="true" defaultValue="ANY"
+          description="ANY: at least one of the paths; ALL: every one.">
+        <eType xsi:type="ecore:EEnum" href="http://eclipse.org/fennec/tags/1.0#//MatchMode"/>
+      </parameters>
+      <parameters name="kind" index="2" type="string"/>
+      <returnValue name="result">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/tags/1.0#//FoundTargets"/>
+      </returnValue>
+      <security authenticated="true" scopes="service-consumer"/>
+    </operations>
+    <operations name="tagsOf"
+        description="The tags a target carries, each with where it comes from.">
+      <parameters name="kind" index="0" type="string"/>
+      <parameters name="key" index="1" type="string"/>
+      <returnValue name="result">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/tags/1.0#//TaggedTarget"/>
+      </returnValue>
+      <security authenticated="true" scopes="service-consumer"/>
+    </operations>
+
+    <exceptions name="UnknownTag" type="UnknownTagException"
+        description="No tag has this path, neither now nor before a rename.">
+      <properties xsi:type="services:IntProperty" name="code" value="300"/>
+    </exceptions>
+    <exceptions name="InvalidTag" type="InvalidTagException"
+        description="The tree would break: an empty id, a '/' in it, an id taken among the siblings, a tag under itself.">
+      <properties xsi:type="services:IntProperty" name="code" value="301"/>
+    </exceptions>
+    <exceptions name="TagNotKept" type="TagStoreException"
+        description="The change could not be written and was rolled back.">
+      <properties xsi:type="services:IntProperty" name="code" value="302"/>
+    </exceptions>
+  </services:ServiceInterface>
+</xmi:XMI>

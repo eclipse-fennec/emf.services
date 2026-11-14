@@ -9,10 +9,10 @@ contract or an implementation is — no fingerprint moves when something
 is tagged ([Fingerprints](FINGERPRINTS.md)).
 
 The design is collected in issue #272; this page grows with its
-sub-issues. What exists today is the model (#273) and the tag service
-as a library (#274). Serving it as a contract on the broker, provider
-tags at registration, rules, the change broadcast, the consumer facade
-and the TypeScript side follow.
+sub-issues. What exists today: the model (#273), the tag service (#274)
+and the `Tags` contract served beside the broker (#275). Provider tags
+filed as requests, rules, the change broadcast, the consumer facade and
+the TypeScript side follow.
 
 ## The tree
 
@@ -75,6 +75,52 @@ and an assignment to a target that does not exist yet waits for it.
 like still comes from the lookup, so there is one source for it — and a
 later access check sits in one place.
 
+## On the broker: the `Tags` contract
+
+A broker whose launch carries `org.eclipse.fennec.tags.model`,
+`org.eclipse.fennec.tags.service` and `org.eclipse.fennec.tags.ddsr` (the
+development launch and the image do) serves the contract `Tags` beside
+its own API, from the document `tags-api.xmi`, through the same generic
+REST distribution that serves the broker's contracts. It is mounted at
+`/tags` under the broker's REST root, in the broker's authentication
+mode.
+
+| Operation | REST | Role | Answer |
+| --- | --- | --- | --- |
+| `tags()` | `GET /tags/tree` | `service-consumer` | a `TagRegistry` holding only the tree |
+| `putTag` | `PUT /tags/tag?parent=&id=&name=&description=&selfAssignable=` | `service-admin` | the path, as text |
+| `moveTag` | `POST /tags/tag/move?path=&parent=&id=` | `service-admin` | the new path, as text |
+| `removeTag` | `DELETE /tags/tag?path=` | `service-admin` | 204 |
+| `assign` / `unassign` | `PUT` / `DELETE /tags/assignment?path=&kind=&key=` | `service-admin` | 204 |
+| `find` | `GET /tags/find?path=…&path=…&mode=ANY\|ALL&kind=` | `service-consumer` | `FoundTargets` (kind, keys) |
+| `tagsOf` | `GET /tags/of?kind=&key=` | `service-consumer` | `TaggedTarget` (target, tags with origin) |
+
+The refusals are declared errors of the contract: `UnknownTag` (code
+300, HTTP 404), `InvalidTag` (301, 409), `TagNotKept` (302, 503).
+
+```bash
+B=http://localhost:8887/ddsr/rest
+curl -X PUT "$B/tags/tag?id=payment"
+curl -X PUT "$B/tags/tag?parent=payment&id=terms"
+curl -X PUT "$B/tags/tag?parent=payment/terms&id=instant&selfAssignable=true"
+curl -X PUT "$B/tags/assignment?path=payment/terms/instant&kind=contract&key=Payment"
+curl "$B/tags/find?path=payment&kind=contract"
+```
+
+The targets are the registry's own, read through the catalog contract
+(`listCatalog`) by `DdsrTagSubjects`:
+
+| Kind | Key | Asks for | Properties |
+| --- | --- | --- | --- |
+| `contract` | the interface name, `Payment` | `ServiceInterface.tags` | — |
+| `implementation` | provider and contract, `payments-ts/Payment` — once per contract it serves | `ServiceImplementation.tags` | its properties, plus `ddsr.provider.name` and `ddsr.implementation.name` |
+
+An implementation parked in the cold cache is not in the registry and is
+not found until a lookup brings it back.
+
+Not yet: the contract is served, not announced in the catalog, so it is
+reached at its address under the broker and not found by a lookup.
+
 Refusals are exceptions: `UnknownTagException` (no tag has the path,
 neither now nor before a rename), `InvalidTagException` (an empty id, a
 `/` in it, an id taken among the siblings, a tag under itself),
@@ -83,8 +129,9 @@ neither now nor before a rename), `InvalidTagException` (an empty id, a
 ## Where the tags are kept
 
 In one file, `broker-tags.xmi`, beside the broker's `broker-state.xmi`
-— in the image that will be the data volume, once the broker runs the
-service (#275, [Deployment](DEPLOYMENT.md)).
+in its working directory — in the image that is the data volume
+([Deployment](DEPLOYMENT.md)). `DDSR_TAGS_FILE` names another file
+(configuration `org.eclipse.fennec.tags.service`, `store.file`).
 Every change is written before it is acknowledged; a change whose write
 fails is rolled back. A write goes to a file beside the target and
 replaces it in one move, so a crash leaves the previous version.

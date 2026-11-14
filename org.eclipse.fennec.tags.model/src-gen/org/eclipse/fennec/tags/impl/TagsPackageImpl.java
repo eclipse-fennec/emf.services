@@ -12,6 +12,7 @@ import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
 import org.eclipse.fennec.tags.EffectiveTag;
+import org.eclipse.fennec.tags.FoundTargets;
 import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
@@ -20,6 +21,7 @@ import org.eclipse.fennec.tags.TagOrigin;
 import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagRule;
 import org.eclipse.fennec.tags.TagTarget;
+import org.eclipse.fennec.tags.TaggedTarget;
 import org.eclipse.fennec.tags.TagsFactory;
 import org.eclipse.fennec.tags.TagsPackage;
 
@@ -80,6 +82,20 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 	 * @generated
 	 */
 	private EClass effectiveTagEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass foundTargetsEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass taggedTargetEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -511,6 +527,66 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 	 * @generated
 	 */
 	@Override
+	public EClass getFoundTargets() {
+		return foundTargetsEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getFoundTargets_Kind() {
+		return (EAttribute)foundTargetsEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getFoundTargets_Keys() {
+		return (EAttribute)foundTargetsEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getTaggedTarget() {
+		return taggedTargetEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getTaggedTarget_Target() {
+		return (EReference)taggedTargetEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getTaggedTarget_Tags() {
+		return (EReference)taggedTargetEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getMatchMode() {
 		return matchModeEEnum;
 	}
@@ -595,6 +671,14 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 		createEAttribute(effectiveTagEClass, EFFECTIVE_TAG__PATH);
 		createEAttribute(effectiveTagEClass, EFFECTIVE_TAG__ORIGIN);
 
+		foundTargetsEClass = createEClass(FOUND_TARGETS);
+		createEAttribute(foundTargetsEClass, FOUND_TARGETS__KIND);
+		createEAttribute(foundTargetsEClass, FOUND_TARGETS__KEYS);
+
+		taggedTargetEClass = createEClass(TAGGED_TARGET);
+		createEReference(taggedTargetEClass, TAGGED_TARGET__TARGET);
+		createEReference(taggedTargetEClass, TAGGED_TARGET__TAGS);
+
 		// Create enums
 		matchModeEEnum = createEEnum(MATCH_MODE);
 		tagOriginEEnum = createEEnum(TAG_ORIGIN);
@@ -670,6 +754,14 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 		initEClass(effectiveTagEClass, EffectiveTag.class, "EffectiveTag", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getEffectiveTag_Path(), ecorePackage.getEString(), "path", null, 1, 1, EffectiveTag.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getEffectiveTag_Origin(), this.getTagOrigin(), "origin", null, 1, 1, EffectiveTag.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(foundTargetsEClass, FoundTargets.class, "FoundTargets", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getFoundTargets_Kind(), ecorePackage.getEString(), "kind", null, 0, 1, FoundTargets.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getFoundTargets_Keys(), ecorePackage.getEString(), "keys", null, 0, -1, FoundTargets.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(taggedTargetEClass, TaggedTarget.class, "TaggedTarget", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getTaggedTarget_Target(), this.getTagTarget(), null, "target", null, 1, 1, TaggedTarget.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEReference(getTaggedTarget_Tags(), this.getEffectiveTag(), null, "tags", null, 0, -1, TaggedTarget.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		// Initialize enums and add enum literals
 		initEEnum(matchModeEEnum, MatchMode.class, "MatchMode");
@@ -842,6 +934,18 @@ public class TagsPackageImpl extends EPackageImpl implements TagsPackage {
 		   source,
 		   new String[] {
 			   "documentation", "One tag a target carries, as a query reports it: the current path and where it comes from. A target may carry the same tag for several reasons; each is reported."
+		   });
+		addAnnotation
+		  (foundTargetsEClass,
+		   source,
+		   new String[] {
+			   "documentation", "What a query by tags answers: the keys of the targets of one kind that carry them, sorted. Keys only \u2014 what a target looks like comes from its own source, so there is one place for it."
+		   });
+		addAnnotation
+		  (taggedTargetEClass,
+		   source,
+		   new String[] {
+			   "documentation", "One target with the tags it carries, each with where it comes from, sorted by path."
 		   });
 	}
 

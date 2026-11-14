@@ -1,0 +1,33 @@
+Bundle-Name: Fennec Tags on DDSR
+Bundle-Description: \
+	The tag overlay (#272) on the services registry: the Tags contract, \
+	served from its document by the generic REST distribution beside the \
+	broker, and the TagSubjects that offer the registry's contracts and \
+	implementations as targets. Installing this bundle with the tag model \
+	and the tag service is all a broker needs to serve tags.
+
+-library: enableEMF
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.osgi.service.metatype.annotations;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.api;version=snapshot,\
+	org.eclipse.fennec.tags.model;version=snapshot,\
+	org.eclipse.fennec.tags.service;version=snapshot
+
+-includeresource: \
+	OSGI-INF/configurator/=configs/,\
+	=resources/
+Require-Capability: osgi.extender;filter:='(osgi.extender=osgi.configurator)'
+
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.eclipse.fennec.m2x.ocl.api;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.engine;version="[0.1.1,0.1.2)";packages='*',\
+	org.eclipse.fennec.m2x.ocl.model;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.parser;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.unit;version="[0.1.1,0.1.2)",\
+	org.antlr.antlr4-runtime;version=latest,\
+	org.eclipse.fennec.emf.osgi.component.minimal;version=latest

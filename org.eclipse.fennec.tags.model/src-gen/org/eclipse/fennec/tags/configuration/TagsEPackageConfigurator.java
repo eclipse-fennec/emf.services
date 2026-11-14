@@ -30,7 +30,7 @@ public class TagsEPackageConfigurator implements EPackageConfigurator {
 	 * service property.
 	 * @generated
 	 */
-	public static final String FINGERPRINT = "fp1:fccc8a988a371825a4c4f014c0709148bf88ba58ae51187a6c3762b44224fb1b";
+	public static final String FINGERPRINT = "fp1:6ab5492f72b5630c552be839b73e983d1776da2766e125cebf1a075ca8d5f20d";
 
 	private TagsPackage ePackage;
 

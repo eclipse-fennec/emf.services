@@ -22,6 +22,7 @@ import { clientOrigin, withOrigin, type ClientOrigin } from './client-origin.js'
 import { NO_TRACER, type CallTracer } from '@ddsr/telemetry';
 import { withTracing } from './broker-tracing.js';
 import { withBearer, type TokenSupplier } from './bearer-token.js';
+import { DdsrClientError } from '../api/errors.js';
 
 export interface BrokerHttpOptions {
   /** Broker base URL, e.g. http://localhost:8887/ddsr/rest */
@@ -149,7 +150,7 @@ export class BrokerHttp {
     });
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(`lookup failed: ${response.status} — ${body.slice(0, 300)}`);
+      throw new DdsrClientError(`lookup failed: ${response.status} — ${body.slice(0, 300)}`);
     }
     const text = await response.text();
     if (!text.trim()) return [];

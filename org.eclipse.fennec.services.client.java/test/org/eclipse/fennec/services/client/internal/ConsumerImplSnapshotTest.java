@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
+import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.ServicesFactory;
@@ -61,11 +62,16 @@ class ConsumerImplSnapshotTest {
 			implByRef.put(ref, impl);
 		}
 
+		void withdraw(String interfaceName, String refId) {
+			List<ServiceReference> refs = byInterface.getOrDefault(interfaceName, new ArrayList<>());
+			refs.removeIf(ref -> refId.equals(ref.getId()));
+		}
+
 		@Override
 		public List<ServiceReference> getServiceReferences(String interfaceName, String filter,
 				ConsumerCapability capability) {
 			lookupCalls++;
-			return byInterface.getOrDefault(interfaceName, List.of());
+			return List.copyOf(byInterface.getOrDefault(interfaceName, List.of()));
 		}
 
 		@Override
@@ -133,11 +139,11 @@ class ConsumerImplSnapshotTest {
 		source.handler.onEvent(unregistering("ref-payment"));
 
 		assertThat(payment)
-				.as("the snapshot taught the registry that ref-payment is Payment")
-				.containsExactly(ServiceEventType.UNREGISTERING);
+				.as("the snapshot reported ref-payment as new and taught the registry that it is Payment")
+				.containsExactly(ServiceEventType.REGISTERED, ServiceEventType.UNREGISTERING);
 		assertThat(orders)
 				.as("and that it is not OrderQuery — without the snapshot both would have been notified")
-				.isEmpty();
+				.containsExactly(ServiceEventType.REGISTERED);
 	}
 
 	@Test
@@ -217,5 +223,70 @@ class ConsumerImplSnapshotTest {
 		source.handler.onEvent(unregistering("whatever"));
 
 		assertThat(received).containsExactly(ServiceEventType.UNREGISTERING);
+	}
+
+	// ------------------------------------------------------------------
+	// What the listeners missed (#271)
+	// ------------------------------------------------------------------
+
+	@Test
+	void anImplementationThatArrivedWhileTheStreamWasDownIsHeardAsRegistered() {
+		ConsumerImpl consumer = consumer();
+		List<ServiceEvent> payment = new ArrayList<>();
+		consumer.addServiceListener("Payment", null, payment::add);
+		source.handler.onStreamEstablished();
+		assertThat(payment).as("nothing implements Payment yet").isEmpty();
+
+		// published while the stream was down: no event reached us
+		broker.publish("Payment", "ref-1");
+		source.handler.onStreamEstablished();
+
+		assertThat(payment).extracting(ServiceEvent::getType).containsExactly(ServiceEventType.REGISTERED);
+		assertThat(payment.get(0).getReference().getId()).isEqualTo("ref-1");
+	}
+
+	@Test
+	void anImplementationThatLeftWhileTheStreamWasDownIsHeardAsUnregistering() {
+		broker.publish("Payment", "ref-1");
+		ConsumerImpl consumer = consumer();
+		List<ServiceEvent> payment = new ArrayList<>();
+		consumer.addServiceListener("Payment", null, payment::add);
+		source.handler.onStreamEstablished();
+		payment.clear();
+
+		broker.withdraw("Payment", "ref-1");
+		source.handler.onStreamEstablished();
+
+		assertThat(payment).extracting(ServiceEvent::getType).containsExactly(ServiceEventType.UNREGISTERING);
+		assertThat(payment.get(0).getReasonCode()).isEqualTo(ServiceEventReasons.RESYNCED);
+		assertThat(consumer.knownReferenceIds()).as("no longer claimed").isEmpty();
+	}
+
+	@Test
+	void whatTheConsumerAlreadyKnewIsNotReportedAgain() {
+		broker.publish("Payment", "ref-1");
+		ConsumerImpl consumer = consumer();
+		consumer.find("Payment", null);
+		List<ServiceEvent> payment = new ArrayList<>();
+		consumer.addServiceListener("Payment", null, payment::add);
+
+		source.handler.onStreamEstablished();
+		source.handler.onStreamEstablished();
+
+		assertThat(payment).isEmpty();
+	}
+
+	@Test
+	void theSnapshotCreatesNoLocators() {
+		broker.publish("Payment", "ref-1");
+		ConsumerImpl consumer = consumer();
+		consumer.addServiceListener("Payment", null, e -> {
+		});
+
+		for (int i = 0; i < 5; i++) {
+			source.handler.onStreamEstablished();
+		}
+
+		assertThat(consumer.trackedLocatorCount()).as("nobody holds what a snapshot reads").isZero();
 	}
 }

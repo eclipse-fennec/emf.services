@@ -30,14 +30,24 @@ export interface DdsrCatalog {
   /** POST /catalog — the raw add; returns the diagnostic unthrown. */
   addEntry(serviceInterface: ServiceInterface, requestor?: string, options?: CatalogEntryOptions): Promise<Diagnostic>;
 
-  /** GET /catalog/{name} — undefined when the entry does not exist. */
-  getEntry(name: string): Promise<ServiceInterface | undefined>;
+  /**
+   * GET /catalog/{name} — undefined when the entry does not exist. The
+   * optional sd1 fingerprint addresses one of several coexisting
+   * contracts of the same name; a bare name works while it is
+   * unambiguous. The same holds for deprecateEntry and removeEntry.
+   */
+  getEntry(name: string, fingerprint?: string): Promise<ServiceInterface | undefined>;
 
-  /** PUT /catalog/{name}/deprecate. */
-  deprecateEntry(name: string, details?: ServiceInterface, requestor?: string): Promise<Diagnostic>;
+  /** PUT /catalog/{name}/deprecate — returns the diagnostic unthrown. */
+  deprecateEntry(name: string, details?: ServiceInterface, requestor?: string, fingerprint?: string): Promise<Diagnostic>;
 
-  /** DELETE /catalog/{name}. */
-  removeEntry(name: string, requestor?: string): Promise<Diagnostic>;
+  /**
+   * DELETE /catalog/{name} — returns the diagnostic unthrown. A contract
+   * nobody implements can be removed; while an implementation (live or
+   * parked) still uses it, the broker refuses with code 200
+   * (CATALOG_HAS_LIVE_IMPLS, HTTP 409). Needs the service-admin role.
+   */
+  removeEntry(name: string, requestor?: string, fingerprint?: string): Promise<Diagnostic>;
 }
 
 /** What goes to the broker with a catalog entry. */

@@ -45,15 +45,16 @@ export class DdsrCatalogImpl implements DdsrCatalog {
     return this.broker.addCatalogEntry(serviceInterface, requestor);
   }
 
-  getEntry(name: string): Promise<ServiceInterface | undefined> {
-    return this.broker.getCatalogEntry(name);
+  getEntry(name: string, fingerprint?: string): Promise<ServiceInterface | undefined> {
+    return this.broker.getCatalogEntry(name, fingerprint);
   }
 
-  deprecateEntry(name: string, details?: ServiceInterface, requestor?: string): Promise<Diagnostic> {
-    return this.broker.deprecateCatalogEntry(name, details, requestor);
+  deprecateEntry(name: string, details?: ServiceInterface, requestor?: string,
+      fingerprint?: string): Promise<Diagnostic> {
+    return this.broker.deprecateCatalogEntry(name, details, requestor, fingerprint);
   }
 
-  removeEntry(name: string, requestor?: string): Promise<Diagnostic> {
-    return this.broker.removeCatalogEntry(name, requestor);
+  removeEntry(name: string, requestor?: string, fingerprint?: string): Promise<Diagnostic> {
+    return this.broker.removeCatalogEntry(name, requestor, fingerprint);
   }
 }

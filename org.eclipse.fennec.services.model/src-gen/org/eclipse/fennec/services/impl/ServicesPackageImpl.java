@@ -1716,6 +1716,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EAttribute getServiceInterface_Tags() {
+		return (EAttribute)serviceInterfaceEClass.getEStructuralFeatures().get(12);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getModelReference() {
 		return modelReferenceEClass;
 	}
@@ -2188,6 +2198,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EReference getServiceImplementation_Capabilities() {
 		return (EReference)serviceImplementationEClass.getEStructuralFeatures().get(9);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getServiceImplementation_Tags() {
+		return (EAttribute)serviceImplementationEClass.getEStructuralFeatures().get(10);
 	}
 
 	/**
@@ -4486,6 +4506,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__UPDATE_POLICY);
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__SECURITY);
 		createEReference(serviceInterfaceEClass, SERVICE_INTERFACE__MODELS);
+		createEAttribute(serviceInterfaceEClass, SERVICE_INTERFACE__TAGS);
 
 		modelReferenceEClass = createEClass(MODEL_REFERENCE);
 		createEAttribute(modelReferenceEClass, MODEL_REFERENCE__NS_URI);
@@ -4541,6 +4562,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		createEReference(serviceImplementationEClass, SERVICE_IMPLEMENTATION__REPLACES);
 		createEAttribute(serviceImplementationEClass, SERVICE_IMPLEMENTATION__CUTOVER_GRACE_MILLIS);
 		createEReference(serviceImplementationEClass, SERVICE_IMPLEMENTATION__CAPABILITIES);
+		createEAttribute(serviceImplementationEClass, SERVICE_IMPLEMENTATION__TAGS);
 
 		serviceFlavorEClass = createEClass(SERVICE_FLAVOR);
 		createEAttribute(serviceFlavorEClass, SERVICE_FLAVOR__KIND);
@@ -4989,6 +5011,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getServiceInterface_UpdatePolicy(), this.getUpdatePolicy(), "updatePolicy", null, 1, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceInterface_Security(), this.getSecurityRequirement(), null, "security", null, 0, 1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceInterface_Models(), this.getModelReference(), null, "models", null, 0, -1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceInterface_Tags(), ecorePackage.getEString(), "tags", null, 0, -1, ServiceInterface.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(modelReferenceEClass, ModelReference.class, "ModelReference", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getModelReference_NsURI(), ecorePackage.getEString(), "nsURI", null, 1, 1, ModelReference.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5044,6 +5067,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEReference(getServiceImplementation_Replaces(), this.getServiceImplementation(), null, "replaces", null, 0, 1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_COMPOSITE, IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEAttribute(getServiceImplementation_CutoverGraceMillis(), ecorePackage.getELong(), "cutoverGraceMillis", null, 0, 1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 		initEReference(getServiceImplementation_Capabilities(), this.getCapability(), null, "capabilities", null, 0, -1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getServiceImplementation_Tags(), ecorePackage.getEString(), "tags", null, 0, -1, ServiceImplementation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(serviceFlavorEClass, ServiceFlavor.class, "ServiceFlavor", IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceFlavor_Kind(), this.getFlavorKind(), "kind", null, 1, 1, ServiceFlavor.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -6127,6 +6151,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "documentation", "The payload models this contract\'s slots are typed with (Parameter.eType), each pinned to the version it means by its fingerprint. Part of the contract: a payload model that changes under the same nsURI is a different exchange, and with the fingerprint here the sd1 moves with it. A broker with a model source checks that every eType\'s package is listed and resolves at its fingerprint; a consumer fetches what it does not have. Empty = the contract pins no model (eType references still travel as hrefs)."
 		   });
 		addAnnotation
+		  (getServiceInterface_Tags(),
+		   source,
+		   new String[] {
+			   "documentation", "Tag paths the contract asks for, e.g. \'payment/terms/instant\' (#272). Only a request: the tag service assigns a tag that exists and is self-assignable, and files every other one for an administrator to accept or discard. Not part of the sd1 fingerprint \u2014 tagging something does not change what it is."
+		   });
+		addAnnotation
 		  (modelReferenceEClass,
 		   source,
 		   new String[] {
@@ -6413,6 +6443,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Implementation-level capabilities, valid for every flavor of this implementation (content types, encodings, tenant/region, \u2026). Transport-specific ones belong on the ServiceFlavor. The broker derives a \'services.transport\' capability per flavor from ServiceFlavor.kind automatically, so plain publishers need not declare anything here."
+		   });
+		addAnnotation
+		  (getServiceImplementation_Tags(),
+		   source,
+		   new String[] {
+			   "documentation", "Tag paths the implementation asks for, e.g. \'payment/terms/instant\' (#272). Only a request: the tag service assigns a tag that exists and is self-assignable, and files every other one for an administrator to accept or discard. Not part of the im1 fingerprint \u2014 tagging something does not change what it is."
 		   });
 		addAnnotation
 		  (serviceFlavorEClass,

@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:62450676fc1bd508641615bb61b175ee93f54dd17ae3513e6ce7528b81206391", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:90bbfbdae5d4b8da86e0e5b77dd98326b0003322a4c7008701405cb85d836a2b", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -1427,13 +1427,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int SERVICE_INTERFACE__MODELS = NAMED_ELEMENT_FEATURE_COUNT + 12;
 
 	/**
+	 * The feature id for the '<em><b>Tags</b></em>' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SERVICE_INTERFACE__TAGS = NAMED_ELEMENT_FEATURE_COUNT + 13;
+
+	/**
 	 * The number of structural features of the '<em>Service Interface</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_INTERFACE_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 13;
+	int SERVICE_INTERFACE_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 14;
 
 	/**
 	 * The number of operations of the '<em>Service Interface</em>' class.
@@ -2064,13 +2073,22 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int SERVICE_IMPLEMENTATION__CAPABILITIES = NAMED_ELEMENT_FEATURE_COUNT + 10;
 
 	/**
+	 * The feature id for the '<em><b>Tags</b></em>' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int SERVICE_IMPLEMENTATION__TAGS = NAMED_ELEMENT_FEATURE_COUNT + 11;
+
+	/**
 	 * The number of structural features of the '<em>Service Implementation</em>' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
 	 * @generated
 	 * @ordered
 	 */
-	int SERVICE_IMPLEMENTATION_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 11;
+	int SERVICE_IMPLEMENTATION_FEATURE_COUNT = NAMED_ELEMENT_FEATURE_COUNT + 12;
 
 	/**
 	 * The number of operations of the '<em>Service Implementation</em>' class.
@@ -6343,6 +6361,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getServiceInterface_Models();
 
 	/**
+	 * Returns the meta object for the attribute list '{@link org.eclipse.fennec.services.ServiceInterface#getTags <em>Tags</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute list '<em>Tags</em>'.
+	 * @see org.eclipse.fennec.services.ServiceInterface#getTags()
+	 * @see #getServiceInterface()
+	 * @generated
+	 */
+	EAttribute getServiceInterface_Tags();
+
+	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.services.ModelReference <em>Model Reference</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -6862,6 +6891,17 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getServiceImplementation_Capabilities();
+
+	/**
+	 * Returns the meta object for the attribute list '{@link org.eclipse.fennec.services.ServiceImplementation#getTags <em>Tags</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute list '<em>Tags</em>'.
+	 * @see org.eclipse.fennec.services.ServiceImplementation#getTags()
+	 * @see #getServiceImplementation()
+	 * @generated
+	 */
+	EAttribute getServiceImplementation_Tags();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.services.ServiceFlavor <em>Service Flavor</em>}'.
@@ -9893,6 +9933,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference SERVICE_INTERFACE__MODELS = eINSTANCE.getServiceInterface_Models();
 
 		/**
+		 * The meta object literal for the '<em><b>Tags</b></em>' attribute list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute SERVICE_INTERFACE__TAGS = eINSTANCE.getServiceInterface_Tags();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.ModelReferenceImpl <em>Model Reference</em>}' class.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -10289,6 +10337,14 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference SERVICE_IMPLEMENTATION__CAPABILITIES = eINSTANCE.getServiceImplementation_Capabilities();
+
+		/**
+		 * The meta object literal for the '<em><b>Tags</b></em>' attribute list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute SERVICE_IMPLEMENTATION__TAGS = eINSTANCE.getServiceImplementation_Tags();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.ServiceFlavorImpl <em>Service Flavor</em>}' class.

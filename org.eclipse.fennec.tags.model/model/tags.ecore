@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore" name="tags" nsURI="http://eclipse.org/fennec/tags/1.0" nsPrefix="tags">
+  <eAnnotations source="Version">
+    <details key="value" value="1.0"/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+    <details key="complianceLevel" value="17.0"/>
+    <details key="oSGiCompatible" value="true"/>
+    <details key="basePackage" value="org.eclipse.fennec"/>
+    <details key="resource" value="XMI"/>
+    <details key="documentation" value="Tags as an overlay (#272): a hierarchical tree of categories, assigned to things that live elsewhere. The model knows no type of the things it tags — a target is a kind and a key — so the same model serves the services registry (contracts, implementations) and could serve the Model Atlas (models). What a target is, which properties it has and which tags it asks for come from the source of the targets, not from here."/>
+  </eAnnotations>
+  <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+    <details key="settingDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
+    <details key="validationDelegates" value="http://www.eclipse.org/fennec/m2x/ocl/1.0"/>
+  </eAnnotations>
+  <eClassifiers xsi:type="ecore:EEnum" name="MatchMode">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="How several tag paths in one query combine. ANY: a target carrying at least one of them matches. ALL: a target must carry every one. A tag on a target also counts for each of its ancestors, so asking for a parent finds what carries a child."/>
+    </eAnnotations>
+    <eLiterals name="ANY"/>
+    <eLiterals name="ALL" value="1"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="TagOrigin">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Where a tag on a target comes from. SOURCE: the target asked for it itself (a provider at registration) and the tag allows that. ADMIN: an administrator assigned it. RULE: a rule over the target's properties matched."/>
+    </eAnnotations>
+    <eLiterals name="SOURCE"/>
+    <eLiterals name="ADMIN" value="1"/>
+    <eLiterals name="RULE" value="2"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TagRegistry">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="rootIdsUnique"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Everything the tag service keeps, in one document: the tree, the administrator's assignments, the rules and the open requests. What is persisted, and what references into the tree resolve within."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="rootIdsUnique" value="tags->isUnique(t | t.id)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tags" upperBound="-1"
+        eType="#//Tag" containment="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The roots of the tree. Their ids are unique among each other."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="assignments" upperBound="-1"
+        eType="#//TagAssignment" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1"
+        eType="#//TagRule" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="requests" upperBound="-1"
+        eType="#//RequestedTag" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Tag">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/Ecore">
+      <details key="constraints" value="idHasNoSlash childIdsUnique"/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One category. Its id is short and technical and unique among its siblings, not globally: iot/weather and marketing/weather may both exist. Its path is derived from the ids up the tree, so changing an id moves every descendant with it and nothing has to be rewritten. Whatever names a tag from inside this model references the object; whatever names it from outside uses the path, and formerPaths keeps such names valid after a rename."/>
+    </eAnnotations>
+    <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+      <details key="idHasNoSlash" value="id &lt;> null and id.matches('^[^/]+$')"/>
+      <details key="childIdsUnique" value="children->isUnique(c | c.id)"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Technical, short and stable, e.g. 'iot' or 'sensors'. No '/', which separates the segments of a path. Unique among the siblings."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Human-readable, may change at any time without breaking anything."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        changeable="false" volatile="true" transient="true" derived="true">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The ids from the root down, joined by '/', e.g. 'iot/sensors'. What filters, assignments from outside and a URI name a tag by. Derived, never stored: a document on the wire carries the tree, and a reader without an OCL engine joins the ids itself."/>
+      </eAnnotations>
+      <eAnnotations source="http://www.eclipse.org/fennec/m2x/ocl/1.0">
+        <details key="derivation" value="if parent = null then id else parent.path + '/' + id endif"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="selfAssignable" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Whether a target may give itself this tag (a provider at registration). False: asking for it only files a request the administrator accepts or discards."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="formerPaths" upperBound="-1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Paths this tag had before it was renamed or moved. Resolving a path accepts them too, so a target that named the tag by its old path keeps it. Never offered to a policy: what decides access sees only current paths."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="children" upperBound="-1"
+        eType="#//Tag" containment="true" eOpposite="#//Tag/parent"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parent" eType="#//Tag"
+        eOpposite="#//Tag/children"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TagTarget">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Something a tag can be on, named by the source that knows it. For the services registry: kind 'contract' with the interface name as key, kind 'implementation' with provider name and contract name. Neither is a type of this model, which is what lets it tag other things."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="What sort of thing this is, as its source names it, e.g. 'contract', 'implementation', later 'model'. An open string, not an enum, so a new source needs no model change."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Which one, unique within its kind, as its source names it. Stable across changes of the thing itself — for a contract its name, not its fingerprint, so a tag survives a change of the contract."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TagAssignment">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="An administrator put a tag on a target. References the tag object, so it follows a rename."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tag" lowerBound="1" eType="#//Tag"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1"
+        eType="#//TagTarget" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="assignedBy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="assignedAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TagRule">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Every target of a kind whose properties match the filter carries the tag. Applied when a query asks, not when a target arrives, so a new rule covers what is already there. References the tag object, so it follows a rename."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tag" lowerBound="1" eType="#//Tag"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"
+        defaultValueLiteral="implementation">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Which kind of target the rule looks at. Only targets with properties can match: in the services registry that is 'implementation'."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="filter" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="An LDAP filter (RFC 4515, as in OSGi) over the target's properties, e.g. '(payment.scheme=card)'. Evaluated by the tag service only."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="RequestedTag">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="A target asked for a tag it may not give itself — the tag does not exist yet or is not self-assignable. The administrator accepts the request (the tag is created where needed and assigned) or discards it. A discarded request comes back if the target asks again; nothing is blocked."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" lowerBound="1"
+        eType="#//TagTarget" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requestedBy" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="requestedAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EDate"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="EffectiveTag">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="One tag a target carries, as a query reports it: the current path and where it comes from. A target may carry the same tag for several reasons; each is reported."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="origin" lowerBound="1" eType="#//TagOrigin"/>
+  </eClassifiers>
+</ecore:EPackage>

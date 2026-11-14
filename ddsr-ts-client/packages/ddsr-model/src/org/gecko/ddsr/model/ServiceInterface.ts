@@ -33,5 +33,6 @@ export interface ServiceInterface extends NamedElement, VersionedElement {
   updatePolicy: UpdatePolicy;
   security?: SecurityRequirement;
   models: EList<ModelReference>;
+  tags: EList<string>;
 
 }

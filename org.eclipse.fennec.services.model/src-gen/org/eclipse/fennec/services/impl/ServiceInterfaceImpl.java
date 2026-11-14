@@ -15,6 +15,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.MinimalEObjectImpl;
 
+import org.eclipse.emf.ecore.util.EDataTypeUniqueEList;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
@@ -51,6 +52,7 @@ import org.eclipse.fennec.services.VersionedElement;
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getUpdatePolicy <em>Update Policy</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getSecurity <em>Security</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getModels <em>Models</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.impl.ServiceInterfaceImpl#getTags <em>Tags</em>}</li>
  * </ul>
  *
  * @generated
@@ -275,6 +277,16 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @ordered
 	 */
 	protected EList<ModelReference> models;
+
+	/**
+	 * The cached value of the '{@link #getTags() <em>Tags</em>}' attribute list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #getTags()
+	 * @generated
+	 * @ordered
+	 */
+	protected EList<String> tags;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -622,6 +634,19 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 	 * @generated
 	 */
 	@Override
+	public EList<String> getTags() {
+		if (tags == null) {
+			tags = new EDataTypeUniqueEList<String>(String.class, this, ServicesPackage.SERVICE_INTERFACE__TAGS);
+		}
+		return tags;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, NotificationChain msgs) {
 		switch (featureID) {
 			case ServicesPackage.SERVICE_INTERFACE__OPERATIONS:
@@ -675,6 +700,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return getSecurity();
 			case ServicesPackage.SERVICE_INTERFACE__MODELS:
 				return getModels();
+			case ServicesPackage.SERVICE_INTERFACE__TAGS:
+				return getTags();
 		}
 		return super.eGet(featureID, resolve, coreType);
 	}
@@ -734,6 +761,10 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				getModels().clear();
 				getModels().addAll((Collection<? extends ModelReference>)newValue);
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__TAGS:
+				getTags().clear();
+				getTags().addAll((Collection<? extends String>)newValue);
+				return;
 		}
 		super.eSet(featureID, newValue);
 	}
@@ -788,6 +819,9 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 			case ServicesPackage.SERVICE_INTERFACE__MODELS:
 				getModels().clear();
 				return;
+			case ServicesPackage.SERVICE_INTERFACE__TAGS:
+				getTags().clear();
+				return;
 		}
 		super.eUnset(featureID);
 	}
@@ -828,6 +862,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 				return security != null;
 			case ServicesPackage.SERVICE_INTERFACE__MODELS:
 				return models != null && !models.isEmpty();
+			case ServicesPackage.SERVICE_INTERFACE__TAGS:
+				return tags != null && !tags.isEmpty();
 		}
 		return super.eIsSet(featureID);
 	}
@@ -890,6 +926,8 @@ public class ServiceInterfaceImpl extends MinimalEObjectImpl.Container implement
 		result.append(deprecatedBy);
 		result.append(", updatePolicy: ");
 		result.append(updatePolicy);
+		result.append(", tags: ");
+		result.append(tags);
 		result.append(')');
 		return result.toString();
 	}

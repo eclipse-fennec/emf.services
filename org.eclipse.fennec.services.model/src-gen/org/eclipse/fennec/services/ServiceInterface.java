@@ -31,6 +31,7 @@ import org.osgi.annotation.versioning.ProviderType;
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getUpdatePolicy <em>Update Policy</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getSecurity <em>Security</em>}</li>
  *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getModels <em>Models</em>}</li>
+ *   <li>{@link org.eclipse.fennec.services.ServiceInterface#getTags <em>Tags</em>}</li>
  * </ul>
  *
  * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface()
@@ -306,5 +307,20 @@ public interface ServiceInterface extends NamedElement, VersionedElement {
 	 * @generated
 	 */
 	EList<ModelReference> getModels();
+
+	/**
+	 * Returns the value of the '<em><b>Tags</b></em>' attribute list.
+	 * The list contents are of type {@link java.lang.String}.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * <!-- begin-model-doc -->
+	 * Tag paths the contract asks for, e.g. 'payment/terms/instant' (#272). Only a request: the tag service assigns a tag that exists and is self-assignable, and files every other one for an administrator to accept or discard. Not part of the sd1 fingerprint — tagging something does not change what it is.
+	 * <!-- end-model-doc -->
+	 * @return the value of the '<em>Tags</em>' attribute list.
+	 * @see org.eclipse.fennec.services.ServicesPackage#getServiceInterface_Tags()
+	 * @model
+	 * @generated
+	 */
+	EList<String> getTags();
 
 } // ServiceInterface

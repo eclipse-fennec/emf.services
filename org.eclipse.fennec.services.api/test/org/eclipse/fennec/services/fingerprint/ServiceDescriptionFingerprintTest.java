@@ -209,6 +209,17 @@ class ServiceDescriptionFingerprintTest {
 	}
 
 	@Test
+	void tagsDoNotMoveTheHash() {
+		// #273: tagging a contract does not change what it is.
+		ServiceInterface plain = minimal("Payment");
+		ServiceInterface tagged = minimal("Payment");
+		tagged.getTags().add("payment/terms/instant");
+
+		assertThat(ServiceDescriptionFingerprint.fingerprint(tagged))
+				.isEqualTo(ServiceDescriptionFingerprint.fingerprint(plain));
+	}
+
+	@Test
 	void deprecationMetadataDoesNotMoveTheHashButStatusDoes() {
 		ServiceInterface plain = minimal("Payment");
 

@@ -6,7 +6,7 @@
  */
 
 import { BasicEObject } from '@emfts/core';
-import { createContainmentEList, createEObjectEList } from '@emfts/core';
+import { createContainmentEList, createEObjectEList, createBasicEList } from '@emfts/core';
 import type { EClass, EStructuralFeature, EList, EReference } from '@emfts/core';
 import type { NamedElement } from './NamedElement.js';
 import type { VersionedElement } from './VersionedElement.js';
@@ -35,6 +35,7 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
   static readonly REPLACES: number = 9;
   static readonly CUTOVER_GRACE_MILLIS: number = 10;
   static readonly CAPABILITIES: number = 11;
+  static readonly TAGS: number = 12;
   static readonly NAME: number = 0;
   static readonly VERSION: number = 1;
 
@@ -49,6 +50,7 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
   private _replaces?: ServiceImplementation;
   private _cutoverGraceMillis?: number;
   private _capabilities!: EList<Capability>;
+  private _tags!: EList<string>;
   private _name: string = "";
   private _version?: string;
 
@@ -232,6 +234,13 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
     return this._capabilities;
   }
 
+  get tags(): EList<string> {
+    if (!this._tags) {
+      this._tags = createBasicEList<any>(this, this.eClass().getEStructuralFeature('tags')!);
+    }
+    return this._tags;
+  }
+
   get name(): string {
     return this._name!;
   }
@@ -276,6 +285,8 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         return this.cutoverGraceMillis;
       case ServiceImplementationImpl.CAPABILITIES:
         return this.capabilities;
+      case ServiceImplementationImpl.TAGS:
+        return this.tags;
       case ServiceImplementationImpl.NAME:
         return this.name;
       case ServiceImplementationImpl.VERSION:
@@ -335,6 +346,11 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         this.capabilities.addAll(newValue as any[]);
         super.eSet(feature, newValue);
         break;
+      case ServiceImplementationImpl.TAGS:
+        this.tags.clear();
+        this.tags.addAll(newValue as any[]);
+        super.eSet(feature, newValue);
+        break;
       case ServiceImplementationImpl.NAME:
         this.name = newValue as string;
         super.eSet(feature, newValue);
@@ -374,6 +390,8 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         return this._cutoverGraceMillis !== undefined;
       case ServiceImplementationImpl.CAPABILITIES:
         return this._capabilities !== undefined && !this._capabilities.isEmpty();
+      case ServiceImplementationImpl.TAGS:
+        return this._tags !== undefined && !this._tags.isEmpty();
       case ServiceImplementationImpl.NAME:
         return this._name !== "";
       case ServiceImplementationImpl.VERSION:
@@ -418,6 +436,9 @@ export class ServiceImplementationImpl extends BasicEObject implements ServiceIm
         return;
       case ServiceImplementationImpl.CAPABILITIES:
         if (this._capabilities) this._capabilities.clear();
+        return;
+      case ServiceImplementationImpl.TAGS:
+        if (this._tags) this._tags.clear();
         return;
       case ServiceImplementationImpl.NAME:
         this._name = "";

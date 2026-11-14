@@ -690,6 +690,12 @@
         <details key="documentation" value="The payload models this contract's slots are typed with (Parameter.eType), each pinned to the version it means by its fingerprint. Part of the contract: a payload model that changes under the same nsURI is a different exchange, and with the fingerprint here the sd1 moves with it. A broker with a model source checks that every eType's package is listed and resolves at its fingerprint; a consumer fetches what it does not have. Empty = the contract pins no model (eType references still travel as hrefs)."/>
       </eAnnotations>
     </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tags" upperBound="-1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Tag paths the contract asks for, e.g. 'payment/terms/instant' (#272). Only a request: the tag service assigns a tag that exists and is self-assignable, and files every other one for an administrator to accept or discard. Not part of the sd1 fingerprint — tagging something does not change what it is."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ModelReference">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -966,6 +972,12 @@
         eType="#//Capability" containment="true">
       <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
         <details key="documentation" value="Implementation-level capabilities, valid for every flavor of this implementation (content types, encodings, tenant/region, …). Transport-specific ones belong on the ServiceFlavor. The broker derives a 'services.transport' capability per flavor from ServiceFlavor.kind automatically, so plain publishers need not declare anything here."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tags" upperBound="-1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Tag paths the implementation asks for, e.g. 'payment/terms/instant' (#272). Only a request: the tag service assigns a tag that exists and is self-assignable, and files every other one for an administrator to accept or discard. Not part of the im1 fingerprint — tagging something does not change what it is."/>
       </eAnnotations>
     </eStructuralFeatures>
   </eClassifiers>

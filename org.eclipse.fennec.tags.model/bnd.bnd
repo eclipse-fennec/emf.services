@@ -1,0 +1,28 @@
+# The tag model (#273): Tag, its tree, assignments, rules and requested
+# tags. Deliberately without any DDSR type — a target is a kind and a key,
+# so the same model can tag models in the Model Atlas later (#272).
+src=${^src},src-gen
+
+-library: enableEMF
+
+-generate:\
+	model/tags.genmodel;\
+		generate=fennecEMF;\
+		genmodel=model/tags.genmodel;\
+		output=src-gen
+
+-includeresource.model: model=model
+
+# The derived path and the invariants run on the Fennec OCL engine; the
+# test registers it standalone. Pinned to the 0.1.1 line for the reason
+# broker.core's bnd.bnd gives (two indexes, `latest` mixes lines).
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.eclipse.fennec.m2x.ocl.api;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.engine;version="[0.1.1,0.1.2)";packages='*',\
+	org.eclipse.fennec.m2x.ocl.model;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.parser;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.unit;version="[0.1.1,0.1.2)",\
+	org.antlr.antlr4-runtime;version=latest,\
+	org.eclipse.fennec.emf.osgi.component.minimal;version=latest

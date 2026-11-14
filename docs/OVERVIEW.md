@@ -29,6 +29,7 @@ not built, the page says so and names the issue.
 | watch what a broker or a client holds | [Runtime services](RUNTIME.md) |
 | trace a call across consumer, broker and provider | [Telemetry](TELEMETRY.md) |
 | know who may publish, look up, and call | [Security](SECURITY.md) |
+| put services into categories and find them by them | [Tags](TAGS.md) |
 | see all of it in Grafana | [the demo](../demo/observability/README.md) |
 
 
@@ -137,6 +138,13 @@ never edit them by hand.
 
 **The model**
 - `…services.model` — generated from `model/services.ecore`
+- `org.eclipse.fennec.tags.model` — the tag overlay's model (#273),
+  free of any services type
+
+**Tags** — see [Tags](TAGS.md)
+- `org.eclipse.fennec.tags.service` — the tag service as a library:
+  tree, assignments, queries, the `TagSubjects` and `TagStore` seams,
+  an XMI store (#274)
 
 **The broker**
 - `…broker.core` — the registry itself. `DdsrBroker` is the façade over

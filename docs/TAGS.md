@@ -274,8 +274,13 @@ The targets are the registry's own, read through the catalog contract
 An implementation parked in the cold cache is not in the registry and is
 not found until a lookup brings it back.
 
-Not yet: the contract is served, not announced in the catalog, so it is
-reached at its address under the broker and not found by a lookup.
+The contract is also **announced** like the broker's own: the tag bundle
+offers `tags-api.xmi` as a `BrokerApiDocument`, and the broker's
+self-publisher puts the contract into the catalog and announces the
+implementation with the broker's public address and security scheme
+(#287). A lookup for `Tags` finds it — so does Remote Service Admin. A
+broker in strict payload-model mode (`models.strict`) refuses it: the
+contract's types come from the tag model, which it does not pin.
 
 Refusals are exceptions: `UnknownTagException` (no tag has the path,
 neither now nor before a rename), `InvalidTagException` (an empty id, a

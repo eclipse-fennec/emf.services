@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,6 +36,7 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.broker.core.BrokerApiDocument;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.broker.core.BrokerImplementations;
 import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
@@ -43,6 +46,8 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -65,6 +70,10 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * <p>Only the deployment fact is added: {@code public.url} says where
  * this instance is reachable, and the modelled base path is appended to
  * it, so a consumer gets a self-contained flavor.
+ *
+ * <p>A bundle that serves another contract beside the broker offers its
+ * document as a {@link BrokerApiDocument}; it is announced the same way,
+ * and withdrawn when the service goes (#287).
  *
  * <p>Three announcements, one per contract — each is its own
  * implementation with its own base path, which is also how the generic
@@ -137,7 +146,14 @@ public final class BrokerSelfPublisher {
 	@Reference(target = "(emf.name=services)")
 	private ComponentServiceObjects<ResourceSet> rsObjects;
 
-	private Config config;
+	private volatile Config config;
+
+	/** What other bundles serve beside the broker, as they offered it (#287). */
+	private final Map<BrokerApiDocument, Announced> offered = new ConcurrentHashMap<>();
+
+	/** One announcement of an offered document, so it can be withdrawn with it. */
+	private record Announced(ServiceProvider provider, ServiceImplementation implementation) {
+	}
 
 	@Activate
 	void activate(Config config) {
@@ -145,10 +161,49 @@ public final class BrokerSelfPublisher {
 		for (String document : List.of("broker-catalog-api.xmi", "broker-implementations-api.xmi",
 				"broker-lookup-api.xmi", "broker-events-api.xmi")) {
 			try {
-				announce(document, URI.create(config.public_url()));
+				announce(readBundle(document), URI.create(config.public_url()));
 			} catch (Throwable failure) {
 				LOG.log(Level.WARNING, "[DDSR] BrokerSelfPublisher: " + document + " failed", failure);
 			}
+		}
+		for (BrokerApiDocument document : List.copyOf(offered.keySet())) {
+			announceOffered(document);
+		}
+	}
+
+	/**
+	 * A contract another bundle serves beside the broker: announced like
+	 * the broker's own, with the same address and scheme (#287).
+	 */
+	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+	void addDocument(BrokerApiDocument document) {
+		offered.put(document, NOT_YET);
+		if (config != null) {
+			announceOffered(document);
+		}
+	}
+
+	void removeDocument(BrokerApiDocument document) {
+		Announced announced = offered.remove(document);
+		if (announced != null && announced != NOT_YET) {
+			Diagnostic withdrawn = implementations.withdrawImplementation(announced.provider(), announced.implementation());
+			LOG.info("[DDSR] BrokerSelfPublisher: " + announced.implementation().getName() + " withdrawn ("
+					+ withdrawn.getSeverity() + ")");
+		}
+	}
+
+	/** Marks an offered document that is not announced (yet). */
+	private static final Announced NOT_YET = new Announced(null, null);
+
+	private void announceOffered(BrokerApiDocument document) {
+		try (InputStream in = document.document().openStream()) {
+			List<EObject> roots = rootsOf(in, document.document().toString());
+			Announced announced = announce(roots, URI.create(config.public_url()));
+			if (announced != null && offered.containsKey(document)) {
+				offered.put(document, announced);
+			}
+		} catch (Throwable failure) {
+			LOG.log(Level.WARNING, "[DDSR] BrokerSelfPublisher: " + document.document() + " failed", failure);
 		}
 	}
 
@@ -164,8 +219,7 @@ public final class BrokerSelfPublisher {
 	 * apart (#76). Only the deployment fact is added: where this instance
 	 * is reachable.
 	 */
-	private void announce(String documentName, URI publicUrl) throws IOException {
-		List<EObject> roots = readBundle(documentName);
+	private Announced announce(List<EObject> roots, URI publicUrl) {
 		ServiceProvider provider = (ServiceProvider) roots.get(0);
 		ServiceInterface contract = (ServiceInterface) roots.get(1);
 		ServiceImplementation implementation = provider.getImplementations().get(0);
@@ -174,7 +228,7 @@ public final class BrokerSelfPublisher {
 		// would add a second registration of the same thing.
 		for (ServiceImplementation live : catalog.getRegistry().getImplementations()) {
 			if (implementation.getName().equals(live.getName())) {
-				return;
+				return live.eContainer() instanceof ServiceProvider owner ? new Announced(owner, live) : null;
 			}
 		}
 
@@ -182,7 +236,7 @@ public final class BrokerSelfPublisher {
 		if (added.getSeverity() == DiagnosticSeverity.ERROR
 				&& added.getCode() != DdsrDiagnostics.CODE_CATALOG_ENTRY_ALREADY_EXISTS) {
 			LOG.warning("[DDSR] BrokerSelfPublisher: " + contract.getName() + " refused: " + added.getMessage());
-			return;
+			return null;
 		}
 		ServiceInterface inCatalog = findInCatalog(contract.getName());
 		if (inCatalog != null && inCatalog != contract) {
@@ -209,10 +263,11 @@ public final class BrokerSelfPublisher {
 		if (published.getSeverity() == DiagnosticSeverity.ERROR) {
 			LOG.warning("[DDSR] self-publish of " + contract.getName() + " failed: code="
 					+ published.getCode() + " " + published.getMessage());
-			return;
+			return null;
 		}
 		LOG.info("[DDSR] BrokerSelfPublisher: " + contract.getName() + " seeded and served at "
 				+ flavor.getHost() + flavor.getBasePath());
+		return new Announced(provider, implementation);
 	}
 
 	private ServiceInterface findInCatalog(String name) {
@@ -235,14 +290,17 @@ public final class BrokerSelfPublisher {
 			if (in == null) {
 				throw new IOException("bundle resource not found: " + resourceName);
 			}
-			List<EObject> roots = XmiCodec.readBundle(in, rsObjects).roots();
-			if (roots.size() != 2 || !(roots.get(0) instanceof ServiceProvider)
-					|| !(roots.get(1) instanceof ServiceInterface)) {
-				throw new IOException(resourceName
-						+ " must hold a ServiceProvider and the ServiceInterface it serves, in that order");
-			}
-			return roots;
+			return rootsOf(in, resourceName);
 		}
+	}
+
+	private List<EObject> rootsOf(InputStream in, String name) throws IOException {
+		List<EObject> roots = XmiCodec.readBundle(in, rsObjects).roots();
+		if (roots.size() != 2 || !(roots.get(0) instanceof ServiceProvider)
+				|| !(roots.get(1) instanceof ServiceInterface)) {
+			throw new IOException(name + " must hold a ServiceProvider and the ServiceInterface it serves, in that order");
+		}
+		return roots;
 	}
 
 	/**

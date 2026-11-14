@@ -19,9 +19,11 @@ import java.util.logging.Logger;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
@@ -124,44 +126,33 @@ public final class MqttEventSource implements EventSource {
 		}
 	}
 
-	/**
-	 * Topic segment on which the broker says an event did not reach the
-	 * wire and subscribers have to take a fresh snapshot (#124). Named
-	 * on the broker side in {@code MqttEventSink}; one string on each
-	 * side of a wire, like the topic prefix itself.
-	 */
-	static final String RESYNC_TOPIC_SEGMENT = "_resync";
-
 	private void deliver(Handler handler, String topic, CloudEventCodec.Message message) {
-		if (channels.endsWith(topic, RESYNC_TOPIC_SEGMENT)) {
-			// Something was lost between the broker and here, and there is
-			// no way to find out what: the broker keeps no per-client
-			// history and the stream carries no sequence numbers. Reading
-			// everything again is the recovery, and it is exactly what a
-			// reconnect already does.
+		if (message == null) {
+			return;
+		}
+		String type = message.attributes().getType();
+		if (CloudEvents.TYPE_BROADCAST_END.equals(type)) {
+			// The broker ended the stream: something was lost between it
+			// and here, and there is no way to find out what — no
+			// per-client history, no sequence numbers. Reading everything
+			// again is the recovery, and it is what a reconnect does (#124).
 			LOG.info("[DDSR-MQTT] the broker lost an event — taking a fresh snapshot");
 			handler.onStreamEstablished();
 			return;
 		}
-		if (message == null) {
+		if (!CloudEvents.TYPE_BROADCAST.equals(type) || message.data() == null) {
+			LOG.fine(() -> "[DDSR-MQTT] ignoring a '" + type + "' message on " + topic
+					+ " — this subscription is for the broker's events");
 			return;
 		}
 		try {
-			// The connection read the envelope off the wire — structured
-			// mode, the whole event in one JSON document (#101) — and
-			// hands over what it said and what it carried.
-			if (CloudEvents.eventTypeOf(message.attributes().getType()) == null) {
-				LOG.fine(() -> "[DDSR-MQTT] ignoring a '" + message.attributes().getType()
-						+ "' message on " + topic + " — this subscription is for lifecycle events");
-				return;
-			}
-			if (message.data() == null) {
-				LOG.warning("[DDSR-MQTT] a lifecycle event arrived without its document, ignoring");
-				return;
-			}
-			XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), rsObjects);
+			// A value of the broadcast (#252): the result whose value is the
+			// event, beside it the reference, provider and contracts.
+			XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), rsObjects,
+					message.attributes().getDatacontenttype());
 			for (EObject root : bundle.roots()) {
-				if (root instanceof ServiceEvent event) {
+				if (root instanceof ServiceInvocationResult result
+						&& Invocations.valueOf(result) instanceof ServiceEvent event) {
 					handler.onEvent(event);
 					return;
 				}

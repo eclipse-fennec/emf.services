@@ -16,18 +16,19 @@ package org.eclipse.fennec.services.broker.mqtt.internal;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
-import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.ServiceInvocationResult;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.EventDocument;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -102,46 +103,6 @@ public final class MqttEventSink implements EventSink {
 				: "/fennec/services/broker";
 	}
 
-	/**
-	 * Topic for one event: {@code <prefix>/<interface>}, one publish per
-	 * interface the service serves.
-	 * <p>
-	 * The interface in the topic is what makes MQTT-side filtering
-	 * possible at all: a consumer subscribes to {@code ddsr/events/Payment}
-	 * instead of receiving everything and discarding most of it. That is
-	 * the MQTT-native equivalent of the SSE transport's {@code ?flavors=}
-	 * query parameter — same requirement (FR-Sync-Filtering), expressed
-	 * the way each transport expresses it.
-	 * <p>
-	 * When the interface cannot be determined — the normal case for
-	 * UNREGISTERING, where the implementation is already detached — the
-	 * event goes to {@code <prefix>/#unknown}. Subscribers are expected to
-	 * take that topic as well and match on the reference id, which is the
-	 * same "over-deliver rather than drop" rule the consumer-side registry
-	 * follows.
-	 */
-	static List<String> topicsFor(String prefix, Set<String> interfaceNames) {
-		return topicsFor(Channels.MQTT, prefix, interfaceNames);
-	}
-
-	/**
-	 * The same, as the broker behind this sink spells it. On AMQP an
-	 * interface name with dots in it is several words of the routing
-	 * key, which a subscriber on {@code <prefix>.#} hears all the same.
-	 */
-	static List<String> topicsFor(Channels channels, String prefix, Set<String> interfaceNames) {
-		if (interfaceNames.isEmpty()) {
-			return List.of(channels.under(prefix, UNKNOWN_INTERFACE));
-		}
-		return interfaceNames.stream().map(name -> channels.under(prefix, name)).toList();
-	}
-
-	/** Topic segment for events whose interface is not knowable. */
-	static final String UNKNOWN_INTERFACE = "_unknown";
-
-	/** Topic on which subscribers are told to take a fresh snapshot. */
-	static final String RESYNC_TOPIC_SEGMENT = "_resync";
-
 	/** Set while this sink still owes its subscribers a resync signal. */
 	private final AtomicBoolean pendingResync = new AtomicBoolean();
 
@@ -151,7 +112,9 @@ public final class MqttEventSink implements EventSink {
 		List<String> topics;
 		try {
 			payload = toMessage(event);
-			topics = topicsFor(channels, topicPrefix, EventDocument.interfaceNamesOf(event, lookup));
+			// One channel, the operation's: the events are a stream every
+			// receiver shares (#252), and a receiver filters what it hears.
+			topics = List.of(topicPrefix);
 		} catch (Exception renderFailure) {
 			// Nothing was put on the wire, and a consumer cannot tell the
 			// difference between an event it never got and one that never
@@ -198,14 +161,12 @@ public final class MqttEventSink implements EventSink {
 		if (!pendingResync.get()) {
 			return;
 		}
-		String topic = channels.under(topicPrefix, RESYNC_TOPIC_SEGMENT);
+		String topic = topicPrefix;
 		try {
-			// An envelope with no payload rather than an empty message:
-			// the topic is what subscribers act on, but a message that
-			// says what it is can be read by anything that reads
-			// CloudEvents — including a transport that has no topics.
+			// The end of the stream, as for any broadcast: every receiver
+			// takes a fresh snapshot and goes on listening (#124, #252).
 			publisher.publish(topic, new CloudEventCodec.Message(
-					CloudEvents.newEnvelope(CloudEvents.TYPE_RESYNC, eventSource, null), null));
+					CloudEvents.newEnvelope(CloudEvents.TYPE_BROADCAST_END, eventSource, null), null));
 			pendingResync.set(false);
 			LOG.info("[DDSR-MQTT] told subscribers on " + topic + " to take a fresh snapshot");
 		} catch (Exception stillFailing) {
@@ -227,10 +188,13 @@ public final class MqttEventSink implements EventSink {
 	 * in one JSON document.
 	 */
 	private CloudEventCodec.Message toMessage(ServiceEvent event) throws IOException {
-		List<EObject> roots = EventDocument.roots(event, lookup);
+		ServiceEvent value = (ServiceEvent) EventDocument.roots(event, lookup).get(0);
+		ServiceInvocationResult result = Invocations.result(value);
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		XmiCodec.write(out, rsObjects, roots);
-		return new CloudEventCodec.Message(CloudEvents.envelopeFor(event, eventSource, XMI_CONTENT_TYPE),
+		XmiCodec.write(out, rsObjects, XMI_CONTENT_TYPE, ResultDocument.roots(result));
+		return new CloudEventCodec.Message(
+				CloudEvents.describing(CloudEvents.newEnvelope(CloudEvents.TYPE_BROADCAST, eventSource,
+						XMI_CONTENT_TYPE), result),
 				out.toByteArray());
 	}
 

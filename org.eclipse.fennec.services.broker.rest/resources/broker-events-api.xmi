@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="ddsr-broker" version="1.0.0">
+    <implementations name="ddsr-broker-events" version="1.0.0"
+        implementationId="ddsr-broker:events:1.0.0"
+        description="The broker's lifecycle events, served from this document by the generic REST distribution as a broadcast over Server-Sent Events."
+        serviceInterfaces="/1">
+      <flavors xsi:type="services:RestFlavor" name="broker-events-rest" kind="REST"
+          basePath="/events" contentTypes="application/xml">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="events"
+            method="GET" path="/" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.0"/>
+      </flavors>
+    </implementations>
+  </services:ServiceProvider>
+
+  <services:ServiceInterface name="BrokerEvents" version="1.0.0"
+      description="What changes in the registry, as it happens, for everyone who listens. A consumer that falls behind, or connects anew, takes a fresh snapshot of what it looks up instead of catching up on events (FR-Sync-Reconnect).">
+    <security authenticated="true"/>
+    <operations name="events"
+        description="Every lifecycle change of a registration: registered, modified, unregistering, retired, an upgrade available. A stream every receiver shares; the broker ends it when an event could not be delivered, and every receiver takes a fresh snapshot. A receiver that says which consumer it is (the request parameter consumerId) ties the connection to that consumer's session.">
+      <returnValue name="result" upperBound="-1" delivery="BROADCAST"
+          description="The event, with the reference, implementation, provider and contracts it is about.">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/services/1.0#//ServiceEvent"/>
+      </returnValue>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

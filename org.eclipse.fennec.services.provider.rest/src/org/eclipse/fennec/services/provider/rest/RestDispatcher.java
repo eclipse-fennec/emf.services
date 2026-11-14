@@ -24,11 +24,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EClass;
@@ -52,6 +55,7 @@ import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.DeclaredErrors;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.invocation.AsyncReturns;
+import org.eclipse.fennec.services.invocation.BroadcastReceivers;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.invocation.PushStreams;
@@ -209,7 +213,27 @@ public class RestDispatcher {
 	}
 
 	private static Function<String, List<String>> query(UriInfo uriInfo) {
-		return name -> uriInfo.getQueryParameters().get(name);
+		return new QueryParameters(uriInfo.getQueryParameters());
+	}
+
+	/** The query of a request, which can also say what is in it — for a broadcast's receiver. */
+	record QueryParameters(Map<String, List<String>> all) implements Function<String, List<String>> {
+
+		@Override
+		public List<String> apply(String name) {
+			return all.get(name);
+		}
+
+		/** The first value of every parameter. */
+		Map<String, String> firstValues() {
+			Map<String, String> first = new LinkedHashMap<>();
+			all.forEach((name, values) -> {
+				if (values != null && !values.isEmpty()) {
+					first.put(name, values.get(0));
+				}
+			});
+			return first;
+		}
 	}
 
 	/**
@@ -361,7 +385,14 @@ public class RestDispatcher {
 		}
 
 		if (operation.getReturnValue() != null && operation.getReturnValue().getDelivery() == Delivery.BROADCAST) {
-			return Response.ok(broadcastOf(operationFlavor, operation).receiver(), RestStreams.MEDIA_TYPE).build();
+			// The receiver's own parameters, beside the contract: what it
+			// says about itself, for a service that wants to know.
+			Map<String, String> receiver = queryValues instanceof QueryParameters query ? query.firstValues()
+					: Map.of();
+			return Response.ok(broadcastOf(operationFlavor, operation).receiver(
+					() -> toReceivers(receivers -> receivers.joined(operation.getName(), receiver)),
+					() -> toReceivers(receivers -> receivers.left(operation.getName(), receiver))),
+					RestStreams.MEDIA_TYPE).build();
 		}
 		ServiceObjects<Object> serviceObjects = implementations.get();
 		if (serviceObjects == null) {
@@ -467,6 +498,24 @@ public class RestDispatcher {
 				return new String(CloudEventCodec.writeStructured(envelope, document(result, contentType)), UTF_8);
 			}
 		};
+	}
+
+	/** Tells the service about a receiver, where it wants to know — and never fails a receiver for it. */
+	private void toReceivers(Consumer<BroadcastReceivers> tell) {
+		ServiceObjects<Object> serviceObjects = implementations.get();
+		Object service = serviceObjects == null ? null : serviceObjects.getService();
+		if (service == null) {
+			return;
+		}
+		try {
+			if (service instanceof BroadcastReceivers receivers) {
+				tell.accept(receivers);
+			}
+		} catch (RuntimeException failed) {
+			LOG.log(Level.WARNING, "[DDSR] the implementation of " + contract + " failed on a receiver", failed);
+		} finally {
+			release(serviceObjects, service);
+		}
 	}
 
 	private Flow.Publisher<Object> broadcastSource(ServiceOperation operation) {

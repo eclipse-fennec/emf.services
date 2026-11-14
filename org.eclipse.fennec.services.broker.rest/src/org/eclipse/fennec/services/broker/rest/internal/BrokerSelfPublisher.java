@@ -143,7 +143,7 @@ public final class BrokerSelfPublisher {
 	void activate(Config config) {
 		this.config = config;
 		for (String document : List.of("broker-catalog-api.xmi", "broker-implementations-api.xmi",
-				"broker-lookup-api.xmi")) {
+				"broker-lookup-api.xmi", "broker-events-api.xmi")) {
 			try {
 				announce(document, URI.create(config.public_url()));
 			} catch (Throwable failure) {

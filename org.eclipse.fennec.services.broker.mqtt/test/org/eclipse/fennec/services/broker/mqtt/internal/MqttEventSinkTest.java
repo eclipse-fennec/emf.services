@@ -179,37 +179,28 @@ class MqttEventSinkTest {
 
 	// ------------------------------------------------------------------
 
+	/** One channel, the operation's: the events are a stream every receiver shares (#252). */
 	@Test
-	void anEventGoesToATopicPerInterface() {
+	void everyEventGoesToTheOneChannel() {
 		sink().publish(registered("ref-1", "Payment"));
-
-		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/Payment");
-	}
-
-	@Test
-	void aWithdrawalWithoutAResolvableInterfaceGoesToTheUnknownTopic() {
 		sink().publish(unregistering("ref-gone"));
 
-		assertThat(sent).extracting(Published::topic)
-				.as("dropping it would leave consumers bound to a dead service")
-				.containsExactly("ddsr/events/" + MqttEventSink.UNKNOWN_INTERFACE);
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events", "ddsr/events");
 	}
 
 	/**
 	 * A withdrawal as the broker emits it since D1 (DECISIONS_PARITY): the
 	 * reference is a detached copy whose provider subtree carries exactly
-	 * the withdrawn implementation. The lookup no longer resolves it — the
-	 * self-contained subtree must still route to the real topic.
+	 * the withdrawn implementation — and that subtree travels with it.
 	 */
 	@Test
-	void aSelfContainedWithdrawalGoesToTheInterfaceTopicNotToUnknown() {
+	void aSelfContainedWithdrawalCarriesTheInterface() {
 		ServiceEvent event = registered("ref-42", "Payment");
 		event.setType(ServiceEventType.UNREGISTERING);
 		lookup.impls.clear();
 
 		sink().publish(event);
 
-		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/Payment");
 		assertThat(documentOf(sent.get(0)))
 				.contains("type=\"UNREGISTERING\"")
 				.contains("Payment");
@@ -231,17 +222,15 @@ class MqttEventSinkTest {
 	}
 
 	@Test
-	void theEnvelopeNamesTheTransitionAndTheReference() {
+	void theEnvelopeSaysItIsAValueOfTheBroadcast() {
 		sink().publish(registered("ref-1", "Payment"));
 
 		CloudEvent envelope = envelopeOf(sent.get(0));
 		assertThat(envelope.getSpecVersion()).isEqualTo("1.0");
-		assertThat(envelope.getType()).isEqualTo("org.eclipse.fennec.services.registered");
+		assertThat(envelope.getType()).isEqualTo("org.eclipse.fennec.services.broadcast");
 		assertThat(envelope.getSource()).isEqualTo("/test/broker");
-		assertThat(envelope.getSubject())
-				.as("the reference id, so a subscriber can match an event whose topic could not"
-						+ " name the interface")
-				.isEqualTo("ref-1");
+		assertThat(documentOf(sent.get(0))).as("the result holds the event")
+				.contains("ServiceInvocationResult").contains("ServiceEvent");
 		assertThat(envelope.getDatacontenttype())
 				.as("the payload says what it is, which is what #100 made a choice")
 				.isEqualTo("application/xml");
@@ -249,12 +238,12 @@ class MqttEventSinkTest {
 	}
 
 	@Test
-	void theResyncMessageSaysWhatItIs() {
+	void theResyncIsTheEndOfTheBroadcast() {
 		sink().resyncRequired();
 
-		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/_resync");
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events");
 		CloudEvent envelope = envelopeOf(sent.get(0));
-		assertThat(envelope.getType()).isEqualTo("org.eclipse.fennec.services.resync");
+		assertThat(envelope.getType()).isEqualTo("org.eclipse.fennec.services.broadcast.end");
 		assertThat(CloudEventCodec.readStructured(
 				sent.get(0).payload().getBytes(StandardCharsets.UTF_8)).data())
 				.as("there is nothing to re-read here — the snapshot is")
@@ -280,7 +269,7 @@ class MqttEventSinkTest {
 
 		custom.publish(registered("ref-1", "Payment"));
 
-		assertThat(sent).extracting(Published::topic).containsExactly("acme/ddsr/Payment");
+		assertThat(sent).extracting(Published::topic).containsExactly("acme/ddsr");
 	}
 
 	@Test
@@ -289,7 +278,7 @@ class MqttEventSinkTest {
 
 		fallback.publish(registered("ref-1", "Payment"));
 
-		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/Payment");
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events");
 	}
 
 	// ------------------------------------------------------------------
@@ -318,7 +307,7 @@ class MqttEventSinkTest {
 		sink.publish(registered("ref-2", "Payment"));
 
 		assertThat(sent).extracting(Published::topic)
-				.containsExactly("ddsr/events/_resync", "ddsr/events/Payment");
+				.containsExactly("ddsr/events", "ddsr/events");
 		assertThat(sink.owesResync()).isFalse();
 	}
 
@@ -361,7 +350,7 @@ class MqttEventSinkTest {
 
 		sink.resyncRequired();
 
-		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/_resync");
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events");
 		assertThat(sink.owesResync()).isFalse();
 	}
 
@@ -389,7 +378,7 @@ class MqttEventSinkTest {
 		sink.publish(registered("ref-2", "Payment"));
 
 		assertThat(sent).extracting(Published::topic)
-				.containsExactly("ddsr/events/_resync", "ddsr/events/Payment", "ddsr/events/Payment");
+				.containsExactly("ddsr/events", "ddsr/events", "ddsr/events");
 	}
 
 	@Test
@@ -399,7 +388,7 @@ class MqttEventSinkTest {
 
 		custom.resyncRequired();
 
-		assertThat(sent).extracting(Published::topic).containsExactly("acme/ddsr/_resync");
+		assertThat(sent).extracting(Published::topic).containsExactly("acme/ddsr");
 	}
 
 	@Test
@@ -420,6 +409,6 @@ class MqttEventSinkTest {
 		sink.publish(registered("ref-1", "Payment"));
 
 		assertThat(sink.owesResync()).isFalse();
-		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events/Payment");
+		assertThat(sent).extracting(Published::topic).containsExactly("ddsr/events");
 	}
 }

@@ -15,6 +15,9 @@ package org.eclipse.fennec.services.client.rest.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,12 +26,21 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.FlavorKind;
+import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
+import org.eclipse.fennec.services.ServiceImplementation;
+import org.eclipse.fennec.services.ServiceInvocationResult;
+import org.eclipse.fennec.services.ServiceProvider;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.cloudevents.CloudEvents;
+import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.invocation.ResultDocument;
+import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -46,14 +58,6 @@ import io.cloudevents.model.ce.CloudEvent;
 class RestEventSourceDeliveryTest {
 
 	private static final String NS = ServicesPackage.eNS_URI;
-
-	private static final String EVENT_XMI = """
-			<?xml version="1.0" encoding="UTF-8"?>
-			<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:services="%s">
-			  <services:ServiceEvent type="UNREGISTERING" reference="/1"/>
-			  <services:ServiceReference id="ref-42"/>
-			</xmi:XMI>
-			""".formatted(NS);
 
 	private static final class ResourceSetObjects implements ComponentServiceObjects<ResourceSet> {
 
@@ -99,41 +103,80 @@ class RestEventSourceDeliveryTest {
 		return source;
 	}
 
-	private static String message(String document, String type) {
-		CloudEvent envelope = CloudEvents.newEnvelope(type, "/test/broker", "application/xml");
-		return new String(CloudEventCodec.writeStructured(envelope,
-				document.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+	/** An event about ref-42, of a provider whose one implementation speaks the flavor given. */
+	private static ServiceEvent event(FlavorKind flavor) {
+		ServicesFactory f = ServicesFactory.eINSTANCE;
+		ServiceImplementation implementation = f.createServiceImplementation();
+		implementation.setName("payments");
+		RestFlavor rest = f.createRestFlavor();
+		rest.setName("rest");
+		rest.setKind(flavor);
+		implementation.getFlavors().add(rest);
+		ServiceProvider provider = f.createServiceProvider();
+		provider.setName("payments-java");
+		provider.getImplementations().add(implementation);
+		org.eclipse.fennec.services.ServiceReference reference = f.createServiceReference();
+		reference.setId("ref-42");
+		reference.setProvider(provider);
+		ServiceEvent event = f.createServiceEvent();
+		event.setType(ServiceEventType.UNREGISTERING);
+		event.setReference(reference);
+		return event;
 	}
 
-	private static String lifecycleMessage(String document) {
-		return message(document, CloudEvents.typeOf(ServiceEventType.UNREGISTERING));
+	/** A value of the broker's broadcast, written the way the broker writes it. */
+	private static String message(ServiceEvent event, String type) {
+		ServiceInvocationResult result = Invocations.result(event);
+		ByteArrayOutputStream document = new ByteArrayOutputStream();
+		try {
+			XmiCodec.write(document, new ResourceSetObjects(), "application/xml", ResultDocument.roots(result));
+		} catch (IOException unwritable) {
+			throw new UncheckedIOException(unwritable);
+		}
+		CloudEvent envelope = CloudEvents.newEnvelope(type, "/test/broker", "application/xml");
+		return new String(CloudEventCodec.writeStructured(envelope, document.toByteArray()), StandardCharsets.UTF_8);
+	}
+
+	private static String broadcast(ServiceEvent event) {
+		return message(event, CloudEvents.TYPE_BROADCAST);
 	}
 
 	@Test
-	void theDocumentInsideTheEnvelopeBecomesAServiceEvent() {
-		source().deliver(handler, lifecycleMessage(EVENT_XMI));
+	void theValueOfTheBroadcastBecomesAServiceEvent() {
+		source().deliver(handler, broadcast(event(FlavorKind.REST)));
 
 		assertThat(received).hasSize(1);
 		assertThat(received.get(0).getType()).isEqualTo(ServiceEventType.UNREGISTERING);
 		assertThat(received.get(0).getReference().getId()).isEqualTo("ref-42");
+		assertThat(received.get(0).getReference().getProvider().getName())
+				.as("what the event is about travels with it").isEqualTo("payments-java");
+	}
+
+	/** The events are one stream every receiver shares; the receiver filters (#252). */
+	@Test
+	void anEventAboutAServiceThisConsumerCannotCallIsNotDelivered() {
+		RestEventSource source = source();
+		source.flavors = "REST";
+
+		source.deliver(handler, broadcast(event(FlavorKind.MQTT)));
+		source.deliver(handler, broadcast(event(FlavorKind.REST)));
+
+		assertThat(received).hasSize(1);
 	}
 
 	@Test
 	void aFrameThatIsNotACloudEventIsSkippedWithoutEndingTheStream() {
 		RestEventSource source = source();
 
-		source.deliver(handler, EVENT_XMI);
-		source.deliver(handler, lifecycleMessage(EVENT_XMI));
+		source.deliver(handler, "<not-a-cloud-event/>");
+		source.deliver(handler, broadcast(event(FlavorKind.REST)));
 
-		assertThat(received)
-				.as("a bare document is no longer the wire shape, and one bad frame must not"
-						+ " cost the next good one")
-				.hasSize(1);
+		assertThat(received).as("one bad frame must not cost the next good one").hasSize(1);
 	}
 
 	@Test
-	void anEventOfAForeignTypeIsNotDelivered() {
-		source().deliver(handler, message(EVENT_XMI, "com.example.something.happened"));
+	void aMessageOfAnotherTypeIsNotDelivered() {
+		source().deliver(handler, message(event(FlavorKind.REST), "com.example.something.happened"));
 
 		assertThat(received).isEmpty();
 	}
@@ -141,9 +184,8 @@ class RestEventSourceDeliveryTest {
 	@Test
 	void anEnvelopeWithoutItsDocumentIsNotDelivered() {
 		String withoutPayload = new String(CloudEventCodec.writeStructured(
-				CloudEvents.newEnvelope(CloudEvents.typeOf(ServiceEventType.REGISTERED),
-						"/test/broker", "application/xml"),
-				null), StandardCharsets.UTF_8);
+				CloudEvents.newEnvelope(CloudEvents.TYPE_BROADCAST, "/test/broker", "application/xml"), null),
+				StandardCharsets.UTF_8);
 
 		source().deliver(handler, withoutPayload);
 

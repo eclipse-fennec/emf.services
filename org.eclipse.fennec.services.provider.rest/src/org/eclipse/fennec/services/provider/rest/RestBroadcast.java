@@ -50,6 +50,13 @@ final class RestBroadcast {
 	/** How many values a connection holds that it has not written yet. */
 	static final int BUFFER = 256;
 
+	/**
+	 * How long a connection may stay silent before it gets an SSE comment:
+	 * a proxy keeps it open, and a receiver that went away without a word
+	 * is noticed by the failed write instead of at the next value.
+	 */
+	static final long KEEPALIVE_MILLIS = 10_000;
+
 	private final Supplier<Flow.Publisher<Object>> source;
 
 	private final SseStream.Encoder encoder;
@@ -81,13 +88,25 @@ final class RestBroadcast {
 
 	/** One more receiver: the body of its answer. */
 	StreamingOutput receiver() {
+		return receiver(() -> {
+		}, () -> {
+		});
+	}
+
+	/**
+	 * One more receiver, and who to tell when it comes and when it goes —
+	 * the service, where it wants to know ({@code BroadcastReceivers}).
+	 */
+	StreamingOutput receiver(Runnable joined, Runnable left) {
 		return out -> {
 			Receiver receiver = new Receiver();
 			join(receiver);
+			joined.run();
 			try {
 				receiver.write(out);
 			} finally {
 				leave(receiver);
+				left.run();
 			}
 		};
 	}
@@ -237,11 +256,19 @@ final class RestBroadcast {
 					String frame;
 					boolean closing;
 					synchronized (this) {
-						while (buffer.isEmpty() && last == null) {
-							wait();
+						long waited = 0;
+						while (buffer.isEmpty() && last == null && waited < KEEPALIVE_MILLIS) {
+							long since = System.nanoTime();
+							wait(KEEPALIVE_MILLIS - waited);
+							waited += (System.nanoTime() - since) / 1_000_000;
 						}
-						closing = buffer.isEmpty();
-						frame = closing ? last : buffer.pollFirst();
+						if (buffer.isEmpty() && last == null) {
+							closing = false;
+							frame = ": keepalive\n\n";
+						} else {
+							closing = buffer.isEmpty();
+							frame = closing ? last : buffer.pollFirst();
+						}
 						notifyAll();
 					}
 					out.write(frame.getBytes(UTF_8));

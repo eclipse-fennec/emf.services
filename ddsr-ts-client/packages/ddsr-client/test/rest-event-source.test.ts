@@ -14,7 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ServiceEvent } from '@ddsr/model';
 import { RestEventSource } from '../src/events/rest-event-source';
-import { lifecycleMessage, UNREGISTERING_XMI } from './fixtures';
+import { lifecycleMessage, UNREGISTERING_XMI, registeredEventXmi } from './fixtures';
 
 function sseFrame(payload: string): string {
   const data = payload.split('\n').map(l => `data: ${l}`).join('\n');
@@ -54,6 +54,21 @@ async function until(condition: () => boolean, timeoutMillis = 3000): Promise<vo
 }
 
 describe('RestEventSource', () => {
+  // #252: the events are one stream every receiver shares; the receiver
+  // filters what it cannot call.
+  it('does not deliver an event about a service this consumer cannot call', async () => {
+    const mqttOnly = registeredEventXmi('Payment', 'ref-9').replace('kind="REST"', 'kind="MQTT"');
+    const { fetchFn } = streamingFetch([[sseFrame(lifecycleMessage(mqttOnly)), sseFrame(lifecycleMessage(UNREGISTERING_XMI))]]);
+    const events: ServiceEvent[] = [];
+    const source = new RestEventSource({
+      brokerUrl: 'http://broker.test/ddsr/rest', flavors: 'REST', reconnectSeconds: 10, fetchFn, log: () => undefined,
+    });
+    const subscription = source.open({ onStreamEstablished: () => undefined, onEvent: event => { events.push(event); } });
+    await until(() => events.length >= 1);
+    await subscription.close();
+    expect(events.map(event => event.reference?.id)).toEqual(['ref-42']);
+  });
+
   it('signals establish before delivering events, then decodes them', async () => {
     const { fetchFn, urls } = streamingFetch([[sseFrame(lifecycleMessage(UNREGISTERING_XMI))]]);
     const order: string[] = [];
@@ -83,7 +98,7 @@ describe('RestEventSource', () => {
     expect(events[0].type).toBe('UNREGISTERING');
     expect(events[0].reference?.id).toBe('ref-42');
     expect(events[0].reasonCode).toBe('WITHDRAWN');
-    expect(urls[0]).toBe('http://broker.test/ddsr/rest/events?flavors=REST');
+    expect(urls[0]).toBe('http://broker.test/ddsr/rest/events');
   });
 
   it('awaits the establish handler before pumping (snapshot-before-events)', async () => {

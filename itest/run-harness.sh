@@ -217,7 +217,7 @@ wait_for_line "$WORK/payment-java.log" "published payments-java" 60
 wait_for_line "$WORK/sse-tap.log" "specversion" 60
 SSE_FRAME=$(grep -m1 '^data: ' "$WORK/sse-tap.log" | sed 's/^data: //')
 for expected in '"specversion":"1.0"' \
-                '"type":"org.eclipse.fennec.services.registered"' \
+                '"type":"org.eclipse.fennec.services.broadcast"' \
                 '"datacontenttype":"application/xml"' \
                 '"data":'; do
   case "$SSE_FRAME" in
@@ -225,8 +225,12 @@ for expected in '"specversion":"1.0"' \
     *) echo "SCENARIO A FAILED: the SSE frame carries no $expected"; echo "$SSE_FRAME"; exit 1 ;;
   esac
 done
-grep -q "^event: ddsr-service-event" "$WORK/sse-tap.log" \
-  || { echo "SCENARIO A FAILED: the frozen SSE event name is gone"; exit 1; }
+# The events are BrokerEvents.events(), a broadcast (#252): every value is
+# a 'value' event, its data the CloudEvent the broadcast is over messaging.
+grep -q "^event: value" "$WORK/sse-tap.log" \
+  || { echo "SCENARIO A FAILED: the SSE stream carries no value of the broadcast"; exit 1; }
+grep -q "ServiceInvocationResult" "$WORK/sse-tap.log" \
+  || { echo "SCENARIO A FAILED: the broadcast's value is not a result"; exit 1; }
 echo "  ✓ sse-frame-is-a-cloud-event: $(echo "$SSE_FRAME" | cut -c1-96)…"
 
 (cd "$TS/examples/payment" && export_client harness-probe-ts \

@@ -13,7 +13,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { ServiceEvent } from '@ddsr/model';
-import { lifecycleTypeOf, newEnvelope, writeStructured } from '@ddsr/client';
+import { CE_TYPE_BROADCAST, CE_TYPE_BROADCAST_END, newEnvelope, writeStructured } from '@ddsr/client';
 import { MqttEventSource } from '../src/mqtt-event-source';
 import type { MqttClientLike } from '../src/mqtt-event-source';
 
@@ -25,12 +25,22 @@ const EVENT_XMI = `<?xml version="1.0" encoding="UTF-8"?>
 </xmi:XMI>`;
 
 /**
- * The wire shape since #101: the document inside a CloudEvent in
+ * The wire shape since #252: a value of the broker's broadcast - the
+ * event as the value of a result, inside a CloudEvent `broadcast` in
  * structured mode, built with the writer the broker uses.
  */
 function lifecycleMessage(document: string): Uint8Array {
-  const envelope = newEnvelope(lifecycleTypeOf('UNREGISTERING'), '/test/broker', 'application/xml');
-  return writeStructured(envelope, document);
+  const wrapped = document
+    .replace('<xmi:XMI ', '<xmi:XMI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ')
+    .replace(/<services:ServiceEvent\b([^>]*?)\/>/,
+      (_whole, attributes) => '<services:ServiceInvocationResult><value xsi:type="services:EObjectProperty" name="result">'
+        + `<value xsi:type="services:ServiceEvent"${attributes}/></value></services:ServiceInvocationResult>`);
+  return writeStructured(newEnvelope(CE_TYPE_BROADCAST, '/test/broker', 'application/xml'), wrapped);
+}
+
+/** The end of the broadcast: the broker lost an event (#124). */
+function endOfBroadcast(): Uint8Array {
+  return writeStructured(newEnvelope(CE_TYPE_BROADCAST_END, '/test/broker'), undefined);
 }
 
 class FakeMqttClient implements MqttClientLike {
@@ -154,7 +164,7 @@ describe('MqttEventSource', () => {
     await subscription.close();
   });
 
-  it('decodes the same self-contained payload as SSE, from any topic incl. _unknown', async () => {
+  it('decodes the same self-contained payload as SSE, from any topic under the prefix', async () => {
     const client = new FakeMqttClient();
     const events: ServiceEvent[] = [];
     const subscription = sourceWith(client).open({
@@ -240,7 +250,7 @@ describe('MqttEventSource', () => {
   // The broker admitting a loss (#124)
   // ------------------------------------------------------------------
 
-  it('a message on <prefix>/_resync asks for a fresh snapshot, not for decoding', async () => {
+  it('the end of the broadcast asks for a fresh snapshot, not for decoding', async () => {
     const client = new FakeMqttClient();
     const seen: string[] = [];
     const subscription = sourceWith(client).open({
@@ -252,14 +262,14 @@ describe('MqttEventSource', () => {
     await settle();
     seen.length = 0;
 
-    client.emit('message', 'ddsr/events/_resync', new Uint8Array(0));
+    client.emit('message', 'ddsr/events', endOfBroadcast());
     await settle();
 
     expect(seen).toEqual(['snapshot']);
     await subscription.close();
   });
 
-  it('the resync topic follows the configured prefix', async () => {
+  it('the end of the broadcast is read on the configured prefix too', async () => {
     const client = new FakeMqttClient();
     const seen: string[] = [];
     const subscription = sourceWith(client, 'acme/ddsr').open({
@@ -271,31 +281,10 @@ describe('MqttEventSource', () => {
     await settle();
     seen.length = 0;
 
-    client.emit('message', 'acme/ddsr/_resync', new Uint8Array(0));
+    client.emit('message', 'acme/ddsr', endOfBroadcast());
     await settle();
 
     expect(seen).toEqual(['snapshot']);
-    await subscription.close();
-  });
-
-  it('an interface that merely ends in _resync is not the resync topic', async () => {
-    const client = new FakeMqttClient();
-    const seen: string[] = [];
-    const subscription = sourceWith(client).open({
-      onStreamEstablished: () => seen.push('snapshot'),
-      onEvent: () => seen.push('event'),
-    });
-    await settle();
-    client.emit('connect');
-    await settle();
-    seen.length = 0;
-
-    // A contract named "Payment_resync" is a service, not a signal. The
-    // segment has to be the whole last one.
-    client.emit('message', 'ddsr/events/Payment_resync', lifecycleMessage(EVENT_XMI));
-    await settle();
-
-    expect(seen).toEqual(['event']);
     await subscription.close();
   });
 
@@ -311,8 +300,8 @@ describe('MqttEventSource', () => {
     await settle();
     seen.length = 0;
 
-    client.emit('message', 'ddsr/events/_resync', new Uint8Array(0));
-    client.emit('message', 'ddsr/events/Payment', lifecycleMessage(EVENT_XMI));
+    client.emit('message', 'ddsr/events', endOfBroadcast());
+    client.emit('message', 'ddsr/events', lifecycleMessage(EVENT_XMI));
     await settle();
 
     expect(seen).toEqual(['snapshot', 'event']);

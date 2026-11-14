@@ -215,7 +215,8 @@ class RestDispatcherStreamTest {
 		((StreamingOutput) response.getEntity()).write(body);
 		String events = body.toString(UTF_8);
 
-		assertThat(events).startsWith("event: error").contains("the sensor is gone").doesNotContain("event: end");
+		assertThat(events).startsWith(": connected").contains("event: error").contains("the sensor is gone")
+				.doesNotContain("event: end");
 		assertThat(service.out).hasValue(0);
 	}
 

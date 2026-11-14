@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.concurrent.Flow;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -96,8 +97,18 @@ final class SseStream implements StreamingOutput {
 					signals.add(END);
 				}
 			});
+			// The headers at once, and a comment whenever the stream stays
+			// quiet: a caller with a read timeout must not take a slow stream
+			// for a dead one (RestBroadcast does the same).
+			out.write(": connected\n\n".getBytes(UTF_8));
+			out.flush();
 			while (true) {
-				Object signal = signals.take();
+				Object signal = signals.poll(RestBroadcast.KEEPALIVE_MILLIS, TimeUnit.MILLISECONDS);
+				if (signal == null) {
+					out.write(": keepalive\n\n".getBytes(UTF_8));
+					out.flush();
+					continue;
+				}
 				if (signal instanceof Value value) {
 					send(out, RestStreams.VALUE, encoder.value(value.value()));
 					subscription.get().request(1);

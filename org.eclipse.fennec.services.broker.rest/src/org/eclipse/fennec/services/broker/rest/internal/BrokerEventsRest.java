@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
@@ -31,6 +32,8 @@ import org.eclipse.fennec.services.invocation.BroadcastReceivers;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 
 /**
  * The events contract ({@code BrokerEvents}), as a service the generic
@@ -66,11 +69,35 @@ public class BrokerEventsRest implements EventSink, BroadcastReceivers {
 	/** How many streams each consumer holds — reported when the first comes and the last goes (#127). */
 	private final Map<String, Integer> streamsPerConsumer = new ConcurrentHashMap<>();
 
-	@Reference
-	BrokerLookup broker;
+	/**
+	 * The broker this sink is part of. Dynamic and optional on purpose:
+	 * the broker binds its event sinks, this one among them, while it is
+	 * being built — a static reference back to it is a cycle Declarative
+	 * Services refuses. Until it is there, an event is copied without the
+	 * lookup ({@link EventDocument} falls back to what the event carries).
+	 */
+	private final AtomicReference<BrokerLookup> broker = new AtomicReference<>();
 
-	@Reference
-	BrokerSessions sessions;
+	/** The sessions a receiver's connection is tied to; the same broker, for the same reason. */
+	private final AtomicReference<BrokerSessions> sessions = new AtomicReference<>();
+
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setBroker(BrokerLookup lookup) {
+		broker.set(lookup);
+	}
+
+	void unsetBroker(BrokerLookup lookup) {
+		broker.compareAndSet(lookup, null);
+	}
+
+	@Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
+	void setSessions(BrokerSessions brokerSessions) {
+		sessions.set(brokerSessions);
+	}
+
+	void unsetSessions(BrokerSessions brokerSessions) {
+		sessions.compareAndSet(brokerSessions, null);
+	}
 
 	/** The contract's one operation: every event, from now on, for every receiver. */
 	public Flow.Publisher<ServiceEvent> events() {
@@ -88,7 +115,7 @@ public class BrokerEventsRest implements EventSink, BroadcastReceivers {
 		}
 		ServiceEvent value;
 		try {
-			List<EObject> roots = EventDocument.roots(event, broker);
+			List<EObject> roots = EventDocument.roots(event, broker.get());
 			value = (ServiceEvent) roots.get(0);
 		} catch (RuntimeException failure) {
 			LOG.warning("[DDSR] could not render an event: " + failure);
@@ -120,7 +147,10 @@ public class BrokerEventsRest implements EventSink, BroadcastReceivers {
 		String consumerId = parameters.get(CONSUMER_ID);
 		if (consumerId != null && !consumerId.isBlank()
 				&& streamsPerConsumer.merge(consumerId, 1, Integer::sum) == 1) {
-			sessions.consumerConnected(consumerId);
+			BrokerSessions bound = sessions.get();
+			if (bound != null) {
+				bound.consumerConnected(consumerId);
+			}
 		}
 	}
 
@@ -132,8 +162,9 @@ public class BrokerEventsRest implements EventSink, BroadcastReceivers {
 		}
 		Integer remaining = streamsPerConsumer.computeIfPresent(consumerId,
 				(id, count) -> count <= 1 ? null : count - 1);
-		if (remaining == null) {
-			sessions.consumerDisconnected(consumerId);
+		BrokerSessions bound = sessions.get();
+		if (remaining == null && bound != null) {
+			bound.consumerDisconnected(consumerId);
 		}
 	}
 

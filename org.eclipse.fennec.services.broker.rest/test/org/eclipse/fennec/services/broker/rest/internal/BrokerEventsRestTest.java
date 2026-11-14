@@ -35,13 +35,13 @@ class BrokerEventsRestTest {
 
 	private BrokerEventsRest events() {
 		BrokerEventsRest events = new BrokerEventsRest();
-		events.broker = (BrokerLookup) Proxy.newProxyInstance(getClass().getClassLoader(),
-				new Class<?>[] { BrokerLookup.class }, (self, method, args) -> null);
-		events.sessions = (BrokerSessions) Proxy.newProxyInstance(getClass().getClassLoader(),
+		events.setBroker((BrokerLookup) Proxy.newProxyInstance(getClass().getClassLoader(),
+				new Class<?>[] { BrokerLookup.class }, (self, method, args) -> null));
+		events.setSessions((BrokerSessions) Proxy.newProxyInstance(getClass().getClassLoader(),
 				new Class<?>[] { BrokerSessions.class }, (self, method, args) -> {
 					sessionCalls.add(method.getName() + " " + args[0]);
 					return null;
-				});
+				}));
 		return events;
 	}
 

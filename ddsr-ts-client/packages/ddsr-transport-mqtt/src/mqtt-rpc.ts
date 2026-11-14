@@ -58,7 +58,7 @@ import type { AmqpConnectOptions } from './amqp-client.js';
 import type { ServiceOperation } from '@ddsr/model';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_EXTENSION_REPLY_TO,
-  CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
+  CE_TYPE_BROADCAST, CE_TYPE_BROADCAST_END, CE_TYPE_INVOKE, CE_TYPE_INVOKE_REPLY,
   dataAsText, decodeInvocation, decodeResult, encodeFailure, encodeInvocation, encodeResult,
   newEnvelope, readStructured, writeStructured,
 } from '@ddsr/client';
@@ -354,6 +354,35 @@ export function encodeResponse(
   Object.assign(envelope.extensions, extensions);
   const document = failure !== undefined ? encodeFailure(failure, failureCode) : encodeResult(value);
   return writeStructured(envelope, document);
+}
+
+/**
+ * One value of a stream every receiver shares (#252), for the channel of
+ * its operation: a `broadcast` event holding a ServiceInvocationResult,
+ * the failure as the last one. The twin of the Java dispatcher's.
+ */
+export function encodeBroadcast(
+  source: string, value: unknown, failure?: string, opFlavor: OperationFlavorLike = {}, failureCode = 0,
+): Uint8Array {
+  const envelope = newEnvelope(CE_TYPE_BROADCAST, source, declaredContentType(opFlavor, 'produces'));
+  envelope.dataschema = DDSRPackage.eNS_URI;
+  const document = failure !== undefined ? encodeFailure(failure, failureCode) : encodeResult(value);
+  return writeStructured(envelope, document);
+}
+
+/** The message that says a broadcast is over; carries no document. */
+export function encodeBroadcastEnd(source: string): Uint8Array {
+  return writeStructured(newEnvelope(CE_TYPE_BROADCAST_END, source), undefined);
+}
+
+/** What a broadcast message is: a value, the failure that ends it, or its end. */
+export type BroadcastMessage = { end: true } | { end: false; value?: unknown; error?: string; code?: number };
+
+export function decodeBroadcast(payload: Uint8Array): BroadcastMessage | undefined {
+  const message = readStructured(payload);
+  if (message.attributes.type === CE_TYPE_BROADCAST_END) return { end: true };
+  if (message.attributes.type !== CE_TYPE_BROADCAST) return undefined;
+  return { end: false, ...decodeResult(dataAsText(message)) };
 }
 
 /** The inverse, for the consumer side. */

@@ -19,6 +19,8 @@ import {
   MqttRpcClientLike,
   connectMessaging,
   decodeRequest,
+  encodeBroadcast,
+  encodeBroadcastEnd,
   encodeResponse,
   qosFor,
   requestTopicFor,
@@ -93,15 +95,68 @@ export class MqttOperationServer {
         continue;
       }
       const topic = requestTopicFor(this.flavor, mqttOp);
+      if (String(mqttOp.operation?.returnValue?.delivery ?? '') === 'BROADCAST') {
+        // A stream every receiver shares (#252): nobody calls it, the
+        // handler is asked once and what it sends is published.
+        this.broadcast(operationName, topic, mqttOp);
+        continue;
+      }
       this.topicToOperation.set(topic, operationName);
       await this.client.subscribeAsync(topic, { qos: qosFor(this.flavor, mqttOp) });
       this.log(`serving ${operationName} on ${topic}`);
     }
   }
 
+  /**
+   * Publishes what the handler of a broadcast sends, on the operation's
+   * channel, at the source's pace - the next value is taken when the
+   * broker has the one before. The failure is the last value, then the
+   * end. Stopping the server returns the handler's stream.
+   */
+  private broadcast(operationName: string, topic: string, opFlavor: MessagingOperationFlavor): void {
+    const source = `/provider/${this.options.originLabel ?? operationName}`;
+    const qos = qosFor(this.flavor, opFlavor);
+    const run = async () => {
+      const client = this.client;
+      if (!client) return;
+      try {
+        const values = await this.handlers[operationName]({});
+        if (!isAsyncIterable(values)) {
+          throw new Error(`${operationName} broadcasts by its contract, and its handler returned no async iterable`);
+        }
+        const iterator = values[Symbol.asyncIterator]();
+        this.running.push(iterator);
+        for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
+          if (!this.client) return;
+          await client.publishAsync(topic, encodeBroadcast(source, next.value, undefined, opFlavor),
+            { qos, retain: false })
+            .catch(error => this.log(`a value of the broadcast on ${topic} was lost: ${String(error)}`));
+        }
+        await client.publishAsync(topic, encodeBroadcastEnd(source), { qos, retain: false });
+      } catch (error) {
+        if (!this.client) return;
+        this.log(`the broadcast on ${topic} ended with a failure: ${String(error)}`);
+        const declared = declaredRaisedBy(opFlavor.operation, error);
+        await client.publishAsync(topic, declared
+          ? encodeBroadcast(source, undefined, (error as Error).message || declared.name || 'declared error', opFlavor,
+            declaredCode(declared) ?? 0)
+          : encodeBroadcast(source, undefined, String(error), opFlavor), { qos, retain: false })
+          .catch(() => undefined);
+      }
+    };
+    this.log(`broadcasting ${operationName} on ${topic}`);
+    void run();
+  }
+
+  /** The streams of the broadcasts running now, returned when the server stops. */
+  private readonly running: AsyncIterator<unknown>[] = [];
+
   async stop(): Promise<void> {
     const client = this.client;
     this.client = undefined;
+    for (const values of this.running.splice(0)) {
+      void values.return?.(undefined);
+    }
     if (!client) return;
     for (const topic of this.topicToOperation.keys()) {
       await client.unsubscribeAsync(topic).catch(() => undefined);

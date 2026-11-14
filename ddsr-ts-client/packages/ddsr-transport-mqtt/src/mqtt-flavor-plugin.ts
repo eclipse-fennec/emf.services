@@ -25,6 +25,7 @@ import type {
 import {
   MqttRpcClientLike,
   connectMessaging,
+  decodeBroadcast,
   decodeResponse,
   isAmqpFlavor,
   namedReplyBaseFor,
@@ -38,7 +39,7 @@ import {
   topicSegment,
 } from './mqtt-rpc.js';
 import type { AmqpConnectOptions } from './amqp-client.js';
-import { SESSION, SESSION_LEASE, requestSession } from './messaging-session.js';
+import { BoundedQueue, DEFAULT_STREAM_BUFFER, SESSION, SESSION_LEASE, requestSession } from './messaging-session.js';
 import type { StreamBuffer } from './messaging-session.js';
 
 export interface MqttFlavorPluginOptions {
@@ -111,6 +112,9 @@ export class MqttFlavorPlugin implements FlavorPlugin {
   private readonly log: (message: string) => void;
   private readonly clientsByUrl = new Map<string, Promise<MqttRpcClientLike>>();
   private readonly pending = new Map<string, (payload: Uint8Array) => void>();
+  /** The broadcasts received now, by channel: every receiver of each (#252). */
+  private readonly broadcasts = new Map<string, Set<(payload: Uint8Array) => void>>();
+
   /** The sessions of the streams open now, by their id: every message of theirs, as it arrives. */
   private readonly streams = new Map<string, (payload: Uint8Array) => void>();
   private readonly subscribed = new Set<string>();
@@ -160,6 +164,12 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     // Subscribed once for every call this consumer will make on this
     // subtree; which answer belongs to which call is the envelope's
     // business, not the topic's.
+    if (String(operation.returnValue?.delivery ?? '') === 'BROADCAST') {
+      // A stream every receiver shares (#252): nothing is sent, the
+      // operation's channel is subscribed to when the first value is
+      // asked for.
+      return this.broadcastOf(operation, client, requestTopic, qos);
+    }
     await this.listenOn(client, subtree, separatorFor(mqttFlavor), qos);
     if (String(operation.returnValue?.delivery ?? '') === 'STREAM') {
       // A stream (Parameter.delivery): a session of the messaging
@@ -228,6 +238,65 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     }
   }
 
+  /**
+   * One receiver of a broadcast: what arrives waits in a buffer of this
+   * receiver, as large as `streamBuffer` says, and the contract's overflow
+   * policy decides when it is full - `DISCARD_OLDEST` drops the oldest,
+   * `FAIL` ends the stream once what it holds is taken. `BLOCK` cannot be
+   * done here (an mqtt.js or amqplib subscription cannot be held up on
+   * its own), so it fails too: nothing is lost unnoticed.
+   */
+  private async *broadcastOf(
+    operation: ServiceOperation, client: MqttRpcClientLike, channel: string, qos: 0 | 1 | 2,
+  ): AsyncGenerator<unknown> {
+    const contract = String(operation.returnValue?.overflow ?? 'FAIL');
+    const size = this.options.streamBuffer?.size ?? DEFAULT_STREAM_BUFFER.size;
+    const queue = new BoundedQueue<Uint8Array>(size, contract === 'DISCARD_OLDEST' ? 'DISCARD_OLDEST' : 'FAIL');
+    let overflowed = false;
+    let wake: (() => void) | undefined;
+    const deliver = (payload: Uint8Array) => {
+      if (!queue.push(payload)) overflowed = true;
+      const waiting = wake;
+      wake = undefined;
+      waiting?.();
+    };
+    let receivers = this.broadcasts.get(channel);
+    const first = !receivers;
+    if (!receivers) {
+      receivers = new Set();
+      this.broadcasts.set(channel, receivers);
+    }
+    receivers.add(deliver);
+    try {
+      if (first) await client.subscribeAsync(channel, { qos });
+      while (true) {
+        while (queue.length === 0 && !overflowed) {
+          await new Promise<void>(resolve => { wake = resolve; });
+        }
+        const payload = queue.shift();
+        if (payload === undefined) {
+          throw new Error(`the broadcast of ${operation.name} on ${channel} fell behind: its buffer of ${size}`
+            + ' values was full and the contract says a receiver that falls behind fails');
+        }
+        const message = decodeBroadcast(payload);
+        if (!message) continue;
+        if (message.end) return;
+        if (message.error !== undefined) {
+          const declared = declaredByCode(operation, message.code);
+          if (declared) throw new DdsrServiceError(message.error, declared);
+          throw new Error(`the broadcast of ${operation.name} failed: ${message.error}`);
+        }
+        yield message.value;
+      }
+    } finally {
+      receivers.delete(deliver);
+      if (receivers.size === 0) {
+        this.broadcasts.delete(channel);
+        await client.unsubscribeAsync(channel).catch(() => undefined);
+      }
+    }
+  }
+
   /** One subscription per reply subtree, taken the first time it is needed. */
   private async listenOn(
     client: MqttRpcClientLike, subtree: string, separator: string, qos: 0 | 1 | 2,
@@ -276,7 +345,12 @@ export class MqttFlavorPlugin implements FlavorPlugin {
     return clientPromise;
   }
 
-  private onMessage(_topic: string, payload: Uint8Array): void {
+  private onMessage(topic: string, payload: Uint8Array): void {
+    const receivers = this.broadcasts.get(topic);
+    if (receivers) {
+      for (const deliver of receivers) deliver(payload);
+      return;
+    }
     try {
       // A session's control messages carry no result: by the correlation
       // first, decoded as an answer only where one is awaited.

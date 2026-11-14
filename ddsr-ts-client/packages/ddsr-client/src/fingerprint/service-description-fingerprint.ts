@@ -122,7 +122,7 @@ function parameterExtensions(p: Parameter): string {
   const uri = eTypeUri(p.eType);
   if (uri) out += `|eType=${esc(uri)}`;
   out += boundFields(p, 'lower', 'upper');
-  out += deliveryField(p, 'delivery');
+  out += deliveryField(p, 'delivery', 'overflow');
   return out;
 }
 
@@ -134,20 +134,26 @@ function returnExtensions(returnValue: Parameter | undefined): string {
   if (uri) out += `|returnEType=${esc(uri)}`;
   out += boundFields(returnValue, 'returnLower', 'returnUpper');
   if (boolText(returnValue.optional) === 'true') out += '|returnOptional=true';
-  out += deliveryField(returnValue, 'returnDelivery');
+  out += deliveryField(returnValue, 'returnDelivery', 'returnOverflow');
   return out;
 }
 
 /**
  * How a slot's value arrives, and ONLY where that changes what is
- * exchanged: a STREAM. VALUE is the default and renders nothing, by the
+ * exchanged: a STREAM or a BROADCAST. A broadcast also renders its
+ * overflow policy, always, as returnOverflow (#252). VALUE is the default and renders nothing, by the
  * extension rule. PROMISE renders nothing either, on purpose - it says
  * when one value comes and not what it is, so a contract read
  * synchronously and one read as a promise are the same contract. The
  * Java twin is ServiceDescriptionFingerprint.deliveryField.
  */
-function deliveryField(slot: Parameter, name: string): string {
-  return String(slot.delivery ?? '') === 'STREAM' ? `|${name}=STREAM` : '';
+function deliveryField(slot: Parameter, name: string, overflowName: string): string {
+  const delivery = String(slot.delivery ?? '');
+  if (delivery === 'STREAM') return `|${name}=STREAM`;
+  if (delivery === 'BROADCAST') {
+    return `|${name}=BROADCAST|${overflowName}=${String(slot.overflow ?? 'FAIL')}`;
+  }
+  return '';
 }
 
 /**

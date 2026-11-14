@@ -50,7 +50,7 @@ I|<name>|version=<version>|status=<literal>
   M|<nsURI>|fingerprint=<fp1>        pinned payload models, sorted by nsURI, only where any
   X|<name>|type=|version=            exceptions, sorted by name
     pr|<tag>|<name>|value=<value>      exception properties, sorted
-  O|<name>|returnType=<type>[|returnEType=][|returnLower=|returnUpper=][|returnOptional=true][|returnDelivery=STREAM]
+  O|<name>|returnType=<type>[|returnEType=][|returnLower=|returnUpper=][|returnOptional=true][|returnDelivery=STREAM|BROADCAST[|returnOverflow=]]
     sec|authenticated=<bool>|scopes=<list>   only where the operation declares one
     p|<name>|type=|index=|optional=|defaultValue=[|eType=][|lower=|upper=][|delivery=STREAM]
     x|<exceptionName>                  op exceptions, sorted by name
@@ -114,6 +114,15 @@ moves — which is the reason the tag did not have to become `sd2`:
   well, on purpose:** it says when one value comes and not what it is,
   so a contract that promises its answer and one that returns it have
   the same fingerprint, and a consumer may read either synchronously.
+- `returnDelivery=BROADCAST|returnOverflow=<policy>` renders for a return
+  value that every receiver shares (#252). A broadcast is another
+  exchange than a stream — subscribed to, at the source's pace, with no
+  backpressure — so it is another contract. Its overflow policy
+  (`FAIL`, `DISCARD_OLDEST`, `BLOCK`) always renders with it, the default
+  `FAIL` included: what a receiver may lose is part of what it is
+  promised, and a contract that changes it is another contract. Only a
+  broadcast renders the policy; on every other slot it stays at its
+  default and silent.
 - The return slot's **name never renders**. `NamedElement` forces one on
   it (`result` by convention in both SDKs), but unlike a parameter name
   it has no wire role — it is not an argument-map key — and emitting it

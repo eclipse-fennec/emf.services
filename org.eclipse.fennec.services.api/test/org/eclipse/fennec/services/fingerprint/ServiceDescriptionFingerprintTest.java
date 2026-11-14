@@ -28,6 +28,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.services.Delivery;
+import org.eclipse.fennec.services.OverflowPolicy;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
@@ -482,6 +483,27 @@ class ServiceDescriptionFingerprintTest {
 				.contains("|returnDelivery=STREAM");
 		assertThat(ServiceDescriptionFingerprint.canonicalForm(sensor(Delivery.STREAM, true)))
 				.contains("|delivery=STREAM");
+	}
+
+	/** A broadcast is another exchange than a stream, and what it may lose is part of it (#252). */
+	@Test
+	void aBroadcastRendersItsOverflowPolicyAndBothMoveTheHash() {
+		ServiceInterface failing = sensor(Delivery.BROADCAST, false);
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(failing))
+				.as("the default policy renders as well: it is what the receiver is promised")
+				.contains("|returnDelivery=BROADCAST|returnOverflow=FAIL");
+		assertThat(ServiceDescriptionFingerprint.fingerprint(failing))
+				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(sensor(Delivery.STREAM, false)));
+
+		ServiceInterface latestWins = sensor(Delivery.BROADCAST, false);
+		latestWins.getOperations().get(0).getReturnValue().setOverflow(OverflowPolicy.DISCARD_OLDEST);
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(latestWins))
+				.contains("|returnDelivery=BROADCAST|returnOverflow=DISCARD_OLDEST");
+		assertThat(ServiceDescriptionFingerprint.fingerprint(latestWins))
+				.isNotEqualTo(ServiceDescriptionFingerprint.fingerprint(failing));
+		assertThat(ServiceDescriptionFingerprint.canonicalForm(sensor(Delivery.STREAM, false)))
+				.as("only a broadcast says what a receiver may lose")
+				.doesNotContain("verflow");
 	}
 
 	@Test

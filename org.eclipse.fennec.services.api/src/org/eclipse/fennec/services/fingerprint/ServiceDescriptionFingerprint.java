@@ -246,7 +246,7 @@ public final class ServiceDescriptionFingerprint {
 	static String parameterExtensions(Parameter parameter) {
 		String uri = eTypeUri(parameter.getEType());
 		return (uri != null ? "|eType=" + esc(uri) : "") + boundFields(parameter, "lower", "upper")
-				+ deliveryField(parameter, "delivery");
+				+ deliveryField(parameter, "delivery", "overflow");
 	}
 
 	/** The same fields for the return slot, under {@code return…} names. */
@@ -258,20 +258,29 @@ public final class ServiceDescriptionFingerprint {
 		return (uri != null ? "|returnEType=" + esc(uri) : "")
 				+ boundFields(returnValue, "returnLower", "returnUpper")
 				+ (returnValue.isOptional() ? "|returnOptional=true" : "")
-				+ deliveryField(returnValue, "returnDelivery");
+				+ deliveryField(returnValue, "returnDelivery", "returnOverflow");
 	}
 
 	/**
 	 * How a slot's value arrives, and ONLY where that changes what is
-	 * exchanged: a {@link Delivery#STREAM}. {@code VALUE} is the default
-	 * and renders nothing, by the extension rule. {@code PROMISE} renders
-	 * nothing either, on purpose — it says when one value comes and not
-	 * what it is, so a contract read synchronously and one read as a
-	 * promise are the same contract. The TypeScript twin is
-	 * {@code deliveryField} in service-description-fingerprint.ts.
+	 * exchanged: a {@link Delivery#STREAM} or a {@link Delivery#BROADCAST}.
+	 * A broadcast also renders its overflow policy, always, because what a
+	 * receiver may lose is part of what it is promised (#252), as
+	 * {@code returnOverflow} (or {@code overflow} on a parameter, which
+	 * the model does not allow but the fingerprint does not judge).
+	 * {@code VALUE} is the default and renders
+	 * nothing, by the extension rule. {@code PROMISE} renders nothing
+	 * either, on purpose — it says when one value comes and not what it
+	 * is, so a contract read synchronously and one read as a promise are
+	 * the same contract. The TypeScript twin is {@code deliveryField} in
+	 * service-description-fingerprint.ts.
 	 */
-	static String deliveryField(Parameter slot, String name) {
-		return slot.getDelivery() == Delivery.STREAM ? "|" + name + "=STREAM" : "";
+	static String deliveryField(Parameter slot, String name, String overflowName) {
+		return switch (slot.getDelivery()) {
+			case STREAM -> "|" + name + "=STREAM";
+			case BROADCAST -> "|" + name + "=BROADCAST|" + overflowName + "=" + slot.getOverflow().getName();
+			default -> "";
+		};
 	}
 
 	/**

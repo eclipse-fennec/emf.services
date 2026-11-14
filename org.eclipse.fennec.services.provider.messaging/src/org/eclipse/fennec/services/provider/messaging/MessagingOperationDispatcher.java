@@ -44,7 +44,6 @@ import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
-import org.eclipse.fennec.services.invocation.PushStreams;
 import org.eclipse.fennec.services.invocation.ServiceMethods;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -194,7 +193,7 @@ public final class MessagingOperationDispatcher {
 			ServiceInvocationResult result;
 			try {
 				Object value = invoke(placed, invocation);
-				if (PushStreams.asPublisher(value) != null) {
+				if (ServedStreams.publisherOf(value) != null) {
 					// A stream travels in a session (onSession), opened for an
 					// operation whose contract says STREAM; one answer cannot
 					// carry it.
@@ -358,7 +357,7 @@ public final class MessagingOperationDispatcher {
 			if (target == null) {
 				throw new IllegalStateException("no service implements this contract here");
 			}
-			values = PushStreams.asPublisher(ServiceMethods.require(target, operation.getName(), 0).invoke(target));
+			values = ServedStreams.publisherOf(ServiceMethods.require(target, operation.getName(), 0).invoke(target));
 			if (values == null) {
 				throw new IllegalStateException("the service answered " + spanNameOf(placed)
 						+ " with no stream, although its contract says it broadcasts");
@@ -468,7 +467,7 @@ public final class MessagingOperationDispatcher {
 							request.getSource() == null ? ClientOrigin.ANONYMOUS : request.getSource());
 			try {
 				Object value = invoke(placed, invocation);
-				values = PushStreams.asPublisher(value);
+				values = ServedStreams.publisherOf(value);
 				if (values == null) {
 					throw new IllegalStateException("the service answered " + spanNameOf(placed)
 							+ " with no stream, although its contract says it streams");

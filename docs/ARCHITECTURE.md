@@ -150,9 +150,12 @@ org.eclipse.fennec.services.broker.rest         # JAX-RS endpoints
                                    #   EventsResource stays hand-written: SSE is
                                    #     not a call
 
-org.eclipse.fennec.services.xmi.codec           # shared: server and client side
+org.eclipse.fennec.services.xmi.codec           # shared: server and client side, no transport
                                    #   XmiCodec (CSO<ResourceSet>)
                                    #   XmiBundle (multi-root wrapper)
+org.eclipse.fennec.services.xmi.codec.jakartars # the codec as Jakarta REST providers (#265),
+                                   #   so a messaging-only node needs no whiteboard
+                                   #   XmiHttpErrors (codec refusal → 400/413)
                                    #   XmiMessageBodyReader/Writer (EObject)
                                    #   XmiBundleMessageBodyReader/Writer
                                    #   DS components with constructor injection

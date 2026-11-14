@@ -42,7 +42,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
 
-import jakarta.ws.rs.WebApplicationException;
 
 /**
  * Pins the S3 hardening of {@link XmiCodec}: a wire document is
@@ -383,35 +382,6 @@ void aRequiredEnumAttributeIsAlwaysOnTheWire() throws IOException {
 		assertThat(out.toString(StandardCharsets.UTF_8))
 				.as("the required type must be on the wire, not implied by a default")
 				.contains("type=\"REGISTERED\"");
-	}
-
-	// ------------------------------------------------------------------
-	// The JAX-RS providers translate, the codec does not
-	// ------------------------------------------------------------------
-
-	@Test
-	void theProviderTurnsAnOversizedBodyInto413() {
-		XmiMessageBodyReader reader = new XmiMessageBodyReader(rsObjects);
-		// Valid XML, just too much of it. A buffer of zero bytes would be
-		// rejected as malformed at the first byte and would prove nothing
-		// about the size limit.
-		String oversized = paddedProvider(WireBody.MAX_BYTES + 1);
-
-		assertThatThrownBy(() -> reader.readFrom(null, null, null, null, null, utf8(oversized)))
-				.as("a status code belongs to the transport, and this is the transport")
-				.isInstanceOf(WebApplicationException.class)
-				.extracting(e -> ((WebApplicationException) e).getResponse().getStatus())
-				.isEqualTo(413);
-	}
-
-	@Test
-	void theProviderTurnsAMalformedBodyInto400() {
-		XmiMessageBodyReader reader = new XmiMessageBodyReader(rsObjects);
-
-		assertThatThrownBy(() -> reader.readFrom(null, null, null, null, null, utf8("<not-xml")))
-				.isInstanceOf(WebApplicationException.class)
-				.extracting(e -> ((WebApplicationException) e).getResponse().getStatus())
-				.isEqualTo(400);
 	}
 
 	// ------------------------------------------------------------------

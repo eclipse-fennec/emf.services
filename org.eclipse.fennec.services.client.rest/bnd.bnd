@@ -2,7 +2,7 @@ Bundle-Name: Gecko DDSR Java Client — REST Flavor
 Bundle-Description: \
 	Registers BrokerCatalog, BrokerImplementations and BrokerLookup as OSGi \
 	services that proxy operations to a remote DDSR broker over HTTP+XMI \
-	using the Jakarta REST Client API and the shared xmi.codec providers. \
+	using the Jakarta REST Client API and the xmi.codec.jakartars providers. \
 	Embedded callers (DdsrProvider/Consumer in client.java) reference the \
 	same three interfaces — the wire is transparent.
 
@@ -20,6 +20,7 @@ Bundle-Description: \
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
 	io.cloudevents.model;version=latest,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec.jakartars;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot
 
 # Plain JUnit 5 (no OSGi runtime). jersey-common provides the JAX-RS

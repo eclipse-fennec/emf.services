@@ -11,7 +11,9 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.xmi.codec;
+package org.eclipse.fennec.services.xmi.codec.jakartars;
+
+import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
 
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;

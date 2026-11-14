@@ -1,10 +1,10 @@
-Bundle-Name: Gecko DDSR XMI Codec
+Bundle-Name: Fennec Services XMI Codec
 Bundle-Description: \
-	Shared XMI <-> EObject codec plus JAX-RS MessageBody providers. \
-	Used by broker.rest (server side, picked up by the Jakartars Whiteboard) \
-	and by client.rest (registered on a Jakarta Client instance).
+	Shared XMI <-> EObject codec: what a model is on the wire, in the \
+	encoding a content type names, with a bound on what is read. Knows no \
+	transport; its Jakarta REST providers are xmi.codec.jakartars (#265).
 
--library: enableJakartaREST, enableEMF
+-library: enableEMF
 
 -buildpath: \
 	org.osgi.service.component.annotations;version=latest,\
@@ -19,14 +19,8 @@ Bundle-Description: \
 # platform-engine version. Without it Gradle falls back to its own
 # bundled launcher and test discovery dies with "OutputDirectoryCreator
 # not available; probably due to unaligned versions".
-#
-# jersey-common supplies the jakarta.ws.rs.ext.RuntimeDelegate provider.
-# Constructing a WebApplicationException with a Status builds a Response
-# under the hood, which needs one — without it the codec's own 400 path
-# blows up with ClassNotFoundException instead of throwing.
 -testpath: \
 	${junit},\
 	junit-platform-launcher;version=latest,\
-	org.glassfish.jersey.core.jersey-common;version=latest,\
 	org.eclipse.fennec.protobuf;version=latest,\
 	com.google.protobuf;version=latest

@@ -113,6 +113,7 @@ jersey.deps:
 	org.eclipse.fennec.services.broker.core;version=snapshot,\
 	org.eclipse.fennec.services.model;version=snapshot,\
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
+	org.eclipse.fennec.services.xmi.codec.jakartars;version=snapshot,\
 	org.eclipse.fennec.services.cloudevents;version=snapshot,\
 	io.cloudevents.model;version='[1.0.2,1.0.3)',\
 	com.fasterxml.jackson.core.jackson-annotations;version='[2.22.0,2.22.1)',\

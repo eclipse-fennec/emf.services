@@ -57,4 +57,12 @@ public final class ServiceEventReasons {
 
 	/** The provider stopped answering: two missed heartbeats, swept by Liveness. */
 	public static final String PROVIDER_LOST = "PROVIDER_LOST";
+
+	/**
+	 * Not sent by the broker: a client says it after its event stream came
+	 * (back) up and the snapshot no longer listed a reference it knew. The
+	 * withdrawal itself happened while the stream was down; the client only
+	 * found out by reading again (FR-Sync-Reconnect).
+	 */
+	public static final String RESYNCED = "RESYNCED";
 }

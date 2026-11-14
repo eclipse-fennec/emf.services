@@ -28,7 +28,7 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceOperationFlavor;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
-import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.DdsrServiceUnavailableException;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
 
 final class ServiceLocatorImpl implements TrackedServiceLocator {
@@ -168,8 +168,7 @@ final class ServiceLocatorImpl implements TrackedServiceLocator {
 			return;
 		}
 		if (!rebind(was == State.REBIND)) {
-			throw new DdsrException("service " + interfaceName + " (" + boundReferenceId() + ") is not available: "
-					+ (was == State.STALE ? "parked and not rehydrated" : "no other registration matches"));
+			throw new DdsrServiceUnavailableException(interfaceName, boundReferenceId(), was == State.STALE);
 		}
 	}
 

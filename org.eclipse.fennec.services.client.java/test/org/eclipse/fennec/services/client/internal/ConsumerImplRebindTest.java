@@ -34,6 +34,7 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
 import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.eclipse.fennec.services.client.DdsrException;
+import org.eclipse.fennec.services.client.DdsrServiceUnavailableException;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.client.ServiceLocator;
 import org.eclipse.fennec.services.client.TrackedServiceLocator;
@@ -216,8 +217,26 @@ class ConsumerImplRebindTest {
 		broker.retire("ref-2");
 		source.emit(bare(ServiceEventType.RETIRED, "ref-2", ServiceEventReasons.CUTOVER));
 		assertThatThrownBy(locator::restFlavor)
-				.isInstanceOf(DdsrException.class)
-				.hasMessageContaining("not available");
+				.isInstanceOf(DdsrServiceUnavailableException.class)
+				.hasMessageContaining("no implementation of 'Payment'")
+				.satisfies(e -> assertThat(((DdsrException) e).isTransportFailure()).isFalse());
+	}
+
+	@Test
+	void theSameLocatorBindsAgainWhenAnImplementationReturns() {
+		broker.publish("ref-1", "http://a:1");
+		ConsumerImpl consumer = consumer(false);
+		TrackedServiceLocator locator = (TrackedServiceLocator) consumer.find(PAYMENT, null).get(0);
+
+		broker.retire("ref-1");
+		source.emit(bare(ServiceEventType.UNREGISTERING, "ref-1", ServiceEventReasons.WITHDRAWN));
+		assertThatThrownBy(locator::restFlavor).isInstanceOf(DdsrServiceUnavailableException.class);
+
+		// the contract stayed; an implementation comes back later
+		broker.publish("ref-3", "http://c:1");
+
+		assertThat(hostOf(locator)).isEqualTo("http://c:1");
+		assertThat(locator.reference().getId()).isEqualTo("ref-3");
 	}
 
 	@Test

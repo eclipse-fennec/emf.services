@@ -16,7 +16,7 @@ import type { ServiceEvent, ServiceFlavor, ServiceOperation, ServiceOperationFla
 import { DdsrConsumerImpl } from '../src/internal/consumer-impl';
 import { ServiceListenerRegistry } from '../src/internal/service-listener-registry';
 import { BrokerHttp } from '../src/internal/broker-http';
-import { DdsrClientError, DdsrTransportError } from '../src/api/errors';
+import { DdsrClientError, DdsrServiceUnavailableError, DdsrTransportError } from '../src/api/errors';
 import type { FlavorPlugin } from '../src/api/flavor-plugin';
 import type { TrackedServiceLocator } from '../src/api/service-locator';
 import { deserializeFromXmi } from '../src/xmi/xmi-support';
@@ -208,5 +208,89 @@ describe('tracked locators', () => {
       expect(await payment!.charge(1, 'x')).toBe('ok from http://b:1 (charge)');
       expect(calls).toEqual(['http://a:1', 'http://b:1']);
     });
+  });
+});
+
+/** #271: a contract outlives its implementations; consumers must cope with "none right now". */
+describe('a contract with no implementation right now', () => {
+  const EMPTY = lookupResultXmi('payments-ts', 'ref-x')
+    .replace(/<references[\s\S]*?<\/references>/, '')
+    .replace(/<providers[\s\S]*?<\/providers>/, '');
+  const at = (refId: string, host: string) =>
+    lookupResultXmi('payments-ts', refId).replace('http://localhost:9090', host);
+
+  function brokerWith(initialBody: string) {
+    const routes = [{ urlIncludes: '/references', body: initialBody }];
+    const { fetchFn, requests } = fakeFetch(routes);
+    const listeners = new ServiceListenerRegistry(undefined, () => undefined);
+    const consumer = new DdsrConsumerImpl(
+      new BrokerHttp({ brokerUrl: BROKER, fetchFn }), [], ['REST'], listeners, 'c1');
+    return { consumer, listeners, requests, brokerNowLists(body: string) { routes[0].body = body; } };
+  }
+
+  it('find answers none, not an error', async () => {
+    const b = brokerWith(EMPTY);
+    expect(await b.consumer.find('Payment')).toEqual([]);
+    expect(await b.consumer.findOne('Payment')).toBeUndefined();
+  });
+
+  it('a call after the last implementation left fails as unavailable, and the same locator binds again later', async () => {
+    const b = brokerWith(at('ref-1', 'http://a:1'));
+    const locator = (await b.consumer.find('Payment')).at(0) as TrackedServiceLocator;
+
+    b.brokerNowLists(EMPTY);
+    b.listeners.onEvent(unregistering('ref-1', 'WITHDRAWN'));
+    const failure = await locator.invoke('charge', {}).catch((e: unknown) => e);
+    expect(failure).toBeInstanceOf(DdsrServiceUnavailableError);
+    expect(failure).not.toBeInstanceOf(DdsrTransportError);
+    expect((failure as DdsrServiceUnavailableError).interfaceName).toBe('Payment');
+
+    b.brokerNowLists(at('ref-3', 'http://c:1'));
+    expect(await locator.rebind(true)).toBe(true);
+    expect(locator.reference.id).toBe('ref-3');
+    expect(locator.restFlavor()?.host).toBe('http://c:1');
+  });
+
+  it('a rebind keeps the fingerprint the locator was found with', async () => {
+    const b = brokerWith(at('ref-1', 'http://a:1'));
+    const locator = (await b.consumer.find('Payment', undefined, 'sd1:abc')).at(0) as TrackedServiceLocator;
+    b.brokerNowLists(at('ref-2', 'http://b:1'));
+    b.listeners.onEvent(unregistering('ref-1', 'WITHDRAWN'));
+
+    await locator.rebind(true);
+
+    const lookups = b.requests.filter(r => r.url.includes('/references'));
+    expect(lookups).toHaveLength(2);
+    expect(lookups[1].url).toContain('fingerprint=sd1%3Aabc');
+  });
+
+  it('the reconnect snapshot reports an implementation that arrived while the stream was down', async () => {
+    const b = brokerWith(EMPTY);
+    const heard: ServiceEvent[] = [];
+    b.consumer.addServiceListener('Payment', undefined, e => heard.push(e));
+    await b.consumer.refreshFromSnapshot();
+    expect(heard).toEqual([]);
+
+    b.brokerNowLists(at('ref-1', 'http://a:1'));
+    await b.consumer.refreshFromSnapshot();
+
+    expect(heard.map(e => e.type)).toEqual(['REGISTERED']);
+    expect(heard[0].reference?.id).toBe('ref-1');
+    expect(b.consumer.trackedLocatorCount()).toBe(0);
+  });
+
+  it('the reconnect snapshot reports an implementation that left while the stream was down', async () => {
+    const b = brokerWith(at('ref-1', 'http://a:1'));
+    await b.consumer.find('Payment');
+    const heard: ServiceEvent[] = [];
+    b.consumer.addServiceListener('Payment', undefined, e => heard.push(e));
+    await b.consumer.refreshFromSnapshot();
+    expect(heard).toEqual([]);
+
+    b.brokerNowLists(EMPTY);
+    await b.consumer.refreshFromSnapshot();
+
+    expect(heard.map(e => [e.type, e.reasonCode])).toEqual([['UNREGISTERING', 'RESYNCED']]);
+    expect(b.listeners.knownReferenceIds()).toEqual([]);
   });
 });

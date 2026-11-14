@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.client.internal;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -25,11 +26,13 @@ import java.util.logging.Logger;
 import org.eclipse.fennec.services.ConsumerCapability;
 import org.eclipse.fennec.services.FlavorKind;
 import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.broker.core.BrokerLookup;
+import org.eclipse.fennec.services.broker.core.ServiceEventReasons;
 import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrServiceListener;
 import org.eclipse.fennec.services.client.EventSource;
@@ -91,9 +94,8 @@ final class ConsumerImpl implements DdsrConsumer {
 		this.consumerId = consumerId;
 		this.greedyRebind = greedyRebind;
 		// On (re)connect the local view may be stale, so we re-snapshot
-		// rather than expect a replay (FR-Sync-Reconnect). Nothing is
-		// cached here yet, so the hook only logs — the point is that the
-		// signal exists and has one owner.
+		// rather than expect a replay (FR-Sync-Reconnect) and deliver what
+		// the listeners missed.
 		this.listeners = new ServiceListenerRegistry(eventSource, this::refreshFromSnapshot, consumerId);
 	}
 
@@ -119,14 +121,23 @@ final class ConsumerImpl implements DdsrConsumer {
 	}
 
 	/**
-	 * Pulls a fresh snapshot for every interface we listen on.
+	 * Reads every interface we listen on again and tells the listeners what
+	 * they missed.
 	 * <p>
 	 * FR-Sync-Reconnect: after a drop the broker does not replay missed
 	 * events — it keeps no per-client history and the stream carries no
-	 * sequence numbers — so the consumer re-reads instead. Called on the
-	 * initial connect too, which is the point: a consumer that starts
-	 * listening while services are already published would otherwise know
-	 * nothing about them and could not route their withdrawals.
+	 * sequence numbers — so the consumer re-reads instead. Reading alone is
+	 * not enough, though: a listener that waits for an implementation (an
+	 * RSA import, a proxy registrar) only acts on an event. So the snapshot
+	 * is compared with what this consumer knew, and the difference is
+	 * delivered as events: {@code REGISTERED} for a reference that is new,
+	 * {@code UNREGISTERING} with reason {@code RESYNCED} for one that is no
+	 * longer listed (#271).
+	 * <p>
+	 * Called on the initial connect too: whatever was published between a
+	 * lookup and the stream coming up is heard the same way. The snapshot
+	 * resolves without creating locators — a locator is something a caller
+	 * holds, and nobody holds these.
 	 * <p>
 	 * Runs on the stream's own thread before events start flowing, so the
 	 * snapshot is in place by the time the first event arrives.
@@ -137,21 +148,50 @@ final class ConsumerImpl implements DdsrConsumer {
 			return;
 		}
 		int seen = 0;
+		int missed = 0;
 		for (String interfaceName : interfaces) {
+			Set<String> known = listeners.referencesFor(interfaceName);
+			List<ServiceLocatorImpl.Resolved> current;
 			try {
-				// find() honours the consumer capability and records what it
-				// returns, which is exactly the snapshot we need.
-				seen += find(interfaceName, null).size();
+				current = resolve(interfaceName, null);
 			} catch (RuntimeException lookupFailure) {
 				// A stream that just came up may still race the broker.
 				// Losing the snapshot is recoverable — the next reconnect
 				// tries again — losing the stream is not.
 				LOG.warning("[DDSR-Client] snapshot for " + interfaceName
 						+ " failed, continuing: " + lookupFailure);
+				continue;
+			}
+			seen += current.size();
+			Set<String> listed = new LinkedHashSet<>();
+			for (ServiceLocatorImpl.Resolved resolved : current) {
+				String id = resolved.reference().getId();
+				listed.add(id);
+				if (!known.contains(id)) {
+					listeners.onEvent(event(ServiceEventType.REGISTERED, resolved.reference(), null));
+					missed++;
+				}
+			}
+			for (String id : known) {
+				if (!listed.contains(id)) {
+					ServiceReference gone = ServicesFactory.eINSTANCE.createServiceReference();
+					gone.setId(id);
+					listeners.onEvent(event(ServiceEventType.UNREGISTERING, gone, ServiceEventReasons.RESYNCED));
+					missed++;
+				}
 			}
 		}
 		LOG.info("[DDSR-Client] snapshot after connect: " + seen
-				+ " reference(s) across " + interfaces);
+				+ " reference(s) across " + interfaces + ", " + missed + " missed change(s) delivered");
+	}
+
+	private static ServiceEvent event(ServiceEventType type, ServiceReference reference, String reason) {
+		ServiceEvent event = ServicesFactory.eINSTANCE.createServiceEvent();
+		event.setType(type);
+		event.setReference(reference);
+		event.setTimestamp(new Date());
+		event.setReasonCode(reason);
+		return event;
 	}
 
 	private static Set<String> interfaceNamesOf(ServiceImplementation impl) {

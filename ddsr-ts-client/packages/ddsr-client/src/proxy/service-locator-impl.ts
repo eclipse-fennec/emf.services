@@ -22,7 +22,7 @@ import { FlavorKind } from '@ddsr/model';
 import type { ServiceLocator } from '../api/service-locator.js';
 import type { FlavorPlugin } from '../api/flavor-plugin.js';
 import type { LocatorState, TrackedServiceLocator } from '../api/service-locator.js';
-import { DdsrClientError, DdsrTransportError } from '../api/errors.js';
+import { DdsrServiceUnavailableError, DdsrTransportError } from '../api/errors.js';
 import type { ServiceEvent, ServiceProvider } from '@ddsr/model';
 import { toArray } from '../internal/emf-util.js';
 import { invokeOperation } from './invocation-handler.js';
@@ -151,10 +151,7 @@ export class ServiceLocatorImpl implements TrackedServiceLocator {
     if (this._state === 'LIVE' || !this.tracking) return;
     const was = this._state;
     if (!(await this.rebind(was === 'REBIND'))) {
-      throw new DdsrClientError(
-        `service ${this.interfaceName} (${this.reference.id}) is not available: ` +
-        (was === 'STALE' ? 'parked and not rehydrated' : 'no other registration matches')
-      );
+      throw new DdsrServiceUnavailableError(this.interfaceName, this.reference.id, was === 'STALE');
     }
   }
 

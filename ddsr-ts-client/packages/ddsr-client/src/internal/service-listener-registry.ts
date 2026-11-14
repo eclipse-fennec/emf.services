@@ -104,6 +104,15 @@ export class ServiceListenerRegistry {
     return this.eventSource?.transport;
   }
 
+  /** The references this consumer currently knows for one interface. */
+  referencesFor(interfaceName: string): string[] {
+    const ids: string[] = [];
+    for (const [id, names] of this.interfacesByReference) {
+      if (names.has(interfaceName)) ids.push(id);
+    }
+    return ids;
+  }
+
   knownReferenceIds(): string[] {
     return [...this.interfacesByReference.keys()];
   }

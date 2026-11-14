@@ -162,6 +162,17 @@ final class ServiceListenerRegistry implements EventSource.Handler {
 		}
 	}
 
+	/** The references this consumer currently knows for an interface. */
+	Set<String> referencesFor(String interfaceName) {
+		Set<String> ids = new LinkedHashSet<>();
+		interfacesByReference.forEach((id, names) -> {
+			if (names.contains(interfaceName)) {
+				ids.add(id);
+			}
+		});
+		return ids;
+	}
+
 	int listenerCount() {
 		return entries.size();
 	}

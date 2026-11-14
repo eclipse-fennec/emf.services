@@ -57,3 +57,25 @@ export class DdsrServiceError extends DdsrClientError {
     this.name = 'DdsrServiceError';
   }
 }
+
+/**
+ * Nothing implements the contract right now: the implementation a
+ * locator or proxy was bound to went away and the lookup finds no
+ * other. The contract may well still be in the catalog — it outlives its
+ * implementations (#271) — so this passes: once an implementation is
+ * registered again, the next call through the same proxy binds to it.
+ *
+ * Not a transport error, so nothing retries it. To wait, listen for
+ * REGISTERED on the interface instead of calling in a loop. The twin of
+ * the Java client's DdsrServiceUnavailableException.
+ */
+export class DdsrServiceUnavailableError extends DdsrClientError {
+  constructor(readonly interfaceName: string, readonly lastReference?: string, readonly parked = false) {
+    super(
+      `no implementation of '${interfaceName}' is available` +
+      (parked ? ': the last one is parked and could not be brought back' : '') +
+      (lastReference ? ` (last bound to ${lastReference})` : '')
+    );
+    this.name = 'DdsrServiceUnavailableError';
+  }
+}

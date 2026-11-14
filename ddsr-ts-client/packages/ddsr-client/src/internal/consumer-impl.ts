@@ -82,7 +82,7 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     const flavors = this.supportedFlavors.length > 0 ? this.supportedFlavors.join(',') : undefined;
     const roots = await this.broker.getReferences(
       interfaceName, filter, flavors, this.consumerId, fingerprint);
-    const locators = this.parseLocators(roots, interfaceName, filter);
+    const locators = this.parseLocators(roots, interfaceName, filter, fingerprint);
     // The payload models the contracts pin, fetched before anybody calls:
     // without the package a payload of it cannot be read (#256).
     for (const contract of new Set(locators.map(locator => locator.serviceInterface))) {
@@ -113,11 +113,18 @@ export class DdsrConsumerImpl implements DdsrConsumer {
   // Locator tracking (#57): locators follow their service
   // ------------------------------------------------------------------
 
-  /** Raw resolution for a rebinding locator — the same lookup as find(), no new locators. */
-  private async resolve(interfaceName: string, filter: string | undefined): Promise<ResolvedRegistration[]> {
+  /**
+   * Raw resolution for a rebinding locator — the same lookup as find(),
+   * no new locators. The fingerprint the locator was found with stays the
+   * condition: a rebind must not land on a different contract of the same
+   * name (#271).
+   */
+  private async resolve(
+    interfaceName: string, filter: string | undefined, fingerprint?: string
+  ): Promise<ResolvedRegistration[]> {
     const flavors = this.supportedFlavors.length > 0 ? this.supportedFlavors.join(',') : undefined;
-    const roots = await this.broker.getReferences(interfaceName, filter, flavors, this.consumerId);
-    return this.parseLocators(roots, interfaceName, filter).map(l => ({
+    const roots = await this.broker.getReferences(interfaceName, filter, flavors, this.consumerId, fingerprint);
+    return this.parseLocators(roots, interfaceName, filter, fingerprint).map(l => ({
       reference: l.reference,
       implementation: l.implementation,
       serviceInterface: l.serviceInterface,
@@ -225,17 +232,40 @@ export class DdsrConsumerImpl implements DdsrConsumer {
   }
 
   /**
-   * FR-Sync-Reconnect: pull one find() per distinct subscribed
-   * interface. Each find() re-populates the reference-id → interfaces
-   * map, which is what routes later UNREGISTERING events. A failing
+   * FR-Sync-Reconnect: reads every subscribed interface again and tells
+   * the listeners what they missed — the twin of the Java client.
+   *
+   * The broker replays nothing, so a listener waiting for an
+   * implementation would never hear one that arrived while the stream was
+   * down. The snapshot is compared with what this consumer knew, and the
+   * difference is delivered as events: REGISTERED for a reference that is
+   * new, UNREGISTERING with reason RESYNCED for one no longer listed
+   * (#271). Resolving creates no locators — nobody holds them. A failing
    * lookup is logged per interface and does not stop the others.
    */
   async refreshFromSnapshot(): Promise<void> {
     for (const interfaceName of this.listeners.subscribedInterfaces()) {
+      const known = new Set(this.listeners.referencesFor(interfaceName));
+      let current: ResolvedRegistration[];
       try {
-        await this.find(interfaceName, undefined);
+        current = await this.resolve(interfaceName, undefined);
       } catch (error) {
         console.error(`[ddsr] snapshot refresh for '${interfaceName}' failed: ${String(error)}`);
+        continue;
+      }
+      const listed = new Set<string>();
+      for (const registration of current) {
+        const id = registration.reference.id;
+        if (!id) continue;
+        listed.add(id);
+        if (!known.has(id)) {
+          this.listeners.onEvent(missedEvent('REGISTERED', registration.reference));
+        }
+      }
+      for (const id of known) {
+        if (!listed.has(id)) {
+          this.listeners.onEvent(missedEvent('UNREGISTERING', { id } as ServiceReference, 'RESYNCED'));
+        }
       }
     }
   }
@@ -252,12 +282,14 @@ export class DdsrConsumerImpl implements DdsrConsumer {
    * containing references + providers→implementations, plus the
    * referenced ServiceInterfaces as sibling roots).
    */
-  private parseLocators(roots: unknown[], queriedInterface: string, filter?: string): ServiceLocatorImpl[] {
+  private parseLocators(
+    roots: unknown[], queriedInterface: string, filter?: string, fingerprint?: string
+  ): ServiceLocatorImpl[] {
     const locators: ServiceLocatorImpl[] = [];
     const tracking: LocatorTracking = {
       interfaceName: queriedInterface,
       filter,
-      resolve: (i, f) => this.resolve(i, f),
+      resolve: (i, f) => this.resolve(i, f, fingerprint),
       onRebound: (locator, previous) => this.rekey(locator, previous),
     };
     const interfacesByName = new Map<string, ServiceInterface>();
@@ -319,6 +351,10 @@ export class DdsrConsumerImpl implements DdsrConsumer {
     }
     return locators;
   }
+}
+
+function missedEvent(type: 'REGISTERED' | 'UNREGISTERING', reference: ServiceReference, reasonCode?: string): ServiceEvent {
+  return { type, reference, timestamp: new Date(), reasonCode } as unknown as ServiceEvent;
 }
 
 function stubReference(impl: ServiceImplementation): ServiceReference {

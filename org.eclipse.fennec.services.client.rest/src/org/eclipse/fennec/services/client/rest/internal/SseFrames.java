@@ -15,6 +15,7 @@ package org.eclipse.fennec.services.client.rest.internal;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
@@ -38,14 +39,37 @@ final class SseFrames {
 	 * handing every complete payload to {@code onData}.
 	 */
 	static void pump(BufferedReader lines, BooleanSupplier running, Consumer<String> onData) throws IOException {
+		pumpEvents(lines, running, (event, data) -> {
+			if (!data.isEmpty()) {
+				onData.accept(data);
+			}
+		});
+	}
+
+	/**
+	 * The same, with the event's name — {@code message} where the frame
+	 * names none, as SSE has it — for a stream whose events say what they
+	 * are (#252). An event with a name and no data is handed over too: a
+	 * stream's {@code end} carries nothing.
+	 */
+	static void pumpEvents(BufferedReader lines, BooleanSupplier running, BiConsumer<String, String> onEvent)
+			throws IOException {
 		StringBuilder data = new StringBuilder();
+		String event = null;
+		boolean dataSeen = false;
 		String line;
 		while (running.getAsBoolean() && (line = lines.readLine()) != null) {
 			if (line.isEmpty()) {
-				if (data.length() > 0) {
-					onData.accept(data.toString());
-					data.setLength(0);
+				if (dataSeen || event != null) {
+					onEvent.accept(event == null ? "message" : event, data.toString());
 				}
+				data.setLength(0);
+				event = null;
+				dataSeen = false;
+				continue;
+			}
+			if (line.startsWith("event:")) {
+				event = line.substring("event:".length()).trim();
 				continue;
 			}
 			if (line.startsWith("data:")) {
@@ -53,10 +77,11 @@ final class SseFrames {
 				if (value.startsWith(" ")) {
 					value = value.substring(1);
 				}
-				if (data.length() > 0) {
+				if (dataSeen) {
 					data.append('\n');
 				}
 				data.append(value);
+				dataSeen = true;
 			}
 		}
 	}

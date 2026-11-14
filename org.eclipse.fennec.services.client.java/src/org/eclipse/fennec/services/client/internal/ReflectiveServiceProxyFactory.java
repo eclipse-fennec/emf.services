@@ -113,7 +113,7 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 		}
 		if (streams) {
 			throw new DdsrException("this service streams over none of " + announced
-					+ " that this runtime can carry a stream over — a stream travels over a messaging flavor");
+					+ " that this runtime can carry a stream over");
 		}
 		throw new DdsrException("this service is reachable over " + announced
 				+ " and this runtime speaks " + spoken

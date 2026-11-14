@@ -463,6 +463,11 @@ public final class RestTransport {
 		return client.target(absoluteUrl);
 	}
 
+	/** Where a document read outside a response's entity providers is read into. */
+	ComponentServiceObjects<ResourceSet> resourceSets() {
+		return rsObjects;
+	}
+
 	URI baseUrl() {
 		return baseUrl;
 	}

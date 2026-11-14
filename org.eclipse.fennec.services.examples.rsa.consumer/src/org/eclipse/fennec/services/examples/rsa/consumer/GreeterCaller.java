@@ -70,7 +70,8 @@ public class GreeterCaller {
 
 	private void call() {
 		try {
-			String greeting = greeter.greet("RSA consumer");
+			// The first call may find the connection still being made (#286).
+			String greeting = Remote.call("greet", () -> greeter.greet("RSA consumer"));
 			int soFar = greeter.greeted();
 			LOG.info("[RSA-Consumer] " + greeting + " (" + soFar + " greetings so far, none of them local)");
 			// The same service, asked not to keep us waiting (osgi.async):

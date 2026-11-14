@@ -126,6 +126,13 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 						+ "when a provider stops answering.")
 		int reply_timeout_seconds() default 10;
 
+		@AttributeDefinition(name = "Connect timeout (seconds)", required = false,
+				description = "How long a call waits for the connection to the messaging broker before "
+						+ "its answer is waited for. The first call to a broker opens that connection, and "
+						+ "creating it and connecting can take longer than an answer may (#286); it is "
+						+ "waited for on its own, so the reply timeout stays the time an answer may take.")
+		int connect_timeout_seconds() default 30;
+
 		@AttributeDefinition(name = "MQTT version", required = false,
 				description = "Which MQTT this connection speaks to an MQTT broker: 3 (MQTT 3.1.1, the "
 						+ "default) or 5. A broker carries messages between the two, so nodes need not "
@@ -586,7 +593,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 					+ ": " + unreachable.getMessage(), unreachable));
 		}
 		MessagingLink opened = link;
-		return opened.whenConnected(config.reply_timeout_seconds(), TimeUnit.SECONDS).handle((ready, failure) -> {
+		return opened.whenConnected(config.connect_timeout_seconds(), TimeUnit.SECONDS).handle((ready, failure) -> {
 			if (failure == null) {
 				return opened;
 			}
@@ -599,7 +606,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 				opened.close();
 			}
 			throw DdsrException.transport("cannot reach the broker at " + url + " within "
-					+ config.reply_timeout_seconds() + "s", null);
+					+ config.connect_timeout_seconds() + "s", null);
 		});
 	}
 
@@ -736,6 +743,10 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 	/**
 	 * The link to the broker this service announces, connected.
 	 *
+	 * <p>Waited for with the connect timeout, not the reply timeout: the
+	 * first call pays for creating the link and connecting it, and that
+	 * may take longer than an answer may (#286).
+	 *
 	 * <p>Opened by the first call and kept: the link reconnects on its
 	 * own, so a broker that is away for a moment costs the calls made
 	 * meanwhile and nothing after. A broker that was never there is a
@@ -757,7 +768,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 					link = open(route);
 					links.put(key, link);
 				}
-				if (link.awaitConnected(config.reply_timeout_seconds(), TimeUnit.SECONDS)) {
+				if (link.awaitConnected(config.connect_timeout_seconds(), TimeUnit.SECONDS)) {
 					return link;
 				}
 			} catch (InterruptedException interrupted) {
@@ -773,7 +784,7 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 				link.close();
 			}
 			throw DdsrException.transport("cannot reach the broker at " + url + " within "
-					+ config.reply_timeout_seconds() + "s", null);
+					+ config.connect_timeout_seconds() + "s", null);
 		}
 	}
 

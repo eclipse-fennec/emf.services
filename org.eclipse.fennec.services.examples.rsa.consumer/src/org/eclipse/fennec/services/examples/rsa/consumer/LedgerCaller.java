@@ -54,7 +54,7 @@ public class LedgerCaller {
 
 	private void call() {
 		try {
-			LOG.info("[RSA-Consumer] ledger says " + ledger.version());
+			LOG.info("[RSA-Consumer] ledger says " + Remote.call("version", ledger::version));
 			LOG.info("[RSA-Consumer] ledger balance of demo: " + ledger.balance("demo"));
 		} catch (RuntimeException failed) {
 			LOG.log(Level.WARNING, "[RSA-Consumer] the ledger could not be read", failed);

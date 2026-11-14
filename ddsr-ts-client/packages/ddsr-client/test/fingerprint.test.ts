@@ -200,7 +200,7 @@ describe('ServiceDescriptionFingerprint (sd1) — typed slots and multiplicity (
   });
 
   // Parameter.delivery: the same slot as a value, as a promise, as a stream.
-  const slot = (delivery: 'VALUE' | 'PROMISE' | 'STREAM' | undefined, asArgument = false) => {
+  const slot = (delivery: 'VALUE' | 'PROMISE' | 'STREAM' | 'BROADCAST' | undefined, asArgument = false, overflow?: 'FAIL' | 'DISCARD_OLDEST' | 'BLOCK') => {
     const factory = DDSRFactory.eINSTANCE;
     const si = factory.createServiceInterface();
     si.name = 'Sensor';
@@ -211,6 +211,7 @@ describe('ServiceDescriptionFingerprint (sd1) — typed slots and multiplicity (
     value.type = 'double';
     value.upperBound = -1;
     if (delivery) value.delivery = delivery;
+    if (overflow) value.overflow = overflow;
     if (asArgument) op.parameters.push(value); else op.returnValue = value;
     si.operations.push(op);
     return si;
@@ -220,6 +221,17 @@ describe('ServiceDescriptionFingerprint (sd1) — typed slots and multiplicity (
     expect(fingerprint(slot('STREAM'))).not.toBe(fingerprint(slot('VALUE')));
     expect(canonicalForm(slot('STREAM'))).toContain('|returnDelivery=STREAM');
     expect(canonicalForm(slot('STREAM', true))).toContain('|delivery=STREAM');
+  });
+
+  // #252: a broadcast is another exchange than a stream, and what it may
+  // lose is part of it - the same text the Java side renders.
+  it('a broadcast renders its overflow policy, and both move the hash', () => {
+    expect(canonicalForm(slot('BROADCAST'))).toContain('|returnDelivery=BROADCAST|returnOverflow=FAIL');
+    expect(fingerprint(slot('BROADCAST'))).not.toBe(fingerprint(slot('STREAM')));
+    expect(canonicalForm(slot('BROADCAST', false, 'DISCARD_OLDEST')))
+      .toContain('|returnDelivery=BROADCAST|returnOverflow=DISCARD_OLDEST');
+    expect(fingerprint(slot('BROADCAST', false, 'DISCARD_OLDEST'))).not.toBe(fingerprint(slot('BROADCAST')));
+    expect(canonicalForm(slot('STREAM'))).not.toContain('verflow');
   });
 
   it('a promise is the same contract as a value - it says when, not what', () => {

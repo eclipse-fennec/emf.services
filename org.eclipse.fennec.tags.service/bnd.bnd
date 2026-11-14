@@ -1,0 +1,29 @@
+Bundle-Name: Fennec Tags Service
+Bundle-Description: \
+	The tag overlay (#272) as a library: the TagService with its tree, \
+	assignments and queries, the two seams it stands on — TagSubjects \
+	(what can be tagged, by kind) and TagStore (where the registry is \
+	kept) — and an XMI store. Knows no type of the services registry: \
+	whatever source names the targets plugs in through TagSubjects, \
+	which is what lets the same service tag models in the Model Atlas.
+
+-library: enableEMF
+
+# No org.eclipse.fennec.services.* here, on purpose (#272): the boundary
+# to DDSR is enforced by the build.
+-buildpath: \
+	org.eclipse.fennec.tags.model;version=snapshot
+
+# The derived Tag.path runs on the Fennec OCL engine; the tests register
+# it standalone. Pinned to the 0.1.1 line for the reason broker.core's
+# bnd.bnd gives.
+-testpath: \
+	${junit},\
+	junit-platform-launcher;version=latest,\
+	org.eclipse.fennec.m2x.ocl.api;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.engine;version="[0.1.1,0.1.2)";packages='*',\
+	org.eclipse.fennec.m2x.ocl.model;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.ocl.parser;version="[0.1.1,0.1.2)",\
+	org.eclipse.fennec.m2x.unit;version="[0.1.1,0.1.2)",\
+	org.antlr.antlr4-runtime;version=latest,\
+	org.eclipse.fennec.emf.osgi.component.minimal;version=latest

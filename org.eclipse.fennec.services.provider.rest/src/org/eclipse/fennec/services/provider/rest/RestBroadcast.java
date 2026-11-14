@@ -66,6 +66,9 @@ final class RestBroadcast {
 
 	private Flow.Subscription running;
 
+	/** A run is on, or being started: the next receiver joins it. */
+	private boolean active;
+
 	/**
 	 * @param source calls the service, once per run of the broadcast
 	 */
@@ -94,15 +97,19 @@ final class RestBroadcast {
 
 	private synchronized void join(Receiver receiver) {
 		receivers.add(receiver);
-		if (running == null) {
+		if (!active) {
+			active = true;
 			start();
 		}
 	}
 
 	private synchronized void leave(Receiver receiver) {
 		receivers.remove(receiver);
-		if (receivers.isEmpty() && running != null) {
-			running.cancel();
+		if (receivers.isEmpty() && active) {
+			active = false;
+			if (running != null) {
+				running.cancel();
+			}
 			running = null;
 			LOG.fine(() -> "[DDSR-REST] " + describe + " has no receiver left, its stream is cancelled");
 		}
@@ -116,6 +123,10 @@ final class RestBroadcast {
 			public void onSubscribe(Flow.Subscription subscription) {
 				mine[0] = subscription;
 				synchronized (RestBroadcast.this) {
+					if (!active) {
+						subscription.cancel();
+						return;
+					}
 					running = subscription;
 				}
 				subscription.request(1);
@@ -159,8 +170,9 @@ final class RestBroadcast {
 	/** The run is over: every receiver gets the last event, and the next receiver starts a new run. */
 	private void over(String frame, Flow.Subscription ended) {
 		synchronized (this) {
-			if (running == ended) {
+			if (running == ended || running == null) {
 				running = null;
+				active = false;
 			}
 		}
 		for (Receiver receiver : receivers) {

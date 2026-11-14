@@ -22,7 +22,7 @@ import type {
 import { HttpMethod, ParameterBinding } from '@ddsr/model';
 import { bearerScheme, demandsAuthentication, effectiveRequirement, mutualTlsScheme, raisesDeclared } from '@ddsr/client';
 import type { CertificateVerifier, ClientCertificate, JwtVerifier } from '@ddsr/client';
-import { STREAM_MEDIA_TYPE, framesOf, isAsyncIterable, streams } from './rest-streams.js';
+import { RestBroadcast, STREAM_MEDIA_TYPE, framesOf, isAsyncIterable, streams } from './rest-streams.js';
 
 /**
  * The provider side of a REST flavor, in TypeScript (#154).
@@ -129,6 +129,7 @@ export function restDispatcher(
   const basePath = (options.basePath ?? flavor.basePath ?? '').replace(/\/+$/, '');
   const log = options.log ?? (() => {});
   const mode = modeOf(flavor, options, log);
+  const broadcasts = new Map<string, RestBroadcast>();
 
   return async (request: DispatchRequest) => {
     const [rawPath, rawQuery] = request.url.split('?', 2);
@@ -178,6 +179,24 @@ export function restDispatcher(
 
     try {
       const ordered = parametersOf(operation).map(p => args[p.name ?? '']);
+      if (String(operation.returnValue?.delivery ?? '') === 'BROADCAST') {
+        // A stream every receiver shares (#252): one source per
+        // operation, every connection a receiver of it.
+        let broadcast = broadcasts.get(operation.name);
+        if (!broadcast) {
+          broadcast = new RestBroadcast(operation,
+            async () => {
+              const values = await (method as (...args: unknown[]) => unknown).apply(implementation, []);
+              if (!isAsyncIterable(values)) {
+                throw new Error(`${operation.name} broadcasts by its contract, and the implementation returned no async iterable`);
+              }
+              return values;
+            },
+            String(operation.returnValue?.overflow ?? 'FAIL'));
+          broadcasts.set(operation.name, broadcast);
+        }
+        return { status: 200, contentType: STREAM_MEDIA_TYPE, events: broadcast.receiver() };
+      }
       const answer = await (method as (...args: unknown[]) => unknown).apply(implementation, ordered);
       if (streams(operation)) {
         if (!isAsyncIterable(answer)) {

@@ -134,10 +134,7 @@ export async function* framesOf(
       yield frame(EVENT_VALUE, encodeResult(value));
     }
   } catch (failure) {
-    const declared = declaredRaisedBy(operation, failure);
-    yield frame(EVENT_ERROR, declared
-      ? encodeFailure((failure as Error)?.message || declared.name || 'declared error', declaredCode(declared) ?? 0)
-      : encodeFailure(String(failure), 0));
+    yield failureFrame(operation, failure);
     return;
   }
   yield frame(EVENT_END);
@@ -147,4 +144,155 @@ export async function* framesOf(
 export function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
   return typeof value === 'object' && value !== null
     && typeof (value as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] === 'function';
+}
+
+/**
+ * A stream every receiver shares, over REST (#252) - the twin of the Java
+ * `RestBroadcast`: the provider is the distribution point. The source is
+ * asked when the first receiver comes, and every value goes to every
+ * receiver at the source's pace. Each receiver has a buffer of its own
+ * under the contract's overflow policy: `DISCARD_OLDEST` drops its oldest
+ * value, `FAIL` ends it with an `error` event once it has written what it
+ * holds, `BLOCK` holds the source until there is room. When the last
+ * receiver goes, the source's stream is returned.
+ */
+export class RestBroadcast {
+  private readonly receivers = new Set<Receiver>();
+  private running: AsyncIterator<unknown> | undefined;
+  /** A run is on, or being started: the next receiver joins it. */
+  private active = false;
+
+  constructor(
+    private readonly operation: ServiceOperation | undefined,
+    private readonly source: () => Promise<AsyncIterable<unknown>>,
+    private readonly policy: string,
+    private readonly size = 256,
+  ) {}
+
+  /** One more receiver: the events of its answer. */
+  async *receiver(): AsyncGenerator<string> {
+    const receiver = new Receiver(this.size, this.policy, this.operation);
+    this.receivers.add(receiver);
+    if (!this.active) {
+      this.active = true;
+      void this.run();
+    }
+    try {
+      for (let frame = await receiver.take(); frame !== undefined; frame = await receiver.take()) {
+        yield frame;
+        if (receiver.closed) return;
+      }
+    } finally {
+      receiver.gone();
+      this.receivers.delete(receiver);
+      if (this.receivers.size === 0 && this.active) {
+        const running = this.running;
+        this.running = undefined;
+        this.active = false;
+        void running?.return?.(undefined);
+      }
+    }
+  }
+
+  private async run(): Promise<void> {
+    let iterator: AsyncIterator<unknown>;
+    try {
+      iterator = (await this.source())[Symbol.asyncIterator]();
+    } catch (failure) {
+      this.over(failureFrame(this.operation, failure));
+      return;
+    }
+    if (!this.active) {
+      void iterator.return?.(undefined);
+      return;
+    }
+    this.running = iterator;
+    try {
+      for (let next = await iterator.next(); !next.done; next = await iterator.next()) {
+        if (this.running !== iterator) return;
+        const frame_ = frame(EVENT_VALUE, encodeResult(next.value));
+        for (const receiver of this.receivers) await receiver.offer(frame_);
+      }
+      if (this.running === iterator) this.over(frame(EVENT_END));
+    } catch (failure) {
+      if (this.running === iterator) this.over(failureFrame(this.operation, failure));
+    }
+  }
+
+  private over(last: string): void {
+    this.running = undefined;
+    this.active = false;
+    for (const receiver of this.receivers) receiver.last(last);
+  }
+}
+
+function failureFrame(operation: ServiceOperation | undefined, failure: unknown): string {
+  const declared = declaredRaisedBy(operation, failure);
+  return frame(EVENT_ERROR, declared
+    ? encodeFailure((failure as Error)?.message || declared.name || 'declared error', declaredCode(declared) ?? 0)
+    : encodeFailure(String(failure), 0));
+}
+
+/** One receiver of a broadcast: its buffer, and the last event once there is one. */
+class Receiver {
+  private readonly buffer: string[] = [];
+  private final: string | undefined;
+  private wake: (() => void) | undefined;
+  private room: (() => void) | undefined;
+  private left = false;
+  closed = false;
+
+  constructor(private readonly size: number, private readonly policy: string,
+    private readonly operation: ServiceOperation | undefined) {}
+
+  async offer(event: string): Promise<void> {
+    if (this.left || this.final !== undefined) return;
+    while (this.buffer.length >= this.size) {
+      if (this.policy === 'DISCARD_OLDEST') {
+        this.buffer.shift();
+      } else if (this.policy === 'BLOCK') {
+        await new Promise<void>(resolve => { this.room = resolve; });
+        if (this.left) return;
+      } else {
+        this.final = failureFrame(this.operation, new Error(`the broadcast of ${this.operation?.name} fell behind:`
+          + ` its buffer of ${this.size} values was full and the contract says a receiver that falls behind fails`));
+        this.notify();
+        return;
+      }
+    }
+    this.buffer.push(event);
+    this.notify();
+  }
+
+  last(event: string): void {
+    if (this.final === undefined) this.final = event;
+    this.notify();
+  }
+
+  /** The next event to write, waiting for one; undefined once the last was taken. */
+  async take(): Promise<string | undefined> {
+    while (this.buffer.length === 0 && this.final === undefined) {
+      await new Promise<void>(resolve => { this.wake = resolve; });
+    }
+    const room = this.room;
+    this.room = undefined;
+    room?.();
+    if (this.buffer.length > 0) return this.buffer.shift();
+    if (this.closed) return undefined;
+    this.closed = true;
+    return this.final;
+  }
+
+  gone(): void {
+    this.left = true;
+    const room = this.room;
+    this.room = undefined;
+    room?.();
+  }
+
+  private notify(): void {
+    const wake = this.wake;
+    this.wake = undefined;
+    wake?.();
+  }
 }

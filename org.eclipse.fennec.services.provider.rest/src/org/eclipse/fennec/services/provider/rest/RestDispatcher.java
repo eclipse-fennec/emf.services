@@ -130,6 +130,16 @@ public class RestDispatcher {
 	private final Map<String, RestBroadcast> broadcasts = new ConcurrentHashMap<>();
 
 	/**
+	 * What an application serving a dispatcher tells Jersey: buffer
+	 * nothing of an answer. Jersey holds back the first 8 KiB of an
+	 * entity to give it a Content-Length, and a {@code flush} does not
+	 * push them out — a stream's first event, and its keepalives, would
+	 * then sit in the server until a large value came along, and a caller
+	 * with a read timeout gives up first (#252, found by the harness).
+	 */
+	static final Map<String, Object> APPLICATION_PROPERTIES = Map.of("jersey.config.server.contentLength.buffer", 0);
+
+	/**
 	 * @param implementations where the service behind the contract comes
 	 *        from, asked per call so a provider that comes and goes is
 	 *        followed without bookkeeping here. Finding it is the

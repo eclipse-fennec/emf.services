@@ -119,6 +119,7 @@ class TagsOnDdsrTest {
 	}
 
 	private final FakeCatalog catalog = new FakeCatalog();
+	private final RegistrationEvents events = new RegistrationEvents();
 	private TagsEndpoint endpoint;
 
 	@BeforeEach
@@ -144,7 +145,7 @@ class TagsOnDdsrTest {
 		catalog.registry.getImplementations().add(card);
 
 		TagServiceImpl service = new TagServiceImpl(new MemoryStore());
-		service.addSubjects(new DdsrTagSubjects(catalog));
+		service.addSubjects(new DdsrTagSubjects(catalog, events));
 		service.putTag(null, "payment", null, null, false);
 		service.putTag("payment", "method", null, null, false);
 		service.putTag("payment/method", "card", null, null, true);
@@ -156,7 +157,7 @@ class TagsOnDdsrTest {
 
 	@Test
 	void contractsAreKeyedByNameAndImplementationsByProviderAndContract() {
-		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog);
+		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog, events);
 
 		assertThat(subjects.subjects(DdsrTagSubjects.CONTRACT)).extracting(Subject::key)
 				.containsExactly("Payment", "InstallmentPlan");
@@ -241,11 +242,11 @@ class TagsOnDdsrTest {
 
 	@Test
 	void aRegistrationAsksForTheTagsOfItsImplementationAndContracts() {
-		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog);
+		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog, events);
 		List<Subject> heard = new ArrayList<>();
 		subjects.onRegistered(heard::addAll);
 
-		subjects.publish(registered(catalog.registry.getImplementations().get(0)));
+		events.publish(registered(catalog.registry.getImplementations().get(0)));
 
 		assertThat(heard).extracting(Subject::kind, Subject::key, Subject::requestedTags).contains(
 				tuple("implementation", "payments-card/Payment", List.of("payment/method/card")),
@@ -255,7 +256,7 @@ class TagsOnDdsrTest {
 	@Test
 	void whatARegistrationMayNotGiveItselfBecomesARequest() {
 		TagServiceImpl service = new TagServiceImpl(new MemoryStore());
-		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog);
+		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog, events);
 		service.addSubjects(subjects);
 		service.putTag(null, "payment", null, null, false);
 		TagsEndpoint tags = new TagsEndpoint(service);
@@ -271,7 +272,7 @@ class TagsOnDdsrTest {
 		assertThat(tags.tagsOf("implementation", "payments-card/Payment").getTags())
 				.extracting(EffectiveTag::getPath).contains("payment/method/card");
 
-		subjects.publish(registered(catalog.registry.getImplementations().get(0)));
+		events.publish(registered(catalog.registry.getImplementations().get(0)));
 		assertThat(tags.requestedTags().getRequests()).extracting(r -> r.getPath())
 				.as("the discarded one comes back with the next registration").containsExactly("payment/terms/instant");
 	}

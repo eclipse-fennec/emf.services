@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.messaging;
+package org.eclipse.fennec.services.invocation;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;

@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.messaging;
+package org.eclipse.fennec.services.invocation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

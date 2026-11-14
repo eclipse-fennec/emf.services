@@ -614,6 +614,13 @@ if secured; then
   tags_status 403 GET "$BROKER_URL/references?interface=BrokerLookup" -H "Authorization: Bearer $VIEWER_TOKEN"
   tags_status 200 GET "$BROKER_URL/scoped/any/references?interface=BrokerLookup" -H "Authorization: Bearer $VIEWER_TOKEN"
   tags_status 403 GET "$BROKER_URL/scoped/any/references?interface=BrokerLookup" -H "Authorization: Bearer $CONSUMER_TOKEN"
+  # Announced like the broker's own contracts (#287): a lookup finds Tags
+  # with the broker's address and scheme.
+  ANNOUNCED=$(curl -sf -H "Authorization: Bearer $CONSUMER_TOKEN" "$BROKER_URL/references?interface=Tags") \
+    || { echo "SCENARIO W FAILED: the lookup for Tags did not answer"; exit 1; }
+  grep -q 'basePath="/ddsr/rest/tags"' <<<"$ANNOUNCED" && grep -q 'BearerTokenScheme' <<<"$ANNOUNCED" \
+    || { echo "SCENARIO W FAILED: Tags is not announced with the broker's address and scheme"; echo "$ANNOUNCED" | head -c 1500; exit 1; }
+  echo "  ✓ tags-announced: a lookup finds Tags at the broker's address, with its bearer scheme"
   echo "  ✓ tags-facade-roles: tags-consumer is refused the raw lookup (403) and served through the facade; service-consumer alone is not"
 fi
 

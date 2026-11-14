@@ -430,11 +430,14 @@ inspect `severity` and `code` instead of catching a
 
 ### 3.1 Self-publish (the broker registers itself)
 
-In process — no wire. The `BrokerSelfPublisher` puts three
+In process — no wire. The `BrokerSelfPublisher` puts four
 ServiceInterfaces (`BrokerCatalog`, `BrokerImplementations`,
-`BrokerLookup`) into the catalog and publishes the provider
-`ddsr-broker` with a RestFlavor `host=<the public.url authority>`,
-`basePath=<the public.url path>`.
+`BrokerLookup`, `BrokerEvents`) into the catalog and publishes the
+provider `ddsr-broker` with a RestFlavor `host=<the public.url authority>`,
+`basePath=<the public.url path>`. A bundle serving another contract
+beside the broker offers its document as a `BrokerApiDocument`, and the
+self-publisher announces it the same way — the tag overlay's `Tags` does
+(#287); it is withdrawn when the service goes.
 
 ### 3.2 A remote publish (`PaymentPublisher` → broker)
 

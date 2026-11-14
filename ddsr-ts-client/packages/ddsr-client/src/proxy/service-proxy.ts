@@ -120,7 +120,11 @@ function streamOf(start: () => Promise<unknown>, told: (error: unknown) => unkno
 /** The stream slots of an operation, by name - `return` for the return value. */
 function streamSlots(operation: { parameters?: unknown; returnValue?: unknown } | undefined): string[] {
   if (!operation) return [];
-  const isStream = (slot: unknown) => String((slot as { delivery?: unknown } | undefined)?.delivery ?? '') === 'STREAM';
+  // A stream of its own or one every receiver shares (#252): both are iterated.
+  const isStream = (slot: unknown) => {
+    const delivery = String((slot as { delivery?: unknown } | undefined)?.delivery ?? '');
+    return delivery === 'STREAM' || delivery === 'BROADCAST';
+  };
   const names = toArray<{ name?: string }>(operation.parameters).filter(isStream).map(slot => slot.name ?? '?');
   return isStream(operation.returnValue) ? [...names, 'return'] : names;
 }

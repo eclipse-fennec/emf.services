@@ -102,6 +102,20 @@ describe('serviceProxy and a slot that is a stream', () => {
     expect(invoked).toBe(1);
   });
 
+  // #252: a stream every receiver shares is iterated like any other.
+  it('hands back a broadcast to iterate as well', async () => {
+    const { serviceInterface, readings } = readingsContract();
+    readings.returnValue!.delivery = 'BROADCAST';
+    const locator = {
+      serviceInterface,
+      invoke: async () => (async function* () { yield 7; })(),
+    } as unknown as ServiceLocator;
+
+    const seen: number[] = [];
+    for await (const value of serviceProxy<{ readings(): AsyncIterable<number> }>(locator).readings()) seen.push(value);
+    expect(seen).toEqual([7]);
+  });
+
   it('says so where the transport that carried the call carries no streams', async () => {
     const { serviceInterface } = readingsContract();
     const locator = { serviceInterface, invoke: async () => [1.5, 2.5] } as unknown as ServiceLocator;

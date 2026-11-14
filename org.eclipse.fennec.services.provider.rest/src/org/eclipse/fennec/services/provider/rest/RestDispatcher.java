@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -56,6 +55,7 @@ import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.invocation.PushStreams;
+import org.eclipse.fennec.services.invocation.ServiceMethods;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -521,14 +521,7 @@ public class RestDispatcher {
 		for (Parameter parameter : operation.getParameters()) {
 			values.add(arguments.get(parameter.getName()));
 		}
-		for (Method method : service.getClass().getMethods()) {
-			if (method.getName().equals(operation.getName()) && method.getParameterCount() == values.size()) {
-				return method.invoke(service, values.toArray());
-			}
-		}
-		throw new NoSuchMethodException("the service behind this contract, a "
-				+ service.getClass().getName() + ", has no method '" + operation.getName()
-				+ "' taking " + values.size() + " argument(s)");
+		return ServiceMethods.require(service, operation.getName(), values.size()).invoke(service, values.toArray());
 	}
 
 	/**

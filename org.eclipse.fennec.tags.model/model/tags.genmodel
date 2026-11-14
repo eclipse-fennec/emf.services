@@ -65,5 +65,26 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tags.ecore#//TaggedTarget/target"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tags.ecore#//TaggedTarget/tags"/>
     </genClasses>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="tags.ecore#//TagChangeKind">
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/TAG_PUT"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/TAG_MOVED"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/TAG_REMOVED"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/ASSIGNED"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/UNASSIGNED"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/RULE_PUT"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/RULE_REMOVED"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/REQUESTED"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/REQUEST_ACCEPTED"/>
+      <genEnumLiterals ecoreEnumLiteral="tags.ecore#//TagChangeKind/REQUEST_DISCARDED"/>
+    </genEnums>
+    <genClasses ecoreClass="tags.ecore#//TagChange">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//TagChange/kind"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//TagChange/path"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//TagChange/formerPath"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference tags.ecore#//TagChange/target"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//TagChange/ruleKind"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//TagChange/filter"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute tags.ecore#//TagChange/at"/>
+    </genClasses>
   </genPackages>
 </genmodel:GenModel>

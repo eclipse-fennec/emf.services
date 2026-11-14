@@ -119,6 +119,9 @@
         <operationFlavors xsi:type="services:RestOperationFlavor" name="rules"
             method="GET" path="/rules" returnCodes="200" produces="application/xml"
             operation="/1/@operations.13"/>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="changes"
+            method="GET" path="/changes" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.14"/>
       </flavors>
     </implementations>
   </services:ServiceProvider>
@@ -239,6 +242,13 @@
         description="The rules, in a registry holding them together with the tree they reference.">
       <returnValue name="result">
         <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/tags/1.0#//TagRegistry"/>
+      </returnValue>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="changes"
+        description="Every change to the tag registry — a tag put, moved or removed, an assignment, a rule, a request filed, accepted or discarded — after it was kept and in the order it was made. A stream every receiver shares; a receiver that falls behind is ended and reads the registry again when it comes back.">
+      <returnValue name="result" upperBound="-1" delivery="BROADCAST">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/tags/1.0#//TagChange"/>
       </returnValue>
       <security authenticated="true" scopes="service-admin"/>
     </operations>

@@ -35,7 +35,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = TagsPackage.eNS_URI, fingerprint = "fp1:6ab5492f72b5630c552be839b73e983d1776da2766e125cebf1a075ca8d5f20d", genModel = "/model/tags.genmodel", genModelSourceLocations = {"model/tags.genmodel","org.eclipse.fennec.tags.model/model/tags.genmodel"}, ecore = "/model/tags.ecore", ecoreSourceLocations = "/model/tags.ecore")
+@EPackage(uri = TagsPackage.eNS_URI, fingerprint = "fp1:0c452d447a0b267e02cd88d0503e91750a601f0ffcb7f9407b430e1cb551653e", genModel = "/model/tags.genmodel", genModelSourceLocations = {"model/tags.genmodel","org.eclipse.fennec.tags.model/model/tags.genmodel"}, ecore = "/model/tags.ecore", ecoreSourceLocations = "/model/tags.ecore")
 public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -601,6 +601,97 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	int TAGGED_TARGET_OPERATION_COUNT = 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.tags.impl.TagChangeImpl <em>Tag Change</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.tags.impl.TagChangeImpl
+	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTagChange()
+	 * @generated
+	 */
+	int TAG_CHANGE = 9;
+
+	/**
+	 * The feature id for the '<em><b>Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE__KIND = 0;
+
+	/**
+	 * The feature id for the '<em><b>Path</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE__PATH = 1;
+
+	/**
+	 * The feature id for the '<em><b>Former Path</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE__FORMER_PATH = 2;
+
+	/**
+	 * The feature id for the '<em><b>Target</b></em>' containment reference.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE__TARGET = 3;
+
+	/**
+	 * The feature id for the '<em><b>Rule Kind</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE__RULE_KIND = 4;
+
+	/**
+	 * The feature id for the '<em><b>Filter</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE__FILTER = 5;
+
+	/**
+	 * The feature id for the '<em><b>At</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE__AT = 6;
+
+	/**
+	 * The number of structural features of the '<em>Tag Change</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE_FEATURE_COUNT = 7;
+
+	/**
+	 * The number of operations of the '<em>Tag Change</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int TAG_CHANGE_OPERATION_COUNT = 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.tags.MatchMode <em>Match Mode</em>}' enum.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -608,7 +699,7 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getMatchMode()
 	 * @generated
 	 */
-	int MATCH_MODE = 9;
+	int MATCH_MODE = 10;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.tags.TagOrigin <em>Tag Origin</em>}' enum.
@@ -618,7 +709,17 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTagOrigin()
 	 * @generated
 	 */
-	int TAG_ORIGIN = 10;
+	int TAG_ORIGIN = 11;
+
+	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.tags.TagChangeKind <em>Tag Change Kind</em>}' enum.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.tags.TagChangeKind
+	 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTagChangeKind()
+	 * @generated
+	 */
+	int TAG_CHANGE_KIND = 12;
 
 
 	/**
@@ -1053,6 +1154,93 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	EReference getTaggedTarget_Tags();
 
 	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.tags.TagChange <em>Tag Change</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>Tag Change</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange
+	 * @generated
+	 */
+	EClass getTagChange();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.tags.TagChange#getKind <em>Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Kind</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange#getKind()
+	 * @see #getTagChange()
+	 * @generated
+	 */
+	EAttribute getTagChange_Kind();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.tags.TagChange#getPath <em>Path</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Path</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange#getPath()
+	 * @see #getTagChange()
+	 * @generated
+	 */
+	EAttribute getTagChange_Path();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.tags.TagChange#getFormerPath <em>Former Path</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Former Path</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange#getFormerPath()
+	 * @see #getTagChange()
+	 * @generated
+	 */
+	EAttribute getTagChange_FormerPath();
+
+	/**
+	 * Returns the meta object for the containment reference '{@link org.eclipse.fennec.tags.TagChange#getTarget <em>Target</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference '<em>Target</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange#getTarget()
+	 * @see #getTagChange()
+	 * @generated
+	 */
+	EReference getTagChange_Target();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.tags.TagChange#getRuleKind <em>Rule Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Rule Kind</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange#getRuleKind()
+	 * @see #getTagChange()
+	 * @generated
+	 */
+	EAttribute getTagChange_RuleKind();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.tags.TagChange#getFilter <em>Filter</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>Filter</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange#getFilter()
+	 * @see #getTagChange()
+	 * @generated
+	 */
+	EAttribute getTagChange_Filter();
+
+	/**
+	 * Returns the meta object for the attribute '{@link org.eclipse.fennec.tags.TagChange#getAt <em>At</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the attribute '<em>At</em>'.
+	 * @see org.eclipse.fennec.tags.TagChange#getAt()
+	 * @see #getTagChange()
+	 * @generated
+	 */
+	EAttribute getTagChange_At();
+
+	/**
 	 * Returns the meta object for enum '{@link org.eclipse.fennec.tags.MatchMode <em>Match Mode</em>}'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -1071,6 +1259,16 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EEnum getTagOrigin();
+
+	/**
+	 * Returns the meta object for enum '{@link org.eclipse.fennec.tags.TagChangeKind <em>Tag Change Kind</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for enum '<em>Tag Change Kind</em>'.
+	 * @see org.eclipse.fennec.tags.TagChangeKind
+	 * @generated
+	 */
+	EEnum getTagChangeKind();
 
 	/**
 	 * Returns the factory that creates the instances of the model.
@@ -1434,6 +1632,72 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 		EReference TAGGED_TARGET__TAGS = eINSTANCE.getTaggedTarget_Tags();
 
 		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.tags.impl.TagChangeImpl <em>Tag Change</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.tags.impl.TagChangeImpl
+		 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTagChange()
+		 * @generated
+		 */
+		EClass TAG_CHANGE = eINSTANCE.getTagChange();
+
+		/**
+		 * The meta object literal for the '<em><b>Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TAG_CHANGE__KIND = eINSTANCE.getTagChange_Kind();
+
+		/**
+		 * The meta object literal for the '<em><b>Path</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TAG_CHANGE__PATH = eINSTANCE.getTagChange_Path();
+
+		/**
+		 * The meta object literal for the '<em><b>Former Path</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TAG_CHANGE__FORMER_PATH = eINSTANCE.getTagChange_FormerPath();
+
+		/**
+		 * The meta object literal for the '<em><b>Target</b></em>' containment reference feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference TAG_CHANGE__TARGET = eINSTANCE.getTagChange_Target();
+
+		/**
+		 * The meta object literal for the '<em><b>Rule Kind</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TAG_CHANGE__RULE_KIND = eINSTANCE.getTagChange_RuleKind();
+
+		/**
+		 * The meta object literal for the '<em><b>Filter</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TAG_CHANGE__FILTER = eINSTANCE.getTagChange_Filter();
+
+		/**
+		 * The meta object literal for the '<em><b>At</b></em>' attribute feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EAttribute TAG_CHANGE__AT = eINSTANCE.getTagChange_At();
+
+		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.tags.MatchMode <em>Match Mode</em>}' enum.
 		 * <!-- begin-user-doc -->
 		 * <!-- end-user-doc -->
@@ -1452,6 +1716,16 @@ public interface TagsPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EEnum TAG_ORIGIN = eINSTANCE.getTagOrigin();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.tags.TagChangeKind <em>Tag Change Kind</em>}' enum.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.tags.TagChangeKind
+		 * @see org.eclipse.fennec.tags.impl.TagsPackageImpl#getTagChangeKind()
+		 * @generated
+		 */
+		EEnum TAG_CHANGE_KIND = eINSTANCE.getTagChangeKind();
 
 	}
 

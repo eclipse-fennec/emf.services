@@ -28,6 +28,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -42,6 +43,8 @@ import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
 import org.eclipse.fennec.tags.TagAssignment;
+import org.eclipse.fennec.tags.TagChange;
+import org.eclipse.fennec.tags.TagChangeKind;
 import org.eclipse.fennec.tags.TagOrigin;
 import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagRule;
@@ -91,6 +94,11 @@ public final class TagServiceImpl implements TagService {
 	private final Map<TagSubjects, AutoCloseable> subscriptions = new ConcurrentHashMap<>();
 
 	private TagRegistry registry;
+
+	private final List<Consumer<TagChange>> listeners = new CopyOnWriteArrayList<>();
+
+	/** What the change running under the write lock has done so far; reported once it is kept. */
+	private final List<TagChange> pending = new ArrayList<>();
 
 	/** Rules are read once per filter text; a filter is immutable. */
 	private final Map<String, Filter> filters = new ConcurrentHashMap<>();
@@ -167,6 +175,7 @@ public final class TagServiceImpl implements TagService {
 							request.setRequestedBy(subject.key());
 							request.setRequestedAt(new Date());
 							registry.getRequests().add(request);
+							changed(TagChangeKind.REQUESTED, path, null, request.getTarget(), null, null);
 							LOG.info("[Tags] " + subject.kind() + " " + subject.key() + " asks for '" + path
 									+ "' — filed for an administrator");
 						}
@@ -246,6 +255,26 @@ public final class TagServiceImpl implements TagService {
 		return null;
 	}
 
+	@Override
+	public AutoCloseable onChange(Consumer<TagChange> listener) {
+		listeners.add(listener);
+		return () -> listeners.remove(listener);
+	}
+
+	/** Notes a change of the write running now; reported once it is kept. */
+	private void changed(TagChangeKind kind, String path, String formerPath, TagTarget target, String ruleKind,
+			String filter) {
+		TagChange change = TagsFactory.eINSTANCE.createTagChange();
+		change.setKind(kind);
+		change.setPath(path);
+		change.setFormerPath(formerPath);
+		change.setTarget(target == null ? null : EcoreUtil.copy(target));
+		change.setRuleKind(ruleKind);
+		change.setFilter(filter);
+		change.setAt(new Date());
+		pending.add(change);
+	}
+
 	// ------------------------------------------------------------------
 	// The tree
 	// ------------------------------------------------------------------
@@ -269,6 +298,7 @@ public final class TagServiceImpl implements TagService {
 			tag.setName(name);
 			tag.setDescription(description);
 			tag.setSelfAssignable(selfAssignable);
+			changed(TagChangeKind.TAG_PUT, tag.getPath(), null, null, null, null);
 			return tag.getPath();
 		});
 	}
@@ -287,6 +317,7 @@ public final class TagServiceImpl implements TagService {
 			if (sibling(newParent, id, tag) != null) {
 				throw new InvalidTagException("'" + id + "' is taken under " + describe(newParent));
 			}
+			String from = tag.getPath();
 			Map<Tag, String> before = new LinkedHashMap<>();
 			for (Tag moving : subtree(tag)) {
 				before.put(moving, moving.getPath());
@@ -298,6 +329,9 @@ public final class TagServiceImpl implements TagService {
 					moved.getFormerPaths().add(oldPath);
 				}
 			});
+			if (!from.equals(tag.getPath())) {
+				changed(TagChangeKind.TAG_MOVED, tag.getPath(), from, null, null, null);
+			}
 			return tag.getPath();
 		});
 	}
@@ -306,6 +340,7 @@ public final class TagServiceImpl implements TagService {
 	public void removeTag(String path) {
 		write(() -> {
 			Tag tag = require(path);
+			changed(TagChangeKind.TAG_REMOVED, tag.getPath(), null, null, null, null);
 			Set<Tag> going = new HashSet<>(subtree(tag));
 			registry.getAssignments().removeIf(assignment -> going.contains(assignment.getTag()));
 			registry.getRules().removeIf(rule -> going.contains(rule.getTag()));
@@ -328,6 +363,7 @@ public final class TagServiceImpl implements TagService {
 				assignment.setTarget(target(kind, key));
 				assignment.setAssignedAt(new Date());
 				registry.getAssignments().add(assignment);
+				changed(TagChangeKind.ASSIGNED, tag.getPath(), null, assignment.getTarget(), null, null);
 			}
 			return null;
 		});
@@ -340,6 +376,7 @@ public final class TagServiceImpl implements TagService {
 			TagAssignment assignment = assignment(tag, kind, key);
 			if (assignment != null) {
 				registry.getAssignments().remove(assignment);
+				changed(TagChangeKind.UNASSIGNED, tag.getPath(), null, assignment.getTarget(), null, null);
 			}
 			return null;
 		});
@@ -363,6 +400,7 @@ public final class TagServiceImpl implements TagService {
 				rule.setKind(kind);
 				rule.setFilter(filter);
 				registry.getRules().add(rule);
+				changed(TagChangeKind.RULE_PUT, tag.getPath(), null, null, kind, filter);
 			}
 			return null;
 		});
@@ -377,6 +415,7 @@ public final class TagServiceImpl implements TagService {
 				throw new UnknownTagException("no rule " + filter + " for " + kind + " to '" + tag.getPath() + "'");
 			}
 			registry.getRules().remove(rule);
+			changed(TagChangeKind.RULE_REMOVED, tag.getPath(), null, null, kind, filter);
 			return null;
 		});
 	}
@@ -447,6 +486,7 @@ public final class TagServiceImpl implements TagService {
 				registry.getAssignments().add(assignment);
 			}
 			registry.getRequests().remove(request);
+			changed(TagChangeKind.REQUEST_ACCEPTED, tag.getPath(), null, request.getTarget(), null, null);
 			return null;
 		});
 	}
@@ -460,6 +500,7 @@ public final class TagServiceImpl implements TagService {
 				throw new UnknownTagException("no request for '" + normalized + "' by " + kind + " " + key);
 			}
 			registry.getRequests().remove(request);
+			changed(TagChangeKind.REQUEST_DISCARDED, normalized, null, request.getTarget(), null, null);
 			return null;
 		});
 	}
@@ -739,10 +780,13 @@ public final class TagServiceImpl implements TagService {
 	 * the change is refused or cannot be kept.
 	 */
 	private <T> T write(Supplier<T> change) {
+		List<TagChange> kept;
+		T result;
 		lock.writeLock().lock();
 		TagRegistry before = EcoreUtil.copy(registry);
+		pending.clear();
 		try {
-			T result = change.get();
+			result = change.get();
 			try {
 				store.save(registry);
 			} catch (IOException writeFailure) {
@@ -750,12 +794,24 @@ public final class TagServiceImpl implements TagService {
 				throw new TagStoreException("the change could not be kept and was rolled back: "
 						+ writeFailure.getMessage(), writeFailure);
 			}
-			return result;
+			kept = List.copyOf(pending);
 		} catch (RuntimeException refused) {
 			registry = before;
 			throw refused;
 		} finally {
+			pending.clear();
 			lock.writeLock().unlock();
 		}
+		// Outside the lock: a listener may read the service again.
+		for (TagChange done : kept) {
+			for (Consumer<TagChange> listener : listeners) {
+				try {
+					listener.accept(EcoreUtil.copy(done));
+				} catch (RuntimeException listenerFailure) {
+					LOG.log(Level.WARNING, "[Tags] a change listener failed", listenerFailure);
+				}
+			}
+		}
+		return result;
 	}
 }

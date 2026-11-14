@@ -17,6 +17,7 @@ package org.eclipse.fennec.tags.service.core;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EStructuralFeature;
@@ -24,6 +25,7 @@ import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
+import org.eclipse.fennec.tags.TagChange;
 import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagsPackage;
 import org.eclipse.fennec.tags.service.TagService;
@@ -145,6 +147,11 @@ public final class TagServiceComponent implements TagService {
 	@Override
 	public List<EffectiveTag> tagsOf(String kind, String key) {
 		return service.tagsOf(kind, key);
+	}
+
+	@Override
+	public AutoCloseable onChange(Consumer<TagChange> listener) {
+		return service.onChange(listener);
 	}
 
 	@Override

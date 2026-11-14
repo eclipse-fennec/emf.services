@@ -12,8 +12,8 @@ The design is collected in issue #272; this page grows with its
 sub-issues. What exists today: the model (#273), the tag service (#274),
 the `Tags` contract served beside the broker (#275) and the tags a
 provider brings, with requests for the ones it may not give itself
-(#276), and rules over properties (#277). The change broadcast, the
-consumer facade and the TypeScript side follow.
+(#276), rules over properties (#277) and the change broadcast (#278).
+The consumer facade and the TypeScript side follow.
 
 ## The tree
 
@@ -73,6 +73,7 @@ and an assignment to a target that does not exist yet waits for it.
 | `tagsOf(kind, key)` | the tags a target carries, with their origin |
 | `putRule(path, kind, filter)` / `removeRule(path, kind, filter)` | every target of the kind whose properties match the LDAP filter carries the tag |
 | `rules()` | the rules, together with the tree they reference |
+| `changes()` | every change, after it was kept and in the order it was made — a stream every receiver shares |
 | `requestedTags()` | what targets asked for and may not give themselves, oldest first |
 | `acceptRequestedTag(path, kind, key)` | grant a request: the tag is created where missing (with its parents, none self-assignable) and assigned |
 | `discardRequestedTag(path, kind, key)` | turn a request down; it comes back with the next registration that asks |
@@ -146,6 +147,31 @@ payment/method       ⇐  (&(payment.scheme=*)(payment.sandbox=false))
 - A filter that cannot be read is refused (`InvalidTagException`); the
   same rule twice is kept once.
 
+## Changes
+
+`changes()` is a broadcast (`delivery=BROADCAST`): every receiver hears
+every change from the moment it listens, after the change was kept and
+in the order it was made. Each value is a `TagChange`:
+
+| `kind` | carries |
+| --- | --- |
+| `TAG_PUT`, `TAG_REMOVED` | `path` |
+| `TAG_MOVED` | `path` (new), `formerPath` |
+| `ASSIGNED`, `UNASSIGNED` | `path`, `target` |
+| `RULE_PUT`, `RULE_REMOVED` | `path`, `ruleKind`, `filter` |
+| `REQUESTED`, `REQUEST_ACCEPTED`, `REQUEST_DISCARDED` | `path`, `target` |
+
+and `at`, when it happened. A change that was refused, rolled back or
+changed nothing (assigning twice) is not reported. In XMI a change
+without a `kind` attribute is `TAG_PUT`, the default literal.
+
+There is no replay: a receiver that falls behind is ended (overflow
+`FAIL`), and one that connects reads the tree, the rules and the
+requests first, then listens. It is meant for an administrator's UI —
+only `service-admin` may listen; what a consumer may see is the
+facade's business (#279). In Java, `TagService.onChange(listener)` is
+the same stream without a transport.
+
 ## On the broker: the `Tags` contract
 
 A broker whose launch carries `org.eclipse.fennec.tags.model`,
@@ -167,6 +193,7 @@ mode.
 | `tagsOf` | `GET /tags/of?kind=&key=` | `service-consumer` | `TaggedTarget` (target, tags with origin) |
 | `putRule` / `removeRule` | `PUT` / `DELETE /tags/rule?path=&kind=&filter=` | `service-admin` | 204 |
 | `rules` | `GET /tags/rules` | `service-admin` | a `TagRegistry` holding the tree and the rules |
+| `changes` | `GET /tags/changes` — Server-Sent Events, one `value` frame per change | `service-admin` | `TagChange`, as a broadcast |
 | `requestedTags` | `GET /tags/requests` | `service-admin` | a `TagRegistry` holding only the open requests |
 | `acceptRequestedTag` / `discardRequestedTag` | `PUT` / `DELETE /tags/request?path=&kind=&key=` | `service-admin` | 204 |
 

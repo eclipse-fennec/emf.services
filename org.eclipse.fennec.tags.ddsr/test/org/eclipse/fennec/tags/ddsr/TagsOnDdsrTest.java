@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.concurrent.Flow;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -50,6 +51,8 @@ import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.invocation.ServiceMethods;
 import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
+import org.eclipse.fennec.tags.TagChange;
+import org.eclipse.fennec.tags.TagChangeKind;
 import org.eclipse.fennec.tags.TagOrigin;
 import org.eclipse.fennec.tags.TagsPackage;
 import org.eclipse.fennec.tags.service.TagStore;
@@ -201,7 +204,7 @@ class TagsOnDdsrTest {
 	void everyOperationOfTheContractFindsItsMethod() throws Exception {
 		ServiceInterface contract = contractDocument();
 
-		assertThat(contract.getOperations()).hasSize(14);
+		assertThat(contract.getOperations()).hasSize(15);
 		for (ServiceOperation operation : contract.getOperations()) {
 			Optional<?> method = ServiceMethods.find(endpoint, operation.getName(), operation.getParameters().size());
 			assertThat(method).as(operation.getName()).isPresent();
@@ -296,5 +299,71 @@ class TagsOnDdsrTest {
 				.extracting(EffectiveTag::getPath, EffectiveTag::getOrigin)
 				.contains(tuple("payment/method/card", TagOrigin.RULE));
 		assertThat(endpoint.rules().getRules()).hasSize(1);
+	}
+
+	@Test
+	void theChangesReachEveryReceiverInOrder() {
+		List<TagChange> first = new ArrayList<>();
+		List<TagChange> second = new ArrayList<>();
+		endpoint.changes().subscribe(receiver(first));
+		endpoint.changes().subscribe(receiver(second));
+
+		endpoint.assign("payment/terms/installment", "contract", "InstallmentPlan");
+		endpoint.putRule("payment/method/card", "implementation", "(payment.scheme=card)");
+
+		assertThat(first).extracting(TagChange::getKind).containsExactly(TagChangeKind.ASSIGNED, TagChangeKind.RULE_PUT);
+		assertThat(second).extracting(TagChange::getKind).containsExactly(TagChangeKind.ASSIGNED, TagChangeKind.RULE_PUT);
+	}
+
+	@Test
+	void aReceiverGetsOnlyWhatItAskedFor() {
+		List<TagChange> slow = new ArrayList<>();
+		Flow.Subscription[] subscription = new Flow.Subscription[1];
+		endpoint.changes().subscribe(new Flow.Subscriber<>() {
+			@Override
+			public void onSubscribe(Flow.Subscription s) {
+				subscription[0] = s;
+			}
+
+			@Override
+			public void onNext(TagChange item) {
+				slow.add(item);
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+			}
+
+			@Override
+			public void onComplete() {
+			}
+		});
+
+		endpoint.assign("payment/terms/installment", "contract", "InstallmentPlan");
+		assertThat(slow).isEmpty();
+		subscription[0].request(1);
+		assertThat(slow).hasSize(1);
+	}
+
+	private static Flow.Subscriber<TagChange> receiver(List<TagChange> into) {
+		return new Flow.Subscriber<>() {
+			@Override
+			public void onSubscribe(Flow.Subscription subscription) {
+				subscription.request(Long.MAX_VALUE);
+			}
+
+			@Override
+			public void onNext(TagChange item) {
+				into.add(item);
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+			}
+
+			@Override
+			public void onComplete() {
+			}
+		};
 	}
 }

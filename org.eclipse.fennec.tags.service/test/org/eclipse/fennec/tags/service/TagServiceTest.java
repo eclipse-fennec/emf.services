@@ -37,6 +37,8 @@ import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
+import org.eclipse.fennec.tags.TagChange;
+import org.eclipse.fennec.tags.TagChangeKind;
 import org.eclipse.fennec.tags.TagOrigin;
 import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagsFactory;
@@ -501,5 +503,59 @@ class TagServiceTest {
 				Map.of("payment.scheme", "card"), List.of("payment/terms/instant"))));
 
 		assertThat(tags.requestedTags()).isEmpty();
+	}
+
+	// ------------------------------------------------------------- changes
+
+	@Test
+	void everyKeptChangeIsReportedInOrder() {
+		List<TagChange> heard = new ArrayList<>();
+		tags.onChange(heard::add);
+		subjects.add(CONTRACT, "Payment");
+
+		tags.putTag(null, "iot", null, null, false);
+		tags.moveTag("iot", null, "things");
+		tags.assign("things", CONTRACT, "Payment");
+		tags.putRule("things", IMPLEMENTATION, "(x=1)");
+		tags.removeRule("things", IMPLEMENTATION, "(x=1)");
+		tags.unassign("things", CONTRACT, "Payment");
+		subjects.register(CONTRACT, "Payment", "nowhere/yet");
+		tags.discardRequestedTag("nowhere/yet", CONTRACT, "Payment");
+		tags.removeTag("things");
+
+		assertThat(heard).extracting(TagChange::getKind).containsExactly(TagChangeKind.TAG_PUT, TagChangeKind.TAG_MOVED,
+				TagChangeKind.ASSIGNED, TagChangeKind.RULE_PUT, TagChangeKind.RULE_REMOVED, TagChangeKind.UNASSIGNED,
+				TagChangeKind.REQUESTED, TagChangeKind.REQUEST_DISCARDED, TagChangeKind.TAG_REMOVED);
+		assertThat(heard.get(1).getPath()).isEqualTo("things");
+		assertThat(heard.get(1).getFormerPath()).isEqualTo("iot");
+		assertThat(heard.get(2).getTarget().getKey()).isEqualTo("Payment");
+		assertThat(heard.get(3).getFilter()).isEqualTo("(x=1)");
+		assertThat(heard.get(3).getRuleKind()).isEqualTo(IMPLEMENTATION);
+	}
+
+	@Test
+	void whatChangesNothingOrIsRolledBackIsNotReported() {
+		List<TagChange> heard = new ArrayList<>();
+		tags.onChange(heard::add);
+		tags.assign("payment", CONTRACT, "Payment");
+		heard.clear();
+
+		tags.assign("payment", CONTRACT, "Payment");
+		assertThatThrownBy(() -> tags.putTag(null, "a/b", null, null, false)).isInstanceOf(InvalidTagException.class);
+		store.failing = true;
+		assertThatThrownBy(() -> tags.putTag(null, "iot", null, null, false)).isInstanceOf(TagStoreException.class);
+
+		assertThat(heard).isEmpty();
+	}
+
+	@Test
+	void aClosedListenerHearsNoMore() throws Exception {
+		List<TagChange> heard = new ArrayList<>();
+		AutoCloseable listening = tags.onChange(heard::add);
+
+		listening.close();
+		tags.putTag(null, "iot", null, null, false);
+
+		assertThat(heard).isEmpty();
 	}
 }

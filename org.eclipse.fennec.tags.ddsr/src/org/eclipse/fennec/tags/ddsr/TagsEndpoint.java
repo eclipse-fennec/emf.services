@@ -31,8 +31,8 @@ import org.osgi.service.component.annotations.Reference;
  * one public method per operation, named and ordered as the contract
  * says, which is all the generic distribution needs to serve it.
  *
- * <p>Answers are single documents — a registry holding only the tree, the
- * keys a query found, the tags of one target — because an answer on this
+ * <p>Answers are single documents — a registry holding only the tree or
+ * only the open requests, the keys a query found, the tags of one target — because an answer on this
  * wire is one model object and the objects it needs.
  *
  * <p>Deliberately not a {@link TagService}: a dispatcher looks an
@@ -80,6 +80,20 @@ public final class TagsEndpoint {
 		found.setKind(kind);
 		found.getKeys().addAll(tags.find(paths, mode == null ? MatchMode.ANY : mode, kind));
 		return found;
+	}
+
+	public TagRegistry requestedTags() {
+		TagRegistry open = TagsFactory.eINSTANCE.createTagRegistry();
+		open.getRequests().addAll(tags.requestedTags());
+		return open;
+	}
+
+	public void acceptRequestedTag(String path, String kind, String key) {
+		tags.acceptRequestedTag(path, kind, key);
+	}
+
+	public void discardRequestedTag(String path, String kind, String key) {
+		tags.discardRequestedTag(path, kind, key);
 	}
 
 	public TaggedTarget tagsOf(String kind, String key) {

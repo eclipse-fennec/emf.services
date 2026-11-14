@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
@@ -37,6 +38,7 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
+import org.eclipse.fennec.tags.RequestedTag;
 import org.eclipse.fennec.tags.Tag;
 import org.eclipse.fennec.tags.TagAssignment;
 import org.eclipse.fennec.tags.TagOrigin;
@@ -81,6 +83,8 @@ public final class TagServiceImpl implements TagService {
 
 	private final List<TagSubjects> sources = new CopyOnWriteArrayList<>();
 
+	private final Map<TagSubjects, AutoCloseable> subscriptions = new ConcurrentHashMap<>();
+
 	private TagRegistry registry;
 
 	/**
@@ -96,14 +100,107 @@ public final class TagServiceImpl implements TagService {
 		}
 	}
 
-	/** A source of targets arrived. */
+	/**
+	 * A source of targets arrived. Its targets ask for their tags now —
+	 * that is the first time this service sees them — and again whenever
+	 * the source says they registered.
+	 */
 	public void addSubjects(TagSubjects subjects) {
 		sources.add(subjects);
+		subscriptions.put(subjects, subjects.onRegistered(this::registered));
+		try {
+			List<Subject> present = new ArrayList<>();
+			for (String kind : subjects.kinds()) {
+				present.addAll(subjects.subjects(kind));
+			}
+			registered(present);
+		} catch (RuntimeException sourceFailure) {
+			LOG.log(Level.WARNING, "[Tags] the targets of a new source could not be read", sourceFailure);
+		}
 	}
 
 	/** A source of targets went away; its targets are no longer answered. */
 	public void removeSubjects(TagSubjects subjects) {
 		sources.remove(subjects);
+		AutoCloseable subscription = subscriptions.remove(subjects);
+		if (subscription != null) {
+			try {
+				subscription.close();
+			} catch (Exception closeFailure) {
+				LOG.log(Level.FINE, "[Tags] closing a subscription failed", closeFailure);
+			}
+		}
+	}
+
+	/**
+	 * Targets registered: what each asks for and may not give itself is
+	 * filed as a request, unless the same request is open already. A
+	 * request an administrator discarded is filed again this way — nothing
+	 * is blocked.
+	 */
+	void registered(Collection<Subject> subjects) {
+		if (subjects == null || subjects.isEmpty()) {
+			return;
+		}
+		boolean anyNew = read(() -> subjects.stream().anyMatch(this::asksForSomethingNew));
+		if (!anyNew) {
+			return;
+		}
+		try {
+			write(() -> {
+				for (Subject subject : subjects) {
+					for (String asked : subject.requestedTags()) {
+						String path = normalize(asked);
+						if (!path.isEmpty() && !granted(path, subject.kind(), subject.key())
+								&& request(path, subject.kind(), subject.key()) == null) {
+							RequestedTag request = TagsFactory.eINSTANCE.createRequestedTag();
+							request.setPath(path);
+							request.setTarget(target(subject.kind(), subject.key()));
+							request.setRequestedBy(subject.key());
+							request.setRequestedAt(new Date());
+							registry.getRequests().add(request);
+							LOG.info("[Tags] " + subject.kind() + " " + subject.key() + " asks for '" + path
+									+ "' — filed for an administrator");
+						}
+					}
+				}
+				return null;
+			});
+		} catch (RuntimeException notKept) {
+			LOG.log(Level.WARNING, "[Tags] requests could not be filed", notKept);
+		}
+	}
+
+	private boolean asksForSomethingNew(Subject subject) {
+		for (String asked : subject.requestedTags()) {
+			String path = normalize(asked);
+			if (!path.isEmpty() && !granted(path, subject.kind(), subject.key())
+					&& request(path, subject.kind(), subject.key()) == null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether a target asking for this path has it without asking an
+	 * administrator: it may give it itself, or an administrator already
+	 * assigned it.
+	 */
+	private boolean granted(String path, String kind, String key) {
+		Tag tag = resolve(path);
+		return tag != null && (tag.isSelfAssignable() || assignment(tag, kind, key) != null);
+	}
+
+	private RequestedTag request(String path, String kind, String key) {
+		for (RequestedTag request : registry.getRequests()) {
+			TagTarget target = request.getTarget();
+			if (path.equals(request.getPath()) && target != null
+					&& kind.equals(target.getKind()) && key.equals(target.getKey())) {
+				return request;
+			}
+		}
+		return null;
 	}
 
 	// ------------------------------------------------------------------
@@ -203,6 +300,80 @@ public final class TagServiceImpl implements TagService {
 			}
 			return null;
 		});
+	}
+
+	// ------------------------------------------------------------------
+	// Requests
+	// ------------------------------------------------------------------
+
+	@Override
+	public List<RequestedTag> requestedTags() {
+		return read(() -> {
+			List<RequestedTag> open = new ArrayList<>();
+			for (RequestedTag request : registry.getRequests()) {
+				TagTarget target = request.getTarget();
+				if (target == null || !granted(request.getPath(), target.getKind(), target.getKey())) {
+					open.add(EcoreUtil.copy(request));
+				}
+			}
+			open.sort(Comparator.comparing(RequestedTag::getRequestedAt,
+					Comparator.nullsFirst(Comparator.naturalOrder())));
+			return open;
+		});
+	}
+
+	@Override
+	public void acceptRequestedTag(String path, String kind, String key) {
+		write(() -> {
+			String normalized = normalize(path);
+			RequestedTag request = request(normalized, kind, key);
+			if (request == null) {
+				throw new UnknownTagException("no request for '" + normalized + "' by " + kind + " " + key);
+			}
+			Tag tag = ensure(normalized);
+			if (assignment(tag, kind, key) == null) {
+				TagAssignment assignment = TagsFactory.eINSTANCE.createTagAssignment();
+				assignment.setTag(tag);
+				assignment.setTarget(target(kind, key));
+				assignment.setAssignedAt(new Date());
+				registry.getAssignments().add(assignment);
+			}
+			registry.getRequests().remove(request);
+			return null;
+		});
+	}
+
+	@Override
+	public void discardRequestedTag(String path, String kind, String key) {
+		write(() -> {
+			String normalized = normalize(path);
+			RequestedTag request = request(normalized, kind, key);
+			if (request == null) {
+				throw new UnknownTagException("no request for '" + normalized + "' by " + kind + " " + key);
+			}
+			registry.getRequests().remove(request);
+			return null;
+		});
+	}
+
+	/** The tag a path names, created with the parents it needs where missing. */
+	private Tag ensure(String path) {
+		Tag existing = resolve(path);
+		if (existing != null) {
+			return existing;
+		}
+		Tag parent = null;
+		for (String segment : path.split("/")) {
+			String id = validId(segment);
+			Tag next = sibling(parent, id, null);
+			if (next == null) {
+				next = TagsFactory.eINSTANCE.createTag();
+				next.setId(id);
+				siblingsOf(parent).add(next);
+			}
+			parent = next;
+		}
+		return parent;
 	}
 
 	// ------------------------------------------------------------------

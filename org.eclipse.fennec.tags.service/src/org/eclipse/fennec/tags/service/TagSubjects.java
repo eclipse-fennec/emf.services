@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Where the things come from that can be tagged — the seam that keeps the
@@ -31,6 +32,23 @@ public interface TagSubjects {
 
 	/** The targets of a kind that exist right now; empty for a kind this source does not know. */
 	Collection<Subject> subjects(String kind);
+
+	/**
+	 * Tells the listener whenever targets register — a provider publishes
+	 * an implementation, say. A registration is when a target asks for its
+	 * tags: what it asks for and may not give itself is filed as a request
+	 * then, and a request an administrator discarded comes back with the
+	 * next registration that asks for it.
+	 *
+	 * <p>Optional: a source that cannot tell answers a handle that does
+	 * nothing, and its targets ask only when the service first sees them.
+	 *
+	 * @return closing it stops the notifications
+	 */
+	default AutoCloseable onRegistered(Consumer<Collection<Subject>> registered) {
+		return () -> {
+		};
+	}
 
 	/**
 	 * One target as its source sees it.

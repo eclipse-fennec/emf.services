@@ -120,6 +120,12 @@ async function main(): Promise<void> {
   await client.catalog.ensureEntry(payment);
 
   const { provider, implementation } = paymentProvider;
+  // The tags this implementation asks for (#276): a comma-separated list
+  // of tag paths. A tag that exists and is self-assignable is carried at
+  // once; any other is filed for an administrator.
+  for (const tag of (process.env.PROVIDER_TAGS ?? '').split(',').map(t => t.trim()).filter(Boolean)) {
+    implementation.tags.push(tag);
+  }
 
   // The MQTT endpoint listens BEFORE the implementation is announced —
   // same order as the HTTP server above (never advertise a dead

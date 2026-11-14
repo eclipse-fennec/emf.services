@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -38,7 +39,10 @@ import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceOperation;
+import org.eclipse.fennec.services.ServiceEvent;
+import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceProvider;
+import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.StringProperty;
@@ -196,7 +200,7 @@ class TagsOnDdsrTest {
 	void everyOperationOfTheContractFindsItsMethod() throws Exception {
 		ServiceInterface contract = contractDocument();
 
-		assertThat(contract.getOperations()).hasSize(8);
+		assertThat(contract.getOperations()).hasSize(11);
 		for (ServiceOperation operation : contract.getOperations()) {
 			Optional<?> method = ServiceMethods.find(endpoint, operation.getName(), operation.getParameters().size());
 			assertThat(method).as(operation.getName()).isPresent();
@@ -233,5 +237,53 @@ class TagsOnDdsrTest {
 			resource.load(in, null);
 		}
 		return (ServiceInterface) resource.getContents().get(1);
+	}
+
+	@Test
+	void aRegistrationAsksForTheTagsOfItsImplementationAndContracts() {
+		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog);
+		List<Subject> heard = new ArrayList<>();
+		subjects.onRegistered(heard::addAll);
+
+		subjects.publish(registered(catalog.registry.getImplementations().get(0)));
+
+		assertThat(heard).extracting(Subject::kind, Subject::key, Subject::requestedTags).contains(
+				tuple("implementation", "payments-card/Payment", List.of("payment/method/card")),
+				tuple("contract", "Payment", List.of("payment/terms/instant")));
+	}
+
+	@Test
+	void whatARegistrationMayNotGiveItselfBecomesARequest() {
+		TagServiceImpl service = new TagServiceImpl(new MemoryStore());
+		DdsrTagSubjects subjects = new DdsrTagSubjects(catalog);
+		service.addSubjects(subjects);
+		service.putTag(null, "payment", null, null, false);
+		TagsEndpoint tags = new TagsEndpoint(service);
+		assertThat(tags.requestedTags().getRequests()).extracting(r -> r.getPath() + " " + r.getTarget().getKey())
+				.as("present when the source arrived: nothing exists yet, everything is asked — once per target")
+				.containsExactlyInAnyOrder("payment/method/card payments-card/Payment",
+						"payment/method/card payments-card/InstallmentPlan", "payment/terms/instant Payment");
+
+		tags.discardRequestedTag("payment/terms/instant", "contract", "Payment");
+		tags.acceptRequestedTag("payment/method/card", "implementation", "payments-card/Payment");
+		tags.acceptRequestedTag("payment/method/card", "implementation", "payments-card/InstallmentPlan");
+		assertThat(tags.requestedTags().getRequests()).isEmpty();
+		assertThat(tags.tagsOf("implementation", "payments-card/Payment").getTags())
+				.extracting(EffectiveTag::getPath).contains("payment/method/card");
+
+		subjects.publish(registered(catalog.registry.getImplementations().get(0)));
+		assertThat(tags.requestedTags().getRequests()).extracting(r -> r.getPath())
+				.as("the discarded one comes back with the next registration").containsExactly("payment/terms/instant");
+	}
+
+	private static ServiceEvent registered(ServiceImplementation implementation) {
+		ServiceProvider copy = EcoreUtil.copy((ServiceProvider) implementation.eContainer());
+		ServiceReference reference = ServicesFactory.eINSTANCE.createServiceReference();
+		reference.setId("ref-1");
+		reference.setProvider(copy);
+		ServiceEvent event = ServicesFactory.eINSTANCE.createServiceEvent();
+		event.setType(ServiceEventType.REGISTERED);
+		event.setReference(reference);
+		return event;
 	}
 }

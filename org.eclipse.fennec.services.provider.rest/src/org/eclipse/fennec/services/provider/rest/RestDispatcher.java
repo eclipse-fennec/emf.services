@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -34,6 +35,7 @@ import java.util.logging.Logger;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.Principal;
@@ -121,6 +123,7 @@ public class RestDispatcher {
 	private final CallTracer tracer;
 	private final boolean enforce;
 	private final long maxBodyBytes;
+	private final Map<String, RestBroadcast> broadcasts = new ConcurrentHashMap<>();
 
 	/**
 	 * @param implementations where the service behind the contract comes
@@ -357,6 +360,9 @@ public class RestDispatcher {
 			return Response.status(400).entity(missing.get() + " is required").build();
 		}
 
+		if (operation.getReturnValue() != null && operation.getReturnValue().getDelivery() == Delivery.BROADCAST) {
+			return Response.ok(broadcastOf(operationFlavor, operation).receiver(), RestStreams.MEDIA_TYPE).build();
+		}
 		ServiceObjects<Object> serviceObjects = implementations.get();
 		if (serviceObjects == null) {
 			return Response.status(503).entity("no service implements " + contract + " here").build();
@@ -430,6 +436,53 @@ public class RestDispatcher {
 		};
 		SseStream body = new SseStream(values, encoder, contentType, () -> release(serviceObjects, service));
 		return Response.ok(body, RestStreams.MEDIA_TYPE).build();
+	}
+
+	/**
+	 * The broadcast of an operation (#252): one per operation of this
+	 * dispatcher, shared by every connection that receives it. Its source
+	 * is the service, held for as long as a run of the broadcast lasts.
+	 */
+	private RestBroadcast broadcastOf(RestOperationFlavor operationFlavor, ServiceOperation operation) {
+		return broadcasts.computeIfAbsent(operation.getName(), name -> {
+			String contentType = RestStreams.contentTypeOf(operationFlavor);
+			SseStream.Encoder encoder = new SseStream.Encoder() {
+
+				@Override
+				public byte[] value(Object value) throws Exception {
+					return document(Invocations.result(value), contentType);
+				}
+
+				@Override
+				public byte[] failure(Throwable failure) throws Exception {
+					return document(thrown(operation, failure), contentType);
+				}
+			};
+			return new RestBroadcast(() -> broadcastSource(operation), encoder, contentType,
+					operation.getReturnValue().getOverflow(), RestBroadcast.BUFFER,
+					"the broadcast of " + contract + "/" + name);
+		});
+	}
+
+	private Flow.Publisher<Object> broadcastSource(ServiceOperation operation) {
+		ServiceObjects<Object> serviceObjects = implementations.get();
+		Object service = serviceObjects == null ? null : serviceObjects.getService();
+		if (service == null) {
+			return Flows.failed(new IllegalStateException("no service implements " + contract + " here"));
+		}
+		Flow.Publisher<Object> values;
+		try {
+			values = PushStreams.asPublisher(invoke(service, operation, Map.of()));
+			if (values == null) {
+				values = Flows.failed(new IllegalStateException("the service answered " + operation.getName()
+						+ " with no stream, although its contract says it broadcasts"));
+			}
+		} catch (InvocationTargetException failure) {
+			values = Flows.failed(failure.getCause());
+		} catch (ReflectiveOperationException | RuntimeException failure) {
+			values = Flows.failed(failure);
+		}
+		return Flows.whenOver(values, () -> release(serviceObjects, service));
 	}
 
 	private byte[] document(EObject root, String contentType) throws IOException {

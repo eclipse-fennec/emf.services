@@ -334,6 +334,111 @@ public final class MessagingOperationDispatcher {
 				&& placed.operation().getReturnValue().getDelivery() == Delivery.STREAM;
 	}
 
+	/** Whether the operation on this channel is a stream shared by every receiver (#252). */
+	public boolean broadcasts(String channel) {
+		MessagingRoute.Operation placed = route.onChannel(channel);
+		return placed != null && placed.operation() != null && placed.operation().getReturnValue() != null
+				&& placed.operation().getReturnValue().getDelivery() == Delivery.BROADCAST;
+	}
+
+	/**
+	 * The stream every receiver of the operation on this channel shares
+	 * (#252): the service is called once, without arguments, and every
+	 * value becomes a message to publish on the channel — a
+	 * {@code ServiceInvocationResult} under
+	 * {@link CloudEvents#TYPE_BROADCAST}. A failure, thrown by the call or
+	 * ending the stream, ends it with a {@link BroadcastFailed} carrying
+	 * the last message, the one holding the Diagnostic; when it completes,
+	 * {@link #broadcastEnd} is what to send.
+	 *
+	 * <p>Never throws, for the reason {@link #onRequest} does not.
+	 */
+	public Flow.Publisher<CloudEventCodec.Message> broadcast(String channel) {
+		MessagingRoute.Operation placed = route.onChannel(channel);
+		if (placed == null || placed.operation() == null) {
+			return Flows.failed(new IllegalArgumentException("nothing of this contract broadcasts on " + channel));
+		}
+		ServiceOperation operation = placed.operation();
+		Flow.Publisher<Object> values;
+		try {
+			Object target = service.get();
+			if (target == null) {
+				throw new IllegalStateException("no service implements this contract here");
+			}
+			Method method = null;
+			for (Method candidate : target.getClass().getMethods()) {
+				if (candidate.getName().equals(operation.getName()) && candidate.getParameterCount() == 0) {
+					method = candidate;
+				}
+			}
+			if (method == null) {
+				throw new NoSuchMethodException("the service behind this contract, a " + target.getClass().getName()
+						+ ", has no method '" + operation.getName() + "' without arguments");
+			}
+			values = PushStreams.asPublisher(method.invoke(target));
+			if (values == null) {
+				throw new IllegalStateException("the service answered " + spanNameOf(placed)
+						+ " with no stream, although its contract says it broadcasts");
+			}
+		} catch (InvocationTargetException failed) {
+			values = Flows.failed(failed.getCause());
+		} catch (Exception failed) {
+			values = Flows.failed(failed);
+		}
+		String contentType = placed.produces();
+		Flow.Publisher<CloudEventCodec.Message> messages = Flows.map(values, value -> {
+			try {
+				return broadcastMessage(resultOf(value), contentType);
+			} catch (Exception unwritable) {
+				throw new IllegalStateException("a value of the broadcast could not be written: "
+						+ unwritable.getMessage(), unwritable);
+			}
+		});
+		Flow.Publisher<CloudEventCodec.Message> failing = Flows.mapFailure(messages, failure -> {
+			LOG.log(Level.WARNING, "[DDSR-MSG] the broadcast on " + channel + " ended with a failure", failure);
+			try {
+				return new BroadcastFailed(
+						broadcastMessage(thrown(operation, failure), MessagingRoute.DEFAULT_CONTENT_TYPE));
+			} catch (Exception unsayable) {
+				return failure;
+			}
+		});
+		return failing;
+	}
+
+	/** The message that says a broadcast is over, sent when its stream completes. */
+	public CloudEventCodec.Message broadcastEnd() {
+		return new CloudEventCodec.Message(CloudEvents.newEnvelope(CloudEvents.TYPE_BROADCAST_END, source, null),
+				null);
+	}
+
+	/**
+	 * The last message of a broadcast that failed, standing in for the
+	 * failure: a publisher ends with it, and the one who publishes sends it.
+	 */
+	public static final class BroadcastFailed extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		private final transient CloudEventCodec.Message last;
+
+		BroadcastFailed(CloudEventCodec.Message last) {
+			super("the broadcast failed", null, false, false);
+			this.last = last;
+		}
+
+		public CloudEventCodec.Message last() {
+			return last;
+		}
+	}
+
+	private CloudEventCodec.Message broadcastMessage(ServiceInvocationResult result, String contentType)
+			throws Exception {
+		return new CloudEventCodec.Message(
+				CloudEvents.describing(CloudEvents.newEnvelope(CloudEvents.TYPE_BROADCAST, source, contentType), result),
+				write(List.of(result), contentType));
+	}
+
 	/**
 	 * A session opened for an operation that answers with a stream
 	 * ({@code Delivery.STREAM}): the messages to send in it.

@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.ServiceException;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -165,6 +166,12 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 						+ "of one megabyte per message; a larger value also raises what this node's "
 						+ "connections accept and send. The messaging broker has a limit of its own.")
 		long max_body_bytes() default 0;
+
+		@AttributeDefinition(name = "Broadcast buffer", required = false,
+				description = "How many values of a stream every receiver shares (#252) this node holds "
+						+ "before the contract's overflow policy decides: wait, drop the oldest, or fail. "
+						+ "Zero or less leaves the messaging instance's own size.")
+		int broadcast_buffer() default 256;
 	}
 
 	@Reference(target = "(emf.name=services)")
@@ -429,6 +436,11 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 				return;
 			}
 			MessagingRoute.Operation placed = prepared.placed();
+			if (prepared.operation().getReturnValue() != null
+					&& prepared.operation().getReturnValue().getDelivery() == Delivery.BROADCAST) {
+				receive(prepared, operationName, subscriber);
+				return;
+			}
 			CloudEvent request = prepared.request();
 			long timeout = TimeUnit.SECONDS.toMillis(config.reply_timeout_seconds());
 			try (CallSpan span = tracer().calling(spanNameOf(prepared.operation(), operationName),
@@ -464,6 +476,43 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 						.subscribe(subscriber);
 			});
 		};
+	}
+
+	/**
+	 * A stream every receiver shares (#252): nothing is sent, the channel
+	 * of the operation is subscribed to through a buffer of this node,
+	 * whose policy is the contract's — what this receiver may lose.
+	 */
+	private void receive(Prepared prepared, String operationName, Flow.Subscriber<? super Object> subscriber) {
+		MessagingRoute.Operation placed = prepared.placed();
+		ServiceOperation operation = prepared.operation();
+		String channel = placed.channel();
+		String describe = "the broadcast of " + operationName + " on " + channel;
+		MessagingLink.Buffer buffer = new MessagingLink.Buffer(config.broadcast_buffer(),
+				operation.getReturnValue().getOverflow().getName());
+		BroadcastReceiver receiver = new BroadcastReceiver(subscriber, message -> {
+			if (message.data() == null) {
+				throw new DdsrException("a value of " + describe + " carried no document");
+			}
+			XmiBundle bundle = XmiCodec.readBundle(new ByteArrayInputStream(message.data()), resourceSets,
+					message.attributes().getDatacontenttype(), config.max_body_bytes());
+			for (EObject root : bundle.roots()) {
+				if (root instanceof ServiceInvocationResult result) {
+					if (result.getDiagnostic() != null) {
+						throw failureOf(operation, result.getDiagnostic(), operationName);
+					}
+					return Invocations.valueOf(result);
+				}
+			}
+			throw new DdsrException("a value of " + describe + " carried no result");
+		}, describe);
+		linkLater(prepared.route()).whenComplete((link, unreachable) -> receiver.start(opening -> {
+			if (unreachable != null) {
+				throw failed(unwrapped(unreachable), operationName, prepared);
+			}
+			return link.subscribe(channel, placed.qos(), buffer, (topic, message) -> opening.received(message),
+					opening::overflowed);
+		}));
 	}
 
 	/** What a failure on the way is to the caller — the same words {@link #invoke} throws. */

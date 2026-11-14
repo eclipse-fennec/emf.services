@@ -69,6 +69,14 @@ export const CE_TYPE_INVOKE = `${TYPE_PREFIX}invoke`;
 
 /** The answer to a call, correlated by {@link CE_EXTENSION_CORRELATION_ID}. */
 export const CE_TYPE_INVOKE_REPLY = `${TYPE_PREFIX}invoke.reply`;
+/**
+ * One value of a stream shared by every receiver (#252), published on the
+ * operation's channel; a document holding a Diagnostic is the last - the
+ * stream failed. The twin of the Java CloudEvents.TYPE_BROADCAST.
+ */
+export const CE_TYPE_BROADCAST = `${TYPE_PREFIX}broadcast`;
+/** A stream shared by every receiver is over; carries no document. */
+export const CE_TYPE_BROADCAST_END = `${TYPE_PREFIX}broadcast.end`;
 
 /** Everything a subscriber knows may be stale; take a fresh snapshot. */
 export const CE_TYPE_RESYNC = `${TYPE_PREFIX}resync`;

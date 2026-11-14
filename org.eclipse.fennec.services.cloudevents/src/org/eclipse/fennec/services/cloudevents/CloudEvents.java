@@ -64,6 +64,16 @@ public final class CloudEvents {
 	/** The answer to a call, correlated by {@link #EXTENSION_CORRELATION_ID}. */
 	public static final String TYPE_INVOKE_REPLY = TYPE_PREFIX + "invoke.reply";
 
+	/**
+	 * One value of a stream shared by every receiver (#252), published on
+	 * the operation's channel; its document is a ServiceInvocationResult,
+	 * and one holding a Diagnostic is the last — the stream failed.
+	 */
+	public static final String TYPE_BROADCAST = TYPE_PREFIX + "broadcast";
+
+	/** A stream shared by every receiver is over; carries no document. */
+	public static final String TYPE_BROADCAST_END = TYPE_PREFIX + "broadcast.end";
+
 	/** Everything a subscriber knows may be stale; take a fresh snapshot. */
 	public static final String TYPE_RESYNC = TYPE_PREFIX + "resync";
 

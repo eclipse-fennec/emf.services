@@ -114,7 +114,7 @@ public final class MqttEventSink implements EventSink {
 			payload = toMessage(event);
 			// One channel, the operation's: the events are a stream every
 			// receiver shares (#252), and a receiver filters what it hears.
-			topics = List.of(topicPrefix);
+			topics = List.of(channels.spell(topicPrefix));
 		} catch (Exception renderFailure) {
 			// Nothing was put on the wire, and a consumer cannot tell the
 			// difference between an event it never got and one that never
@@ -161,7 +161,7 @@ public final class MqttEventSink implements EventSink {
 		if (!pendingResync.get()) {
 			return;
 		}
-		String topic = topicPrefix;
+		String topic = channels.spell(topicPrefix);
 		try {
 			// The end of the stream, as for any broadcast: every receiver
 			// takes a fresh snapshot and goes on listening (#124, #252).

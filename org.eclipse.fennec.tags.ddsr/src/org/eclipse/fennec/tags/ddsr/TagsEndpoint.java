@@ -96,6 +96,18 @@ public final class TagsEndpoint {
 		tags.discardRequestedTag(path, kind, key);
 	}
 
+	public void putRule(String path, String kind, String filter) {
+		tags.putRule(path, kind, filter);
+	}
+
+	public void removeRule(String path, String kind, String filter) {
+		tags.removeRule(path, kind, filter);
+	}
+
+	public TagRegistry rules() {
+		return tags.rules();
+	}
+
 	public TaggedTarget tagsOf(String kind, String key) {
 		TaggedTarget tagged = TagsFactory.eINSTANCE.createTaggedTarget();
 		TagTarget target = TagsFactory.eINSTANCE.createTagTarget();

@@ -12,8 +12,8 @@ The design is collected in issue #272; this page grows with its
 sub-issues. What exists today: the model (#273), the tag service (#274),
 the `Tags` contract served beside the broker (#275) and the tags a
 provider brings, with requests for the ones it may not give itself
-(#276). Rules, the change broadcast, the consumer facade and the
-TypeScript side follow.
+(#276), and rules over properties (#277). The change broadcast, the
+consumer facade and the TypeScript side follow.
 
 ## The tree
 
@@ -54,7 +54,7 @@ comes with its origin:
 | --- | --- |
 | `ADMIN` | an administrator assigned it |
 | `SOURCE` | the target asked for it itself — a provider at registration — and the tag exists and is self-assignable |
-| `RULE` | a rule over the target's properties matched (#277) |
+| `RULE` | a rule over the target's properties matched |
 
 A tag carried for two reasons is reported twice. Nothing is stored per
 target, so a tag created after a target arrived applies to it at once,
@@ -71,6 +71,8 @@ and an assignment to a target that does not exist yet waits for it.
 | `assign(path, kind, key)` / `unassign(path, kind, key)` | an administrator's assignment; doing it twice changes nothing, unassigning leaves tags carried for another reason |
 | `find(paths, mode, kind)` | the keys of the targets of a kind that carry the tags, sorted. `ANY`: at least one path, `ALL`: every one. Only targets their source knows right now; a path no tag has matches nothing |
 | `tagsOf(kind, key)` | the tags a target carries, with their origin |
+| `putRule(path, kind, filter)` / `removeRule(path, kind, filter)` | every target of the kind whose properties match the LDAP filter carries the tag |
+| `rules()` | the rules, together with the tree they reference |
 | `requestedTags()` | what targets asked for and may not give themselves, oldest first |
 | `acceptRequestedTag(path, kind, key)` | grant a request: the tag is created where missing (with its parents, none self-assignable) and assigned |
 | `discardRequestedTag(path, kind, key)` | turn a request down; it comes back with the next registration that asks |
@@ -115,6 +117,35 @@ contracts it serves. Targets that are there when the tag service starts
 ask once at that moment, so a request discarded before a restart of the
 broker is filed again.
 
+## Rules
+
+A rule puts a tag on every target of a kind whose properties match an
+LDAP filter — the filter syntax of OSGi (RFC 4515), read with the OSGi
+framework API:
+
+```
+payment/method/card  ⇐  (payment.scheme=card)
+payment/sandbox      ⇐  (payments.sandbox=true)
+payment/method       ⇐  (&(payment.scheme=*)(payment.sandbox=false))
+```
+
+- **When**: a rule is applied when a query asks, not when a target
+  arrives, so a new rule covers what is registered already and a
+  removed one stops at once.
+- **On what**: the properties the target's source offers. On the
+  services registry those are an implementation's properties, plus
+  `ddsr.provider.name` and `ddsr.implementation.name`; a contract has
+  none, so rules are for `implementation` (the default kind).
+- **Typed values** compare as OSGi filters do: `(payments.sandbox=true)`
+  matches the boolean `true`, `(service.ranking>=10)` an integer, and a
+  list property matches when one of its values does.
+- **The tag object**, not its path, is what a rule holds: a rename moves
+  the rule with it, removing the tag removes its rules.
+- A target a rule tags does not have to ask for that tag — no request is
+  filed for it.
+- A filter that cannot be read is refused (`InvalidTagException`); the
+  same rule twice is kept once.
+
 ## On the broker: the `Tags` contract
 
 A broker whose launch carries `org.eclipse.fennec.tags.model`,
@@ -134,6 +165,8 @@ mode.
 | `assign` / `unassign` | `PUT` / `DELETE /tags/assignment?path=&kind=&key=` | `service-admin` | 204 |
 | `find` | `GET /tags/find?path=…&path=…&mode=ANY\|ALL&kind=` | `service-consumer` | `FoundTargets` (kind, keys) |
 | `tagsOf` | `GET /tags/of?kind=&key=` | `service-consumer` | `TaggedTarget` (target, tags with origin) |
+| `putRule` / `removeRule` | `PUT` / `DELETE /tags/rule?path=&kind=&filter=` | `service-admin` | 204 |
+| `rules` | `GET /tags/rules` | `service-admin` | a `TagRegistry` holding the tree and the rules |
 | `requestedTags` | `GET /tags/requests` | `service-admin` | a `TagRegistry` holding only the open requests |
 | `acceptRequestedTag` / `discardRequestedTag` | `PUT` / `DELETE /tags/request?path=&kind=&key=` | `service-admin` | 204 |
 
@@ -141,7 +174,8 @@ In XMI an `EffectiveTag` without an `origin` attribute carries `SOURCE`:
 it is the first literal and so the default, which XMI leaves out.
 
 The refusals are declared errors of the contract: `UnknownTag` (code
-300, HTTP 404 — also for a request nobody filed), `InvalidTag` (301, 409), `TagNotKept` (302, 503).
+300, HTTP 404 — also for a request nobody filed or a rule that is not
+there), `InvalidTag` (301, 409 — also for a filter that cannot be read), `TagNotKept` (302, 503).
 
 ```bash
 B=http://localhost:8887/ddsr/rest

@@ -108,6 +108,10 @@ class TagServiceTest {
 			return () -> listener = null;
 		}
 
+		void addWith(String kind, String key, Map<String, Object> properties) {
+			subjects.add(new Subject(kind, key, properties, List.of()));
+		}
+
 		void add(String kind, String key, String... requestedTags) {
 			subjects.add(new Subject(kind, key, Map.of(), List.of(requestedTags)));
 		}
@@ -427,5 +431,75 @@ class TagServiceTest {
 	void acceptingOrDiscardingWhatNobodyAskedForIsRefused() {
 		assertThatThrownBy(() -> tags.acceptRequestedTag("iot", CONTRACT, "Nobody")).isInstanceOf(UnknownTagException.class);
 		assertThatThrownBy(() -> tags.discardRequestedTag("iot", CONTRACT, "Nobody")).isInstanceOf(UnknownTagException.class);
+	}
+
+	// --------------------------------------------------------------- rules
+
+	@Test
+	void aRuleTagsWhatItsFilterMatches() {
+		subjects.addWith(IMPLEMENTATION, "card-provider", Map.of("payment.scheme", "card"));
+		subjects.addWith(IMPLEMENTATION, "paypal-provider", Map.of("payment.scheme", "paypal"));
+
+		tags.putRule("payment/method/card", IMPLEMENTATION, "(payment.scheme=card)");
+
+		assertThat(tags.find(List.of("payment/method/card"), MatchMode.ANY, IMPLEMENTATION)).containsExactly("card-provider");
+		assertThat(tags.tagsOf(IMPLEMENTATION, "card-provider")).extracting(EffectiveTag::getPath, EffectiveTag::getOrigin)
+				.containsExactly(tuple("payment/method/card", TagOrigin.RULE));
+	}
+
+	@Test
+	void aRuleCoversWhatArrivesLater() {
+		tags.putRule("payment/method", IMPLEMENTATION, "(&(payment.scheme=*)(payment.sandbox=false))");
+
+		subjects.addWith(IMPLEMENTATION, "live", Map.of("payment.scheme", "card", "payment.sandbox", Boolean.FALSE));
+		subjects.addWith(IMPLEMENTATION, "sandbox", Map.of("payment.scheme", "card", "payment.sandbox", Boolean.TRUE));
+
+		assertThat(tags.find(List.of("payment"), MatchMode.ANY, IMPLEMENTATION)).containsExactly("live");
+	}
+
+	@Test
+	void aRuleLooksAtItsKindOnly() {
+		subjects.addWith(CONTRACT, "Payment", Map.of("payment.scheme", "card"));
+
+		tags.putRule("payment/method/card", IMPLEMENTATION, "(payment.scheme=card)");
+
+		assertThat(tags.find(List.of("payment"), MatchMode.ANY, CONTRACT)).isEmpty();
+	}
+
+	@Test
+	void aRuleFollowsARenameAndGoesWithItsTag() {
+		subjects.addWith(IMPLEMENTATION, "card-provider", Map.of("payment.scheme", "card"));
+		tags.putRule("payment/method/card", IMPLEMENTATION, "(payment.scheme=card)");
+
+		tags.moveTag("payment/method/card", null, "cards");
+		assertThat(tags.tagsOf(IMPLEMENTATION, "card-provider")).extracting(EffectiveTag::getPath).containsExactly("cards");
+		assertThat(tags.rules().getRules()).extracting(rule -> rule.getTag().getPath()).containsExactly("cards");
+
+		tags.removeTag("cards");
+		assertThat(tags.rules().getRules()).isEmpty();
+	}
+
+	@Test
+	void anUnreadableFilterIsRefusedAndARuleIsKeptOnce() {
+		assertThatThrownBy(() -> tags.putRule("payment", IMPLEMENTATION, "payment.scheme=card"))
+				.isInstanceOf(InvalidTagException.class);
+
+		tags.putRule("payment", IMPLEMENTATION, "(x=1)");
+		tags.putRule("payment", IMPLEMENTATION, "(x=1)");
+		assertThat(tags.rules().getRules()).hasSize(1);
+
+		tags.removeRule("payment", IMPLEMENTATION, "(x=1)");
+		assertThat(tags.rules().getRules()).isEmpty();
+		assertThatThrownBy(() -> tags.removeRule("payment", IMPLEMENTATION, "(x=1)")).isInstanceOf(UnknownTagException.class);
+	}
+
+	@Test
+	void aTagARuleGivesIsNotRequested() {
+		tags.putRule("payment/terms/instant", IMPLEMENTATION, "(payment.scheme=card)");
+
+		subjects.listener.accept(List.of(new Subject(IMPLEMENTATION, "card-provider",
+				Map.of("payment.scheme", "card"), List.of("payment/terms/instant"))));
+
+		assertThat(tags.requestedTags()).isEmpty();
 	}
 }

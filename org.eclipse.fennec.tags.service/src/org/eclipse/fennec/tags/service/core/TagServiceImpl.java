@@ -36,6 +36,7 @@ import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
+import org.eclipse.emf.ecore.util.EcoreUtil.Copier;
 import org.eclipse.fennec.tags.EffectiveTag;
 import org.eclipse.fennec.tags.MatchMode;
 import org.eclipse.fennec.tags.RequestedTag;
@@ -43,6 +44,7 @@ import org.eclipse.fennec.tags.Tag;
 import org.eclipse.fennec.tags.TagAssignment;
 import org.eclipse.fennec.tags.TagOrigin;
 import org.eclipse.fennec.tags.TagRegistry;
+import org.eclipse.fennec.tags.TagRule;
 import org.eclipse.fennec.tags.TagTarget;
 import org.eclipse.fennec.tags.TagsFactory;
 import org.eclipse.fennec.tags.service.InvalidTagException;
@@ -52,6 +54,9 @@ import org.eclipse.fennec.tags.service.TagStoreException;
 import org.eclipse.fennec.tags.service.TagSubjects;
 import org.eclipse.fennec.tags.service.TagSubjects.Subject;
 import org.eclipse.fennec.tags.service.UnknownTagException;
+import org.osgi.framework.Filter;
+import org.osgi.framework.FrameworkUtil;
+import org.osgi.framework.InvalidSyntaxException;
 
 /**
  * The tag service over one {@link TagRegistry}, kept in a {@link TagStore}.
@@ -64,7 +69,7 @@ import org.eclipse.fennec.tags.service.UnknownTagException;
  * <p>What a target carries is worked out when a query asks, from three
  * places: the administrator's assignments (kept here), the tags the target
  * asks for itself (from its {@link TagSubjects}, carried when the tag
- * exists and is self-assignable) and, later, the rules (#277). Nothing of
+ * exists and is self-assignable) and the rules over its properties. Nothing of
  * that is stored per target, so a tag created after a target arrived
  * applies to it at once.
  *
@@ -86,6 +91,9 @@ public final class TagServiceImpl implements TagService {
 	private final Map<TagSubjects, AutoCloseable> subscriptions = new ConcurrentHashMap<>();
 
 	private TagRegistry registry;
+
+	/** Rules are read once per filter text; a filter is immutable. */
+	private final Map<String, Filter> filters = new ConcurrentHashMap<>();
 
 	/**
 	 * @throws TagStoreException when the store holds something that is not
@@ -151,7 +159,7 @@ public final class TagServiceImpl implements TagService {
 				for (Subject subject : subjects) {
 					for (String asked : subject.requestedTags()) {
 						String path = normalize(asked);
-						if (!path.isEmpty() && !granted(path, subject.kind(), subject.key())
+						if (!path.isEmpty() && !granted(path, subject.kind(), subject.key(), subject)
 								&& request(path, subject.kind(), subject.key()) == null) {
 							RequestedTag request = TagsFactory.eINSTANCE.createRequestedTag();
 							request.setPath(path);
@@ -174,7 +182,7 @@ public final class TagServiceImpl implements TagService {
 	private boolean asksForSomethingNew(Subject subject) {
 		for (String asked : subject.requestedTags()) {
 			String path = normalize(asked);
-			if (!path.isEmpty() && !granted(path, subject.kind(), subject.key())
+			if (!path.isEmpty() && !granted(path, subject.kind(), subject.key(), subject)
 					&& request(path, subject.kind(), subject.key()) == null) {
 				return true;
 			}
@@ -187,9 +195,44 @@ public final class TagServiceImpl implements TagService {
 	 * administrator: it may give it itself, or an administrator already
 	 * assigned it.
 	 */
-	private boolean granted(String path, String kind, String key) {
+	private boolean granted(String path, String kind, String key, Subject subject) {
 		Tag tag = resolve(path);
-		return tag != null && (tag.isSelfAssignable() || assignment(tag, kind, key) != null);
+		return tag != null && (tag.isSelfAssignable() || assignment(tag, kind, key) != null
+				|| subject != null && byRule(tag, subject));
+	}
+
+	/** Whether a rule puts this tag on the target. */
+	private boolean byRule(Tag tag, Subject subject) {
+		for (TagRule rule : registry.getRules()) {
+			if (rule.getTag() == tag && matches(rule, subject)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private boolean matches(TagRule rule, Subject subject) {
+		if (!subject.kind().equals(rule.getKind())) {
+			return false;
+		}
+		try {
+			return filter(rule.getFilter()).matches(subject.properties());
+		} catch (InvalidTagException unreadable) {
+			// Kept from an earlier version that read it differently; a rule
+			// that cannot be read matches nothing rather than failing a query.
+			LOG.log(Level.FINE, "[Tags] a rule cannot be read: " + rule.getFilter(), unreadable);
+			return false;
+		}
+	}
+
+	private Filter filter(String text) {
+		return filters.computeIfAbsent(text == null ? "" : text, raw -> {
+			try {
+				return FrameworkUtil.createFilter(raw);
+			} catch (InvalidSyntaxException unreadable) {
+				throw new InvalidTagException("not an LDAP filter: '" + raw + "' (" + unreadable.getMessage() + ")");
+			}
+		});
 	}
 
 	private RequestedTag request(String path, String kind, String key) {
@@ -303,6 +346,68 @@ public final class TagServiceImpl implements TagService {
 	}
 
 	// ------------------------------------------------------------------
+	// Rules
+	// ------------------------------------------------------------------
+
+	@Override
+	public void putRule(String path, String kind, String filter) {
+		write(() -> {
+			Tag tag = require(path);
+			if (kind == null || kind.isBlank()) {
+				throw new InvalidTagException("a rule needs the kind of target it looks at");
+			}
+			filter(filter);
+			if (rule(tag, kind, filter) == null) {
+				TagRule rule = TagsFactory.eINSTANCE.createTagRule();
+				rule.setTag(tag);
+				rule.setKind(kind);
+				rule.setFilter(filter);
+				registry.getRules().add(rule);
+			}
+			return null;
+		});
+	}
+
+	@Override
+	public void removeRule(String path, String kind, String filter) {
+		write(() -> {
+			Tag tag = require(path);
+			TagRule rule = rule(tag, kind, filter);
+			if (rule == null) {
+				throw new UnknownTagException("no rule " + filter + " for " + kind + " to '" + tag.getPath() + "'");
+			}
+			registry.getRules().remove(rule);
+			return null;
+		});
+	}
+
+	@Override
+	public TagRegistry rules() {
+		return read(() -> {
+			// One copier for the tree and the rules, so the copied rules
+			// point at the copied tags and the answer is one document.
+			Copier copier = new Copier();
+			Collection<Tag> tree = copier.copyAll(registry.getTags());
+			Collection<TagRule> rules = copier.copyAll(registry.getRules());
+			copier.copyReferences();
+			TagRegistry answer = TagsFactory.eINSTANCE.createTagRegistry();
+			answer.getTags().addAll(tree);
+			answer.getRules().addAll(rules);
+			return answer;
+		});
+	}
+
+	private TagRule rule(Tag tag, String kind, String filter) {
+		for (TagRule rule : registry.getRules()) {
+			if (rule.getTag() == tag && String.valueOf(kind).equals(rule.getKind())
+					&& String.valueOf(filter).equals(rule.getFilter())) {
+				return rule;
+			}
+		}
+		return null;
+	}
+
+	// ------------------------------------------------------------------
 	// Requests
 	// ------------------------------------------------------------------
 
@@ -310,9 +415,12 @@ public final class TagServiceImpl implements TagService {
 	public List<RequestedTag> requestedTags() {
 		return read(() -> {
 			List<RequestedTag> open = new ArrayList<>();
+			Map<String, Map<String, Subject>> subjectsByKind = new LinkedHashMap<>();
 			for (RequestedTag request : registry.getRequests()) {
 				TagTarget target = request.getTarget();
-				if (target == null || !granted(request.getPath(), target.getKind(), target.getKey())) {
+				Subject subject = target == null ? null
+						: subjectsByKind.computeIfAbsent(target.getKind(), this::subjects).get(target.getKey());
+				if (target == null || !granted(request.getPath(), target.getKind(), target.getKey(), subject)) {
 					open.add(EcoreUtil.copy(request));
 				}
 			}
@@ -439,6 +547,11 @@ public final class TagServiceImpl implements TagService {
 			}
 		}
 		if (subject != null) {
+			for (TagRule rule : registry.getRules()) {
+				if (matches(rule, subject)) {
+					carried.computeIfAbsent(rule.getTag(), t -> new ArrayList<>()).add(TagOrigin.RULE);
+				}
+			}
 			for (String requested : subject.requestedTags()) {
 				Tag tag = resolve(requested);
 				if (tag != null && tag.isSelfAssignable()) {

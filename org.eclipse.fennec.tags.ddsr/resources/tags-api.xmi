@@ -97,6 +97,28 @@
           <exceptionBindings exception="/1/@exceptions.0" status="404"/>
           <exceptionBindings exception="/1/@exceptions.2" status="503"/>
         </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="putRule"
+            method="PUT" path="/rule" returnCodes="204"
+            operation="/1/@operations.11">
+          <parameterBindings parameter="/1/@operations.11/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.11/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.11/@parameters.2" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.1" status="409"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="removeRule"
+            method="DELETE" path="/rule" returnCodes="204"
+            operation="/1/@operations.12">
+          <parameterBindings parameter="/1/@operations.12/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.12/@parameters.1" binding="QUERY"/>
+          <parameterBindings parameter="/1/@operations.12/@parameters.2" binding="QUERY"/>
+          <exceptionBindings exception="/1/@exceptions.0" status="404"/>
+          <exceptionBindings exception="/1/@exceptions.2" status="503"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="rules"
+            method="GET" path="/rules" returnCodes="200" produces="application/xml"
+            operation="/1/@operations.13"/>
       </flavors>
     </implementations>
   </services:ServiceProvider>
@@ -197,13 +219,36 @@
       <parameters name="key" index="2" type="string"/>
       <security authenticated="true" scopes="service-admin"/>
     </operations>
+    <operations name="putRule" exceptions="/1/@exceptions.0 /1/@exceptions.1 /1/@exceptions.2"
+        description="Every target of the kind whose properties match the LDAP filter carries the tag. Applied when a query asks, so it covers what is there already.">
+      <parameters name="path" index="0" type="string"/>
+      <parameters name="kind" index="1" type="string" optional="true" defaultValue="implementation"
+          description="Which kind of target the rule looks at; implementations have properties, contracts none."/>
+      <parameters name="filter" index="2" type="string"
+          description="An LDAP filter (RFC 4515, as in OSGi) over the target's properties, e.g. (payment.scheme=card)."/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="removeRule" exceptions="/1/@exceptions.0 /1/@exceptions.2"
+        description="Take a rule away.">
+      <parameters name="path" index="0" type="string"/>
+      <parameters name="kind" index="1" type="string" optional="true" defaultValue="implementation"/>
+      <parameters name="filter" index="2" type="string"/>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
+    <operations name="rules"
+        description="The rules, in a registry holding them together with the tree they reference.">
+      <returnValue name="result">
+        <eType xsi:type="ecore:EClass" href="http://eclipse.org/fennec/tags/1.0#//TagRegistry"/>
+      </returnValue>
+      <security authenticated="true" scopes="service-admin"/>
+    </operations>
 
     <exceptions name="UnknownTag" type="UnknownTagException"
-        description="No tag has this path, neither now nor before a rename — or no such request.">
+        description="No tag has this path, neither now nor before a rename — or no such request or rule.">
       <properties xsi:type="services:IntProperty" name="code" value="300"/>
     </exceptions>
     <exceptions name="InvalidTag" type="InvalidTagException"
-        description="The tree would break: an empty id, a '/' in it, an id taken among the siblings, a tag under itself.">
+        description="The tree would break — an empty id, a '/' in it, an id taken among the siblings, a tag under itself — or a rule's filter cannot be read.">
       <properties xsi:type="services:IntProperty" name="code" value="301"/>
     </exceptions>
     <exceptions name="TagNotKept" type="TagStoreException"

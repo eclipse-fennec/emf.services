@@ -201,7 +201,7 @@ class TagsOnDdsrTest {
 	void everyOperationOfTheContractFindsItsMethod() throws Exception {
 		ServiceInterface contract = contractDocument();
 
-		assertThat(contract.getOperations()).hasSize(11);
+		assertThat(contract.getOperations()).hasSize(14);
 		for (ServiceOperation operation : contract.getOperations()) {
 			Optional<?> method = ServiceMethods.find(endpoint, operation.getName(), operation.getParameters().size());
 			assertThat(method).as(operation.getName()).isPresent();
@@ -286,5 +286,15 @@ class TagsOnDdsrTest {
 		event.setType(ServiceEventType.REGISTERED);
 		event.setReference(reference);
 		return event;
+	}
+
+	@Test
+	void aRuleReadsTheImplementationsProperties() {
+		endpoint.putRule("payment/method/card", "implementation", "(payment.scheme=card)");
+
+		assertThat(endpoint.tagsOf("implementation", "payments-card/Payment").getTags())
+				.extracting(EffectiveTag::getPath, EffectiveTag::getOrigin)
+				.contains(tuple("payment/method/card", TagOrigin.RULE));
+		assertThat(endpoint.rules().getRules()).hasSize(1);
 	}
 }

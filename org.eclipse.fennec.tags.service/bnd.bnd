@@ -10,8 +10,11 @@ Bundle-Description: \
 -library: enableEMF
 
 # No org.eclipse.fennec.services.* here, on purpose (#272): the boundary
-# to DDSR is enforced by the build.
+# to DDSR is enforced by the build. Rules are LDAP filters, read with the
+# OSGi framework API (FrameworkUtil.createFilter) — the API artifact, not
+# osgi.core; it carries its own filter implementation.
 -buildpath: \
+	org.osgi.framework;version=latest,\
 	org.osgi.service.component.annotations;version=latest,\
 	org.osgi.service.metatype.annotations;version=latest,\
 	org.eclipse.fennec.tags.model;version=snapshot

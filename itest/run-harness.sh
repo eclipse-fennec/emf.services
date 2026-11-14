@@ -18,8 +18,8 @@
 # Scenario W: tags beside the broker (#275, #276): roles on the secured
 #             broker; on an open one a provider brings tags (one carried
 #             by itself, one filed and accepted), a contract and an
-#             implementation are tagged and found, and the tags survive a
-#             restart.
+#             implementation are tagged and found, a rule over properties
+#             tags, and the tags survive a restart.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
 #             removal while implemented, withdrawn (contract stays, a
@@ -670,6 +670,19 @@ if grep -q '<keys>' <<<"$FOUND"; then
   echo "SCENARIO W FAILED: ALL matched a contract that carries only one of the tags"; echo "$FOUND"; exit 1
 fi
 echo "  ✓ tags-find: the contract under payment, the implementation under payment/method, ALL is strict"
+
+# A rule (#277): every implementation whose properties match carries the
+# tag. The TS provider announces payments.sandbox=true.
+tags_status 200 PUT "$TAGS_URL/tags/tag?parent=payment&id=sandbox"
+tags_status 204 PUT "$TAGS_URL/tags/rule?path=payment/sandbox&kind=implementation&filter=(payments.sandbox%3Dtrue)"
+tags_status 409 PUT "$TAGS_URL/tags/rule?path=payment/sandbox&kind=implementation&filter=payments.sandbox"
+FOUND=$(tags_find "path=payment/sandbox&kind=implementation")
+grep -q '<keys>payments-ts/Payment</keys>' <<<"$FOUND" \
+  || { echo "SCENARIO W FAILED: the rule does not tag the sandbox implementation"; echo "$FOUND"; exit 1; }
+OF=$(curl -sf "$TAGS_URL/tags/of?kind=implementation&key=payments-ts/Payment")
+grep -q 'path="payment/sandbox" origin="RULE"' <<<"$OF" \
+  || { echo "SCENARIO W FAILED: the rule's tag is not reported with origin RULE"; echo "$OF"; exit 1; }
+echo "  ✓ tags-rules: an LDAP filter over the implementation's properties tags it; an unreadable filter is refused"
 
 tags_status 200 POST "$TAGS_URL/tags/tag/move?path=payment&id=billing"
 # The provider first, so it withdraws; then the broker.

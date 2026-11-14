@@ -36,7 +36,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
-import org.eclipse.fennec.services.invocation.PushStreams;
 import org.gecko.messaging.api.Message;
 import org.gecko.messaging.api.MessageContext;
 import org.gecko.messaging.api.MessageContextBuilder;
@@ -46,6 +45,7 @@ import org.gecko.messaging.api.MessagingConstants;
 import org.gecko.messaging.api.replyto.MessagingSession;
 import org.gecko.messaging.api.replyto.ReplyToPublisher;
 import org.gecko.messaging.api.replyto.ReplyToSessionHandler;
+import org.gecko.messaging.api.util.Flows;
 import org.gecko.messaging.api.replyto.ReplyToSubscriptionConstants;
 import org.gecko.messaging.api.replyto.SessionEndedException;
 import org.gecko.messaging.api.runtime.ConnectionEvent;
@@ -536,7 +536,7 @@ public final class MessagingLink implements AutoCloseable {
 			}
 			opening.onFailure(unopened -> MessagingLink.<CloudEventCodec.Message>failed(unopened).subscribe(subscriber));
 			opening.onSuccess(session -> {
-				Flow.Publisher<CloudEventCodec.Message> received = PushStreams.publisherOf(
+				Flow.Publisher<CloudEventCodec.Message> received = Flows.toPublisher(
 						session.receive().map(Envelopes::fromMessage).filter(answer -> answer != null));
 				received.subscribe(new Flow.Subscriber<CloudEventCodec.Message>() {
 					@Override
@@ -609,7 +609,7 @@ public final class MessagingLink implements AutoCloseable {
 			String session = openRequest.getContext().getCorrelationId();
 			if (call == null) {
 				LOG.warning("[DDSR-MSG] a session on " + channel + " was opened with no CloudEvent; ended");
-				return PushStreams.streamOf(MessagingLink.<Message>failed(
+				return Flows.fromPublisher(MessagingLink.<Message>failed(
 						new IllegalArgumentException("a session opened with no CloudEvent")));
 			}
 			// The application's end, in the library's words: its last message
@@ -617,7 +617,7 @@ public final class MessagingLink implements AutoCloseable {
 			Flow.Publisher<CloudEventCodec.Message> answers = endedAs(receiver.opened(channel, call),
 					ended -> new SessionEndedException(ended.reason(),
 							Envelopes.toMessage(responseBuilders.get(), reply, ended.last(), qos, session)));
-			return PushStreams.streamOf(answers)
+			return Flows.fromPublisher(answers)
 					.map(answer -> Envelopes.toMessage(responseBuilders.get(), reply, answer, qos, session));
 		};
 		ServiceRegistration<ReplyToSessionHandler> registration = context.registerService(ReplyToSessionHandler.class,

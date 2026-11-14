@@ -13,27 +13,23 @@
 
 package org.eclipse.fennec.services.invocation;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.osgi.util.pushstream.PushEvent;
 import org.osgi.util.pushstream.PushEventConsumer;
-import org.osgi.util.pushstream.PushEventSource;
 import org.osgi.util.pushstream.PushStream;
-import org.osgi.util.pushstream.PushStreamProvider;
 
 /**
  * A {@link PushStream} as a {@link Flow.Publisher}.
  *
- * <p>The messaging library speaks PushStreams; between an invoker and a
- * proxy, and between a service and its dispatcher, a stream travels as
- * the JDK's {@code Flow.Publisher}, which needs no library and which
- * every reactive one adapts to. This is where the two meet.
+ * <p>Between a service and its dispatcher a stream travels as the JDK's
+ * {@code Flow.Publisher}, which needs no library and which every reactive
+ * one adapts to. A service may return a PushStream instead, and a node
+ * that serves over REST has no messaging library whose adapter
+ * ({@code org.gecko.messaging.api.util.Flows}) it could use — the
+ * messaging side does use it. This is the one direction REST needs.
  *
  * <p>The two disagree about back-pressure. A subscriber of a publisher
  * asks for what it can take; a PushStream pushes, and is slowed by the
@@ -113,82 +109,6 @@ public final class PushStreams {
 				}
 			});
 		};
-	}
-
-	/**
-	 * A publisher as a stream, for the messaging library that sends a
-	 * {@link PushStream}. Unbuffered: the next element is asked for when
-	 * the stream's consumer has taken the one before, and a consumer that
-	 * asks to wait (a positive back-pressure) is given that time first —
-	 * so a sender slowed by its broker slows the publisher down. Closing
-	 * the stream cancels the subscription.
-	 */
-	public static <T> PushStream<T> streamOf(Flow.Publisher<T> publisher) {
-		PushEventSource<T> source = consumer -> {
-			AtomicReference<Flow.Subscription> held = new AtomicReference<>();
-			AtomicBoolean over = new AtomicBoolean();
-			publisher.subscribe(new Flow.Subscriber<T>() {
-				@Override
-				public void onSubscribe(Flow.Subscription subscription) {
-					held.set(subscription);
-					if (over.get()) {
-						subscription.cancel();
-					} else {
-						subscription.request(1);
-					}
-				}
-
-				@Override
-				public void onNext(T element) {
-					long backPressure;
-					try {
-						backPressure = consumer.accept(PushEvent.data(element));
-					} catch (Exception refused) {
-						backPressure = -1;
-					}
-					Flow.Subscription subscription = held.get();
-					if (backPressure < 0) {
-						over.set(true);
-						subscription.cancel();
-					} else if (backPressure == 0) {
-						subscription.request(1);
-					} else {
-						CompletableFuture.delayedExecutor(backPressure, TimeUnit.MILLISECONDS)
-								.execute(() -> subscription.request(1));
-					}
-				}
-
-				@Override
-				public void onError(Throwable failure) {
-					if (over.compareAndSet(false, true)) {
-						tell(consumer, PushEvent.error(failure));
-					}
-				}
-
-				@Override
-				public void onComplete() {
-					if (over.compareAndSet(false, true)) {
-						tell(consumer, PushEvent.close());
-					}
-				}
-			});
-			return () -> {
-				over.set(true);
-				Flow.Subscription subscription = held.get();
-				if (subscription != null) {
-					subscription.cancel();
-				}
-			};
-		};
-		return new PushStreamProvider().buildStream(source).unbuffered().build();
-	}
-
-	private static <T> void tell(PushEventConsumer<? super T> consumer, PushEvent<T> event) {
-		try {
-			consumer.accept(event);
-		} catch (Exception ignored) {
-			// the stream is over either way
-		}
 	}
 
 	/**

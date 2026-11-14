@@ -25,6 +25,9 @@ Bundle-Description: \
 	org.eclipse.fennec.services.xmi.codec;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\
 	org.osgi.service.cm;version=latest,\
+	org.osgi.util.pushstream;version=latest,\
+	org.osgi.util.promise;version=latest,\
+	org.osgi.util.function;version=latest,\
 	osgi.core;version=latest
 
 # Plain JUnit 5: the dispatcher takes its publisher and its service as

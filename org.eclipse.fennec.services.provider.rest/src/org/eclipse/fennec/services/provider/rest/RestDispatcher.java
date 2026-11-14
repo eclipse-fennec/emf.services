@@ -74,6 +74,7 @@ import org.eclipse.fennec.services.xmi.codec.XmiCodec;
 import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
 import org.eclipse.fennec.services.xmi.codec.jakartars.XmiHttpErrors;
 import org.osgi.framework.ServiceObjects;
+import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
 
 import jakarta.ws.rs.DELETE;
@@ -193,6 +194,44 @@ public class RestDispatcher {
 		this.resourceSets = resourceSets;
 		this.tracer = tracer == null ? CallTracer.NONE : tracer;
 		this.enforce = enforce;
+	}
+
+	/**
+	 * A dispatcher over one implementation object, for a component that
+	 * serves a contract from a document under paths of its own rather than
+	 * through a {@link GenericRestDistribution} — the tag facade serves the
+	 * broker's contracts once per tag this way (#279). Every answer is the
+	 * one a distribution of the same document would give: the same
+	 * placement, the same documents, the same stream frames.
+	 *
+	 * <p>The caller routes a request here through the four annotated
+	 * methods, with the path taken relative to the flavor's base.
+	 *
+	 * @param mode the authentication mode the serving application states —
+	 *        {@code bearer}, {@code bearer-optional}, {@code mtls} or
+	 *        {@code none} — which decides whether the document's
+	 *        requirements are held against the caller
+	 */
+	public static RestDispatcher serving(RestFlavor flavor, Object implementation, String contract,
+			ComponentServiceObjects<ResourceSet> resourceSets, String mode) {
+		boolean enforce = ServedSecurity.enforcedByConfiguration(contract, flavor, mode);
+		ServiceObjects<Object> held = new ServiceObjects<>() {
+			@Override
+			public Object getService() {
+				return implementation;
+			}
+
+			@Override
+			public void ungetService(Object service) {
+				// the caller owns the object; nothing to give back
+			}
+
+			@Override
+			public ServiceReference<Object> getServiceReference() {
+				return null;
+			}
+		};
+		return new RestDispatcher(flavor, () -> held, contract, resourceSets, CallTracer.NONE, enforce);
 	}
 
 	@GET

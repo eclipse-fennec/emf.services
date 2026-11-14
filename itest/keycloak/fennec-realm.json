@@ -24,6 +24,10 @@
       {
         "name": "ledger-writer",
         "description": "may write it \u2014 held by nobody in the harness, so the refusal is proven"
+      },
+      {
+        "name": "tags-consumer",
+        "description": "may read the registry through the tag facade only, under the tags a policy grants (TAGS.md, #279)"
       }
     ]
   },
@@ -423,6 +427,28 @@
       "optionalClientScopes": [
         "ddsr-broker"
       ]
+    },
+    {
+      "clientId": "tags-viewer",
+      "name": "tags-viewer",
+      "description": "an end consumer that sees the registry through the tag facade only (W)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "tags-viewer-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker",
+        "person-store"
+      ]
     }
   ],
   "users": [
@@ -528,6 +554,14 @@
         "service-provider",
         "service-consumer",
         "service-admin"
+      ]
+    },
+    {
+      "username": "service-account-tags-viewer",
+      "enabled": true,
+      "serviceAccountClientId": "tags-viewer",
+      "realmRoles": [
+        "tags-consumer"
       ]
     }
   ]

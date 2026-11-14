@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.client.internal;
+package org.eclipse.fennec.services.examples.persons;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,48 +21,60 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 
 /**
- * Activates once a {@link PaymentRemote} proxy has been registered.
- * Calls {@code getBalance("42")} and logs the result.
+ * Calls the TypeScript-side {@code Payment} implementation via its
+ * registered proxy. Activates only when {@link PaymentProxyRegistrar}
+ * has registered a {@link PaymentRemote} carrying
+ * {@code ddsr.provider.name=payments-ts} — i.e. the TypeScript provider
+ * has published its implementation and the lookup found it. The cross-language
+ * proof: the same {@code PaymentRemote} interface that talks to our
+ * Java provider now talks to a TS provider, only the locator/proxy
+ * differs underneath.
  *
- * <p>If a Java-side Payment provider activates in the same launch
- * (e.g. via {@code org.eclipse.fennec.services.examples.payment}) the
- * publisher posts the impl into the catalog before this component
- * activates — but the actual HTTP endpoint may not yet be listening
- * on its port (Jetty + Jakartars Whiteboard wire the resource into
- * the application asynchronously). To tolerate the startup race
- * we retry a couple of times with a short backoff. After that, we
- * accept the failure as a real configuration problem and log it.
+ * <p>Transient connect failures are retried (TS service might come up
+ * slightly after the broker catalog has the publish recorded).
  *
- * <p>Delete this class once Payment integration is real.
+ * <p>An example, in the example consumer since #268: the SDK starts
+ * nothing nobody asked for. The harness waits for its
+ * {@code ts.charge(10.0, "EUR") =} line in the Java client launch.
  */
 @Component(immediate = true)
-public final class PaymentDebug {
+public final class TsPaymentDebug {
 
-	private static final Logger LOG = Logger.getLogger(PaymentDebug.class.getName());
+	private static final Logger LOG = Logger.getLogger(TsPaymentDebug.class.getName());
 
 	private static final int MAX_ATTEMPTS = 5;
 	private static final long BACKOFF_MILLIS = 400;
 
-	@Reference(target = "(&(service.imported=true)(ddsr.provider.name=payments-java))")
+	@Reference(target = "(&(service.imported=true)(ddsr.provider.name=payments-ts))")
 	private PaymentRemote payment;
+
+	private static final String ACCOUNT_ID = "account-1";
 
 	@Activate
 	void activate() {
-		LOG.info("[DDSR-Debug] PaymentRemote proxy is available — trying getBalance(\"42\")");
+		LOG.info("[DDSR-Debug-TS] PaymentRemote (TS) proxy is available — trying getBalance(\""
+				+ ACCOUNT_ID + "\")");
 		Throwable last = null;
 		for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
 			try {
-				double balance = payment.getBalance("42");
-				LOG.info("[DDSR-Debug] payment.getBalance(\"42\") = " + balance
+				double balance = payment.getBalance(ACCOUNT_ID);
+				LOG.info("[DDSR-Debug-TS] ts.getBalance(\"" + ACCOUNT_ID + "\") = " + balance
 						+ (attempt > 1 ? " (after " + attempt + " attempts)" : ""));
+				// One charge call to round out the cross-language demo.
+				try {
+					double remaining = payment.charge(10.0, "EUR");
+					LOG.info("[DDSR-Debug-TS] ts.charge(10.0, \"EUR\") = " + remaining);
+				} catch (Throwable t) {
+					LOG.warning("[DDSR-Debug-TS] ts.charge FAILED: " + t);
+				}
 				return;
 			} catch (Throwable t) {
 				last = t;
 				if (!isTransient(t)) {
-					LOG.log(Level.WARNING, "[DDSR-Debug] Payment call FAILED with non-transport error", t);
+					LOG.log(Level.WARNING, "[DDSR-Debug-TS] TS payment call FAILED with non-transport error", t);
 					return;
 				}
-				LOG.fine("[DDSR-Debug]   attempt " + attempt + "/" + MAX_ATTEMPTS
+				LOG.fine("[DDSR-Debug-TS]   attempt " + attempt + "/" + MAX_ATTEMPTS
 						+ " failed (" + rootCause(t) + "); waiting " + BACKOFF_MILLIS + "ms");
 				try {
 					Thread.sleep(BACKOFF_MILLIS);
@@ -72,14 +84,10 @@ public final class PaymentDebug {
 				}
 			}
 		}
-		LOG.warning("[DDSR-Debug] Payment call FAILED after " + MAX_ATTEMPTS
+		LOG.warning("[DDSR-Debug-TS] TS payment call FAILED after " + MAX_ATTEMPTS
 				+ " attempts: " + rootCause(last));
 	}
 
-	/**
-	 * Treat transport/connect/timeout exceptions as transient. We do
-	 * this by class name to avoid coupling client.java to JAX-RS.
-	 */
 	private static boolean isTransient(Throwable t) {
 		for (Throwable c = t; c != null; c = c.getCause()) {
 			String n = c.getClass().getName();

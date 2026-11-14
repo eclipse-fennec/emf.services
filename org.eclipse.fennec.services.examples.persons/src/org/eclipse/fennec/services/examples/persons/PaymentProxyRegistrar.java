@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.client.internal;
+package org.eclipse.fennec.services.examples.persons;
 
 import java.util.ArrayList;
 import java.util.Dictionary;

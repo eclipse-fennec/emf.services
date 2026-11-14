@@ -1,13 +1,16 @@
-Bundle-Name: Fennec Services PersonStore Example Consumer
+Bundle-Name: Fennec Services Example Consumer
 Bundle-Description: \
-	Calls the PersonStore contract, whose argument and result are models and \
-	whose wire encoding is protobuf. Lives in its own bundle because the SDK \
-	must not depend on an example model, and because the provider bundle \
-	brings its own configuration — putting this in either would publish a \
-	second provider or drag a demo model into the broker.
+	The example consumers of the harness's Java client: calls the PersonStore \
+	contract, whose argument and result are models and whose wire encoding is \
+	protobuf, and the Payment contract of the TypeScript provider. Lives in its \
+	own bundle because the SDK must not depend on an example model nor start \
+	examples (#268), and because the provider bundle brings its own \
+	configuration — putting this in either would publish a second provider or \
+	drag a demo model into the broker.
 
 -buildpath: \
 	org.osgi.service.component.annotations;version=latest,\
+	osgi.core;version=latest,\
 	org.eclipse.emf.common;version=latest,\
 	org.eclipse.emf.ecore;version=latest,\
 	org.eclipse.fennec.services.model;version=snapshot,\

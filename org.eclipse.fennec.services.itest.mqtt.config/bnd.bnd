@@ -1,4 +1,4 @@
-Bundle-Name: Gecko DDSR Harness MQTT Configuration
+Bundle-Name: Fennec Services Harness MQTT Configuration
 Bundle-Description: \
 	Harness-only configuration bundle (FR-P4 Scenario D): wakes the \
 	dormant MQTT client transport (configurationPolicy REQUIRE) with \
@@ -16,7 +16,18 @@ Bundle-Description: \
 	Deliberately a bundle rather than configurator.initial: the initial \
 	property is parsed while the jakarta.json provider bundle may not \
 	be started yet, and JAVA_TOOL_OPTIONS strips the double quotes any \
-	inline JSON needs.
+	inline JSON needs. \
+	\
+	Carries the scenario's one piece of code, PaymentEventLog: the \
+	listener whose EVENT lines the harness reads (#268 moved it out of the \
+	SDK, where it started in every framework).
+
+-library: enableEMF
+
+-buildpath: \
+	org.osgi.service.component.annotations;version=latest,\
+	org.eclipse.fennec.services.model;version=snapshot,\
+	org.eclipse.fennec.services.client.java;version=snapshot
 
 -includeresource: \
 	OSGI-INF/configurator/=configs/

@@ -16,7 +16,7 @@ broker. Requirements and decisions:
   ends (SIGTERM → FrameworkShutdownHook → a blocking withdraw →
   the broker fan-out → the process ends).
 - **B — TS provider → Java consumer:** `client.bndrun`
-  (TsPaymentDebug) calls getBalance/charge; on SIGTERM of the TS
+  (TsPaymentDebug in examples.persons) calls getBalance/charge; on SIGTERM of the TS
   provider: the withdraw is acknowledged by the broker **before** the
   HTTP endpoint stops, and the broker no longer lists the provider
   afterwards.

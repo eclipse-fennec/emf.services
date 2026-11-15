@@ -23,6 +23,7 @@ import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.broker.core.BrokerCatalog;
+import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.Registration;
 import org.osgi.service.component.annotations.Activate;
@@ -110,7 +111,11 @@ public class ContractAnnouncement {
 				throw new IllegalStateException("the broker refused the contract: " + added.getMessage());
 			}
 
-			String entryUrl = served.brokerUrl().replaceFirst("/+$", "") + "/catalog/" + contract.getName();
+			// Named exactly, not by name alone: once a contract of that name has
+			// changed, both versions coexist in the catalog (#271), and a bare
+			// name is ambiguous there (#301).
+			String entryUrl = served.brokerUrl().replaceFirst("/+$", "") + "/catalog/" + contract.getName()
+					+ "?fingerprint=" + URI.encodeQuery(ContractAddressing.fingerprint(contract), false);
 			served.resourceSet().createResource(URI.createURI(entryUrl)).getContents().add(contract);
 
 			String where = served.deploy();

@@ -1110,7 +1110,9 @@ if grep -aq "PaymentRemote proxy registration FAILED" "$WORK/client-mtls.log"; t
   echo "SCENARIO M FAILED: the Java client's lookup over TLS failed"; grep -a -A3 "registration FAILED" "$WORK/client-mtls.log" | head -5
   exit 1
 fi
-grep -aq "subscribed to $MTLS_URL/events" "$WORK/client-mtls.log" \
+# Waited for, not looked for once: the lookup's line can come a moment
+# before the subscription's.
+wait_for_line "$WORK/client-mtls.log" "subscribed to $MTLS_URL/events" 30 \
   || { echo "SCENARIO M FAILED: the Java client did not subscribe over TLS"; exit 1; }
 if grep -aq "SSLHandshakeException\|event stream dropped" "$WORK/client-mtls.log"; then
   echo "SCENARIO M FAILED: the Java client's TLS failed"; grep -a "SSLHandshakeException\|dropped" "$WORK/client-mtls.log" | head -3

@@ -89,8 +89,8 @@ inline, which the OpenAPI codec puts into a sub-package `inline`
 address it from the root, as EMF does: `<root nsURI>#//inline/<Name>`.
 The broker's gate maps such an `eType` to its root, resolved or proxy.
 A map (`additionalProperties`) is a class whose catch-all feature holds
-`EStringToStringMapEntry` entries — Ecore's own, so nothing more is
-pinned for it.
+the entries — of an entry class in the same package tree, pinned with
+the root, or of Ecore's `EStringToStringMapEntry`, which needs no pin.
 
 ### Typed slots and multiplicity — and why the tag is still sd1
 

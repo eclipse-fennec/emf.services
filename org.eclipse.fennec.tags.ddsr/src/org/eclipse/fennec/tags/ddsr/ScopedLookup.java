@@ -16,6 +16,7 @@ package org.eclipse.fennec.tags.ddsr;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.eclipse.fennec.services.LocalServiceRegistry;
@@ -23,6 +24,7 @@ import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceProvider;
+import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.invocation.ServiceMethods;
 import org.eclipse.fennec.tags.service.TagService;
 
@@ -83,6 +85,9 @@ public final class ScopedLookup {
 						.removeIf(contract -> !visible.implementation(provider.getName(), contract.getName()));
 			}
 		}
+		for (ServiceReference reference : answer.getReferences()) {
+			trim(reference, contract -> visible.implementation(reference.getProvider().getName(), contract));
+		}
 		if (Visibility.INFRASTRUCTURE.contains(interfaceName)) {
 			for (ServiceProvider provider : answer.getProviders()) {
 				for (ServiceImplementation implementation : provider.getImplementations()) {
@@ -96,6 +101,19 @@ public final class ScopedLookup {
 		}
 		return answer;
 	}
+
+	/**
+	 * A reference names every contract of its implementation in a
+	 * fingerprint property of its own, {@code ddsr.fingerprint.<contract>}
+	 * (several contracts); the ones the tag does not cover go.
+	 */
+	static void trim(ServiceReference reference, Predicate<String> visibleContract) {
+		reference.getProperties().removeIf(property -> property.getName() != null
+				&& property.getName().startsWith(FINGERPRINT_OF)
+				&& !visibleContract.test(property.getName().substring(FINGERPRINT_OF.length())));
+	}
+
+	private static final String FINGERPRINT_OF = "ddsr.fingerprint.";
 
 	/**
 	 * The facade's address of a broker contract: the tag goes before the

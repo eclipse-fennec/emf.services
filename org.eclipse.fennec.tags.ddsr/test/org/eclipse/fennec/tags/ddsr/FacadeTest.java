@@ -39,6 +39,7 @@ import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.ServiceReference;
 import org.eclipse.fennec.services.ServicesFactory;
+import org.eclipse.fennec.services.StringProperty;
 import org.eclipse.fennec.tags.TagRegistry;
 import org.eclipse.fennec.tags.TagsFactory;
 import org.eclipse.fennec.tags.TagsPackage;
@@ -77,6 +78,12 @@ class FacadeTest {
 				ServiceProvider copy = EcoreUtil.copy(provider);
 				ServiceReference reference = F.createServiceReference();
 				reference.setId("ref-" + provider.getName());
+				for (ServiceInterface served : provider.getImplementations().get(0).getServiceInterfaces()) {
+					StringProperty contractFingerprint = F.createStringProperty();
+					contractFingerprint.setName("ddsr.fingerprint." + served.getName());
+					contractFingerprint.setValue("sd1:" + served.getName());
+					reference.getProperties().add(contractFingerprint);
+				}
 				reference.setProvider(copy);
 				answer.getProviders().add(copy);
 				answer.getReferences().add(reference);
@@ -299,6 +306,8 @@ class FacadeTest {
 				.getServiceReferences("Payment", null, null, null, null);
 		assertThat(answer.getProviders().get(0).getImplementations().get(0).getServiceInterfaces())
 				.extracting(ServiceInterface::getName).containsExactly("Payment");
+		assertThat(answer.getReferences().get(0).getProperties()).extracting(property -> property.getName())
+				.containsExactly("ddsr.fingerprint.Payment");
 
 		FakeEvents events = new FakeEvents();
 		List<ServiceEvent> heard = new ArrayList<>();

@@ -143,6 +143,7 @@ public final class ScopedEvents implements BroadcastReceivers {
 		copier.copyAll(contracts);
 		copier.copyReferences();
 		ServiceProvider providerCopy = (ServiceProvider) copier.get(provider);
+		ScopedLookup.trim(copy.getReference(), contract -> visible.implementation(providerCopy.getName(), contract));
 		for (ServiceImplementation implementation : providerCopy.getImplementations()) {
 			implementation.getServiceInterfaces()
 					.removeIf(contract -> !visible.implementation(providerCopy.getName(), contract.getName()));

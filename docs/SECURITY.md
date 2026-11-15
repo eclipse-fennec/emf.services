@@ -94,6 +94,27 @@ The concrete schemes:
   front of a REST node. The scheme says explicitly that the node checks
   nothing per call, so a document without any scheme is never mistaken
   for this one.
+- **`ApiKeyScheme`** — `in` (`HEADER`, `QUERY`, `COOKIE`) and
+  `parameterName` (#299). OpenAPI's `apiKey`: the caller presents a key
+  the endpoint issued to it. It describes endpoints that are **not**
+  Fennec Services nodes — what a bridge announces — and a Fennec Services
+  node never serves with it: a flavor whose only scheme is an API key is
+  refused, not served open. A key carries no scopes; like a
+  `ConnectionScheme` it does not satisfy a requirement that names some.
+
+  Which key a caller presents is its configuration, never a document: an
+  `ApiKeySupplier` (api bundle) answers by the host a call goes to and the
+  scheme's name — in Java one factory configuration per endpoint,
+
+  ```json
+  "org.eclipse.fennec.services.client.rest.apikey~petstore": {
+    "host": "http://petstore:8080", "scheme": "api_key", "key": "$[env:PETSTORE_KEY]" }
+  ```
+
+  in TypeScript the REST plugin's `apiKeys: (host, scheme) => key`. The
+  key goes where the scheme says, on calls to that endpoint only, when no
+  bearer token is used; a guarded call without one fails before it is
+  sent, naming what to configure.
 
 Scopes are the contract's vocabulary, as in OpenAPI: `payment:write`
 is a name the credential must carry. Mapping a scope to roles, groups
@@ -716,7 +737,7 @@ Taken, and written into the model's documentation annotations:
   client id are one and the same name;
 - a contract without a requirement is not "open"; the serving node's
   configuration decides;
-- a `ConnectionScheme` cannot check scopes;
+- a `ConnectionScheme` cannot check scopes, nor can an `ApiKeyScheme`;
 - `principal` and `domain` never travel;
 - the requirement is part of sd1 and the schemes are part of im1, by
   the schemes' extension rule (a line only where something is
@@ -753,6 +774,7 @@ Open, in the order they will come up:
 | `@RolesAllowed` emitted by the m2t resource template, enforced on JAX-RS resources by `RolesAllowedFeature` | implemented — see §4 |
 | one domain per broker from issuer/audience, written onto registrations and sessions (`DDSR_DOMAIN`) | implemented — first version, see §3 |
 | several domains in one broker (partitioned catalog, events per domain) | second version |
+| `ApiKeyScheme` for endpoints outside Fennec Services (header, query, cookie), presented by both SDKs from configuration, never served by a node (#299) | implemented — see §2 |
 | mutual TLS for REST: mode `mtls`, certificate from TLS or a trusted gateway, roles from the node's mapping, broker announces a `MutualTlsScheme`, Java client with key and trust store | implemented — see §7d |
 | discovery by certificate, calls by token: `broker.authentication=certificate`, configured contracts announce their scheme, CN = client id | implemented — see §7d |
 | RSA role configuration: the node's certificate and `broker.authentication`, derived into the client | implemented — see §7d and [RSA](RSA.md) |

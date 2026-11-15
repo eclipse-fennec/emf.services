@@ -23,6 +23,13 @@ broker. Requirements and decisions:
   `Payment` contract outlived the Java provider of A and the lookup
   answers none, the consumer waits, binds when the provider arrives and
   drops its proxy when it goes — the contract stays (#271).
+- **Y (host only, secured, needs podman) — who sees which tag (#282):**
+  OPA (`opa/tags.rego`, its tests run first) decides and APISIX
+  (`opa/apisix*.yaml`) enforces in front of the tag facade of the secured
+  broker; Keycloak groups mirror the tag tree. The shop
+  (`/tags/payment/terms/instant`) sees Payment and is refused instalments,
+  the credit application the other way round, no token is refused, the
+  raw API is not routed.
 - **X (host only) — the Payment example, tagged (#281):** a seeded tag
   tree and a rule; the Java provider (PayPal) and `card-provider.ts`
   (one implementation, `Payment` and `InstallmentPlan`) bring their tags;

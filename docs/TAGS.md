@@ -15,8 +15,8 @@ provider brings, with requests for the ones it may not give itself
 (#276), rules over properties (#277), the change broadcast (#278), the
 consumer facade (#279), the announcement of the contract (#287) and its
 TypeScript side (#280), and the Payment example, tagged (#281 —
-[the example](EXAMPLE_PAYMENT.md#tagged-methods-and-terms)). OPA with
-Keycloak follows (#282).
+[the example](EXAMPLE_PAYMENT.md#tagged-methods-and-terms)), and who sees
+which tag — OPA with Keycloak and a gateway (#282, [the recipe](TAGS_OPA.md)).
 
 ## The tree
 
@@ -219,8 +219,9 @@ keep `service-consumer`. Existing configurations do not change.
 
 **Who may see which tag** is not the facade's decision. It narrows answers
 to the tag in the path; a gateway in front of it (APISIX) asks a policy
-decision point (OPA) whether the caller may use that path (#282). Without
-one, every caller holding `tags-consumer` may use every tag. The facade
+decision point (OPA) whether the caller may use that path — the recipe is
+[Who sees which tag](TAGS_OPA.md). Without one, every caller holding
+`tags-consumer` may use every tag. The facade
 still verifies the caller's token itself, and the broker should be
 reachable only through the gateway.
 

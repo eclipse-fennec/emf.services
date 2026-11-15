@@ -1,0 +1,12 @@
+# Copyright (c) 2026 Contributors to the Eclipse Foundation.
+# SPDX-License-Identifier: EPL-2.0
+#
+# APISIX as the policy enforcement point in front of the tag facade
+# (#282): standalone, its routes read from apisix.yaml — no etcd, no
+# admin API.
+apisix:
+  node_listen: 18092
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml

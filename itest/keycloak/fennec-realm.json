@@ -449,6 +449,78 @@
         "ddsr-broker",
         "person-store"
       ]
+    },
+    {
+      "clientId": "shop-instant",
+      "name": "shop-instant",
+      "description": "a shop that may see what is paid at once (Y)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "shop-instant-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker",
+        "person-store"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "shop-credit",
+      "name": "shop-credit",
+      "description": "a credit application that may see instalments (Y)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "shop-credit-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker",
+        "person-store"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "claim.name": "groups"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -562,6 +634,62 @@
       "serviceAccountClientId": "tags-viewer",
       "realmRoles": [
         "tags-consumer"
+      ]
+    },
+    {
+      "username": "service-account-shop-instant",
+      "enabled": true,
+      "serviceAccountClientId": "shop-instant",
+      "realmRoles": [
+        "tags-consumer"
+      ],
+      "groups": [
+        "/tags/payment/terms/instant"
+      ]
+    },
+    {
+      "username": "service-account-shop-credit",
+      "enabled": true,
+      "serviceAccountClientId": "shop-credit",
+      "realmRoles": [
+        "tags-consumer"
+      ],
+      "groups": [
+        "/tags/payment/terms/installment"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "tags",
+      "subGroups": [
+        {
+          "name": "payment",
+          "subGroups": [
+            {
+              "name": "method",
+              "subGroups": [
+                {
+                  "name": "paypal"
+                },
+                {
+                  "name": "card"
+                }
+              ]
+            },
+            {
+              "name": "terms",
+              "subGroups": [
+                {
+                  "name": "instant"
+                },
+                {
+                  "name": "installment"
+                }
+              ]
+            }
+          ]
+        }
       ]
     }
   ]

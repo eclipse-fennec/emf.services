@@ -769,6 +769,12 @@ public class RestDispatcher {
 	 * case is the single-root document it always was.
 	 */
 	private static Object withContext(Object result) {
+		if (result instanceof Collection<?> several && several.stream().allMatch(EObject.class::isInstance)) {
+			// Many values (#302): one document, the values in order and
+			// then their context — never a bare list, which has no writer.
+			List<EObject> values = several.stream().map(EObject.class::cast).toList();
+			return new XmiBundle(ResultDocument.rootsOfAll(values));
+		}
 		if (!(result instanceof EObject value)) {
 			return result;
 		}

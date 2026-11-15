@@ -206,6 +206,18 @@ was before the rule existed. One that needs something becomes a
 multi-root document whose **first root is the answer**, which is what
 both SDKs already read.
 
+**Many values (#302).** An operation whose return value is model-typed
+and many-valued (`upperBound` other than 1) answers over REST with one
+document: the **values in their order**, followed by the context of all
+of them, each object once. A reader takes **every root of the return
+type** as the values, in document order — a root whose class is the
+type or inherits from it; the type is compared as `<nsURI>#//<Name>`,
+so an unresolved href works — and the other roots are context. An
+empty list is `204`, as an absent value is. Java: `ResultDocument.rootsOfAll`
+/ `ResultDocument.values`; TypeScript: `resultRoots` / `resultValues` in
+`@ddsr/client`. Over messaging a many-valued model answer is not carried
+yet: the `ServiceInvocationResult` holds one `EObjectProperty`.
+
 ## The envelope: CloudEvents 1.0
 
 Since #101 every message this registry sends travels in a CloudEvents

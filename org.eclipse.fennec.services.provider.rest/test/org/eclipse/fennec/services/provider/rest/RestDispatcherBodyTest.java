@@ -42,6 +42,7 @@ import org.eclipse.fennec.services.ServicesFactory;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.xmi.codec.WireBody;
+import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.ServiceObjects;
 import org.osgi.framework.ServiceReference;
@@ -215,6 +216,30 @@ class RestDispatcherBodyTest {
 		assertThat(response.getStatus()).isEqualTo(400);
 		assertThat(String.valueOf(response.getEntity())).contains("payload is required");
 		assertThat(probe.received).as("nothing may reach the service").isNull();
+	}
+
+	@Test
+	void many_model_values_answer_as_one_document_in_order() {
+		// #302: a bare list has no writer — it is a document whose roots
+		// are the values, followed by their context.
+		ServiceInterface first = F.createServiceInterface();
+		first.setName("First");
+		ServiceInterface second = F.createServiceInterface();
+		second.setName("Second");
+		RestDispatcher dispatcher = new RestDispatcher(contract(false),
+				() -> new OneService(new Object() {
+					@SuppressWarnings("unused")
+					public Object store(Object payload) {
+						return List.of(first, second);
+					}
+				}), "Store", new ResourceSetObjects());
+
+		Response response = dispatcher.dispatch("POST", "/store", name -> List.of(), name -> null,
+				new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8)));
+
+		assertThat(response.getStatus()).isEqualTo(200);
+		assertThat(response.getEntity()).isInstanceOf(XmiBundle.class);
+		assertThat(((XmiBundle) response.getEntity()).roots()).containsExactly(first, second);
 	}
 
 	@Test

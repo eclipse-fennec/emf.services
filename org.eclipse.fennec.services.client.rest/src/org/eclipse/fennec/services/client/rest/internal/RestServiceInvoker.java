@@ -32,6 +32,7 @@ import org.eclipse.fennec.services.ApiKeyScheme;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.HttpMethod;
+import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.RestOperationFlavor;
 import org.eclipse.fennec.services.ServiceException;
@@ -53,6 +54,7 @@ import org.eclipse.fennec.services.flavor.rest.RestPlacement;
 import org.eclipse.fennec.services.flavor.rest.RestStreams;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
@@ -527,6 +529,12 @@ public final class RestServiceInvoker implements ServiceInvoker {
 				// sibling roots (#88), and the value is the first of them.
 				// The siblings stay reachable through its references.
 				List<EObject> roots = response.readEntity(XmiBundle.class).roots();
+				Parameter returned = operationFlavor == null || operationFlavor.getOperation() == null ? null
+						: operationFlavor.getOperation().getReturnValue();
+				if (returned != null && returned.getUpperBound() != 1) {
+					// Many values (#302): every root of the return type, in order.
+					return ResultDocument.values(roots, returned.getEType());
+				}
 				return roots.isEmpty() ? null : roots.get(0);
 			}
 			if (mt != null && response.hasEntity() && readsAsModel(response, mt)) {

@@ -106,7 +106,7 @@ while IFS=$'\t' read -r id caller method target expect check why; do
   else
     failed=$((failed + 1))
     printf '  ✗ %-40s %s %s → %s\n' "$id" "$method" "$target" "$problem"
-    detail="$method $target as $caller: $problem"$'\n'"$(head -c 600 <<<"$body")"
+    detail="$method $target as $caller: $problem"$'\n'"$(head -c 4000 <<<"$body")"
     cases+="    <testcase classname=\"tag-access.$(xml "$group")\" name=\"$(xml "$name")\" time=\"$elapsed\">"$'\n'
     cases+="      <failure message=\"$(xml "$problem")\">$(xml "$detail")</failure>"$'\n'
     cases+="    </testcase>"$'\n'

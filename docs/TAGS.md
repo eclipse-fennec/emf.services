@@ -189,7 +189,9 @@ BROKER_URL=http://broker:8887/ddsr/rest/scoped/payment        # a TypeScript con
 - **What is visible**: a registration whose implementation or contract
   carries a tag at or under the path — by an administrator, the provider
   or a rule. A tag covers its descendants, so `/scoped/payment` shows
-  what `/scoped/payment/method/card` shows and more.
+  what `/scoped/payment/method/card` shows and more. An implementation
+  serving several contracts names only those it is visible for under the
+  tag — in lookup answers, events and the catalog alike.
 - **The broker's own contracts** (`BrokerLookup`, `BrokerEvents`,
   `BrokerCatalog`) are always visible, and answered at the facade's
   address: a consumer that finds the broker's API through the facade

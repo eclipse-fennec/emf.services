@@ -521,6 +521,42 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "shop-norole",
+      "name": "shop-norole",
+      "description": "in the instant group but without tags-consumer: the gateway lets it through, the facade does not (Y)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "shop-norole-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "defaultClientScopes": [
+        "basic",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "ddsr-broker",
+        "person-store"
+      ],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "full.path": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "claim.name": "groups"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -656,6 +692,15 @@
       ],
       "groups": [
         "/tags/payment/terms/installment"
+      ]
+    },
+    {
+      "username": "service-account-shop-norole",
+      "enabled": true,
+      "serviceAccountClientId": "shop-norole",
+      "realmRoles": [],
+      "groups": [
+        "/tags/payment/terms/instant"
       ]
     }
   ],

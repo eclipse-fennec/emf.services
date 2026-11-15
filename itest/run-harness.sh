@@ -915,26 +915,13 @@ if secured && command -v podman >/dev/null 2>&1; then
   done
   echo "  ✓ y-no-token: the gateway turns away a request without a token (403)"
 
-  y_refs() { # client tag interface expected-status → references in the answer
-    local token answer status
-    token=$(token_for "$1")
-    answer=$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer $token" "$GATEWAY/scoped/$2/references?interface=$3")
-    status=$(tail -1 <<<"$answer")
-    [ "$status" = "$4" ] || { echo "SCENARIO Y FAILED: $1 on $2 for $3 answered $status, expected $4" >&2
-      head -c 800 <<<"$answer" >&2; exit 1; }
-    grep -c '<references' <<<"$answer" || true
-  }
-  [ "$(y_refs shop-instant payment/terms/instant Payment 200)" = 2 ] \
-    || { echo "SCENARIO Y FAILED: the shop does not see both Payment providers"; exit 1; }
-  y_refs shop-instant payment/terms/installment InstallmentPlan 403 >/dev/null
-  [ "$(y_refs shop-credit payment/terms/installment InstallmentPlan 200)" = 1 ] \
-    || { echo "SCENARIO Y FAILED: the credit application does not see the instalment plan"; exit 1; }
-  y_refs shop-credit payment/terms/instant Payment 403 >/dev/null
-  y_refs shop-instant payment Payment 403 >/dev/null
-  echo "  ✓ y-groups: the shop (/tags/payment/terms/instant) sees Payment and is refused instalments; the credit application the other way round; a group covers no parent"
-  ROUTED=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $(token_for harness)" "$GATEWAY/references?interface=Payment")
-  [ "$ROUTED" = 404 ] || { echo "SCENARIO Y FAILED: the gateway routes the raw lookup ($ROUTED)"; exit 1; }
-  echo "  ✓ y-route: only the facade is routed through the gateway; the raw API is not"
+  # The whole checklist (itest/opa/access-matrix.tsv): who is turned away,
+  # who gets through, what is routed at all, and what holds around the
+  # gateway — as a JUnit report beside the logs.
+  if ! "$ROOT/itest/opa/check-access.sh" "$ROOT/itest/opa/access-matrix.tsv" "$GATEWAY" "$BROKER_URL" \
+       "$WORK/tag-access.junit.xml"; then
+    echo "SCENARIO Y FAILED: the access checklist — see $WORK/tag-access.junit.xml"; exit 1
+  fi
 
   kill "$Y_CARD_PID" "$Y_PAYPAL_PID" 2>/dev/null || true
   wait "$Y_CARD_PID" "$Y_PAYPAL_PID" 2>/dev/null || true

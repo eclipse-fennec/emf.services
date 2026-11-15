@@ -1,0 +1,74 @@
+# Copyright (c) 2026 Contributors to the Eclipse Foundation.
+# SPDX-License-Identifier: EPL-2.0
+#
+# Who may reach what through the tag facade (#282) — the checklist that
+# check-access.sh runs against a gateway and a broker, one row per case.
+#
+# Columns, separated by tabs:
+#   id      group/name; the group becomes the JUnit classname
+#   caller  none | header:<raw Authorization value> | forged:<group> | client:<Keycloak client>
+#   method  GET, PUT, POST, DELETE
+#   target  G:<path> through the gateway, B:<path> straight at the broker;
+#           paths are taken as they are (no normalisation)
+#   expect  a status (403), a class (4xx), or not one (!200)
+#   check   optional, on the body: refs=<n> | has:<text> | lacks:<text>
+#   why     what the row stands for
+#
+# The tags the Payment example seeds: payment/method/{paypal,card},
+# payment/terms/{instant,installment}. shop-instant holds tags-consumer and
+# the group /tags/payment/terms/instant, shop-credit the same with
+# /tags/payment/terms/installment, shop-norole the instant group and no role.
+#
+# id	caller	method	target	expect	check	why
+unauthenticated/no-token	none	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		no token, no tag
+unauthenticated/empty-bearer	header:Bearer 	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		an empty bearer header is no token
+unauthenticated/garbage	header:Bearer not-a-token	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		a token that cannot be decoded names no group
+unauthenticated/basic	header:Basic dXNlcjpwYXNz	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		basic credentials are not a token
+unauthenticated/forged	forged:/tags/payment/terms/instant	GET	G:/scoped/payment/terms/instant/references?interface=Payment	401		a forged token passes the policy, which only decodes, and is refused by the facade, which verifies
+role/consumer-without-group	client:java-client	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		service-consumer without a tag group is granted no tag
+role/group-without-tags-consumer	client:shop-norole	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		the group passes the gateway, the missing tags-consumer stops it at the facade
+role/admin-through-gateway	client:harness	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		an administrator passes the policy but holds no tags-consumer for the facade
+tag/own	client:shop-instant	GET	G:/scoped/payment/terms/instant/references?interface=Payment	200	refs=2	the shop sees both Payment providers under its tag
+tag/own-names-no-instalments	client:shop-instant	GET	G:/scoped/payment/terms/instant/references?interface=Payment	200	lacks:InstallmentPlan	card serves both contracts; under instant its answer names only Payment
+tag/own-without-instalments	client:shop-instant	GET	G:/scoped/payment/terms/instant/references?interface=InstallmentPlan	200	refs=0	under instant there is no instalment plan
+tag/sibling	client:shop-instant	GET	G:/scoped/payment/terms/installment/references?interface=InstallmentPlan	403		a group grants no sibling
+tag/parent	client:shop-instant	GET	G:/scoped/payment/terms/references?interface=Payment	403		a child group covers no parent
+tag/grandparent	client:shop-instant	GET	G:/scoped/payment/references?interface=Payment	403		nor the root of its tree
+tag/foreign-tree	client:shop-instant	GET	G:/scoped/iot/references?interface=Payment	403		a tree the caller has no group in
+tag/method-branch	client:shop-instant	GET	G:/scoped/payment/method/card/references?interface=Payment	403		another branch of the same tree
+tag/prefix	client:shop-instant	GET	G:/scoped/payment/terms/instantX/references?interface=Payment	403		a prefix of a name is not a parent
+tag/dot-dot	client:shop-instant	GET	G:/scoped/payment/terms/instant/../installment/references?interface=InstallmentPlan	!200		climbing out of the granted tag
+tag/encoded-slash	client:shop-instant	GET	G:/scoped/payment%2Fterms%2Finstallment/references?interface=InstallmentPlan	!200		an encoded path separator
+tag/double-slash	client:shop-instant	GET	G:/scoped/payment//terms/installment/references?interface=InstallmentPlan	!200		an empty path segment
+tag/upper-case	client:shop-instant	GET	G:/scoped/payment/terms/INSTALLMENT/references?interface=InstallmentPlan	403		tags are case-sensitive
+tag/empty	client:shop-instant	GET	G:/scoped//references?interface=Payment	!200		no tag at all
+api/events-own	client:shop-instant	GET	G:/scoped/payment/terms/instant/events	200		the event stream under the own tag
+api/events-sibling	client:shop-instant	GET	G:/scoped/payment/terms/installment/events	403		no stream under a sibling
+api/catalog-own	client:shop-instant	GET	G:/scoped/payment/terms/instant/catalog/	200	lacks:InstallmentPlan	the catalog under the own tag, without the instalment contract
+api/catalog-entry-own	client:shop-instant	GET	G:/scoped/payment/terms/instant/catalog/Payment	200	has:Payment	a contract the tag covers
+api/catalog-entry-hidden	client:shop-instant	GET	G:/scoped/payment/terms/instant/catalog/InstallmentPlan	404		a contract the tag does not cover is not there
+api/catalog-sibling	client:shop-instant	GET	G:/scoped/payment/terms/installment/catalog/	403		no catalog under a sibling
+api/session-put-own	client:shop-instant	PUT	G:/scoped/payment/terms/instant/consumers/shop-instant	200		a session through the own tag
+api/session-get-own	client:shop-instant	GET	G:/scoped/payment/terms/instant/consumers/shop-instant	200		reading it back
+api/session-sibling	client:shop-instant	GET	G:/scoped/payment/terms/installment/consumers/shop-instant	403		not through a sibling
+api/session-delete-own	client:shop-instant	DELETE	G:/scoped/payment/terms/instant/consumers/shop-instant	200		closing it
+write/catalog-add	client:shop-instant	POST	G:/scoped/payment/terms/instant/catalog/	4xx		the facade adds no contract
+write/catalog-remove	client:shop-instant	DELETE	G:/scoped/payment/terms/instant/catalog/Payment	4xx		nor removes one
+write/heartbeat	client:shop-instant	PUT	G:/scoped/payment/terms/instant/references/x/heartbeat?intervalSeconds=5	4xx		nor keeps a registration alive
+general/raw-lookup	client:shop-instant	GET	G:/references?interface=Payment	404		the raw lookup is not routed through the gateway
+general/raw-catalog	client:shop-instant	GET	G:/catalog/	404		nor the raw catalog
+general/raw-publish	client:shop-instant	POST	G:/implementations/	404		nor publishing
+general/raw-events	client:shop-instant	GET	G:/events	404		nor the raw event stream
+general/raw-sessions	client:shop-instant	GET	G:/consumers/shop-instant	404		nor the raw sessions
+general/registry	client:shop-instant	GET	G:/registry	404		nor the registry snapshot
+general/tags-api	client:shop-instant	GET	G:/tags/tree	404		nor the tag service's own contract
+general/root	client:shop-instant	GET	G:/	404		nor anything at the root
+general/admin-raw	client:harness	GET	G:/references?interface=Payment	404		not even for an administrator
+around/raw-lookup	client:shop-instant	GET	B:/references?interface=Payment	403		around the gateway, tags-consumer still reads no raw lookup
+around/raw-catalog-add	client:shop-instant	POST	B:/catalog/	403		nor adds a contract
+around/tags-admin	client:shop-instant	PUT	B:/tags/tag?id=forbidden	403		nor changes the tags
+around/no-token-facade	none	GET	B:/scoped/payment/terms/instant/references?interface=Payment	401		around the gateway the facade still wants a token
+around/forged-facade	forged:/tags/payment/terms/installment	GET	B:/scoped/payment/terms/installment/references?interface=InstallmentPlan	401		and a valid one
+around/foreign-tag	client:shop-instant	GET	B:/scoped/payment/terms/installment/references?interface=InstallmentPlan	200	refs=1	KNOWN LIMIT: straight at the broker the facade serves any tag to tags-consumer — only the network keeps callers at the gateway
+credit/own	client:shop-credit	GET	G:/scoped/payment/terms/installment/references?interface=InstallmentPlan	200	refs=1	the credit application sees the instalment plan
+credit/instant	client:shop-credit	GET	G:/scoped/payment/terms/instant/references?interface=Payment	403		and not what is paid at once

@@ -13,14 +13,17 @@
 
 package org.eclipse.fennec.tags.ddsr;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Flow;
 import java.util.function.Supplier;
 
+import org.eclipse.emf.ecore.util.EcoreUtil.Copier;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
 import org.eclipse.fennec.services.ServiceImplementation;
+import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.invocation.BroadcastReceivers;
 import org.eclipse.fennec.tags.service.TagService;
@@ -73,7 +76,7 @@ public final class ScopedEvents implements BroadcastReceivers {
 			@Override
 			public void onNext(ServiceEvent event) {
 				if (heard(event)) {
-					subscriber.onNext(event);
+					subscriber.onNext(trimmed(event));
 				} else {
 					// Not this receiver's: the demand it stood for is still open.
 					upstream.request(1);
@@ -109,6 +112,42 @@ public final class ScopedEvents implements BroadcastReceivers {
 			return announced.remove(id);
 		}
 		return announced.contains(id);
+	}
+
+	/**
+	 * The event as this tag may show it: an implementation names only the
+	 * contracts it is visible for here (#282). The broker hands every
+	 * receiver the same event document, so what is trimmed is a copy of
+	 * its own — and only where there is something to trim.
+	 */
+	private ServiceEvent trimmed(ServiceEvent event) {
+		if (event.getReference() == null || !(event.getReference().getProvider() instanceof ServiceProvider provider)) {
+			return event;
+		}
+		Visibility visible = Visibility.under(tags, tag);
+		Set<ServiceInterface> contracts = new LinkedHashSet<>();
+		boolean hidden = false;
+		for (ServiceImplementation implementation : provider.getImplementations()) {
+			for (ServiceInterface contract : implementation.getServiceInterfaces()) {
+				contracts.add(contract);
+				hidden |= !visible.implementation(provider.getName(), contract.getName());
+			}
+		}
+		if (!hidden) {
+			return event;
+		}
+		Copier copier = new Copier();
+		ServiceEvent copy = (ServiceEvent) copier.copy(event);
+		copier.copy(event.getReference());
+		copier.copy(provider);
+		copier.copyAll(contracts);
+		copier.copyReferences();
+		ServiceProvider providerCopy = (ServiceProvider) copier.get(provider);
+		for (ServiceImplementation implementation : providerCopy.getImplementations()) {
+			implementation.getServiceInterfaces()
+					.removeIf(contract -> !visible.implementation(providerCopy.getName(), contract.getName()));
+		}
+		return copy;
 	}
 
 	private boolean visible(ServiceEvent event) {

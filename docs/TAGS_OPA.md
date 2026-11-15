@@ -124,20 +124,46 @@ through only on `allow`; a denial is `403`. Only the facade is routed:
 the raw API is not reachable through the gateway at all (`404`). In
 production, OPA is reached over TLS.
 
-## 4. Check it
+## 4. Check it — the whole checklist
 
-With the Payment example on a broker in mode `bearer`:
+`itest/opa/access-matrix.tsv` is the checklist, one row per case: who
+calls (no token, a forged or broken one, a client), what (method and
+path, through the gateway or straight at the broker), what must come
+back (a status, a class such as `4xx`, or "not 200"), and optionally
+what the answer must or must not contain. `itest/opa/check-access.sh`
+runs it and writes **JUnit XML**, one testcase per row, which CI systems
+and test dashboards read as they read unit tests:
 
-| Caller | Request through the gateway | Answer |
-| --- | --- | --- |
-| no token | `/scoped/payment/references?interface=Payment` | 403 |
-| `shop-instant` (`/tags/payment/terms/instant`) | `/scoped/payment/terms/instant/references?interface=Payment` | 200, both providers |
-| `shop-instant` | `/scoped/payment/terms/installment/references?interface=InstallmentPlan` | 403 |
-| `shop-instant` | `/scoped/payment/references?interface=Payment` | 403 — a child group covers no parent |
-| `shop-credit` (`/tags/payment/terms/installment`) | `/scoped/payment/terms/installment/references?interface=InstallmentPlan` | 200, the card provider |
-| anyone | `/references?interface=Payment` | 404 — not routed |
+```bash
+itest/opa/check-access.sh itest/opa/access-matrix.tsv \
+  http://gateway:18092/ddsr/rest http://broker:8887/ddsr/rest tag-access.junit.xml
+```
 
-A consumer needs nothing of its own for this: its broker URL is the
+Tokens come from `token_for <client>` (the harness's Keycloak helper), or
+from `TOKEN_<CLIENT>` variables for a deployment of your own — so the same
+checklist can watch a real setup, not only the harness. The harness runs
+it in scenario Y; CI keeps the report as the artifact `harness-reports`.
+
+What the checklist covers:
+
+| Group | Cases |
+| --- | --- |
+| `unauthenticated` | no token, an empty bearer, garbage, basic credentials → 403 at the gateway; a forged token with the right group passes the policy (it only decodes) and is refused by the facade (401) |
+| `role` | `service-consumer` without a group → 403; the group without `tags-consumer` → the gateway lets it through, the facade refuses (403); an administrator likewise |
+| `tag` | the own tag (both Payment providers, no instalment plan, and card's answer names only Payment although it serves both); sibling, parent, root, another branch, a foreign tree, a prefix (`instantX`), upper case → 403; `..`, an encoded `/`, an empty segment, no tag at all → never 200 |
+| `api` | events, catalog list (without the instalment contract) and entry (a hidden contract is 404), session put/get/delete under the own tag; the same under a sibling → 403 |
+| `write` | adding or removing a contract or a heartbeat through the facade → 4xx |
+| `general` | the raw lookup, catalog, publish, events, sessions, registry, the tag service, the root — not routed through the gateway (404), not even for an administrator |
+| `around` | straight at the broker: `tags-consumer` reads no raw lookup, adds no contract, changes no tag (403); the facade still wants a valid token (401) |
+| `credit` | the credit application sees the instalment plan and not what is paid at once |
+
+One row is a **known limit**, kept visible on purpose: straight at the
+broker, the facade serves any tag to a holder of `tags-consumer` — the
+policy lives in the gateway, so only the network (layer 5) keeps callers
+there. A deployment that cannot guarantee that puts the check into the
+facade as well; nothing in this setup does.
+
+A consumer needs nothing of its own for any of this: its broker URL is the
 gateway's facade address, e.g.
 `http://gateway:18092/ddsr/rest/scoped/payment/terms/instant`, and it
 shows its token as it would to the broker.

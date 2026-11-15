@@ -73,6 +73,16 @@ public final class ScopedLookup {
 			return !visibleHere;
 		});
 		answer.getProviders().removeIf(provider -> !kept.contains(provider));
+		// An implementation answers only for the contracts it is visible for
+		// under this tag — card serves Payment and InstallmentPlan, and under
+		// payment/terms/instant InstallmentPlan is not the tag's (#282). A
+		// contract nothing references any more does not travel.
+		for (ServiceProvider provider : answer.getProviders()) {
+			for (ServiceImplementation implementation : provider.getImplementations()) {
+				implementation.getServiceInterfaces()
+						.removeIf(contract -> !visible.implementation(provider.getName(), contract.getName()));
+			}
+		}
 		if (Visibility.INFRASTRUCTURE.contains(interfaceName)) {
 			for (ServiceProvider provider : answer.getProviders()) {
 				for (ServiceImplementation implementation : provider.getImplementations()) {

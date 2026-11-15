@@ -14,6 +14,7 @@
 package org.eclipse.fennec.tags.ddsr;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -21,6 +22,7 @@ import org.eclipse.emf.ecore.util.EcoreUtil.Copier;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
+import org.eclipse.fennec.services.ServiceProvider;
 import org.eclipse.fennec.services.broker.core.exception.CatalogEntryNotFound;
 import org.eclipse.fennec.tags.service.TagService;
 
@@ -55,9 +57,20 @@ public final class ScopedCatalog {
 		copier.copyAll(live.getProviders());
 		copier.copyReferences();
 		Visibility visible = Visibility.under(tags, tag);
-		copy.getImplementations().removeIf(implementation -> !visible.implementation(implementation));
+		// An implementation shows only the contracts it is visible for here:
+		// card serves Payment and InstallmentPlan, and under
+		// payment/terms/instant only its Payment is the tag's business (a
+		// case the access checklist found, #282).
+		Set<ServiceImplementation> all = new LinkedHashSet<>(copy.getImplementations());
+		copy.getProviders().forEach(provider -> all.addAll(provider.getImplementations()));
+		for (ServiceImplementation implementation : all) {
+			String provider = implementation.eContainer() instanceof ServiceProvider owner ? owner.getName() : null;
+			implementation.getServiceInterfaces().removeIf(
+					contract -> provider == null || !visible.implementation(provider, contract.getName()));
+		}
+		copy.getImplementations().removeIf(implementation -> implementation.getServiceInterfaces().isEmpty());
 		copy.getProviders().forEach(provider -> provider.getImplementations()
-				.removeIf(implementation -> !visible.implementation(implementation)));
+				.removeIf(implementation -> implementation.getServiceInterfaces().isEmpty()));
 		copy.getProviders().removeIf(provider -> provider.getImplementations().isEmpty());
 		Set<String> served = new HashSet<>();
 		for (ServiceImplementation implementation : copy.getImplementations()) {

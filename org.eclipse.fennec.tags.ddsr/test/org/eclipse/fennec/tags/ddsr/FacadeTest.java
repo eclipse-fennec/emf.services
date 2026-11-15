@@ -30,6 +30,7 @@ import org.eclipse.fennec.m2x.ocl.engine.internal.OclEngineImpl;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclSettingDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;
 import org.eclipse.fennec.services.LocalServiceRegistry;
+import org.eclipse.fennec.services.RemoteServiceRegistry;
 import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceEvent;
 import org.eclipse.fennec.services.ServiceEventType;
@@ -246,5 +247,87 @@ class FacadeTest {
 		event.setType(type);
 		event.setReference(reference);
 		return event;
+	}
+
+	/** The broker's catalog adapter, as the facade calls it. */
+	public static final class FakeCatalog {
+		final RemoteServiceRegistry registry = F.createRemoteServiceRegistry();
+
+		public RemoteServiceRegistry listCatalog() {
+			return registry;
+		}
+	}
+
+	@Test
+	void anImplementationShowsOnlyTheContractsTheTagCovers() throws Throwable {
+		FakeCatalog broker = new FakeCatalog();
+		ServiceInterface payment = F.createServiceInterface();
+		payment.setName("Payment");
+		ServiceInterface plan = F.createServiceInterface();
+		plan.setName("InstallmentPlan");
+		broker.registry.getCatalog().add(payment);
+		broker.registry.getCatalog().add(plan);
+		ServiceImplementation card = F.createServiceImplementation();
+		card.setName("card-impl");
+		card.getServiceInterfaces().add(payment);
+		card.getServiceInterfaces().add(plan);
+		ServiceProvider provider = F.createServiceProvider();
+		provider.setName("card");
+		provider.getImplementations().add(card);
+		broker.registry.getProviders().add(provider);
+		tags.assign("payment", "contract", "Payment");
+
+		RemoteServiceRegistry seen = new ScopedCatalog(() -> broker, tags, "payment").listCatalog();
+
+		assertThat(seen.getCatalog()).extracting(ServiceInterface::getName).containsExactly("Payment");
+		assertThat(seen.getProviders().get(0).getImplementations().get(0).getServiceInterfaces())
+				.extracting(ServiceInterface::getName).containsExactly("Payment");
+		assertThat(broker.registry.getCatalog()).as("the broker's own registry is untouched").hasSize(2);
+	}
+
+	@Test
+	void theLookupAndTheEventsNameOnlyTheContractsTheTagCovers() throws Throwable {
+		ServiceProvider card = provider("card", "Payment");
+		ServiceInterface plan = F.createServiceInterface();
+		plan.setName("InstallmentPlan");
+		card.getImplementations().get(0).getServiceInterfaces().add(plan);
+		tags.assign("payment", "contract", "Payment");
+
+		FakeLookup lookup = new FakeLookup();
+		lookup.providers.add(card);
+		LocalServiceRegistry answer = new ScopedLookup(() -> lookup, tags, "payment", ConcurrentHashMap.newKeySet())
+				.getServiceReferences("Payment", null, null, null, null);
+		assertThat(answer.getProviders().get(0).getImplementations().get(0).getServiceInterfaces())
+				.extracting(ServiceInterface::getName).containsExactly("Payment");
+
+		FakeEvents events = new FakeEvents();
+		List<ServiceEvent> heard = new ArrayList<>();
+		new ScopedEvents(() -> events, tags, "payment", ConcurrentHashMap.newKeySet()).events()
+				.subscribe(new Flow.Subscriber<>() {
+					@Override
+					public void onSubscribe(Flow.Subscription subscription) {
+					}
+
+					@Override
+					public void onNext(ServiceEvent item) {
+						heard.add(item);
+					}
+
+					@Override
+					public void onError(Throwable throwable) {
+					}
+
+					@Override
+					public void onComplete() {
+					}
+				});
+		ServiceEvent registered = event(ServiceEventType.REGISTERED, "ref-card", card);
+		events.subscriber.onNext(registered);
+
+		ServiceProvider shown = (ServiceProvider) heard.get(0).getReference().getProvider();
+		assertThat(shown.getImplementations().get(0).getServiceInterfaces())
+				.extracting(ServiceInterface::getName).containsExactly("Payment");
+		assertThat(card.getImplementations().get(0).getServiceInterfaces())
+				.as("the event every receiver shares is untouched").hasSize(2);
 	}
 }

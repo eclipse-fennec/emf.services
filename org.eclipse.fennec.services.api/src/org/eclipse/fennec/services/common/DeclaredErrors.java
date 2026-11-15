@@ -109,7 +109,15 @@ public final class DeclaredErrors {
 	 * is build-time knowledge a runtime deliberately does not have.
 	 */
 	public static boolean raises(Throwable failure, ServiceException declared) {
-		if (failure == null || declared == null || declared.eIsProxy() || declared.getType() == null) {
+		if (failure == null || declared == null || declared.eIsProxy()) {
+			return false;
+		}
+		if (failure instanceof DeclaredFailure said) {
+			OptionalInt code = codeOf(declared);
+			return said.code() != 0 ? code.isPresent() && code.getAsInt() == said.code()
+					: said.error() != null && said.error().equals(declared.getName());
+		}
+		if (declared.getType() == null) {
 			return false;
 		}
 		for (Class<?> type = failure.getClass(); type != null; type = type.getSuperclass()) {

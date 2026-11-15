@@ -13,12 +13,14 @@
 
 package org.eclipse.fennec.services.invocation;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -70,6 +72,30 @@ public final class ServiceMethods {
 		return find(service, name, arity).orElseThrow(() -> new NoSuchMethodException("the service behind this"
 				+ " contract, a " + service.getClass().getName() + ", has no method '" + name + "' taking " + arity
 				+ " argument(s)"));
+	}
+
+	/**
+	 * Calls an operation on a service that answers by name (#301). A failure
+	 * of the call arrives as the {@link InvocationTargetException} a method
+	 * throws, so a caller handles it as one.
+	 *
+	 * <p>Only the handler's way: a method is still invoked by the caller
+	 * itself, because {@link Method#invoke} checks access from the class that
+	 * calls it, and an implementation may be a class only its own package sees.
+	 *
+	 * @param handler the implementation
+	 * @param operation the operation's name
+	 * @param arguments by parameter name, in the contract's order
+	 * @return what the operation answers
+	 * @throws InvocationTargetException when the call failed
+	 */
+	public static Object call(OperationHandler handler, String operation, Map<String, Object> arguments)
+			throws InvocationTargetException {
+		try {
+			return handler.invoke(operation, arguments);
+		} catch (Exception failure) {
+			throw new InvocationTargetException(failure, failure.getMessage());
+		}
 	}
 
 	private static boolean matches(Method method, String name, int arity) {

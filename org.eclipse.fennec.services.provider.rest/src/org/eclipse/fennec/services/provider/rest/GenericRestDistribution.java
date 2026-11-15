@@ -141,14 +141,20 @@ public class GenericRestDistribution extends Application {
 				name = "Model bundle",
 				description = "Symbolic name of the bundle carrying the implementation document. The model "
 						+ "travels with the provider that serves it, not with this component.")
-		String model_bundle();
+		String model_bundle() default "";
 
 		@AttributeDefinition(
 				name = "Model entry",
 				description = "Path of the document inside that bundle, e.g. model/binding-probe.xmi. It "
 						+ "holds the ServiceProvider whose implementation is served, and the contract it "
 						+ "references — one document, so every reference in it resolves wherever it is read.")
-		String model_entry();
+		String model_entry() default "";
+
+		@AttributeDefinition(
+				name = "Model URL",
+				description = "Where the document is read from when it is in no bundle, e.g. file:/var/lib/bridge/petstore.xmi "
+						+ "— a contract made at runtime (#301). Either this or model.bundle and model.entry.")
+		String model_url() default "";
 
 		@AttributeDefinition(
 				name = "Publish",
@@ -575,6 +581,16 @@ public class GenericRestDistribution extends Application {
 	 * told which bundle and which entry.
 	 */
 	private static ServiceImplementation load(BundleContext context, Config config, ResourceSet resourceSet) {
+		boolean fromUrl = config.model_url() != null && !config.model_url().isBlank();
+		boolean fromBundle = config.model_bundle() != null && !config.model_bundle().isBlank();
+		if (fromUrl == fromBundle) {
+			throw new IllegalStateException("say where the document is: model.url, or model.bundle and model.entry — "
+					+ (fromUrl ? "not both" : "neither is set"));
+		}
+		if (fromUrl) {
+			Resource document = resourceSet.getResource(URI.createURI(config.model_url().strip()), true);
+			return ((ServiceProvider) document.getContents().get(0)).getImplementations().get(0);
+		}
 		Bundle owner = null;
 		for (Bundle candidate : context.getBundles()) {
 			if (candidate.getSymbolicName().equals(config.model_bundle())) {

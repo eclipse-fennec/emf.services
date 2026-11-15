@@ -17,6 +17,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +45,7 @@ import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.AsyncReturns;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
+import org.eclipse.fennec.services.invocation.OperationHandler;
 import org.eclipse.fennec.services.invocation.ServiceMethods;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallSpan;
@@ -278,11 +280,14 @@ public final class MessagingOperationDispatcher {
 			throw new IllegalStateException("no service implements this contract here");
 		}
 		Map<String, Object> arguments = Invocations.argumentsOf(invocation);
-		List<Object> values = new ArrayList<>();
+		Map<String, Object> ordered = new LinkedHashMap<>();
 		for (Parameter parameter : operation.getParameters()) {
-			values.add(arguments.get(parameter.getName()));
+			ordered.put(parameter.getName(), arguments.get(parameter.getName()));
 		}
-		return ServiceMethods.require(target, operation.getName(), values.size()).invoke(target, values.toArray());
+		if (target instanceof OperationHandler handler) {
+			return ServiceMethods.call(handler, operation.getName(), ordered);
+		}
+		return ServiceMethods.require(target, operation.getName(), ordered.size()).invoke(target, ordered.values().toArray());
 	}
 
 	private void answer(CloudEvent request, String channel, MessagingRoute.Operation placed,
@@ -357,7 +362,9 @@ public final class MessagingOperationDispatcher {
 			if (target == null) {
 				throw new IllegalStateException("no service implements this contract here");
 			}
-			values = ServedStreams.publisherOf(ServiceMethods.require(target, operation.getName(), 0).invoke(target));
+			values = ServedStreams.publisherOf(target instanceof OperationHandler handler
+					? ServiceMethods.call(handler, operation.getName(), Map.of())
+					: ServiceMethods.require(target, operation.getName(), 0).invoke(target));
 			if (values == null) {
 				throw new IllegalStateException("the service answered " + spanNameOf(placed)
 						+ " with no stream, although its contract says it broadcasts");

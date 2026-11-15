@@ -59,6 +59,7 @@ import org.eclipse.fennec.services.invocation.BroadcastReceivers;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.invocation.PushStreams;
+import org.eclipse.fennec.services.invocation.OperationHandler;
 import org.eclipse.fennec.services.invocation.ServiceMethods;
 import org.eclipse.fennec.services.flavor.rest.RestArguments;
 import org.eclipse.fennec.services.invocation.ResultDocument;
@@ -617,14 +618,19 @@ public class RestDispatcher {
 	 * The method behind an operation: by name and by how many arguments the
 	 * contract declares. The contract's parameter order is the signature's,
 	 * which is what makes this work without parameter names in the bytecode.
+	 * A service that answers by name ({@code OperationHandler}, #301) gets
+	 * the arguments by name instead.
 	 */
 	private static Object invoke(Object service, ServiceOperation operation, Map<String, Object> arguments)
 			throws ReflectiveOperationException {
-		List<Object> values = new ArrayList<>();
+		Map<String, Object> ordered = new LinkedHashMap<>();
 		for (Parameter parameter : operation.getParameters()) {
-			values.add(arguments.get(parameter.getName()));
+			ordered.put(parameter.getName(), arguments.get(parameter.getName()));
 		}
-		return ServiceMethods.require(service, operation.getName(), values.size()).invoke(service, values.toArray());
+		if (service instanceof OperationHandler handler) {
+			return ServiceMethods.call(handler, operation.getName(), ordered);
+		}
+		return ServiceMethods.require(service, operation.getName(), ordered.size()).invoke(service, ordered.values().toArray());
 	}
 
 	/**

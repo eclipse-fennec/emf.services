@@ -11,7 +11,7 @@ over a real wire.
 ## Running it
 
 ```bash
-# host processes (scenarios A + B + V + F + G + H + N + W + X); podman only for Keycloak
+# host processes (scenarios A + B + V + F + G + H + N + W + X + Y); podman for Keycloak, and OPA/APISIX in Y
 ./itest/run-harness.sh
 
 # containerized incl. Mosquitto and RabbitMQ (scenarios A–K, Q–S, U) — podman is the
@@ -165,6 +165,7 @@ version, balance and the refused record come out as in K.
 |---|---|---|
 | **A** | Java provider → TS consumer | discovery; sd1 golden + broker/local fingerprint match; im1 decoration; all 8 typed property kinds round-trip; REST invocation; session visible at the broker; contract-addressed lookup (exact sd1 hits, foreign sd1 empty); **UNREGISTERING reaches the consumer measurably BEFORE the provider process exits** |
 | **B** | TS provider → Java consumer | reflective REST invocation from Java; withdraw is confirmed by the broker before the TS endpoint stops; the broker no longer lists the provider afterwards. On the host the Java consumer starts first: `Payment` outlived A's provider (catalog yes, lookup none), the consumer waits, binds on arrival and drops its proxy on departure (#271) |
+| **Y** | OPA and APISIX in front of the tag facade (host, secured, podman) | the policy's own Rego tests; on the secured broker with the Payment example, the gateway turns away a request without a token, the shop (`/tags/payment/terms/instant`) sees Payment and is refused instalments, the credit application the other way round, a group covers no parent, and the raw API is not routed (#282, [recipe](TAGS_OPA.md)) |
 | **X** | the Payment example, tagged (host) | PayPal (Java) and card (TS, `Payment` and `InstallmentPlan` from one implementation) bring their tags into a seeded tree; `find` over the hierarchy, card carried by itself and by a rule, the facade per tag (no instalments under `payment/terms/instant`), an instalment plan offered and accepted (#281) |
 | **V** | TS contract-first probe (host) | a contract alone (#271): added with no implementation, lookup answers none, a waiting listener hears `REGISTERED` once the probe serves it, the call succeeds, removal is refused while implemented (code 200), after the withdraw the contract stays, `UNREGISTERING` is heard and a call fails as `DdsrServiceUnavailableError`, then the contract is removed |
 | **C** | TS MQTT wire probe | a broker-shaped event document is delivered and decoded over a real Mosquitto TCP connection |

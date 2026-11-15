@@ -1,0 +1,18 @@
+# Copyright (c) 2026 Contributors to the Eclipse Foundation.
+# SPDX-License-Identifier: EPL-2.0
+#
+# One route: the broker's tag facade, behind the opa plugin. The plugin
+# hands OPA the request (method, path, headers) and lets it through only
+# when the policy fennec/tags says allow. Everything else of the broker is
+# not routed here at all.
+routes:
+  - uri: /ddsr/rest/scoped/*
+    upstream:
+      type: roundrobin
+      nodes:
+        "127.0.0.1:8887": 1
+    plugins:
+      opa:
+        host: "http://127.0.0.1:18181"
+        policy: "fennec/tags"
+#END

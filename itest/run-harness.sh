@@ -26,6 +26,9 @@
 # Scenario X: the Payment example, tagged (#281): PayPal (Java) and card
 #             (TS, Payment and InstallmentPlan from one implementation)
 #             bring their tags; find, a rule and the facade per tag.
+# Scenario Y: OPA (decision) and APISIX (enforcement) in front of the tag
+#             facade, grants as Keycloak groups mirroring the tag tree
+#             (#282); secured and with podman only.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
 #             removal while implemented, withdrawn (contract stays, a
@@ -51,6 +54,11 @@ PIDS=()
 ATLAS_IMAGE="${ATLAS_IMAGE:-docker.io/eclipsefennec/model.atlas:file-snapshot}"
 ATLAS_CONTAINER=ddsr-itest-atlas
 ATLAS_PORT=18090
+# Scenario Y: OPA decides, APISIX enforces, in front of the tag facade.
+OPA_IMAGE="${OPA_IMAGE:-docker.io/openpolicyagent/opa:1.4.2}"
+APISIX_IMAGE="${APISIX_IMAGE:-docker.io/apache/apisix:3.12.0-debian}"
+OPA_CONTAINER=ddsr-itest-opa
+APISIX_CONTAINER=ddsr-itest-apisix
 # shellcheck source=keycloak/auth.sh
 . "$ROOT/itest/keycloak/auth.sh"
 
@@ -63,7 +71,7 @@ cleanup() {
   done
   wait 2>/dev/null || true
   stop_keycloak
-  podman rm -f "$ATLAS_CONTAINER" >/dev/null 2>&1 || true
+  podman rm -f "$ATLAS_CONTAINER" "$OPA_CONTAINER" "$APISIX_CONTAINER" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -857,6 +865,87 @@ kill "$X_BROKER_PID" 2>/dev/null || true
 wait "$X_BROKER_PID" 2>/dev/null || true
 echo "Scenario X OK"
 
+# ============================================================ Scenario Y
+# Who may see which tag (#282): OPA is the policy decision point, APISIX
+# the enforcement point in front of the tag facade of the secured broker.
+# Grants are Keycloak groups mirroring the tag tree; the policy needs only
+# the caller and the path. The facade still verifies every token itself.
+if secured && command -v podman >/dev/null 2>&1; then
+  log "Scenario Y: OPA and APISIX in front of the tag facade"
+  require_port_free 9091
+  require_port_free 9095
+  require_port_free 18092
+  require_port_free 18181
+  OPA_TESTS=$(podman run --rm -v "$ROOT/itest/opa:/policy:ro,Z" "$OPA_IMAGE" test /policy 2>&1) \
+    || { echo "SCENARIO Y FAILED: the policy's own tests"; echo "$OPA_TESTS"; exit 1; }
+  echo "  ✓ y-policy: $(tail -1 <<<"$OPA_TESTS")"
+
+  # The example on the secured broker, its tree seeded by the administrator.
+  for tag in "id=payment" "parent=payment&id=method" "parent=payment/method&id=paypal&selfAssignable=true" \
+             "parent=payment/method&id=card&selfAssignable=true" "parent=payment&id=terms" \
+             "parent=payment/terms&id=instant&selfAssignable=true" \
+             "parent=payment/terms&id=installment&selfAssignable=true"; do
+    curl_broker -sf -o /dev/null -X PUT "$BROKER_URL/tags/tag?$tag" \
+      || { echo "SCENARIO Y FAILED: seeding the tag tree ($tag)"; exit 1; }
+  done
+  as_client payment-java start_jar payment-y "$PROVIDER_JAR" "$WORK/payment-y"
+  Y_PAYPAL_PID=$LAST_PID
+  (cd "$TS/examples/payment" && export_client ts-provider \
+    && BROKER_URL="$BROKER_URL" SERVICE_URL="http://localhost:9095/card" exec node --import tsx card-provider.ts) \
+    >"$WORK/card-y.log" 2>&1 &
+  Y_CARD_PID=$!
+  PIDS+=("$Y_CARD_PID")
+  wait_for_line "$WORK/payment-y.log" "published payments-java" 90
+  wait_for_line "$WORK/card-y.log" "published as reference" 60
+
+  podman run -d --replace --name "$OPA_CONTAINER" --network host -v "$ROOT/itest/opa:/policy:ro,Z" \
+    "$OPA_IMAGE" run --server --addr 127.0.0.1:18181 /policy/tags.rego >/dev/null
+  podman run -d --replace --name "$APISIX_CONTAINER" --network host \
+    -v "$ROOT/itest/opa/apisix-config.yaml:/usr/local/apisix/conf/config.yaml:ro,Z" \
+    -v "$ROOT/itest/opa/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro,Z" "$APISIX_IMAGE" >/dev/null
+  GATEWAY="http://127.0.0.1:18092/ddsr/rest"
+  waited=0
+  until [ "$(curl -s -o /dev/null -w '%{http_code}' "$GATEWAY/scoped/payment/references?interface=Payment")" = 403 ]; do
+    sleep 1
+    waited=$((waited + 1))
+    if [ "$waited" -ge 90 ]; then
+      podman logs --tail 30 "$APISIX_CONTAINER" >&2 || true
+      echo "SCENARIO Y FAILED: the gateway does not answer for the facade within 90 s"; exit 1
+    fi
+  done
+  echo "  ✓ y-no-token: the gateway turns away a request without a token (403)"
+
+  y_refs() { # client tag interface expected-status → references in the answer
+    local token answer status
+    token=$(token_for "$1")
+    answer=$(curl -s -w '\n%{http_code}' -H "Authorization: Bearer $token" "$GATEWAY/scoped/$2/references?interface=$3")
+    status=$(tail -1 <<<"$answer")
+    [ "$status" = "$4" ] || { echo "SCENARIO Y FAILED: $1 on $2 for $3 answered $status, expected $4" >&2
+      head -c 800 <<<"$answer" >&2; exit 1; }
+    grep -c '<references' <<<"$answer" || true
+  }
+  [ "$(y_refs shop-instant payment/terms/instant Payment 200)" = 2 ] \
+    || { echo "SCENARIO Y FAILED: the shop does not see both Payment providers"; exit 1; }
+  y_refs shop-instant payment/terms/installment InstallmentPlan 403 >/dev/null
+  [ "$(y_refs shop-credit payment/terms/installment InstallmentPlan 200)" = 1 ] \
+    || { echo "SCENARIO Y FAILED: the credit application does not see the instalment plan"; exit 1; }
+  y_refs shop-credit payment/terms/instant Payment 403 >/dev/null
+  y_refs shop-instant payment Payment 403 >/dev/null
+  echo "  ✓ y-groups: the shop (/tags/payment/terms/instant) sees Payment and is refused instalments; the credit application the other way round; a group covers no parent"
+  ROUTED=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $(token_for harness)" "$GATEWAY/references?interface=Payment")
+  [ "$ROUTED" = 404 ] || { echo "SCENARIO Y FAILED: the gateway routes the raw lookup ($ROUTED)"; exit 1; }
+  echo "  ✓ y-route: only the facade is routed through the gateway; the raw API is not"
+
+  kill "$Y_CARD_PID" "$Y_PAYPAL_PID" 2>/dev/null || true
+  wait "$Y_CARD_PID" "$Y_PAYPAL_PID" 2>/dev/null || true
+  podman rm -f "$OPA_CONTAINER" "$APISIX_CONTAINER" >/dev/null 2>&1 || true
+  SCENARIO_Y="Y + "
+  echo "Scenario Y OK"
+else
+  SCENARIO_Y=""
+  echo "Scenario Y skipped: it needs the secured harness (Keycloak) and podman"
+fi
+
 # ============================================================ Scenario L
 log "Scenario L: payload models from the Model Atlas"
 # The broker's other source of payload models (#256): a Model Atlas holds
@@ -1198,4 +1287,4 @@ kill "$MTLS_PID" 2>/dev/null || true
 wait "$MTLS_PID" 2>/dev/null || true
 echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client$(secured && echo '; discovery by certificate, calls by token')"
 
-log "HARNESS PASSED (A + B + V + F + G + H + T + N + W + X + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"
+log "HARNESS PASSED (A + B + V + F + G + H + T + N + W + X + ${SCENARIO_Y}${SCENARIO_L}M, auth: $HARNESS_AUTH)"

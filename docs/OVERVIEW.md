@@ -30,6 +30,7 @@ not built, the page says so and names the issue.
 | trace a call across consumer, broker and provider | [Telemetry](TELEMETRY.md) |
 | know who may publish, look up, and call | [Security](SECURITY.md) |
 | put services into categories and find them by them | [Tags](TAGS.md) |
+| decide who sees which tag, with OPA and a gateway | [Who sees which tag](TAGS_OPA.md) |
 | see all of it in Grafana | [the demo](../demo/observability/README.md) |
 
 

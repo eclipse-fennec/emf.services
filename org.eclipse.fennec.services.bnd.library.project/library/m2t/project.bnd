@@ -1,0 +1,24 @@
+# enableFennecServicesM2T — the generator's inputs for a project that
+# generates Java from a contract (#303): the templates of
+# org.eclipse.fennec.services.m2t and the registry model they read
+# (services.ecore), shipped with this library and named by macros, so a
+# downstream workspace generates against the templates of the release
+# it uses instead of a copy.
+#
+# The generator itself is fennecM2T (a workspace library), the generated
+# interface compiles against enableFennecServicesClient. A -generate in
+# the project names its inputs with these macros:
+#
+#   -generate: \
+#   	"model/my-api.xmi,model/my-java.xmi"; \
+#   		output   = src-gen-api/; \
+#   		generate = fennecM2T; \
+#   		ecore    = "${fennec.services.ecore},model/my.ecore"; \
+#   		model    = "model/my-java.xmi"; \
+#   		template = "${fennec.services.templates}/service-interface.mtl"; \
+#   		modules  = "${fennec.services.templates}/java-types.mtl"
+#
+# The macros are absolute paths into the workspace cache: keep them out of
+# the fileset in front of the attributes, which bnd wants relative.
+fennec.services.templates: ${.}/templates
+fennec.services.ecore: ${.}/model/services.ecore

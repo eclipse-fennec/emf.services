@@ -8,6 +8,8 @@ Bundle-Description: \
 	  enableFennecServicesSecurity  bearer tokens: supply and verify \
 	  enableFennecServicesMqtt      the MQTT transport: call, hear, serve \
 	  enableFennecServicesAmqp      the AMQP transport: call, serve \
+	  enableFennecServicesM2T       the m2t templates and services.ecore, \
+	                                to generate Java from a contract \
 	\
 	The run lists carry this project's bundles and what they need \
 	directly — never an HTTP stack or Jersey, which enableJakartaREST \
@@ -19,7 +21,12 @@ Bundle-Description: \
 	with (…bnd.library.itest, -library: <dir>;version=file).
 
 -resourceonly: true
--includeresource: library=library
+# The generator's inputs travel with the library, taken from where they
+# live in this workspace — never a second copy in git.
+-includeresource: \
+	library=library,\
+	library/m2t/templates=../org.eclipse.fennec.services.m2t/templates,\
+	library/m2t/model/services.ecore=../org.eclipse.fennec.services.model/model/services.ecore
 
 # No RSA libraries for now (#261): the RSA bundles are not released to
 # Maven Central, and a library that named them would hand a downstream
@@ -29,4 +36,5 @@ Provide-Capability: \
 	bnd.library;bnd.library=enableFennecServicesClient;path=library/client,\
 	bnd.library;bnd.library=enableFennecServicesSecurity;path=library/security,\
 	bnd.library;bnd.library=enableFennecServicesMqtt;path=library/mqtt,\
-	bnd.library;bnd.library=enableFennecServicesAmqp;path=library/amqp
+	bnd.library;bnd.library=enableFennecServicesAmqp;path=library/amqp,\
+	bnd.library;bnd.library=enableFennecServicesM2T;path=library/m2t

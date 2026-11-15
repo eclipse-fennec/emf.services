@@ -105,6 +105,22 @@ class RunListsTest {
 				.contains(":org.eclipse.fennec.services.bnd.library.project:");
 	}
 
+	@ParameterizedTest
+	@ValueSource(strings = { "library/m2t/templates/service-interface.mtl", "library/m2t/templates/java-types.mtl",
+			"library/m2t/templates/service-publisher.mtl", "library/m2t/templates/rest-resource.mtl",
+			"library/m2t/model/services.ecore" })
+	void theGeneratorInputsShipWithTheM2TLibrary(String path) throws IOException {
+		// #303: a downstream workspace generates against these instead of a copy
+		assertThat(read(path)).isNotBlank();
+	}
+
+	@Test
+	void theM2TLibraryNamesItsInputsByMacro() throws IOException {
+		String project = read("library/m2t/project.bnd");
+		assertThat(project).contains("fennec.services.templates: ${.}/templates")
+				.contains("fennec.services.ecore: ${.}/model/services.ecore");
+	}
+
 	private static List<String> names(String bnd) {
 		List<String> names = new ArrayList<>();
 		Matcher matcher = ENTRY.matcher(bnd);

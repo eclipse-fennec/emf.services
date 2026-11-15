@@ -364,6 +364,18 @@ final class CatalogStore {
 					+ entries.size() + " contract(s)), but none matches the submitted content ("
 					+ sd1 + ")"));
 		}
+		// A catalog URL may name the contract exactly, as GET /catalog/{name}
+		// takes it: <broker>/catalog/{name}?fingerprint=sd1:… (#301).
+		String pinned = pinnedFingerprint(incoming);
+		if (pinned != null) {
+			for (ServiceInterface entry : entries) {
+				if (pinned.equals(ContractAddressing.fingerprint(entry))) {
+					return CatalogResolution.of(entry);
+				}
+			}
+			return CatalogResolution.refuse(DdsrDiagnostics.error(notFoundCode,
+					"'" + name + "' is in the catalog (" + entries.size() + " contract(s)), but not as " + pinned));
+		}
 		if (entries.size() > 1) {
 			return CatalogResolution.refuse(DdsrDiagnostics.error(
 					DdsrDiagnostics.CODE_CATALOG_ENTRY_AMBIGUOUS,
@@ -373,6 +385,25 @@ final class CatalogStore {
 		}
 		return CatalogResolution.of(entries.get(0));
 	}
+	/** The sd1 a catalog-URL proxy names with {@code ?fingerprint=}, or {@code null}. */
+	static String pinnedFingerprint(ServiceInterface incoming) {
+		if (!((InternalEObject) incoming).eIsProxy()) {
+			return null;
+		}
+		URI uri = ((InternalEObject) incoming).eProxyURI();
+		String query = uri == null ? null : uri.query();
+		if (query == null) {
+			return null;
+		}
+		for (String pair : query.split("&")) {
+			if (pair.startsWith("fingerprint=")) {
+				String value = URI.decode(pair.substring("fingerprint=".length()));
+				return value.isBlank() ? null : value;
+			}
+		}
+		return null;
+	}
+
 	/** Resolution outcome: exactly one of entry / refusal is set. */
 	record CatalogResolution(ServiceInterface entry, Diagnostic refusal) {
 		static CatalogResolution of(ServiceInterface entry) {

@@ -57,6 +57,7 @@ import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.fingerprint.ServiceDescriptionFingerprint;
 import org.eclipse.fennec.services.invocation.ResultDocument;
 import org.junit.jupiter.api.BeforeEach;
+import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -651,6 +652,24 @@ class DdsrBrokerImplTest {
 		Diagnostic d = broker.publishImplementation(p, soleImpl(p));
 
 		assertThat(d.getCode()).isEqualTo(DdsrDiagnostics.CODE_CATALOG_ENTRY_AMBIGUOUS);
+	}
+
+	@Test
+	void aCatalogUrlWithItsFingerprintAddressesOneOfCoexistingContracts() {
+		ServiceInterface small = serviceInterface("Payment", "charge");
+		ServiceInterface big = serviceInterface("Payment", "charge", "refund");
+		broker.addCatalogEntry(small, "test");
+		broker.addCatalogEntry(big, "test");
+		String sd1 = ContractAddressing.fingerprint(big);
+
+		ServiceInterface stub = ServicesFactory.eINSTANCE.createServiceInterface();
+		((InternalEObject) stub).eSetProxyURI(URI.createURI(
+				"http://localhost:8887/ddsr/rest/catalog/Payment?fingerprint=" + URI.encodeQuery(sd1, false) + "#/"));
+		ServiceProvider p = provider("payments-java", "impl", stub);
+		Diagnostic d = broker.publishImplementation(p, soleImpl(p));
+
+		assertThat(isError(d)).as("the fingerprint picks the contract (#301): %s", d.getMessage()).isFalse();
+		assertThat(soleImpl(p).getServiceInterfaces().get(0).getOperations()).hasSize(2);
 	}
 
 	@Test

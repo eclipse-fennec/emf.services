@@ -56,4 +56,10 @@ public class ClientRuntimeDTO extends DTO {
 
 	/** Which transport carries those events — {@code rest} or {@code mqtt}. */
 	public String eventTransport;
+
+	/**
+	 * Every connection of this node to a messaging broker and where it
+	 * stands (#297) — {@code gave-up} is a node an orchestrator restarts.
+	 */
+	public List<LinkDTO> links;
 }

@@ -52,6 +52,7 @@ import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.invocation.Flows;
 import org.eclipse.fennec.services.invocation.Invocations;
 import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.LinkSettings.Reconnect;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -139,6 +140,18 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 						+ "agree; 5 adds the broker's flow control (receiveMaximum) on this connection. "
 						+ "Needs the MQTT 5 binding in the launch. Means nothing with an amqp:// URL.")
 		int mqtt_version() default 3;
+
+		@AttributeDefinition(name = "Reconnect attempts", required = false,
+				description = "Failed connect attempts in a row after which this connection gives up on its "
+						+ "broker (#297): what it served is withdrawn and the runtime service shows the "
+						+ "link as closed. 0 never gives up; less than 0 (the default) leaves the "
+						+ "messaging library's own, 100.")
+		int reconnect_max_attempts() default -1;
+
+		@AttributeDefinition(name = "Longest reconnect wait (seconds)", required = false,
+				description = "The longest wait between two connect attempts; 0 or less (the default) "
+						+ "leaves the messaging library's own, 30 s.")
+		long reconnect_max_delay_seconds() default -1;
 
 		@AttributeDefinition(name = "User name", required = false,
 				description = "The user this node connects to brokers as. Empty: the broker's default. "
@@ -616,12 +629,30 @@ public class MessagingServiceInvoker implements ServiceInvoker {
 
 	private MessagingLink open(MessagingRoute route) {
 		String id = UUID.randomUUID().toString().substring(0, 8);
-		return MessagingLink.open(context,
+		MessagingLink link = MessagingLink.open(context,
 				new LinkSettings("fennec.services.invoker." + id, route.broker(), "ddsr-consumer-" + id,
 						config.tls_keystore(), config.tls_keystore_password(),
 						config.tls_truststore(), config.tls_truststore_password())
 						.onExchange(route.exchange()).as(config.username(), config.password())
-						.carrying(config.max_body_bytes()).speaking(config.mqtt_version()));
+						.carrying(config.max_body_bytes()).speaking(config.mqtt_version())
+				.reconnecting(new Reconnect(config.reconnect_max_attempts(), config.reconnect_max_delay_seconds())));
+		// Gave up on its broker (#297): one dead link is not a dead invoker
+		// — it calls many brokers, one link each. The link goes, so the
+		// next call to that broker opens a new one and tries again, and a
+		// call meanwhile fails as one to an unreachable broker does.
+		String key = linkKey(route);
+		link.onGivenUp(cause -> {
+			boolean dropped;
+			synchronized (links) {
+				dropped = links.remove(key, link);
+			}
+			if (dropped) {
+				LOG.warning("[DDSR-MSG] the link to " + route.broker() + " gave up (" + cause
+						+ "); the next call opens a new one");
+				link.close();
+			}
+		});
+		return link;
 	}
 
 	/** The flavor names a place for answers: wait in this consumer's inbox there for the one that correlates. */

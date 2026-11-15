@@ -20,6 +20,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.LinkSettings.Reconnect;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
@@ -87,6 +88,18 @@ public final class MqttEventTransport implements EventSource {
 						+ "Needs the MQTT 5 binding in the launch. Means nothing with an amqp:// URL.")
 		int mqtt_version() default 3;
 
+		@AttributeDefinition(name = "Reconnect attempts", required = false,
+				description = "Failed connect attempts in a row after which this connection gives up on its "
+						+ "broker (#297): what it served is withdrawn and the runtime service shows the "
+						+ "link as closed. 0 never gives up; less than 0 (the default) leaves the "
+						+ "messaging library's own, 100.")
+		int reconnect_max_attempts() default -1;
+
+		@AttributeDefinition(name = "Longest reconnect wait (seconds)", required = false,
+				description = "The longest wait between two connect attempts; 0 or less (the default) "
+						+ "leaves the messaging library's own, 30 s.")
+		long reconnect_max_delay_seconds() default -1;
+
 		@AttributeDefinition(name = "User name", required = false,
 				description = "Who this node is to a messaging broker that asks for a name and a "
 						+ "password. Never in the URL.")
@@ -148,7 +161,8 @@ public final class MqttEventTransport implements EventSource {
 				LinkSettings.clientId(context, config.client_id(), CLIENT_ROLE), config.tls_keystore(),
 				config.tls_keystore_password(),
 				config.tls_truststore(), config.tls_truststore_password())
-				.as(config.username(), config.password()).speaking(config.mqtt_version()));
+				.as(config.username(), config.password()).speaking(config.mqtt_version())
+				.reconnecting(new Reconnect(config.reconnect_max_attempts(), config.reconnect_max_delay_seconds())));
 		Channels channels = Channels.of(config.broker_url());
 		this.source = new MqttEventSource(this::subscribe, rsObjects, config.topic_prefix(), channels);
 		Hashtable<String, Object> properties = new Hashtable<>();
@@ -156,6 +170,25 @@ public final class MqttEventTransport implements EventSource {
 		this.registration = context.registerService(EventSource.class, this, properties);
 		LOG.info("[DDSR-MQTT] client transport connecting to " + config.broker_url()
 				+ " — events over " + channels.protocol());
+		// Gave up on the broker (#297): this source hears nothing any more.
+		// It goes, and a client bound to it with it — unsatisfied, which
+		// the component runtime shows, rather than half-working.
+		link.onGivenUp(cause -> {
+			LOG.severe("[DDSR-MQTT] client transport to " + config.broker_url()
+					+ " withdrawn: its connection gave up (" + cause + ")");
+			withdraw();
+		});
+	}
+
+	private synchronized void withdraw() {
+		if (registration != null) {
+			try {
+				registration.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// The framework got there first.
+			}
+			registration = null;
+		}
 	}
 
 	/** What a client's {@code eventSource.target} is written against. */
@@ -189,14 +222,7 @@ public final class MqttEventTransport implements EventSource {
 	void deactivate() {
 		// Withdrawn first: whoever is bound to this source is unbound
 		// while it can still close what it opened.
-		if (registration != null) {
-			try {
-				registration.unregister();
-			} catch (IllegalStateException alreadyGone) {
-				// The framework got there first.
-			}
-			registration = null;
-		}
+		withdraw();
 		source = null;
 		if (link != null) {
 			link.close();

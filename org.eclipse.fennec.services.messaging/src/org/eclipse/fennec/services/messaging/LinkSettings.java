@@ -52,7 +52,36 @@ import org.osgi.framework.Constants;
  */
 public record LinkSettings(String name, String url, String clientId, String keystore,
 		String keystorePassword, String truststore, String truststorePassword, String exchange,
-		String username, String password, long maxBodyBytes, int mqttVersion) {
+		String username, String password, long maxBodyBytes, int mqttVersion, Reconnect reconnect) {
+
+	/**
+	 * How long a link keeps trying to reach its broker (#297). The
+	 * library gives up after a number of failed attempts in a row — by
+	 * default after 100, which with its default waits is half an hour to
+	 * an hour — and the link then tells its owner, which withdraws what
+	 * is no longer true. A deployment that wants a node to knock forever
+	 * says so ({@code maxAttempts} 0).
+	 *
+	 * @param maxAttempts     failed attempts in a row before giving up;
+	 *                        0 never gives up, less than 0 leaves the
+	 *                        library's default
+	 * @param maxDelaySeconds the longest wait between two attempts; 0 or
+	 *                        less leaves the library's default
+	 */
+	public record Reconnect(int maxAttempts, long maxDelaySeconds) {
+
+		/** The library's defaults. */
+		public static final Reconnect DEFAULT = new Reconnect(-1, -1);
+
+		void into(Hashtable<String, Object> configuration) {
+			if (maxAttempts >= 0) {
+				configuration.put("reconnectMaxAttempts", maxAttempts);
+			}
+			if (maxDelaySeconds > 0) {
+				configuration.put("reconnectMaxDelay", maxDelaySeconds * 1000);
+			}
+		}
+	}
 
 	/**
 	 * What an envelope adds around its document, generously: a handful
@@ -106,7 +135,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	public LinkSettings(String name, String url, String clientId, String keystore, String keystorePassword,
 			String truststore, String truststorePassword) {
 		this(name, url, clientId, keystore, keystorePassword, truststore, truststorePassword, null, null,
-				null, 0, 0);
+				null, 0, 0, null);
 	}
 
 	public LinkSettings {
@@ -123,7 +152,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 
 	/** A link without a certificate of its own. */
 	public static LinkSettings of(String name, String url, String clientId) {
-		return new LinkSettings(name, url, clientId, null, null, null, null, null, null, null, 0, 0);
+		return new LinkSettings(name, url, clientId, null, null, null, null, null, null, null, 0, 0, null);
 	}
 
 	/**
@@ -132,7 +161,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	 */
 	public LinkSettings as(String username, String password) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion);
+				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion, reconnect);
 	}
 
 	/**
@@ -142,7 +171,7 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	 */
 	public LinkSettings carrying(long maxBodyBytes) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion);
+				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion, reconnect);
 	}
 
 	/**
@@ -161,13 +190,19 @@ public record LinkSettings(String name, String url, String clientId, String keys
 	 */
 	public LinkSettings speaking(int version) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password, maxBodyBytes, version);
+				truststorePassword, exchange, username, password, maxBodyBytes, version, reconnect);
+	}
+
+	/** The same link, giving up on its broker as this says (#297). */
+	public LinkSettings reconnecting(Reconnect reconnect) {
+		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
+				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion, reconnect);
 	}
 
 	/** The same link, on this exchange. */
 	public LinkSettings onExchange(String exchange) {
 		return new LinkSettings(name, url, clientId, keystore, keystorePassword, truststore,
-				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion);
+				truststorePassword, exchange, username, password, maxBodyBytes, mqttVersion, reconnect);
 	}
 
 	/**
@@ -232,6 +267,9 @@ public record LinkSettings(String name, String url, String clientId, String keys
 			// message that carries the largest document allowed is that
 			// much larger, plus the envelope around it.
 			configuration.put("maxMessageSize", (maxBodyBytes + 2) / 3 * 4 + ENVELOPE_BYTES);
+		}
+		if (reconnect != null) {
+			reconnect.into(configuration);
 		}
 		put(configuration, "username", username);
 		put(configuration, ".password", password);

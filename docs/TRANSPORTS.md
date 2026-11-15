@@ -156,6 +156,26 @@ What the instance gives each of them:
   doubling to 30 s, and restores every subscription before it reports
   being connected again. A broker restart costs what was published
   meanwhile, and nothing after.
+- **It gives up, and says so (#297).** After a number of failed
+  attempts in a row — 100 by default, half an hour to an hour with the
+  default waits — the instance stops trying. The link logs that once at
+  SEVERE and its owner withdraws what is no longer true: a contract
+  served from configuration drops its condition, so its announcement
+  withdraws it from the registry; the RSA messaging distribution stops
+  offering itself, so its exports go; the broker's event sink and a
+  client's event transport deregister — a client bound to that
+  transport becomes unsatisfied rather than half-working. The invoker
+  calls many brokers, so it drops only the dead link, and the next call
+  to that broker opens a new one. Both runtime services list every link
+  with its state (`links`, `gave-up` among them), so a health check sees
+  a node that is cut off. Every connection takes
+  `reconnect.max.attempts` (0 never gives up, less than 0 the default)
+  and `reconnect.max.delay.seconds`; the RSA role takes them once for
+  all of a node's connections, the broker image as
+  `DDSR_MQTT_RECONNECT_*` / `DDSR_AMQP_RECONNECT_*`. Giving up is the
+  default on purpose: a node does not knock forever, with its
+  credentials, on an address that may no longer be its broker. A node
+  without an orchestrator to restart it — an edge node — says `0`.
 - **Nothing waits at start.** A part that is configured before its
   broker is up is not a failed component; it becomes useful when the
   connection is there. The broker's sink is registered with the first

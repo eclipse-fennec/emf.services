@@ -48,6 +48,8 @@ import org.gecko.messaging.api.replyto.ReplyToSessionHandler;
 import org.gecko.messaging.api.util.Flows;
 import org.gecko.messaging.api.replyto.ReplyToSubscriptionConstants;
 import org.gecko.messaging.api.replyto.SessionEndedException;
+import org.eclipse.fennec.services.runtime.LinkDTO;
+import org.eclipse.fennec.services.runtime.LinkState;
 import org.gecko.messaging.api.runtime.ConnectionEvent;
 import org.gecko.messaging.api.runtime.ConnectionListener;
 import org.gecko.messaging.api.runtime.ConnectionState;
@@ -90,6 +92,13 @@ import org.osgi.util.tracker.ServiceTracker;
  * the wire as one JSON document and reads them back from one. The
  * owner decides what the event says; how an event looks on a wire is
  * the messaging project's, the same on every protocol it binds.
+ *
+ * <p><b>A link can give up (#297).</b> The instance stops trying after a
+ * number of failed attempts in a row ({@link LinkSettings.Reconnect}) and
+ * ends every subscription. The link says so once, SEVERE, and tells its
+ * owner through {@link #onGivenUp}; from then on it is dead — it never
+ * connects again — and the owner withdraws what it served over it, or
+ * opens a new one.
  */
 public final class MessagingLink implements AutoCloseable {
 
@@ -147,6 +156,9 @@ public final class MessagingLink implements AutoCloseable {
 
 	private final List<Consumer<Boolean>> listeners = new CopyOnWriteArrayList<>();
 
+	/** Told when the instance gives up on its broker (#297). */
+	private final List<Consumer<Throwable>> givenUpListeners = new CopyOnWriteArrayList<>();
+
 	/**
 	 * Listeners run here, not on the instance's event thread: the
 	 * instance asks its listeners not to block, and what an owner does
@@ -167,6 +179,12 @@ public final class MessagingLink implements AutoCloseable {
 	private boolean everConnected;
 
 	private volatile boolean closed;
+
+	/** The instance gave up on its broker; why. Final: it never connects again. */
+	private Throwable givenUp;
+
+	/** This link as the runtime services list it (#297). */
+	private ServiceRegistration<LinkState> stateRegistration;
 
 	private MessagingLink(BundleContext context, LinkSettings settings) {
 		this.context = context;
@@ -224,6 +242,8 @@ public final class MessagingLink implements AutoCloseable {
 					unnameable);
 		}
 		tracker.open();
+		// Listed by the runtime services while it is open (#297).
+		stateRegistration = context.registerService(LinkState.class, this::link, stateProperties());
 
 		ServiceReference<ConfigurationAdmin> admin = context.getServiceReference(ConfigurationAdmin.class);
 		if (admin == null) {
@@ -831,7 +851,7 @@ public final class MessagingLink implements AutoCloseable {
 	public boolean awaitConnected(long timeout, TimeUnit unit) throws InterruptedException {
 		long deadline = System.nanoTime() + unit.toNanos(timeout);
 		synchronized (lock) {
-			while (!connected && !closed) {
+			while (!connected && !closed && givenUp == null) {
 				long remaining = deadline - System.nanoTime();
 				if (remaining <= 0) {
 					return false;
@@ -839,6 +859,82 @@ public final class MessagingLink implements AutoCloseable {
 				TimeUnit.NANOSECONDS.timedWait(lock, remaining);
 			}
 			return connected;
+		}
+	}
+
+	/**
+	 * Be told when the instance gives up on its broker (#297) — once, with
+	 * why. Told at once when it has given up already.
+	 *
+	 * @return closing it stops the telling
+	 */
+	public AutoCloseable onGivenUp(Consumer<Throwable> listener) {
+		Throwable already;
+		synchronized (lock) {
+			givenUpListeners.add(listener);
+			already = givenUp;
+		}
+		if (already != null) {
+			tellGivenUp(List.of(listener), already);
+		}
+		return () -> givenUpListeners.remove(listener);
+	}
+
+	/** Whether the instance gave up on its broker: the link is dead (#297). */
+	public boolean hasGivenUp() {
+		synchronized (lock) {
+			return givenUp != null;
+		}
+	}
+
+	/**
+	 * Where the link stands, for a runtime service to show (#297):
+	 * {@code connecting}, {@code connected}, {@code reconnecting} (lost,
+	 * still trying), {@code gave-up} or {@code closed}.
+	 */
+	public String state() {
+		synchronized (lock) {
+			if (closed) {
+				return "closed";
+			}
+			if (givenUp != null) {
+				return "gave-up";
+			}
+			if (connected) {
+				return "connected";
+			}
+			return everConnected ? "reconnecting" : "connecting";
+		}
+	}
+
+	/** This link as a runtime service shows it (#297). */
+	public LinkDTO link() {
+		LinkDTO dto = new LinkDTO();
+		dto.name = settings.name();
+		dto.url = settings.address();
+		synchronized (lock) {
+			dto.cause = givenUp == null ? null : String.valueOf(givenUp);
+		}
+		dto.state = state();
+		return dto;
+	}
+
+	private Hashtable<String, Object> stateProperties() {
+		Hashtable<String, Object> properties = new Hashtable<>();
+		properties.put(LinkState.STATE, state());
+		properties.put("osgi.messaging.name", settings.name());
+		return properties;
+	}
+
+	/** Tells whoever tracks this link that its state changed. */
+	private void stateChanged() {
+		ServiceRegistration<LinkState> registration = stateRegistration;
+		if (registration != null) {
+			try {
+				registration.setProperties(stateProperties());
+			} catch (IllegalStateException gone) {
+				// closed meanwhile
+			}
 		}
 	}
 
@@ -876,10 +972,19 @@ public final class MessagingLink implements AutoCloseable {
 			lock.notifyAll();
 		}
 		listeners.clear();
+		givenUpListeners.clear();
 		for (Subscribed subscribed : wanted) {
 			subscribed.off();
 		}
 		wanted.clear();
+		if (stateRegistration != null) {
+			try {
+				stateRegistration.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// The framework got there first.
+			}
+			stateRegistration = null;
+		}
 		if (listenerRegistration != null) {
 			try {
 				listenerRegistration.unregister();
@@ -902,10 +1007,14 @@ public final class MessagingLink implements AutoCloseable {
 	}
 
 	private void connectionChanged(ConnectionEvent event) {
+		if (event.state() == ConnectionState.CLOSED && event.cause() != null) {
+			gaveUp(event.cause());
+			return;
+		}
 		boolean now = event.state() == ConnectionState.CONNECTED;
 		boolean before;
 		synchronized (lock) {
-			if (closed) {
+			if (closed || givenUp != null) {
 				return;
 			}
 			before = connected;
@@ -913,14 +1022,51 @@ public final class MessagingLink implements AutoCloseable {
 			everConnected |= now;
 			lock.notifyAll();
 		}
+		if (now != before) {
+			stateChanged();
+		}
 		if (now && !before) {
 			LOG.info("[DDSR-MSG] " + settings + (event.reconnect() ? " connected again" : " connected"));
 			tell(listeners, event.reconnect());
 		} else if (!now && before) {
 			LOG.warning("[DDSR-MSG] " + settings + " lost its connection"
 					+ (event.cause() == null ? "" : ": " + event.cause()));
-		} else if (event.state() == ConnectionState.CLOSED && event.cause() != null) {
-			LOG.warning("[DDSR-MSG] " + settings + " gave up connecting: " + event.cause());
+		}
+	}
+
+	/**
+	 * The instance gave up (#297): said once, SEVERE — a node that is cut
+	 * off from its broker must not be cut off quietly — and told to the
+	 * owner, which withdraws what is no longer true.
+	 */
+	private void gaveUp(Throwable cause) {
+		synchronized (lock) {
+			if (closed || givenUp != null) {
+				return;
+			}
+			givenUp = cause;
+			connected = false;
+			lock.notifyAll();
+		}
+		stateChanged();
+		LOG.severe("[DDSR-MSG] " + settings + " gave up connecting to its broker: " + cause
+				+ " — what it served is withdrawn; it does not try again");
+		tellGivenUp(givenUpListeners, cause);
+	}
+
+	private void tellGivenUp(Collection<Consumer<Throwable>> whom, Throwable cause) {
+		for (Consumer<Throwable> listener : whom) {
+			try {
+				callbacks.execute(() -> {
+					try {
+						listener.accept(cause);
+					} catch (RuntimeException failed) {
+						LOG.log(Level.WARNING, "[DDSR-MSG] a listener of " + settings + " failed", failed);
+					}
+				});
+			} catch (RejectedExecutionException closing) {
+				return;
+			}
 		}
 	}
 

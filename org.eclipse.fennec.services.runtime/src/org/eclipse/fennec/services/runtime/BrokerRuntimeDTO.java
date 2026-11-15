@@ -56,4 +56,10 @@ public class BrokerRuntimeDTO extends DTO {
 
 	/** How many registrations are parked in the cold cache. */
 	public int coldEntries;
+
+	/**
+	 * Every connection of this node to a messaging broker and where it
+	 * stands (#297) — {@code gave-up} is a node an orchestrator restarts.
+	 */
+	public List<LinkDTO> links;
 }

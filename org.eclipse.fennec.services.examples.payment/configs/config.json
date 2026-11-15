@@ -97,6 +97,8 @@
   },
   "org.eclipse.fennec.services.provider.messaging.connection":
   {
+    "reconnect.max.attempts": "$[env:DDSR_RECONNECT_MAX_ATTEMPTS;default=-1]",
+    "reconnect.max.delay.seconds": "$[env:DDSR_RECONNECT_MAX_DELAY_SECONDS;default=-1]",
     "tls.keystore": "$[env:DDSR_TLS_KEYSTORE;default=]",
     "tls.keystore.password": "$[env:DDSR_TLS_KEYSTORE_PASSWORD;default=]",
     "tls.truststore": "$[env:DDSR_TLS_TRUSTSTORE;default=]",

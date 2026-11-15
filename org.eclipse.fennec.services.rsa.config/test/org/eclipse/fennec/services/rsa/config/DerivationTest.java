@@ -250,6 +250,27 @@ class DerivationTest {
 	}
 
 	@Test
+	@DisplayName("#297: when to give up on the broker is said once and reaches every messaging connection")
+	void reconnectReachesEveryConnection() {
+		RsaSettings node = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 9095,
+				"0.0.0.0", "services", true, "ddsrHttp", "node-a", "1.0.0", "fennec.mqtt",
+				"promiscuous", "promiscuous", 30, 0, "", "tcp://mosquitto:1883", "ddsr/rpc", "", "");
+
+		List<DerivedConfiguration> giving = Derivation.forProvider(node.withReconnect(2, 5));
+
+		for (String pid : List.of(Derivation.CLIENT_MQTT_PID, Derivation.INVOKER_MESSAGING_PID,
+				Derivation.CONNECTION_MESSAGING_PID)) {
+			assertThat(byLabel(giving, pid).properties()).as(pid).containsEntry("reconnect.max.attempts", "2")
+					.containsEntry("reconnect.max.delay.seconds", "5");
+		}
+		assertThat(byLabel(Derivation.forProvider(node.withReconnect(0, -1)), Derivation.CLIENT_MQTT_PID).properties())
+				.as("0 never gives up, and is said").containsEntry("reconnect.max.attempts", "0")
+				.doesNotContainKey("reconnect.max.delay.seconds");
+		assertThat(byLabel(Derivation.forProvider(node), Derivation.CLIENT_MQTT_PID).properties())
+				.as("the library's defaults are not said").doesNotContainKey("reconnect.max.attempts");
+	}
+
+	@Test
 	@DisplayName("#138: a consumer whose one flavor is AMQP hears over AMQP — one event transport, another URL")
 	void amqpConsumerHearsOverAmqp() {
 		RsaSettings speaksAmqp = new RsaSettings("http://broker:8887/ddsr/rest", "", "", 0, "", "",

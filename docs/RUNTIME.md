@@ -147,6 +147,9 @@ is set last, so a caller cannot override it (#188).
 - `delivery` — how many events were dropped, and whether the broker
   owes a resync
 - `coldEntries` — how many registrations the cold cache holds
+- `links` — every connection of the node to a messaging broker (#297):
+  its instance name, the URL, the state (`connecting`, `connected`,
+  `reconnecting`, `gave-up`, `closed`) and, where it gave up, why
 
 The leases and the delivery debt are the reason this service exists at
 all. Everything else can be reconstructed from the wire by a consumer
@@ -168,6 +171,9 @@ broker never announces it.
 - `eventStreamConnected` and `eventTransport` — the one thing nobody
   else can answer. The broker sees a subscription; only the consumer
   knows whether it is currently reading one.
+- `links` — the node's messaging connections and their state, as on
+  the broker (#297). `gave-up` is final: the link does not try again,
+  and what was served over it has been withdrawn — a node to restart.
 
 `failure` is the small version of what a whiteboard runtime does with
 its failed DTOs: something that was offered and not taken is worth
@@ -182,6 +188,9 @@ locator rebinds inside event handling, a stream drops on its own thread
 — and a counter incremented at the call sites would have to be
 remembered at every one of them. A missed call site is a watcher that
 is never told, and that failure is silent.
+
+(The links are the exception on both sides: each is a service, and a
+change of its state is a service event the runtime service counts.)
 
 So on the client side the change is *detected* rather than reported: a
 fingerprint over what a snapshot would say, compared against the last

@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.provider.messaging;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.eclipse.fennec.services.ServiceFlavor;
@@ -79,10 +80,19 @@ public interface MessagingDistribution {
 	 * @param exchange      the exchange, where the protocol has
 	 *                      exchanges; else null
 	 * @param whenConnected called once, with the first connection
+	 * @param whenGivenUp   called once if the connection gives up on its
+	 *                      broker (#297): what was offered over it is to
+	 *                      be taken back
 	 * @return closing it lets the connection go when nothing else
 	 *         holds it. Idempotent.
 	 */
-	AutoCloseable hold(String brokerUrl, String exchange, Runnable whenConnected);
+	AutoCloseable hold(String brokerUrl, String exchange, Runnable whenConnected, Consumer<Throwable> whenGivenUp);
+
+	/** {@link #hold(String, String, Runnable, Consumer)}, for a holder that does not care when it gives up. */
+	default AutoCloseable hold(String brokerUrl, String exchange, Runnable whenConnected) {
+		return hold(brokerUrl, exchange, whenConnected, cause -> {
+		});
+	}
 
 	/** A contract being served. */
 	interface Served extends AutoCloseable {
@@ -97,6 +107,13 @@ public interface MessagingDistribution {
 		 * a channel nobody listens on yet is answered by nobody.
 		 */
 		void whenListening(Runnable listening);
+
+		/**
+		 * Be told when the connection gives up on its broker (#297): the
+		 * channels are quiet from then on and stay so — whoever told
+		 * consumers about this contract takes it back.
+		 */
+		void whenGivenUp(Consumer<Throwable> gone);
 
 		/** Stop answering. Idempotent. */
 		@Override

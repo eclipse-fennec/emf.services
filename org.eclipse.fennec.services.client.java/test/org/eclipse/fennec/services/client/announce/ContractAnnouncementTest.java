@@ -16,8 +16,11 @@ package org.eclipse.fennec.services.client.announce;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +106,63 @@ class ContractAnnouncementTest {
 		verify(client, never()).provider();
 		assertThatCode(announcement::deactivate).as("nothing was announced, so nothing is withdrawn")
 				.doesNotThrowAnyException();
+	}
+
+	@Test
+	void aPublishThatFailedIsTriedAgainUntilItSucceeds() {
+		// #304: a provider started before its broker
+		ServiceImplementation implementation = implementation();
+		when(catalog.addCatalogEntry(any(), any())).thenThrow(new IllegalStateException("connection refused"))
+				.thenThrow(new IllegalStateException("connection refused")).thenReturn(ok());
+		when(client.provider()).thenReturn(provider);
+		when(provider.publish(any(), any())).thenReturn(registration);
+		ContractAnnouncement announcement = announcement(implementation);
+		announcement.firstWait = 10;
+
+		announcement.activate();
+
+		verify(provider, timeout(5_000)).publish((ServiceProvider) implementation.eContainer(), implementation);
+		verify(catalog, times(3)).addCatalogEntry(any(), any());
+		assertThat(((RestFlavor) implementation.getFlavors().get(0)).getBasePath())
+				.as("the deployment is written once, however often it is tried").isEqualTo("/payments/persons");
+		announcement.deactivate();
+		verify(registration).withdraw();
+	}
+
+	@Test
+	void aRefusedContractIsAskedAgainAtTheLongestInterval() throws InterruptedException {
+		Diagnostic refused = F.createDiagnostic();
+		refused.setSeverity(DiagnosticSeverity.ERROR);
+		refused.setCode(500);
+		when(catalog.addCatalogEntry(any(), any())).thenReturn(refused, refused, ok());
+		when(client.provider()).thenReturn(provider);
+		when(provider.publish(any(), any())).thenReturn(registration);
+		ContractAnnouncement announcement = announcement(implementation());
+		announcement.firstWait = 10;
+		announcement.longestWait = 200;
+
+		announcement.activate();
+		Thread.sleep(100);
+
+		verify(catalog, times(1).description("not at the short interval")).addCatalogEntry(any(), any());
+		verify(provider, timeout(5_000)).publish(any(), any());
+		announcement.deactivate();
+	}
+
+	@Test
+	void goingDownStopsTrying() throws InterruptedException {
+		when(catalog.addCatalogEntry(any(), any())).thenThrow(new IllegalStateException("connection refused"));
+		ContractAnnouncement announcement = announcement(implementation());
+		announcement.firstWait = 10;
+		announcement.activate();
+		verify(catalog, timeout(5_000).atLeast(2)).addCatalogEntry(any(), any());
+
+		announcement.deactivate();
+		clearInvocations(catalog);
+		Thread.sleep(100);
+
+		verify(catalog, never()).addCatalogEntry(any(), any());
+		verify(client, never()).provider();
 	}
 
 	@Test

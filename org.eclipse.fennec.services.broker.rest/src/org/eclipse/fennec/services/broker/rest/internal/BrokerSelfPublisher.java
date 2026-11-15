@@ -16,14 +16,21 @@ package org.eclipse.fennec.services.broker.rest.internal;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.ConnectionScheme;
 import org.eclipse.fennec.services.MutualTlsScheme;
@@ -219,7 +226,7 @@ public final class BrokerSelfPublisher {
 	 * apart (#76). Only the deployment fact is added: where this instance
 	 * is reachable.
 	 */
-	private Announced announce(List<EObject> roots, URI publicUrl) {
+	private synchronized Announced announce(List<EObject> roots, URI publicUrl) {
 		ServiceProvider provider = (ServiceProvider) roots.get(0);
 		ServiceInterface contract = (ServiceInterface) roots.get(1);
 		ServiceImplementation implementation = provider.getImplementations().get(0);
@@ -240,10 +247,18 @@ public final class BrokerSelfPublisher {
 		}
 		ServiceInterface inCatalog = findInCatalog(contract.getName());
 		if (inCatalog != null && inCatalog != contract) {
-			// The catalog already held it; reference the live entry so the
-			// publish does not carry a second copy of the same contract.
-			implementation.getServiceInterfaces().clear();
-			implementation.getServiceInterfaces().add(inCatalog);
+			// The catalog already held it — a contract outlives its
+			// implementations (#271), so after a restart from a snapshot it
+			// is there while the implementation is not. Point everything of
+			// the provider at the live entry, not only the implementation:
+			// the flavor's bindings name operations and parameters too, and
+			// left on the copy just read they point at objects in no
+			// resource, which fails every later snapshot of the broker.
+			if (!rewire(provider, contract, inCatalog)) {
+				LOG.warning("[DDSR] BrokerSelfPublisher: " + contract.getName()
+						+ " differs from the contract the catalog holds — not announced");
+				return null;
+			}
 		}
 
 		RestFlavor flavor = (RestFlavor) implementation.getFlavors().get(0);
@@ -268,6 +283,61 @@ public final class BrokerSelfPublisher {
 		LOG.info("[DDSR] BrokerSelfPublisher: " + contract.getName() + " seeded and served at "
 				+ flavor.getHost() + flavor.getBasePath());
 		return new Announced(provider, implementation);
+	}
+
+	/**
+	 * Moves every reference from {@code root}'s tree into {@code read} over
+	 * to the same object in {@code live}, found by its path inside the
+	 * contract.
+	 *
+	 * @return {@code false}, changing nothing, when an object has no
+	 *         counterpart of the same kind and name — then the two are not
+	 *         the same contract
+	 */
+	static boolean rewire(EObject root, ServiceInterface read, ServiceInterface live) {
+		Map<EObject, EObject> counterparts = new HashMap<>();
+		counterparts.put(read, live);
+		for (Iterator<EObject> it = read.eAllContents(); it.hasNext();) {
+			EObject original = it.next();
+			EObject counterpart = EcoreUtil.getEObject(live, EcoreUtil.getRelativeURIFragmentPath(read, original));
+			if (counterpart == null || counterpart.eClass() != original.eClass()
+					|| !Objects.equals(nameOf(original), nameOf(counterpart))) {
+				return false;
+			}
+			counterparts.put(original, counterpart);
+		}
+		List<EObject> tree = new ArrayList<>();
+		tree.add(root);
+		root.eAllContents().forEachRemaining(tree::add);
+		for (EObject object : tree) {
+			for (EReference reference : object.eClass().getEAllReferences()) {
+				if (reference.isContainment() || reference.isContainer() || reference.isDerived()
+						|| !reference.isChangeable() || !object.eIsSet(reference)) {
+					continue;
+				}
+				if (reference.isMany()) {
+					@SuppressWarnings("unchecked")
+					List<EObject> values = (List<EObject>) object.eGet(reference);
+					for (int i = 0; i < values.size(); i++) {
+						EObject counterpart = counterparts.get(values.get(i));
+						if (counterpart != null) {
+							values.set(i, counterpart);
+						}
+					}
+				} else {
+					EObject counterpart = counterparts.get((EObject) object.eGet(reference));
+					if (counterpart != null) {
+						object.eSet(reference, counterpart);
+					}
+				}
+			}
+		}
+		return true;
+	}
+
+	private static Object nameOf(EObject object) {
+		EStructuralFeature name = object.eClass().getEStructuralFeature("name");
+		return name == null ? null : object.eGet(name);
 	}
 
 	private ServiceInterface findInCatalog(String name) {

@@ -34,8 +34,11 @@ import org.eclipse.fennec.services.client.DdsrConsumer;
 import org.eclipse.fennec.services.client.DdsrProvider;
 import org.eclipse.fennec.services.client.EventSource;
 import org.eclipse.fennec.services.common.FrameworkShutdown;
-import org.eclipse.fennec.services.runtime.ClientRuntime;
 import org.eclipse.fennec.services.runtime.ChangeCountPublisher;
+import org.eclipse.fennec.services.runtime.ClientRuntime;
+import org.eclipse.fennec.services.runtime.ClientRuntimeDTO;
+import org.eclipse.fennec.services.runtime.LinkState;
+import org.eclipse.fennec.services.runtime.LinkStates;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
@@ -43,6 +46,8 @@ import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Modified;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.metatype.annotations.AttributeDefinition;
 import org.osgi.service.metatype.annotations.Designate;
 import org.osgi.service.metatype.annotations.ObjectClassDefinition;
@@ -181,6 +186,24 @@ public final class DdsrClientComponent implements DdsrClient {
 		this.eventTransport = transport == null ? null : String.valueOf(transport);
 	}
 
+	/** The node's messaging links, shown by the runtime service (#297). */
+	private final LinkStates links = new LinkStates();
+
+	@Reference(
+			cardinality = ReferenceCardinality.MULTIPLE,
+			policy = ReferencePolicy.DYNAMIC)
+	void addLinkState(LinkState link) {
+		links.added(link);
+	}
+
+	void updatedLinkState(LinkState link) {
+		links.updated(link);
+	}
+
+	void removeLinkState(LinkState link) {
+		links.removed(link);
+	}
+
 	@Reference(target = "(ddsr.broker.transport=rest)")
 	private BrokerImplementations implementations;
 
@@ -266,8 +289,14 @@ public final class DdsrClientComponent implements DdsrClient {
 			// it (#126). Registered by hand for the same reason the
 			// broker's is: its one property has to change while it is
 			// registered.
+			DdsrClientImpl client = delegate;
 			this.runtime = new ChangeCountPublisher<>(context, ClientRuntime.class,
-					(ClientRuntime) delegate::runtimeSnapshot, delegate::runtimeChangeCount,
+					(ClientRuntime) () -> {
+						ClientRuntimeDTO dto = client.runtimeSnapshot();
+						dto.changeCount += links.changes();
+						dto.links = links.snapshot();
+						return dto;
+					}, () -> client.runtimeChangeCount() + links.changes(),
 					"client runtime service");
 			runtime.open();
 			LOG.info("[DDSR-Client] activated, flavors=" + flavors + ", consumerId=" + consumerId);

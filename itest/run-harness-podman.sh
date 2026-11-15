@@ -112,7 +112,7 @@ podman rm -f ddsr-broker ddsr-payment-java ddsr-probe ddsr-provider-ts ddsr-clie
   ddsr-payment-f1 ddsr-payment-f2 ddsr-probe-f ddsr-payment-g1 ddsr-payment-g2 ddsr-probe-g \
   ddsr-rsa-export ddsr-rsa-import ddsr-rsa-export-amqp ddsr-rsa-import-amqp ddsr-rabbitmq \
   ddsr-rsa-export-json ddsr-rsa-import-json \
-  ddsr-payment-h ddsr-probe-h ddsr-probe-mqtt-config ddsr-probe-j ddsr-probe-amqp-config ddsr-probe-u \
+  ddsr-payment-h ddsr-probe-h ddsr-probe-mqtt-config ddsr-probe-j ddsr-giveup-mqtt ddsr-keepon-mqtt ddsr-probe-amqp-config ddsr-probe-u \
   ddsr-broker-mqtt ddsr-client-mqtt ddsr-payment-mqtt ddsr-provider-ts-mqtt ddsr-probe-mqtt >/dev/null 2>&1 || true
 rm -f "$ROOT"/org.eclipse.fennec.services.broker.rest/generated/distributions/executable/broker.jar \
       "$ROOT"/org.eclipse.fennec.services.examples.payment/generated/distributions/executable/payment-provider.jar \
@@ -753,6 +753,59 @@ grep -q "✓ mqtt-probe-echo" "$WORK/probe-j.log" \
 echo "Scenario J OK: a contract served and announced over MQTT by configuration alone"
 grep -E '  [✓✗] mqtt-probe' "$WORK/probe-j.log" || true
 
+# ============================================================ Scenario Z
+log "Scenario Z: a messaging connection that gives up withdraws what it served (#297)"
+# BindingProbe served over mosquitto by configuration, as in J — once by
+# a provider that gives up after two failed attempts, once by one that
+# never does, each through an outage of its own (one implementation
+# announced twice at once would be one registration, see F). The first
+# says so (SEVERE), drops its condition, and its announcement withdraws
+# the contract from the registry; the second keeps trying and is
+# connected again once mosquitto is back, its contract still announced.
+z_outage() {
+  podman stop -t 5 ddsr-mosquitto >/dev/null
+  sleep 1
+}
+z_mosquitto_back() {
+  podman start ddsr-mosquitto >/dev/null
+  wait_for_log ddsr-mosquitto "mosquitto version 2.* running" 60
+}
+# shellcheck disable=SC2046
+run_container ddsr-giveup-mqtt ddsr/payment-java-mqtt $(client_args payment-java) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e PAYMENTS_PUBLIC_URL="http://localhost:9091/payments" \
+  -e PAYMENTS_PUBLISH_BINDING_PROBE_MQTT=true \
+  -e PAYMENTS_MQTT_URL="tcp://localhost:1883" \
+  -e DDSR_RECONNECT_MAX_ATTEMPTS=2 -e DDSR_RECONNECT_MAX_DELAY_SECONDS=1
+wait_for_log ddsr-giveup-mqtt "published BindingProbe" 150
+z_outage
+wait_for_log ddsr-giveup-mqtt "gave up connecting to its broker" 90
+wait_for_log ddsr-giveup-mqtt "BindingProbe is withdrawn: its messaging connection gave up" 30
+wait_for_log ddsr-giveup-mqtt "withdrew BindingProbe" 60
+z_mosquitto_back
+podman stop -t 20 ddsr-giveup-mqtt >/dev/null 2>&1 || true
+
+# shellcheck disable=SC2046
+run_container ddsr-keepon-mqtt ddsr/payment-java-mqtt $(client_args payment-java) \
+  -e DDSR_BROKER_URL="$BROKER_URL" \
+  -e PAYMENTS_PUBLIC_URL="http://localhost:9091/payments" \
+  -e PAYMENTS_PUBLISH_BINDING_PROBE_MQTT=true \
+  -e PAYMENTS_MQTT_URL="tcp://localhost:1883" \
+  -e DDSR_RECONNECT_MAX_ATTEMPTS=0 -e DDSR_RECONNECT_MAX_DELAY_SECONDS=1
+wait_for_log ddsr-keepon-mqtt "published BindingProbe" 150
+z_outage
+# Longer than the first one took to give up.
+sleep 15
+z_mosquitto_back
+wait_for_log ddsr-keepon-mqtt "connected again" 90
+keepon_log=$(podman logs ddsr-keepon-mqtt 2>&1)
+case "$keepon_log" in
+  *"gave up connecting"*|*"withdrew BindingProbe"*)
+    echo "SCENARIO Z FAILED: the provider told never to give up gave up"; dump_container ddsr-keepon-mqtt; exit 1 ;;
+esac
+echo "Scenario Z OK: given up -> withdrawn; never giving up -> connected again"
+podman stop -t 20 ddsr-keepon-mqtt >/dev/null 2>&1 || true
+
 # ============================================================ Scenario U
 log "Scenario U: AMQP with no provider code — the same configuration, an amqp:// broker, called from TypeScript"
 # Scenario J on the other protocol (#138), and the first time the
@@ -980,4 +1033,4 @@ fi
 echo "Scenario H OK: PROVIDER_LOST reached the consumer $H_LATENCY_MS ms after SIGKILL (heartbeat 2 s, two missed + sweep)"
 grep -E '  [✓✗]' "$WORK/probe-h.log" || true
 
-log "HARNESS (podman) PASSED (A + B + C + D + E + I + R + S + K + J + U + Q + F + G + H)"
+log "HARNESS (podman) PASSED (A + B + C + D + E + I + R + S + K + J + Z + U + Q + F + G + H)"

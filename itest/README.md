@@ -149,6 +149,13 @@ broker. Requirements and decisions:
   arguments come back in the contract's order — both ends read one
   document the same way (#25). The twin of #84 on this transport: what
   the deployment states is the broker, nothing else.
+- **Z (podman only) — a messaging connection that gives up (#297):**
+  `BindingProbe` served over mosquitto by configuration, as in J. With
+  `DDSR_RECONNECT_MAX_ATTEMPTS=2` and mosquitto stopped, the provider
+  says it gave up (SEVERE), drops its condition and withdraws the
+  contract from the registry; with `0` it keeps trying through a longer
+  outage and is connected again once mosquitto is back, nothing
+  withdrawn.
 - **U (podman only) — AMQP with no provider code, called from
   TypeScript:** J on the other protocol (#138). The same generic
   distribution with another model document (`binding-probe-amqp.xmi`)

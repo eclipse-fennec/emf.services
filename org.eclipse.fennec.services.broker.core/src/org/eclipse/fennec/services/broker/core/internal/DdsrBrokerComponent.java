@@ -42,7 +42,10 @@ import org.eclipse.fennec.services.broker.core.DdsrDiagnostics;
 import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.broker.core.LookupBackend;
 import org.eclipse.fennec.services.runtime.BrokerRuntime;
+import org.eclipse.fennec.services.runtime.BrokerRuntimeDTO;
 import org.eclipse.fennec.services.runtime.ChangeCountPublisher;
+import org.eclipse.fennec.services.runtime.LinkState;
+import org.eclipse.fennec.services.runtime.LinkStates;
 import org.eclipse.fennec.services.common.FrameworkShutdown;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
@@ -237,6 +240,24 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 		eventSinks.remove(sink);
 	}
 
+	/** The node's messaging links, shown by the runtime service (#297). */
+	private final LinkStates links = new LinkStates();
+
+	@Reference(
+			cardinality = ReferenceCardinality.MULTIPLE,
+			policy = ReferencePolicy.DYNAMIC)
+	void addLinkState(LinkState link) {
+		links.added(link);
+	}
+
+	void updatedLinkState(LinkState link) {
+		links.updated(link);
+	}
+
+	void removeLinkState(LinkState link) {
+		links.removed(link);
+	}
+
 	/**
 	 * Fans one event out to whatever is currently registered. Passed to
 	 * the broker as a stable sink so subscribers can come and go without
@@ -287,7 +308,12 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 			// has to change while it is registered — which is how a
 			// watcher is told that the broker looks different now (#126).
 			this.runtime = new ChangeCountPublisher<>(context, BrokerRuntime.class,
-					(BrokerRuntime) broker::runtimeSnapshot, broker::runtimeChangeCount,
+					(BrokerRuntime) () -> {
+						BrokerRuntimeDTO dto = broker.runtimeSnapshot();
+						dto.changeCount += links.changes();
+						dto.links = links.snapshot();
+						return dto;
+					}, () -> broker.runtimeChangeCount() + links.changes(),
 					"broker runtime service");
 			runtime.open();
 			LOG.info("[DDSR] BrokerCore activated, snapshot=" + settings.snapshotPath().toAbsolutePath()

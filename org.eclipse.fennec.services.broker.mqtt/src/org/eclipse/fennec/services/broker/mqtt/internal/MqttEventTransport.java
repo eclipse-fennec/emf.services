@@ -23,6 +23,7 @@ import org.eclipse.fennec.services.broker.core.EventSink;
 import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.messaging.Channels;
 import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.LinkSettings.Reconnect;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.gecko.messaging.api.annotations.RequireMessaging;
 import org.osgi.framework.BundleContext;
@@ -85,6 +86,18 @@ public final class MqttEventTransport implements EventSink {
 						+ "agree; 5 adds the broker's flow control (receiveMaximum) on this connection. "
 						+ "Needs the MQTT 5 binding in the launch. Means nothing with an amqp:// URL.")
 		int mqtt_version() default 3;
+
+		@AttributeDefinition(name = "Reconnect attempts", required = false,
+				description = "Failed connect attempts in a row after which this connection gives up on its "
+						+ "broker (#297): what it served is withdrawn and the runtime service shows the "
+						+ "link as closed. 0 never gives up; less than 0 (the default) leaves the "
+						+ "messaging library's own, 100.")
+		int reconnect_max_attempts() default -1;
+
+		@AttributeDefinition(name = "Longest reconnect wait (seconds)", required = false,
+				description = "The longest wait between two connect attempts; 0 or less (the default) "
+						+ "leaves the messaging library's own, 30 s.")
+		long reconnect_max_delay_seconds() default -1;
 
 		@AttributeDefinition(name = "User name", required = false,
 				description = "Who this broker is to a messaging broker that asks for a name and a "
@@ -184,13 +197,32 @@ public final class MqttEventTransport implements EventSink {
 				LinkSettings.clientId(context, config.client_id(), CLIENT_ROLE), config.tls_keystore(),
 				config.tls_keystore_password(),
 				config.tls_truststore(), config.tls_truststore_password())
-				.as(config.username(), config.password()).speaking(config.mqtt_version()));
+				.as(config.username(), config.password()).speaking(config.mqtt_version())
+				.reconnecting(new Reconnect(config.reconnect_max_attempts(), config.reconnect_max_delay_seconds())));
 		// Registered with the first connection, not before: a sink that is
 		// offered before it can deliver is a sink the broker counts on for
 		// nothing. It stays registered through a later loss — the link
 		// reconnects on its own, and what could not be sent meanwhile is a
 		// resync the sink owes its subscribers.
 		link.onConnected(again -> register(config));
+		// Gave up on the broker (#297): the broker no longer counts on this
+		// sink — nobody hears its events — and the runtime service shows
+		// the link as given up.
+		link.onGivenUp(cause -> withdraw(config, cause));
+	}
+
+	private synchronized void withdraw(Config config, Throwable cause) {
+		if (registration == null) {
+			return;
+		}
+		LOG.severe("[DDSR-MQTT] event transport to " + config.broker_url() + " withdrawn: its connection gave up ("
+				+ cause + ")");
+		try {
+			registration.unregister();
+		} catch (IllegalStateException alreadyGone) {
+			// The framework got there first.
+		}
+		registration = null;
 	}
 
 	/** The messaging instance behind this transport, by name. */

@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.provider.messaging;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Flow;
@@ -31,6 +32,7 @@ import org.eclipse.fennec.services.cloudevents.CloudEventCodec;
 import org.eclipse.fennec.services.common.SecurityRequirements;
 import org.eclipse.fennec.services.flavor.messaging.MessagingRoute;
 import org.eclipse.fennec.services.messaging.LinkSettings;
+import org.eclipse.fennec.services.messaging.LinkSettings.Reconnect;
 import org.eclipse.fennec.services.messaging.MessagingLink;
 import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.gecko.messaging.api.annotations.RequireMessaging;
@@ -84,6 +86,18 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 						+ "agree; 5 adds the broker's flow control (receiveMaximum) on this connection. "
 						+ "Needs the MQTT 5 binding in the launch. Means nothing with an amqp:// URL.")
 		int mqtt_version() default 3;
+
+		@AttributeDefinition(name = "Reconnect attempts", required = false,
+				description = "Failed connect attempts in a row after which this connection gives up on its "
+						+ "broker (#297): what it served is withdrawn and the runtime service shows the "
+						+ "link as closed. 0 never gives up; less than 0 (the default) leaves the "
+						+ "messaging library's own, 100.")
+		int reconnect_max_attempts() default -1;
+
+		@AttributeDefinition(name = "Longest reconnect wait (seconds)", required = false,
+				description = "The longest wait between two connect attempts; 0 or less (the default) "
+						+ "leaves the messaging library's own, 30 s.")
+		long reconnect_max_delay_seconds() default -1;
 
 		@AttributeDefinition(name = "User name", required = false,
 				description = "The user this node connects to brokers as. Empty: the broker's default. "
@@ -295,7 +309,8 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 	}
 
 	@Override
-	public AutoCloseable hold(String brokerUrl, String exchange, Runnable whenConnected) {
+	public AutoCloseable hold(String brokerUrl, String exchange, Runnable whenConnected,
+			Consumer<Throwable> whenGivenUp) {
 		if (brokerUrl == null || brokerUrl.isBlank()) {
 			throw new IllegalArgumentException("a connection needs a broker to go to");
 		}
@@ -307,9 +322,14 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 			}
 		});
 		AtomicBoolean held = new AtomicBoolean(true);
+		AutoCloseable givesUp = connection.link.onGivenUp(cause -> {
+			if (held.get()) {
+				whenGivenUp.accept(cause);
+			}
+		});
 		return () -> {
 			if (held.compareAndSet(true, false)) {
-				closeQuietly(List.of(connects));
+				closeQuietly(List.of(connects, givesUp));
 				release(connection);
 			}
 		};
@@ -339,6 +359,11 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 		String key = url + " " + (exchange == null || exchange.isBlank() ? "" : exchange);
 		synchronized (connections) {
 			Connection connection = connections.get(key);
+			if (connection != null && connection.link.hasGivenUp()) {
+				// Dead (#297): whoever holds it is told and lets it go; a new
+				// holder gets a new connection.
+				connection = null;
+			}
 			if (connection == null) {
 				String id = UUID.randomUUID().toString().substring(0, 8);
 				Config who = config;
@@ -348,7 +373,8 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 									who.tls_keystore(), who.tls_keystore_password(), who.tls_truststore(),
 									who.tls_truststore_password())
 									.onExchange(exchange).as(who.username(), who.password())
-									.carrying(who.max_body_bytes()).speaking(who.mqtt_version())));
+									.carrying(who.max_body_bytes()).speaking(who.mqtt_version())
+				.reconnecting(new Reconnect(who.reconnect_max_attempts(), who.reconnect_max_delay_seconds()))));
 				} catch (RuntimeException unreachable) {
 					throw new IllegalStateException("cannot connect to the broker at " + url, unreachable);
 				}
@@ -418,6 +444,18 @@ public class MessagingDistributionComponent implements MessagingDistribution {
 			});
 			synchronized (listeners) {
 				listeners.add(connects);
+			}
+		}
+
+		@Override
+		public void whenGivenUp(Consumer<Throwable> gone) {
+			AutoCloseable telling = connection.link.onGivenUp(cause -> {
+				if (open.get()) {
+					gone.accept(cause);
+				}
+			});
+			synchronized (listeners) {
+				listeners.add(telling);
 			}
 		}
 

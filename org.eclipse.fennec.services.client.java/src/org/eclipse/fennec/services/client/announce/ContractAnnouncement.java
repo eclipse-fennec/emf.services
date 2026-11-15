@@ -229,6 +229,7 @@ public class ContractAnnouncement {
 		}
 		try {
 			registration.withdraw();
+			LOG.info("[DDSR] withdrew " + contract().getName());
 		} catch (RuntimeException failure) {
 			LOG.log(Level.WARNING, "[DDSR] withdrawing failed", failure);
 		}

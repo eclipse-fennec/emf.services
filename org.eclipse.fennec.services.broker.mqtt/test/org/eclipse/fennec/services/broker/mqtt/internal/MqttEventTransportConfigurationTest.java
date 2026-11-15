@@ -104,6 +104,16 @@ class MqttEventTransportConfigurationTest {
 			}
 
 			@Override
+			public int reconnect_max_attempts() {
+				return -1;
+			}
+
+			@Override
+			public long reconnect_max_delay_seconds() {
+				return -1;
+			}
+
+			@Override
 			public String username() {
 				return "";
 			}

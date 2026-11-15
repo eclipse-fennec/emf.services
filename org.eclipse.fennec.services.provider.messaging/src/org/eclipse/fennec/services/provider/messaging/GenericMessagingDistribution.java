@@ -220,6 +220,26 @@ public class GenericMessagingDistribution {
 				}
 			}
 		});
+		// The connection gave up on its broker (#297): nobody answers on
+		// these channels any more, so the condition drops and the
+		// announcement withdraws the contract — the same order as going
+		// down. Coming back is a restart of the node, or of this
+		// configuration.
+		served.whenGivenUp(cause -> {
+			ServiceRegistration<?> current;
+			synchronized (this) {
+				current = condition;
+			}
+			if (current != null) {
+				LOG.severe("[DDSR] " + contract + " is withdrawn: its messaging connection gave up on "
+						+ flavor.getBrokers() + " (" + cause + ")");
+				try {
+					current.setProperties(contractServed.properties(false));
+				} catch (IllegalStateException unregistered) {
+					// on the way down
+				}
+			}
+		});
 	}
 
 	@Deactivate

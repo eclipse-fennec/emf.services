@@ -141,7 +141,8 @@ public class MqttDistributionProvider implements FlavorDistribution {
 			active = true;
 		}
 		String broker = config.broker_url();
-		this.connection = distribution.hold(broker, null, () -> offer(context, broker));
+		this.connection = distribution.hold(broker, null, () -> offer(context, broker),
+				cause -> withdraw(broker, cause));
 	}
 
 	private synchronized void offer(BundleContext context, String broker) {
@@ -153,6 +154,28 @@ public class MqttDistributionProvider implements FlavorDistribution {
 		registration = context.registerService(FlavorDistribution.class, this, properties);
 		LOG.info("[DDSR] MQTT distribution ready — exports answer on " + broker
 				+ " under " + topicPrefix());
+	}
+
+	/**
+	 * The connection gave up on its broker (#297): this distribution is
+	 * no longer offered, and Remote Service Admin takes back what was
+	 * exported over it. It stays held until the component goes; a
+	 * restart of the node, or of this configuration, brings it back.
+	 */
+	private void withdraw(String broker, Throwable cause) {
+		ServiceRegistration<FlavorDistribution> offered;
+		synchronized (this) {
+			offered = registration;
+			registration = null;
+		}
+		if (offered != null) {
+			LOG.severe("[DDSR] MQTT distribution withdrawn: its connection gave up on " + broker + " (" + cause + ")");
+			try {
+				offered.unregister();
+			} catch (IllegalStateException alreadyGone) {
+				// The framework got there first.
+			}
+		}
 	}
 
 	@Deactivate

@@ -303,6 +303,7 @@ public final class Derivation {
 		if (settings.mqttVersion() == 5) {
 			events.put(MQTT_VERSION, "5");
 		}
+		reconnect(events, settings);
 		events.putAll(mqttTls(settings.identity()));
 		plan.add(DerivedConfiguration.of(CLIENT_MQTT_PID, Map.copyOf(events)));
 		plan.add(DerivedConfiguration.of(settings.hearsOverAmqp() ? DISCOVERY_AMQP_PID : DISCOVERY_MQTT_PID,
@@ -337,6 +338,8 @@ public final class Derivation {
 		if (settings.mqttVersion() == 5) {
 			connection.put(MQTT_VERSION, "5");
 		}
+		// And when they give up on their broker (#297), said once for all.
+		reconnect(connection, settings);
 		if (!messaging || connection.isEmpty()) {
 			return;
 		}
@@ -345,6 +348,20 @@ public final class Derivation {
 			plan.add(DerivedConfiguration.of(CONNECTION_MESSAGING_PID, Map.copyOf(connection)));
 		}
 	}
+
+	private static void reconnect(Map<String, Object> connection, RsaSettings settings) {
+		if (settings.reconnectMaxAttempts() >= 0) {
+			connection.put(RECONNECT_MAX_ATTEMPTS, String.valueOf(settings.reconnectMaxAttempts()));
+		}
+		if (settings.reconnectMaxDelaySeconds() > 0) {
+			connection.put(RECONNECT_MAX_DELAY, String.valueOf(settings.reconnectMaxDelaySeconds()));
+		}
+	}
+
+	/** When a connection gives up on its broker (#297) — the same keys on every part that opens one. */
+	static final String RECONNECT_MAX_ATTEMPTS = "reconnect.max.attempts";
+
+	static final String RECONNECT_MAX_DELAY = "reconnect.max.delay.seconds";
 
 	/** Which MQTT a connection speaks — the same key on every part that opens one. */
 	static final String MQTT_VERSION = "mqtt.version";

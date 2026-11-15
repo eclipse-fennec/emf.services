@@ -48,6 +48,10 @@ import java.util.Set;
  * @param encoding the content type calls served over a messaging broker are encoded in; empty is XMI
  * @param maxBodyBytes how large the body of a call may be, in either direction; 0 is the default of one megabyte
  * @param mqttVersion which MQTT this node's MQTT connections speak: 3 (3.1.1, the default) or 5
+ * @param reconnectMaxAttempts failed connect attempts in a row after which a messaging connection of
+ *        this node gives up (#297); 0 never, less than 0 the library's default
+ * @param reconnectMaxDelaySeconds the longest wait between two connect attempts; 0 or less the
+ *        library's default
  */
 public record RsaSettings(
 		String brokerUrl,
@@ -74,7 +78,9 @@ public record RsaSettings(
 		String amqpUrl,
 		String encoding,
 		long maxBodyBytes,
-		int mqttVersion) {
+		int mqttVersion,
+		int reconnectMaxAttempts,
+		long reconnectMaxDelaySeconds) {
 
 	/** Where RabbitMQ listens when nobody says otherwise. */
 	public static final String DEFAULT_AMQP_URL = "amqp://localhost:5672";
@@ -94,7 +100,7 @@ public record RsaSettings(
 			String distributionFlavor, String discoveryFlavor, NodeIdentity identity) {
 		this(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp, httpId, registryName,
 				defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds, sessionIntervalSeconds,
-				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null, null, 0, 3);
+				consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor, identity, null, null, 0, 3, -1, -1);
 	}
 
 	/** The same node, with its AMQP broker named. */
@@ -102,7 +108,8 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, url, encoding, maxBodyBytes, mqttVersion);
+				identity, url, encoding, maxBodyBytes, mqttVersion, reconnectMaxAttempts,
+				reconnectMaxDelaySeconds);
 	}
 
 	/**
@@ -114,7 +121,8 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, amqpUrl, contentType, maxBodyBytes, mqttVersion);
+				identity, amqpUrl, contentType, maxBodyBytes, mqttVersion, reconnectMaxAttempts,
+				reconnectMaxDelaySeconds);
 	}
 
 	/**
@@ -126,7 +134,8 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, amqpUrl, encoding, Math.max(0, bytes), mqttVersion);
+				identity, amqpUrl, encoding, Math.max(0, bytes), mqttVersion, reconnectMaxAttempts,
+				reconnectMaxDelaySeconds);
 	}
 
 	/**
@@ -137,7 +146,20 @@ public record RsaSettings(
 		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
 				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
 				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
-				identity, amqpUrl, encoding, maxBodyBytes, version == 5 ? 5 : 3);
+				identity, amqpUrl, encoding, maxBodyBytes, version == 5 ? 5 : 3, reconnectMaxAttempts,
+				reconnectMaxDelaySeconds);
+	}
+
+	/**
+	 * The same node, giving up on its messaging brokers as this says
+	 * (#297): every MQTT and AMQP connection of the node is told the
+	 * same, as it is told its MQTT version.
+	 */
+	public RsaSettings withReconnect(int maxAttempts, long maxDelaySeconds) {
+		return new RsaSettings(brokerUrl, publicUrl, publicHost, httpPort, httpHost, contextPath, manageHttp,
+				httpId, registryName, defaultVersion, flavor, exportPolicy, importPolicy, heartbeatSeconds,
+				sessionIntervalSeconds, consumerId, mqttUrl, topicPrefix, distributionFlavor, discoveryFlavor,
+				identity, amqpUrl, encoding, maxBodyBytes, mqttVersion, maxAttempts, maxDelaySeconds);
 	}
 
 	/** A node without an identity — what every node was before SECURITY.md §6. */

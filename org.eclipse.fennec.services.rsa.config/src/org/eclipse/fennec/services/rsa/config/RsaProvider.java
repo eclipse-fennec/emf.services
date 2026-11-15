@@ -151,6 +151,18 @@ public class RsaProvider extends NodeConfiguration {
 						+ "MQTT 5 binding in the launch.")
 		int mqtt_version() default 3;
 
+		@AttributeDefinition(name = "Reconnect attempts", required = false,
+				description = "Failed connect attempts in a row after which a messaging connection of this "
+						+ "node gives up on its broker (#297) and what it served is withdrawn. 0 never "
+						+ "gives up (a node without an orchestrator to restart it); less than 0 (the "
+						+ "default) leaves the messaging library's own, 100.")
+		int reconnect_max_attempts() default -1;
+
+		@AttributeDefinition(name = "Longest reconnect wait (seconds)", required = false,
+				description = "The longest wait between two connect attempts; 0 or less (the default) "
+						+ "leaves the messaging library's own, 30 s.")
+		long reconnect_max_delay_seconds() default -1;
+
 		@AttributeDefinition(name = "AMQP broker URL",
 				description = "The AMQP broker a node that serves over fennec.amqp listens on, e.g. "
 						+ "amqp://localhost:5672, with the virtual host as its path and without user or "
@@ -285,6 +297,7 @@ public class RsaProvider extends NodeConfiguration {
 						config.tls_truststore(), config.tls_truststore_password(),
 						"certificate".equals(config.broker_authentication().strip())))
 				.withAmqpUrl(config.amqp_url()).withEncoding(config.encoding())
-				.withMaxBodyBytes(config.max_body_bytes()).withMqttVersion(config.mqtt_version());
+				.withMaxBodyBytes(config.max_body_bytes()).withMqttVersion(config.mqtt_version())
+				.withReconnect(config.reconnect_max_attempts(), config.reconnect_max_delay_seconds());
 	}
 }

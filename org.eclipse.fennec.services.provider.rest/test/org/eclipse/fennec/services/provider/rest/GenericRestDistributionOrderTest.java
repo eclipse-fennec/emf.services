@@ -20,6 +20,8 @@ import java.lang.reflect.Field;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
+import org.eclipse.fennec.services.RestFlavor;
+import org.eclipse.fennec.services.ServicesFactory;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.osgi.framework.Constants;
@@ -78,6 +80,21 @@ class GenericRestDistributionOrderTest {
 		assertThat(service.get(".secret")).isNull();
 		assertThat(service.get(Constants.SERVICE_ID)).isNull();
 		assertThat(service.get(Constants.OBJECTCLASS)).isNull();
+	}
+
+	@Test
+	void withoutAConfiguredBaseTheFlavorsBasePathIsTheApplicationBase() {
+		RestFlavor flavor = ServicesFactory.eINSTANCE.createRestFlavor();
+		flavor.setBasePath("/bridges/petstore");
+		Dictionary<String, Object> component = new Hashtable<>();
+		component.put("osgi.jakartars.application.base", "");
+
+		assertThat(GenericRestDistribution.applicationProperties(component, flavor).get("osgi.jakartars.application.base"))
+				.as("an application without a base is refused by the whiteboard (#301)").isEqualTo("/bridges/petstore");
+
+		component.put("osgi.jakartars.application.base", "/elsewhere");
+		assertThat(GenericRestDistribution.applicationProperties(component, flavor).get("osgi.jakartars.application.base"))
+				.as("a configured base wins").isEqualTo("/elsewhere");
 	}
 
 	private static void set(Object target, String field, Object value) throws Exception {

@@ -82,6 +82,16 @@ the sd1, which an `eType` href alone cannot: the href names the nsURI,
 not the version behind it. A contract that pins nothing renders no
 line and hashes as it did before.
 
+A payload model is pinned **by its root package**, which carries its
+sub-packages. A class of a nested package — an OpenAPI schema described
+inline, which the OpenAPI codec puts into a sub-package `inline`
+(nsURI `<root>/inline`) — is pinned with its root, and both languages
+address it from the root, as EMF does: `<root nsURI>#//inline/<Name>`.
+The broker's gate maps such an `eType` to its root, resolved or proxy.
+A map (`additionalProperties`) is a class whose catch-all feature holds
+`EStringToStringMapEntry` entries — Ecore's own, so nothing more is
+pinned for it.
+
 ### Typed slots and multiplicity — and why the tag is still sd1
 
 Since #41 a `Parameter` can name its metamodel type (`eType`, an EClass

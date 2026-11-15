@@ -415,7 +415,12 @@ feat/catalog-contract-key, issue #6). The rules:
   to rule out; the publisher instead puts its contract into the catalog
   itself — it coexists after all). A **stub** (a name only, a catalog
   URL proxy, or a bodiless REST call) resolves by name and demands
-  uniqueness — otherwise `CODE_CATALOG_ENTRY_AMBIGUOUS` (203).
+  uniqueness — otherwise `CODE_CATALOG_ENTRY_AMBIGUOUS` (203). A catalog
+  URL proxy may name its contract exactly instead,
+  `<broker>/catalog/{name}?fingerprint=sd1:…` — the address `GET` takes
+  too (#301); `ContractAnnouncement` refers to the contract that way, so
+  a configured provider stays announceable after its contract changed
+  and both versions coexist.
 - **The addressing fingerprint** (`ContractAddressing`): by its frozen
   grammar sd1 contains `status=` — but a deprecation must not move the
   address. Addressing therefore goes through the sd1 of a

@@ -29,6 +29,7 @@ import org.eclipse.fennec.m2x.ocl.engine.internal.OclEngineImpl;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclSettingDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclValidationDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.parser.OclParserSupport;
+import org.eclipse.fennec.services.ApiKeyScheme;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Delivery;
 import org.eclipse.fennec.services.OverflowPolicy;
@@ -512,6 +513,27 @@ class DdsrBrokerOclTest {
 		assertThat(Diagnostician.INSTANCE.validate(impl).getSeverity())
 				.as("one per-call scheme beside the connection one suffices")
 				.isEqualTo(Diagnostic.OK);
+	}
+
+	@Test
+	void anApiKeyProvesACallerButNoScope() {
+		ServiceInterface contract = serviceInterface("Petstore", "getInventory");
+		contract.getOperations().get(0).setSecurity(requirement(true));
+		ServiceImplementation impl = implementationOf(contract);
+		ApiKeyScheme key = ServicesFactory.eINSTANCE.createApiKeyScheme();
+		key.setName("api_key");
+		key.setKind(SecuritySchemeKind.API_KEY);
+		key.setParameterName("api_key");
+		impl.getFlavors().get(0).getSecuritySchemes().add(key);
+
+		assertThat(Diagnostician.INSTANCE.validate(impl).getSeverity())
+				.as("an authenticated operation may be reached with a key")
+				.isEqualTo(Diagnostic.OK);
+
+		contract.getOperations().get(0).setSecurity(requirement(true, "store:read"));
+		assertThat(Diagnostician.INSTANCE.validate(impl).toString())
+				.as("a key names no scope (#299)")
+				.contains("scopesNeedAPerCallScheme");
 	}
 
 	// ------------------------------------------------------------------

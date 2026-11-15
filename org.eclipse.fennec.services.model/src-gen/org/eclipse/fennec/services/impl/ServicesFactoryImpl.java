@@ -66,6 +66,7 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.BOOL_PROPERTY: return createBoolProperty();
 			case ServicesPackage.STRING_LIST_PROPERTY: return createStringListProperty();
 			case ServicesPackage.EOBJECT_PROPERTY: return createEObjectProperty();
+			case ServicesPackage.EOBJECT_LIST_PROPERTY: return createEObjectListProperty();
 			case ServicesPackage.SERVICE_OPERATION: return createServiceOperation();
 			case ServicesPackage.PARAMETER: return createParameter();
 			case ServicesPackage.REQUIRED_CONSTRAINT: return createRequiredConstraint();
@@ -349,6 +350,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public EObjectProperty createEObjectProperty() {
 		EObjectPropertyImpl eObjectProperty = new EObjectPropertyImpl();
 		return eObjectProperty;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EObjectListProperty createEObjectListProperty() {
+		EObjectListPropertyImpl eObjectListProperty = new EObjectListPropertyImpl();
+		return eObjectListProperty;
 	}
 
 	/**

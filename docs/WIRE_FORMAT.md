@@ -215,8 +215,8 @@ type or inherits from it; the type is compared as `<nsURI>#//<Name>`,
 so an unresolved href works — and the other roots are context. An
 empty list is `204`, as an absent value is. Java: `ResultDocument.rootsOfAll`
 / `ResultDocument.values`; TypeScript: `resultRoots` / `resultValues` in
-`@ddsr/client`. Over messaging a many-valued model answer is not carried
-yet: the `ServiceInvocationResult` holds one `EObjectProperty`.
+`@ddsr/client`. Over messaging the list is one `EObjectListProperty` (see
+below).
 
 ## The envelope: CloudEvents 1.0
 
@@ -359,7 +359,13 @@ The payload is the model, not a bag of JSON values.
 value, each in the `Property` that fits its declared type — so an `int`
 stays an `int`, and a **modelled** argument is possible at all: an
 `EObjectProperty` contains its value, and the model travels with the
-message. The answer is a `ServiceInvocationResult`: a value, or a
+message. Many models — a model-typed slot whose `upperBound` is not 1,
+as an argument or as the answer — travel in one `EObjectListProperty`,
+in order and contained the same way. A model that belongs to a resource
+or a container is copied first (Java), so containment never takes it
+from its owner. An empty array from TypeScript says nothing about its
+element type and travels as an empty `StringListProperty`; a Java proxy
+whose method returns a `List` reads it as an empty list. The answer is a `ServiceInvocationResult`: a value, or a
 `Diagnostic` that says why there is none, which is how this registry
 reports failures everywhere else.
 The Diagnostic's `code` is the `code` of the

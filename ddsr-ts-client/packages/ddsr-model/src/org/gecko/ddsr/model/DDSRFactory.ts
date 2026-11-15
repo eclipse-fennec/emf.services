@@ -26,6 +26,8 @@ import type { StringListProperty } from './StringListProperty.js';
 import { StringListPropertyImpl } from './StringListPropertyImpl.js';
 import type { EObjectProperty } from './EObjectProperty.js';
 import { EObjectPropertyImpl } from './EObjectPropertyImpl.js';
+import type { EObjectListProperty } from './EObjectListProperty.js';
+import { EObjectListPropertyImpl } from './EObjectListPropertyImpl.js';
 import type { ServiceOperation } from './ServiceOperation.js';
 import { ServiceOperationImpl } from './ServiceOperationImpl.js';
 import type { Parameter } from './Parameter.js';
@@ -210,6 +212,13 @@ export class DDSRFactory extends BasicEFactory {
    */
   createEObjectProperty(): EObjectProperty {
     return new EObjectPropertyImpl();
+  }
+
+  /**
+   * Create a new EObjectListProperty instance
+   */
+  createEObjectListProperty(): EObjectListProperty {
+    return new EObjectListPropertyImpl();
   }
 
   /**
@@ -592,6 +601,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createStringListProperty();
       case 'EObjectProperty':
         return this.createEObjectProperty();
+      case 'EObjectListProperty':
+        return this.createEObjectListProperty();
       case 'ServiceOperation':
         return this.createServiceOperation();
       case 'Parameter':

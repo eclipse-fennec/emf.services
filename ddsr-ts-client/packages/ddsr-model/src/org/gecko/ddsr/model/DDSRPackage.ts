@@ -56,6 +56,8 @@ export class DDSRPackage extends BasicEPackage {
     STRING_LIST_PROPERTY__VALUE: null as unknown as EAttribute | EReference,
     E_OBJECT_PROPERTY: null as unknown as EClass,
     E_OBJECT_PROPERTY__VALUE: null as unknown as EAttribute | EReference,
+    E_OBJECT_LIST_PROPERTY: null as unknown as EClass,
+    E_OBJECT_LIST_PROPERTY__VALUE: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION: null as unknown as EClass,
     SERVICE_OPERATION__DESCRIPTION: null as unknown as EAttribute | EReference,
     SERVICE_OPERATION__PARAMETERS: null as unknown as EAttribute | EReference,
@@ -553,6 +555,24 @@ export class DDSRPackage extends BasicEPackage {
     eObjectProperty_value.setUpperBound(1);
     eObjectPropertyClass.getEStructuralFeatures().push(eObjectProperty_value);
     DDSRPackage.Literals.E_OBJECT_PROPERTY__VALUE = eObjectProperty_value;
+
+    // Create EObjectListProperty class
+    const eObjectListPropertyClass = new BasicEClass();
+    eObjectListPropertyClass.setName('EObjectListProperty');
+    eObjectListPropertyClass.setAbstract(false);
+    eObjectListPropertyClass.setInterface(false);
+    this.getEClassifiers().push(eObjectListPropertyClass);
+    eObjectListPropertyClass.setEPackage(this);
+    DDSRPackage.Literals.E_OBJECT_LIST_PROPERTY = eObjectListPropertyClass;
+
+    // Create value feature
+    const eObjectListProperty_value = new BasicEReference();
+    eObjectListProperty_value.setContainment(true);
+    eObjectListProperty_value.setName('value');
+    eObjectListProperty_value.setLowerBound(0);
+    eObjectListProperty_value.setUpperBound(-1);
+    eObjectListPropertyClass.getEStructuralFeatures().push(eObjectListProperty_value);
+    DDSRPackage.Literals.E_OBJECT_LIST_PROPERTY__VALUE = eObjectListProperty_value;
 
     // Create ServiceOperation class
     const serviceOperationClass = new BasicEClass();
@@ -2961,6 +2981,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.BOOL_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.STRING_LIST_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.E_OBJECT_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
+    (DDSRPackage.Literals.E_OBJECT_LIST_PROPERTY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PROPERTY);
     (DDSRPackage.Literals.SERVICE_OPERATION as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.PARAMETER as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.REQUIRED_CONSTRAINT as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.PARAMETER_CONSTRAINT);
@@ -3019,6 +3040,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.BOOL_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EBoolean')!);
     (DDSRPackage.Literals.STRING_LIST_PROPERTY__VALUE as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.E_OBJECT_PROPERTY__VALUE as BasicEReference).setEType(getEcorePackage().getEClassifier('EObject')!);
+    (DDSRPackage.Literals.E_OBJECT_LIST_PROPERTY__VALUE as BasicEReference).setEType(getEcorePackage().getEClassifier('EObject')!);
     (DDSRPackage.Literals.SERVICE_OPERATION__DESCRIPTION as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.SERVICE_OPERATION__PARAMETERS as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);
     (DDSRPackage.Literals.SERVICE_OPERATION__RETURN_VALUE as BasicEReference).setEType(DDSRPackage.Literals.PARAMETER);

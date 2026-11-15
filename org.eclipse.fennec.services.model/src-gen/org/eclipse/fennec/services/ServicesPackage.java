@@ -36,7 +36,7 @@ import org.osgi.annotation.versioning.ProviderType;
  * @generated
  */
 @ProviderType
-@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:c362c90bcc44002c3e5010ffb42274dd5a230ee60d7e8e6747456a0e63b1b4f8", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
+@EPackage(uri = ServicesPackage.eNS_URI, fingerprint = "fp1:47655912d2baf7022b500a0c1cf0f56c27b0b4d62c5cb3c87b6aae484c48645a", genModel = "/model/services.genmodel", genModelSourceLocations = {"model/services.genmodel","org.eclipse.fennec.services.model/model/services.genmodel"}, ecore = "/model/services.ecore", ecoreSourceLocations = "/model/services.ecore")
 public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	/**
 	 * The package name.
@@ -596,6 +596,52 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	int EOBJECT_PROPERTY_OPERATION_COUNT = PROPERTY_OPERATION_COUNT + 0;
 
 	/**
+	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.EObjectListPropertyImpl <em>EObject List Property</em>}' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see org.eclipse.fennec.services.impl.EObjectListPropertyImpl
+	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getEObjectListProperty()
+	 * @generated
+	 */
+	int EOBJECT_LIST_PROPERTY = 12;
+
+	/**
+	 * The feature id for the '<em><b>Name</b></em>' attribute.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EOBJECT_LIST_PROPERTY__NAME = PROPERTY__NAME;
+
+	/**
+	 * The feature id for the '<em><b>Value</b></em>' containment reference list.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EOBJECT_LIST_PROPERTY__VALUE = PROPERTY_FEATURE_COUNT + 0;
+
+	/**
+	 * The number of structural features of the '<em>EObject List Property</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EOBJECT_LIST_PROPERTY_FEATURE_COUNT = PROPERTY_FEATURE_COUNT + 1;
+
+	/**
+	 * The number of operations of the '<em>EObject List Property</em>' class.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 * @ordered
+	 */
+	int EOBJECT_LIST_PROPERTY_OPERATION_COUNT = PROPERTY_OPERATION_COUNT + 0;
+
+	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.impl.ServiceOperationImpl <em>Service Operation</em>}' class.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -603,7 +649,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceOperation()
 	 * @generated
 	 */
-	int SERVICE_OPERATION = 12;
+	int SERVICE_OPERATION = 13;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -703,7 +749,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getParameter()
 	 * @generated
 	 */
-	int PARAMETER = 13;
+	int PARAMETER = 14;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -839,7 +885,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getParameterConstraint()
 	 * @generated
 	 */
-	int PARAMETER_CONSTRAINT = 14;
+	int PARAMETER_CONSTRAINT = 15;
 
 	/**
 	 * The number of structural features of the '<em>Parameter Constraint</em>' class.
@@ -867,7 +913,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRequiredConstraint()
 	 * @generated
 	 */
-	int REQUIRED_CONSTRAINT = 15;
+	int REQUIRED_CONSTRAINT = 16;
 
 	/**
 	 * The number of structural features of the '<em>Required Constraint</em>' class.
@@ -895,7 +941,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getNumericRangeConstraint()
 	 * @generated
 	 */
-	int NUMERIC_RANGE_CONSTRAINT = 16;
+	int NUMERIC_RANGE_CONSTRAINT = 17;
 
 	/**
 	 * The feature id for the '<em><b>Min</b></em>' attribute.
@@ -959,7 +1005,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getStringPatternConstraint()
 	 * @generated
 	 */
-	int STRING_PATTERN_CONSTRAINT = 17;
+	int STRING_PATTERN_CONSTRAINT = 18;
 
 	/**
 	 * The feature id for the '<em><b>Pattern</b></em>' attribute.
@@ -1014,7 +1060,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getEnumerationConstraint()
 	 * @generated
 	 */
-	int ENUMERATION_CONSTRAINT = 18;
+	int ENUMERATION_CONSTRAINT = 19;
 
 	/**
 	 * The feature id for the '<em><b>Allowed Values</b></em>' attribute list.
@@ -1051,7 +1097,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getExpressionConstraint()
 	 * @generated
 	 */
-	int EXPRESSION_CONSTRAINT = 19;
+	int EXPRESSION_CONSTRAINT = 20;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1115,7 +1161,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getInvariant()
 	 * @generated
 	 */
-	int INVARIANT = 20;
+	int INVARIANT = 21;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1179,7 +1225,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCollectionSizeConstraint()
 	 * @generated
 	 */
-	int COLLECTION_SIZE_CONSTRAINT = 21;
+	int COLLECTION_SIZE_CONSTRAINT = 22;
 
 	/**
 	 * The feature id for the '<em><b>Min Size</b></em>' attribute.
@@ -1225,7 +1271,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceException()
 	 * @generated
 	 */
-	int SERVICE_EXCEPTION = 22;
+	int SERVICE_EXCEPTION = 23;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1298,7 +1344,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceInterface()
 	 * @generated
 	 */
-	int SERVICE_INTERFACE = 23;
+	int SERVICE_INTERFACE = 24;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1461,7 +1507,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getModelReference()
 	 * @generated
 	 */
-	int MODEL_REFERENCE = 24;
+	int MODEL_REFERENCE = 25;
 
 	/**
 	 * The feature id for the '<em><b>Ns URI</b></em>' attribute.
@@ -1507,7 +1553,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLifecycleHook()
 	 * @generated
 	 */
-	int LIFECYCLE_HOOK = 25;
+	int LIFECYCLE_HOOK = 26;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1562,7 +1608,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferenceBinding()
 	 * @generated
 	 */
-	int REFERENCE_BINDING = 26;
+	int REFERENCE_BINDING = 27;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1617,7 +1663,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getComponentReference()
 	 * @generated
 	 */
-	int COMPONENT_REFERENCE = 27;
+	int COMPONENT_REFERENCE = 28;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1735,7 +1781,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getComponentDescription()
 	 * @generated
 	 */
-	int COMPONENT_DESCRIPTION = 28;
+	int COMPONENT_DESCRIPTION = 29;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1889,7 +1935,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceProvider()
 	 * @generated
 	 */
-	int SERVICE_PROVIDER = 29;
+	int SERVICE_PROVIDER = 30;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -1962,7 +2008,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceImplementation()
 	 * @generated
 	 */
-	int SERVICE_IMPLEMENTATION = 30;
+	int SERVICE_IMPLEMENTATION = 31;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2107,7 +2153,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceFlavor()
 	 * @generated
 	 */
-	int SERVICE_FLAVOR = 31;
+	int SERVICE_FLAVOR = 32;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2180,7 +2226,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRestFlavor()
 	 * @generated
 	 */
-	int REST_FLAVOR = 32;
+	int REST_FLAVOR = 33;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2280,7 +2326,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingFlavor()
 	 * @generated
 	 */
-	int MESSAGING_FLAVOR = 33;
+	int MESSAGING_FLAVOR = 34;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2398,7 +2444,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceOperationFlavor()
 	 * @generated
 	 */
-	int SERVICE_OPERATION_FLAVOR = 34;
+	int SERVICE_OPERATION_FLAVOR = 35;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2462,7 +2508,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRestOperationFlavor()
 	 * @generated
 	 */
-	int REST_OPERATION_FLAVOR = 35;
+	int REST_OPERATION_FLAVOR = 36;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2571,7 +2617,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRestParameterBinding()
 	 * @generated
 	 */
-	int REST_PARAMETER_BINDING = 36;
+	int REST_PARAMETER_BINDING = 37;
 
 	/**
 	 * The feature id for the '<em><b>Parameter</b></em>' reference.
@@ -2626,7 +2672,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRestExceptionBinding()
 	 * @generated
 	 */
-	int REST_EXCEPTION_BINDING = 37;
+	int REST_EXCEPTION_BINDING = 38;
 
 	/**
 	 * The feature id for the '<em><b>Exception</b></em>' reference.
@@ -2672,7 +2718,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingOperationFlavor()
 	 * @generated
 	 */
-	int MESSAGING_OPERATION_FLAVOR = 38;
+	int MESSAGING_OPERATION_FLAVOR = 39;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2763,7 +2809,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecurityRequirement()
 	 * @generated
 	 */
-	int SECURITY_REQUIREMENT = 39;
+	int SECURITY_REQUIREMENT = 40;
 
 	/**
 	 * The feature id for the '<em><b>Authenticated</b></em>' attribute.
@@ -2809,7 +2855,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecurityScheme()
 	 * @generated
 	 */
-	int SECURITY_SCHEME = 40;
+	int SECURITY_SCHEME = 41;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2855,7 +2901,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getBearerTokenScheme()
 	 * @generated
 	 */
-	int BEARER_TOKEN_SCHEME = 41;
+	int BEARER_TOKEN_SCHEME = 42;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2937,7 +2983,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMutualTlsScheme()
 	 * @generated
 	 */
-	int MUTUAL_TLS_SCHEME = 42;
+	int MUTUAL_TLS_SCHEME = 43;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -2992,7 +3038,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConnectionScheme()
 	 * @generated
 	 */
-	int CONNECTION_SCHEME = 43;
+	int CONNECTION_SCHEME = 44;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3038,7 +3084,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiKeyScheme()
 	 * @generated
 	 */
-	int API_KEY_SCHEME = 44;
+	int API_KEY_SCHEME = 45;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3102,7 +3148,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPrincipal()
 	 * @generated
 	 */
-	int PRINCIPAL = 45;
+	int PRINCIPAL = 46;
 
 	/**
 	 * The feature id for the '<em><b>Subject</b></em>' attribute.
@@ -3157,7 +3203,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceReference()
 	 * @generated
 	 */
-	int SERVICE_REFERENCE = 46;
+	int SERVICE_REFERENCE = 47;
 
 	/**
 	 * The feature id for the '<em><b>Id</b></em>' attribute.
@@ -3239,7 +3285,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceRegistration()
 	 * @generated
 	 */
-	int SERVICE_REGISTRATION = 47;
+	int SERVICE_REGISTRATION = 48;
 
 	/**
 	 * The feature id for the '<em><b>Reference</b></em>' reference.
@@ -3366,7 +3412,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConsumerSession()
 	 * @generated
 	 */
-	int CONSUMER_SESSION = 48;
+	int CONSUMER_SESSION = 49;
 
 	/**
 	 * The feature id for the '<em><b>Consumer Id</b></em>' attribute.
@@ -3457,7 +3503,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getComponentConfiguration()
 	 * @generated
 	 */
-	int COMPONENT_CONFIGURATION = 49;
+	int COMPONENT_CONFIGURATION = 50;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3566,7 +3612,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSatisfiedReference()
 	 * @generated
 	 */
-	int SATISFIED_REFERENCE = 50;
+	int SATISFIED_REFERENCE = 51;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3621,7 +3667,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getUnsatisfiedReference()
 	 * @generated
 	 */
-	int UNSATISFIED_REFERENCE = 51;
+	int UNSATISFIED_REFERENCE = 52;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3676,7 +3722,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDiagnostic()
 	 * @generated
 	 */
-	int DIAGNOSTIC = 52;
+	int DIAGNOSTIC = 53;
 
 	/**
 	 * The feature id for the '<em><b>Severity</b></em>' attribute.
@@ -3758,7 +3804,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceEvent()
 	 * @generated
 	 */
-	int SERVICE_EVENT = 53;
+	int SERVICE_EVENT = 54;
 
 	/**
 	 * The feature id for the '<em><b>Type</b></em>' attribute.
@@ -3822,7 +3868,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceListener()
 	 * @generated
 	 */
-	int SERVICE_LISTENER = 54;
+	int SERVICE_LISTENER = 55;
 
 	/**
 	 * The feature id for the '<em><b>Filter</b></em>' attribute.
@@ -3868,7 +3914,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceRegistry()
 	 * @generated
 	 */
-	int SERVICE_REGISTRY = 55;
+	int SERVICE_REGISTRY = 56;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -3986,7 +4032,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLocalServiceRegistry()
 	 * @generated
 	 */
-	int LOCAL_SERVICE_REGISTRY = 56;
+	int LOCAL_SERVICE_REGISTRY = 57;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4194,7 +4240,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRemoteServiceRegistry()
 	 * @generated
 	 */
-	int REMOTE_SERVICE_REGISTRY = 57;
+	int REMOTE_SERVICE_REGISTRY = 58;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4393,7 +4439,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCapability()
 	 * @generated
 	 */
-	int CAPABILITY = 58;
+	int CAPABILITY = 59;
 
 	/**
 	 * The feature id for the '<em><b>Namespace</b></em>' attribute.
@@ -4439,7 +4485,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRequirement()
 	 * @generated
 	 */
-	int REQUIREMENT = 59;
+	int REQUIREMENT = 60;
 
 	/**
 	 * The feature id for the '<em><b>Namespace</b></em>' attribute.
@@ -4494,7 +4540,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConsumerCapability()
 	 * @generated
 	 */
-	int CONSUMER_CAPABILITY = 60;
+	int CONSUMER_CAPABILITY = 61;
 
 	/**
 	 * The feature id for the '<em><b>Consumer Id</b></em>' attribute.
@@ -4558,7 +4604,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPublishHook()
 	 * @generated
 	 */
-	int PUBLISH_HOOK = 61;
+	int PUBLISH_HOOK = 62;
 
 	/**
 	 * The number of structural features of the '<em>Publish Hook</em>' class.
@@ -4604,7 +4650,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDiscoveryHook()
 	 * @generated
 	 */
-	int DISCOVERY_HOOK = 62;
+	int DISCOVERY_HOOK = 63;
 
 	/**
 	 * The number of structural features of the '<em>Discovery Hook</em>' class.
@@ -4659,7 +4705,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDistributionHook()
 	 * @generated
 	 */
-	int DISTRIBUTION_HOOK = 63;
+	int DISTRIBUTION_HOOK = 64;
 
 	/**
 	 * The number of structural features of the '<em>Distribution Hook</em>' class.
@@ -4705,7 +4751,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLanguageBinding()
 	 * @generated
 	 */
-	int LANGUAGE_BINDING = 64;
+	int LANGUAGE_BINDING = 65;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4787,7 +4833,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeMapping()
 	 * @generated
 	 */
-	int TYPE_MAPPING = 65;
+	int TYPE_MAPPING = 66;
 
 	/**
 	 * The feature id for the '<em><b>Neutral Type</b></em>' attribute.
@@ -4842,7 +4888,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPackageMapping()
 	 * @generated
 	 */
-	int PACKAGE_MAPPING = 66;
+	int PACKAGE_MAPPING = 67;
 
 	/**
 	 * The feature id for the '<em><b>Ns URI</b></em>' attribute.
@@ -4888,7 +4934,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getJavaBinding()
 	 * @generated
 	 */
-	int JAVA_BINDING = 67;
+	int JAVA_BINDING = 68;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -4979,7 +5025,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getTypeScriptBinding()
 	 * @generated
 	 */
-	int TYPE_SCRIPT_BINDING = 68;
+	int TYPE_SCRIPT_BINDING = 69;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -5061,7 +5107,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getPythonBinding()
 	 * @generated
 	 */
-	int PYTHON_BINDING = 69;
+	int PYTHON_BINDING = 70;
 
 	/**
 	 * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -5143,7 +5189,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getArgument()
 	 * @generated
 	 */
-	int ARGUMENT = 70;
+	int ARGUMENT = 71;
 
 	/**
 	 * The feature id for the '<em><b>Parameter</b></em>' reference.
@@ -5189,7 +5235,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceInvocation()
 	 * @generated
 	 */
-	int SERVICE_INVOCATION = 71;
+	int SERVICE_INVOCATION = 72;
 
 	/**
 	 * The feature id for the '<em><b>Operation</b></em>' reference.
@@ -5235,7 +5281,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceInvocationResult()
 	 * @generated
 	 */
-	int SERVICE_INVOCATION_RESULT = 72;
+	int SERVICE_INVOCATION_RESULT = 73;
 
 	/**
 	 * The feature id for the '<em><b>Value</b></em>' containment reference.
@@ -5281,7 +5327,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceScope()
 	 * @generated
 	 */
-	int SERVICE_SCOPE = 73;
+	int SERVICE_SCOPE = 74;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferenceCardinality <em>Reference Cardinality</em>}' enum.
@@ -5291,7 +5337,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferenceCardinality()
 	 * @generated
 	 */
-	int REFERENCE_CARDINALITY = 74;
+	int REFERENCE_CARDINALITY = 75;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferencePolicy <em>Reference Policy</em>}' enum.
@@ -5301,7 +5347,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferencePolicy()
 	 * @generated
 	 */
-	int REFERENCE_POLICY = 75;
+	int REFERENCE_POLICY = 76;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferencePolicyOption <em>Reference Policy Option</em>}' enum.
@@ -5311,7 +5357,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferencePolicyOption()
 	 * @generated
 	 */
-	int REFERENCE_POLICY_OPTION = 76;
+	int REFERENCE_POLICY_OPTION = 77;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConfigurationPolicy <em>Configuration Policy</em>}' enum.
@@ -5321,7 +5367,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConfigurationPolicy()
 	 * @generated
 	 */
-	int CONFIGURATION_POLICY = 77;
+	int CONFIGURATION_POLICY = 78;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ComponentState <em>Component State</em>}' enum.
@@ -5331,7 +5377,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getComponentState()
 	 * @generated
 	 */
-	int COMPONENT_STATE = 78;
+	int COMPONENT_STATE = 79;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ServiceEventType <em>Service Event Type</em>}' enum.
@@ -5341,7 +5387,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getServiceEventType()
 	 * @generated
 	 */
-	int SERVICE_EVENT_TYPE = 79;
+	int SERVICE_EVENT_TYPE = 80;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.FieldOption <em>Field Option</em>}' enum.
@@ -5351,7 +5397,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getFieldOption()
 	 * @generated
 	 */
-	int FIELD_OPTION = 80;
+	int FIELD_OPTION = 81;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CollectionType <em>Collection Type</em>}' enum.
@@ -5361,7 +5407,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCollectionType()
 	 * @generated
 	 */
-	int COLLECTION_TYPE = 81;
+	int COLLECTION_TYPE = 82;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.LifecycleHookKind <em>Lifecycle Hook Kind</em>}' enum.
@@ -5371,7 +5417,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getLifecycleHookKind()
 	 * @generated
 	 */
-	int LIFECYCLE_HOOK_KIND = 82;
+	int LIFECYCLE_HOOK_KIND = 83;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ReferenceBindingKind <em>Reference Binding Kind</em>}' enum.
@@ -5381,7 +5427,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getReferenceBindingKind()
 	 * @generated
 	 */
-	int REFERENCE_BINDING_KIND = 83;
+	int REFERENCE_BINDING_KIND = 84;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.DiagnosticSeverity <em>Diagnostic Severity</em>}' enum.
@@ -5391,7 +5437,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDiagnosticSeverity()
 	 * @generated
 	 */
-	int DIAGNOSTIC_SEVERITY = 84;
+	int DIAGNOSTIC_SEVERITY = 85;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.FlavorKind <em>Flavor Kind</em>}' enum.
@@ -5401,7 +5447,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getFlavorKind()
 	 * @generated
 	 */
-	int FLAVOR_KIND = 85;
+	int FLAVOR_KIND = 86;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.HttpMethod <em>Http Method</em>}' enum.
@@ -5411,7 +5457,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getHttpMethod()
 	 * @generated
 	 */
-	int HTTP_METHOD = 86;
+	int HTTP_METHOD = 87;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ParameterBinding <em>Parameter Binding</em>}' enum.
@@ -5421,7 +5467,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getParameterBinding()
 	 * @generated
 	 */
-	int PARAMETER_BINDING = 87;
+	int PARAMETER_BINDING = 88;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.Delivery <em>Delivery</em>}' enum.
@@ -5431,7 +5477,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getDelivery()
 	 * @generated
 	 */
-	int DELIVERY = 88;
+	int DELIVERY = 89;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.OverflowPolicy <em>Overflow Policy</em>}' enum.
@@ -5441,7 +5487,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getOverflowPolicy()
 	 * @generated
 	 */
-	int OVERFLOW_POLICY = 89;
+	int OVERFLOW_POLICY = 90;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.MessagingQos <em>Messaging Qos</em>}' enum.
@@ -5451,7 +5497,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getMessagingQos()
 	 * @generated
 	 */
-	int MESSAGING_QOS = 90;
+	int MESSAGING_QOS = 91;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.RegistryKind <em>Registry Kind</em>}' enum.
@@ -5461,7 +5507,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getRegistryKind()
 	 * @generated
 	 */
-	int REGISTRY_KIND = 91;
+	int REGISTRY_KIND = 92;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ExpressionLanguage <em>Expression Language</em>}' enum.
@@ -5471,7 +5517,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getExpressionLanguage()
 	 * @generated
 	 */
-	int EXPRESSION_LANGUAGE = 92;
+	int EXPRESSION_LANGUAGE = 93;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.CatalogStatus <em>Catalog Status</em>}' enum.
@@ -5481,7 +5527,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getCatalogStatus()
 	 * @generated
 	 */
-	int CATALOG_STATUS = 93;
+	int CATALOG_STATUS = 94;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.UpdatePolicy <em>Update Policy</em>}' enum.
@@ -5491,7 +5537,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getUpdatePolicy()
 	 * @generated
 	 */
-	int UPDATE_POLICY = 94;
+	int UPDATE_POLICY = 95;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ConnectionState <em>Connection State</em>}' enum.
@@ -5501,7 +5547,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getConnectionState()
 	 * @generated
 	 */
-	int CONNECTION_STATE = 95;
+	int CONNECTION_STATE = 96;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.SecuritySchemeKind <em>Security Scheme Kind</em>}' enum.
@@ -5511,7 +5557,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getSecuritySchemeKind()
 	 * @generated
 	 */
-	int SECURITY_SCHEME_KIND = 96;
+	int SECURITY_SCHEME_KIND = 97;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ApiKeyLocation <em>Api Key Location</em>}' enum.
@@ -5521,7 +5567,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiKeyLocation()
 	 * @generated
 	 */
-	int API_KEY_LOCATION = 97;
+	int API_KEY_LOCATION = 98;
 
 	/**
 	 * The meta object id for the '{@link org.eclipse.fennec.services.ApiType <em>Api Type</em>}' enum.
@@ -5531,7 +5577,7 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getApiType()
 	 * @generated
 	 */
-	int API_TYPE = 98;
+	int API_TYPE = 99;
 
 
 	/**
@@ -5774,6 +5820,27 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 	 * @generated
 	 */
 	EReference getEObjectProperty_Value();
+
+	/**
+	 * Returns the meta object for class '{@link org.eclipse.fennec.services.EObjectListProperty <em>EObject List Property</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for class '<em>EObject List Property</em>'.
+	 * @see org.eclipse.fennec.services.EObjectListProperty
+	 * @generated
+	 */
+	EClass getEObjectListProperty();
+
+	/**
+	 * Returns the meta object for the containment reference list '{@link org.eclipse.fennec.services.EObjectListProperty#getValue <em>Value</em>}'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return the meta object for the containment reference list '<em>Value</em>'.
+	 * @see org.eclipse.fennec.services.EObjectListProperty#getValue()
+	 * @see #getEObjectListProperty()
+	 * @generated
+	 */
+	EReference getEObjectListProperty_Value();
 
 	/**
 	 * Returns the meta object for class '{@link org.eclipse.fennec.services.ServiceOperation <em>Service Operation</em>}'.
@@ -9535,6 +9602,24 @@ public interface ServicesPackage extends org.eclipse.emf.ecore.EPackage {
 		 * @generated
 		 */
 		EReference EOBJECT_PROPERTY__VALUE = eINSTANCE.getEObjectProperty_Value();
+
+		/**
+		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.EObjectListPropertyImpl <em>EObject List Property</em>}' class.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @see org.eclipse.fennec.services.impl.EObjectListPropertyImpl
+		 * @see org.eclipse.fennec.services.impl.ServicesPackageImpl#getEObjectListProperty()
+		 * @generated
+		 */
+		EClass EOBJECT_LIST_PROPERTY = eINSTANCE.getEObjectListProperty();
+
+		/**
+		 * The meta object literal for the '<em><b>Value</b></em>' containment reference list feature.
+		 * <!-- begin-user-doc -->
+		 * <!-- end-user-doc -->
+		 * @generated
+		 */
+		EReference EOBJECT_LIST_PROPERTY__VALUE = eINSTANCE.getEObjectListProperty_Value();
 
 		/**
 		 * The meta object literal for the '{@link org.eclipse.fennec.services.impl.ServiceOperationImpl <em>Service Operation</em>}' class.

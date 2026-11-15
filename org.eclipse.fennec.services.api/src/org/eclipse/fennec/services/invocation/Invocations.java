@@ -14,6 +14,7 @@
 package org.eclipse.fennec.services.invocation;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import org.eclipse.fennec.services.BoolProperty;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.DoubleProperty;
+import org.eclipse.fennec.services.EObjectListProperty;
 import org.eclipse.fennec.services.EObjectProperty;
 import org.eclipse.fennec.services.FloatProperty;
 import org.eclipse.fennec.services.IntProperty;
@@ -234,6 +236,9 @@ public final class Invocations {
 		if (property instanceof EObjectProperty p) {
 			return p.getValue();
 		}
+		if (property instanceof EObjectListProperty p) {
+			return new ArrayList<>(p.getValue());
+		}
 		return null;
 	}
 
@@ -265,9 +270,16 @@ public final class Invocations {
 	}
 
 	private static Property typed(Object value, String declaredType) {
+		if (value instanceof Collection<?> several && several.stream().allMatch(EObject.class::isInstance)) {
+			// Many models (a model-typed slot with upperBound other than 1):
+			// in order, contained like a single one.
+			EObjectListProperty property = FACTORY.createEObjectListProperty();
+			several.forEach(model -> property.getValue().add(travelling((EObject) model)));
+			return property;
+		}
 		if (value instanceof EObject model) {
 			EObjectProperty property = FACTORY.createEObjectProperty();
-			property.setValue(model);
+			property.setValue(travelling(model));
 			return property;
 		}
 		if (value == null) {
@@ -318,6 +330,15 @@ public final class Invocations {
 			return property;
 		}
 		return stringProperty(value.toString());
+	}
+
+	/**
+	 * A model as it can travel: the property contains its value, and
+	 * containment is exclusive — a live object that belongs to a resource
+	 * or a container is copied rather than taken away from its owner.
+	 */
+	private static EObject travelling(EObject model) {
+		return model.eResource() == null && model.eContainer() == null ? model : EcoreUtil.copy(model);
 	}
 
 	private static Number asNumber(Object value) {

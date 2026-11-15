@@ -157,6 +157,14 @@ public class ServicesSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ServicesPackage.EOBJECT_LIST_PROPERTY: {
+				EObjectListProperty eObjectListProperty = (EObjectListProperty)theEObject;
+				T result = caseEObjectListProperty(eObjectListProperty);
+				if (result == null) result = caseProperty(eObjectListProperty);
+				if (result == null) result = caseNamedElement(eObjectListProperty);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ServicesPackage.SERVICE_OPERATION: {
 				ServiceOperation serviceOperation = (ServiceOperation)theEObject;
 				T result = caseServiceOperation(serviceOperation);
@@ -758,6 +766,21 @@ public class ServicesSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseEObjectProperty(EObjectProperty object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>EObject List Property</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>EObject List Property</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseEObjectListProperty(EObjectListProperty object) {
 		return null;
 	}
 

@@ -109,6 +109,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateStringListProperty((StringListProperty)value, diagnostics, context);
 			case ServicesPackage.EOBJECT_PROPERTY:
 				return validateEObjectProperty((EObjectProperty)value, diagnostics, context);
+			case ServicesPackage.EOBJECT_LIST_PROPERTY:
+				return validateEObjectListProperty((EObjectListProperty)value, diagnostics, context);
 			case ServicesPackage.SERVICE_OPERATION:
 				return validateServiceOperation((ServiceOperation)value, diagnostics, context);
 			case ServicesPackage.PARAMETER:
@@ -433,6 +435,15 @@ public class ServicesValidator extends EObjectValidator {
 	 */
 	public boolean validateEObjectProperty(EObjectProperty eObjectProperty, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(eObjectProperty, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateEObjectListProperty(EObjectListProperty eObjectListProperty, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(eObjectListProperty, diagnostics, context);
 	}
 
 	/**

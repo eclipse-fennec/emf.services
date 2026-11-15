@@ -37,6 +37,7 @@ import org.eclipse.fennec.services.DiagnosticSeverity;
 import org.eclipse.fennec.services.DiscoveryHook;
 import org.eclipse.fennec.services.DistributionHook;
 import org.eclipse.fennec.services.DoubleProperty;
+import org.eclipse.fennec.services.EObjectListProperty;
 import org.eclipse.fennec.services.EObjectProperty;
 import org.eclipse.fennec.services.EnumerationConstraint;
 import org.eclipse.fennec.services.ExpressionConstraint;
@@ -206,6 +207,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EClass eObjectPropertyEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EClass eObjectListPropertyEClass = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -1114,6 +1122,26 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	@Override
 	public EReference getEObjectProperty_Value() {
 		return (EReference)eObjectPropertyEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EClass getEObjectListProperty() {
+		return eObjectListPropertyEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EReference getEObjectListProperty_Value() {
+		return (EReference)eObjectListPropertyEClass.getEStructuralFeatures().get(0);
 	}
 
 	/**
@@ -4490,6 +4518,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		eObjectPropertyEClass = createEClass(EOBJECT_PROPERTY);
 		createEReference(eObjectPropertyEClass, EOBJECT_PROPERTY__VALUE);
 
+		eObjectListPropertyEClass = createEClass(EOBJECT_LIST_PROPERTY);
+		createEReference(eObjectListPropertyEClass, EOBJECT_LIST_PROPERTY__VALUE);
+
 		serviceOperationEClass = createEClass(SERVICE_OPERATION);
 		createEAttribute(serviceOperationEClass, SERVICE_OPERATION__DESCRIPTION);
 		createEReference(serviceOperationEClass, SERVICE_OPERATION__PARAMETERS);
@@ -4923,6 +4954,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		boolPropertyEClass.getESuperTypes().add(this.getProperty());
 		stringListPropertyEClass.getESuperTypes().add(this.getProperty());
 		eObjectPropertyEClass.getESuperTypes().add(this.getProperty());
+		eObjectListPropertyEClass.getESuperTypes().add(this.getProperty());
 		serviceOperationEClass.getESuperTypes().add(this.getNamedElement());
 		parameterEClass.getESuperTypes().add(this.getNamedElement());
 		requiredConstraintEClass.getESuperTypes().add(this.getParameterConstraint());
@@ -5000,6 +5032,9 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 
 		initEClass(eObjectPropertyEClass, EObjectProperty.class, "EObjectProperty", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEReference(getEObjectProperty_Value(), ecorePackage.getEObject(), null, "value", null, 0, 1, EObjectProperty.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+
+		initEClass(eObjectListPropertyEClass, EObjectListProperty.class, "EObjectListProperty", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEReference(getEObjectListProperty_Value(), ecorePackage.getEObject(), null, "value", null, 0, -1, EObjectListProperty.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, IS_COMPOSITE, !IS_RESOLVE_PROXIES, !IS_UNSETTABLE, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(serviceOperationEClass, ServiceOperation.class, "ServiceOperation", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getServiceOperation_Description(), ecorePackage.getEString(), "description", null, 0, 1, ServiceOperation.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5861,6 +5896,18 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "The model this property carries. What it is allowed to be is stated by the slot it fills - the Parameter\'s eType."
+		   });
+		addAnnotation
+		  (eObjectListPropertyEClass,
+		   source,
+		   new String[] {
+			   "documentation", "Property carrying an ordered list of models, for an argument or a result whose slot is model-typed and many-valued (upperBound other than 1). The twin of StringListProperty for models; containment for the reason EObjectProperty gives. Empty list = no values; a list keeps its order and may not hold the same object twice."
+		   });
+		addAnnotation
+		  (getEObjectListProperty_Value(),
+		   source,
+		   new String[] {
+			   "documentation", "The models this property carries, in order. What each is allowed to be is stated by the slot it fills - the Parameter\'s eType."
 		   });
 		addAnnotation
 		  (serviceOperationEClass,

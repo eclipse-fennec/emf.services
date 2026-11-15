@@ -106,6 +106,15 @@ public interface ServicesFactory extends EFactory {
 	EObjectProperty createEObjectProperty();
 
 	/**
+	 * Returns a new object of class '<em>EObject List Property</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>EObject List Property</em>'.
+	 * @generated
+	 */
+	EObjectListProperty createEObjectListProperty();
+
+	/**
 	 * Returns a new object of class '<em>Service Operation</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

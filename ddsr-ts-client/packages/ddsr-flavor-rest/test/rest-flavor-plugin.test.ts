@@ -329,6 +329,72 @@ describe('RestFlavorPlugin bearer', () => {
   });
 });
 
+describe('RestFlavorPlugin API key (#299)', () => {
+  function keyed(location?: 'HEADER' | 'QUERY' | 'COOKIE'): ReturnType<typeof charge> {
+    const fixture = charge();
+    const f = DDSRFactory.eINSTANCE;
+    const requirement = f.createSecurityRequirement();
+    requirement.authenticated = true;
+    fixture.operation.security = requirement;
+    const scheme = f.createApiKeyScheme();
+    scheme.name = 'api_key';
+    scheme.kind = 'API_KEY' as never;
+    scheme.parameterName = 'X-API-Key';
+    if (location) scheme.in = location as never;
+    fixture.flavor.securitySchemes.push(scheme);
+    return fixture;
+  }
+
+  function recording(): { fetchFn: typeof fetch; seen: () => { url: string; headers: Record<string, string> } } {
+    let url = '';
+    let headers: Record<string, string> = {};
+    const fetchFn = (async (u: any, init?: any) => {
+      url = String(u);
+      headers = { ...(init?.headers ?? {}) };
+      return new Response('990.0', { status: 200, headers: { 'Content-Type': 'text/plain' } });
+    }) as unknown as typeof fetch;
+    return { fetchFn, seen: () => ({ url, headers }) };
+  }
+
+  it('presents the key configured for the host and scheme, in a header by default', async () => {
+    const asked: string[] = [];
+    const { fetchFn, seen } = recording();
+    const plugin = new RestFlavorPlugin({
+      fetchFn,
+      apiKeys: (host, scheme) => { asked.push(`${host} ${scheme}`); return 'special-key'; },
+    });
+    const { operation, flavor, opFlavor } = keyed();
+
+    await plugin.invoke(operation, { amount: 10 }, flavor, opFlavor);
+
+    expect(asked).toEqual([`${new URL(seen().url).origin} api_key`]);
+    expect(seen().headers['X-API-Key']).toBe('special-key');
+    expect(seen().headers.Authorization).toBeUndefined();
+  });
+
+  it('puts the key into the query or a cookie when the scheme says so', async () => {
+    const query = recording();
+    const fixture = keyed('QUERY');
+    await new RestFlavorPlugin({ fetchFn: query.fetchFn, apiKeys: () => 'k 1' })
+      .invoke(fixture.operation, { amount: 10 }, fixture.flavor, fixture.opFlavor);
+    expect(new URL(query.seen().url).searchParams.get('X-API-Key')).toBe('k 1');
+
+    const cookie = recording();
+    const c = keyed('COOKIE');
+    await new RestFlavorPlugin({ fetchFn: cookie.fetchFn, apiKeys: () => 'k1' })
+      .invoke(c.operation, { amount: 10 }, c.flavor, c.opFlavor);
+    expect(cookie.seen().headers.Cookie).toBe('X-API-Key=k1');
+  });
+
+  it('fails a guarded call without a key, saying why', async () => {
+    const { fetchFn } = recording();
+    const { operation, flavor, opFlavor } = keyed();
+
+    await expect(new RestFlavorPlugin({ fetchFn, apiKeys: () => undefined })
+      .invoke(operation, { amount: 10 }, flavor, opFlavor)).rejects.toThrow(/needs an API key/);
+  });
+});
+
 // Parameter.delivery = STREAM: many answers to one call, over REST as
 // Server-Sent Events (#252).
 /** A result document as the CloudEvents message an SSE event carries. */

@@ -14,7 +14,7 @@
 import type { FlavorPlugin, TokenSupplier } from '@ddsr/client';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrClientError, DdsrServiceError,
-  DdsrTransportError, bearerScheme, demandsAuthentication, describing, newEnvelope, toArray, toHeaders,
+  DdsrTransportError, apiKeyScheme, bearerScheme, demandsAuthentication, describing, newEnvelope, toArray, toHeaders,
 } from '@ddsr/client';
 import type {
   ServiceFlavor,
@@ -74,6 +74,23 @@ export interface RestFlavorPluginOptions {
    * broker's token: a provider must not receive one it could replay.
    */
   tokenSupplier?: TokenSupplier;
+  /**
+   * The API keys this node presents to endpoints whose flavor offers an
+   * `ApiKeyScheme` (#299), asked by host (`scheme://host[:port]`) and the
+   * scheme's name; undefined when it holds none. Used when no bearer token
+   * is. The twin of Java's ApiKeySupplier.
+   */
+  apiKeys?: ApiKeySupplier;
+}
+
+/** The key this node presents to one endpoint, or undefined (#299). */
+export type ApiKeySupplier = (host: string, scheme: string) => string | undefined | Promise<string | undefined>;
+
+/** An API key and where it travels. */
+interface PlacedKey {
+  in: string;
+  name: string;
+  value: string;
 }
 
 export class RestFlavorPlugin implements FlavorPlugin {
@@ -87,6 +104,7 @@ export class RestFlavorPlugin implements FlavorPlugin {
   private readonly tracer: CallTracer;
   private readonly origin: string | undefined;
   private readonly tokenSupplier: TokenSupplier | undefined;
+  private readonly apiKeys: ApiKeySupplier | undefined;
 
   constructor(fetchFnOrOptions?: typeof fetch | RestFlavorPluginOptions) {
     const options: RestFlavorPluginOptions =
@@ -98,6 +116,7 @@ export class RestFlavorPlugin implements FlavorPlugin {
     this.tracer = options.tracer ?? NO_TRACER;
     this.origin = options.origin;
     this.tokenSupplier = options.tokenSupplier;
+    this.apiKeys = options.apiKeys;
   }
 
   /**
@@ -112,7 +131,7 @@ export class RestFlavorPlugin implements FlavorPlugin {
       return undefined;
     }
     if (!this.tokenSupplier) {
-      if (demandsAuthentication(operation)) {
+      if (demandsAuthentication(operation) && !apiKeyScheme(flavor)) {
         throw new DdsrClientError(
           `'${operation.name}' needs a bearer token of ${scheme.issuer}, and this node has no token supplier`);
       }
@@ -120,6 +139,31 @@ export class RestFlavorPlugin implements FlavorPlugin {
     }
     const audiences = Array.from(scheme.audiences ?? []);
     return this.tokenSupplier(audiences[0]);
+  }
+
+  /**
+   * The API key a call to this target presents, when its flavor offers an
+   * API-key scheme and no bearer token is used: the one configured for the
+   * host and scheme. A guarded operation without one fails here, saying
+   * why — the twin of the Java RestServiceInvoker.apiKeyFor.
+   */
+  private async apiKeyFor(flavor: ServiceFlavor, operation: ServiceOperation, url: string): Promise<PlacedKey | undefined> {
+    const scheme = apiKeyScheme(flavor);
+    if (!scheme) {
+      return undefined;
+    }
+    const host = new URL(url).origin;
+    const value = this.apiKeys ? await this.apiKeys(host, scheme.name) : undefined;
+    if (value === undefined || value === null) {
+      if (demandsAuthentication(operation)) {
+        throw new DdsrClientError(
+          `'${operation.name}' needs an API key (scheme ${scheme.name}) for ${host}, and this node holds none — give the plugin apiKeys`);
+      }
+      return undefined;
+    }
+    // HEADER is the default literal and may be absent from a document
+    const location = scheme.in ? String(scheme.in) : 'HEADER';
+    return { in: location, name: scheme.parameterName, value };
   }
 
   private streamOf(operation: ServiceOperation, restOpFlavor: RestOperationFlavor, url: string,
@@ -147,6 +191,12 @@ export class RestFlavorPlugin implements FlavorPlugin {
     // sent when the first value is asked for (#252).
     const streamed = streams(operation);
     const bearer = await this.bearerFor(flavor, operation);
+    const key = bearer ? undefined : await this.apiKeyFor(flavor, operation, request.url);
+    if (key?.in === 'QUERY') {
+      const url = new URL(request.url);
+      url.searchParams.append(key.name, key.value);
+      request.url = url.toString();
+    }
     // Binary mode (#101): the attributes as ce-* headers, the body
     // untouched. The envelope goes in FIRST, so a contract that binds a
     // parameter to a header wins over it — the call is what the
@@ -175,6 +225,8 @@ export class RestFlavorPlugin implements FlavorPlugin {
         ...(request.init.headers as Record<string, string>),
         ...context,
         ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+        ...(key?.in === 'HEADER' ? { [key.name]: key.value } : {}),
+        ...(key?.in === 'COOKIE' ? { Cookie: `${key.name}=${encodeURIComponent(key.value)}` } : {}),
       },
       ...(this.timeoutMillis > 0 && !streamed ? { signal: AbortSignal.timeout(this.timeoutMillis) } : {}),
     };

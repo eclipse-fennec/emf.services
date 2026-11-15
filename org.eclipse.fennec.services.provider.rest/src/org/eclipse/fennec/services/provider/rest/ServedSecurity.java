@@ -188,6 +188,12 @@ final class ServedSecurity {
 			return false;
 		}
 		boolean gateway = flavor.getSecuritySchemes().stream().anyMatch(ConnectionScheme.class::isInstance);
+		if (!gateway && SecurityRequirements.apiKeyScheme(flavor) != null) {
+			// An API key describes an endpoint outside Fennec Services (#299);
+			// a node of ours does not check one, so it does not run open either.
+			throw new IllegalStateException(contract + " demands authentication, and its flavor offers only an API key,"
+					+ " which a Fennec Services node does not check — not served");
+		}
 		if (!gateway) {
 			throw new IllegalStateException(contract + " demands authentication, and its flavor offers no scheme"
 					+ " to prove it with — not served");

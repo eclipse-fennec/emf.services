@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Logger;
@@ -28,6 +29,7 @@ import javax.net.ssl.SSLContext;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.fennec.services.common.ClientOrigin;
 import org.eclipse.fennec.services.common.TlsContexts;
+import org.eclipse.fennec.services.common.ApiKeySupplier;
 import org.eclipse.fennec.services.common.TokenSupplier;
 import org.eclipse.fennec.services.telemetry.CallSpan;
 import org.eclipse.fennec.services.telemetry.CallTracer;
@@ -181,6 +183,38 @@ public final class RestTransport {
 		// Only the one that is bound: a replacement is set before the one
 		// it replaces is unset.
 		this.tracer.compareAndSet(tracer, null);
+	}
+
+	/**
+	 * The API keys this node presents to endpoints that ask for one (#299).
+	 * Optional, dynamic and as many as configured: a key is configuration
+	 * of one endpoint and comes and goes with it; a call that needs one it
+	 * does not find fails saying so, before it is sent.
+	 */
+	private final List<ApiKeySupplier> apiKeys = new CopyOnWriteArrayList<>();
+
+	@Reference(name = "apiKeys", cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
+	void addApiKey(ApiKeySupplier supplier) {
+		apiKeys.add(supplier);
+	}
+
+	void removeApiKey(ApiKeySupplier supplier) {
+		apiKeys.remove(supplier);
+	}
+
+	/**
+	 * @param host where the call goes, {@code scheme://host[:port]}
+	 * @param scheme the API-key scheme's name in the endpoint's flavor
+	 * @return the key the first supplier holds for them, or {@code null}
+	 */
+	String apiKey(String host, String scheme) {
+		for (ApiKeySupplier supplier : apiKeys) {
+			String key = supplier.key(host, scheme);
+			if (key != null) {
+				return key;
+			}
+		}
+		return null;
 	}
 
 	/** The target that selects the supplier of a node without tokens. */

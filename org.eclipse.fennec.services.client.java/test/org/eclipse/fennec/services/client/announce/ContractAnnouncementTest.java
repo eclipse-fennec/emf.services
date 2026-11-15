@@ -37,6 +37,7 @@ import org.eclipse.fennec.services.broker.core.BrokerCatalog;
 import org.eclipse.fennec.services.client.DdsrClient;
 import org.eclipse.fennec.services.client.DdsrProvider;
 import org.eclipse.fennec.services.client.Registration;
+import org.eclipse.fennec.services.broker.core.ContractAddressing;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.Filter;
 import org.osgi.framework.FrameworkUtil;
@@ -69,9 +70,12 @@ class ContractAnnouncementTest {
 		RestFlavor flavor = (RestFlavor) implementation.getFlavors().get(0);
 		assertThat(flavor.getHost()).as("the deployment's address, not the document's").isEqualTo("http://node:9091");
 		assertThat(flavor.getBasePath()).isEqualTo("/payments/persons");
-		assertThat(implementation.getServiceInterfaces().get(0).eResource().getURI())
-				.as("the contract is referenced by its catalog entry, not carried a second time")
-				.hasToString("http://broker:8887/ddsr/rest/catalog/PersonStore");
+		ServiceInterface contract = implementation.getServiceInterfaces().get(0);
+		assertThat(contract.eResource().getURI())
+				.as("the contract is referenced by its catalog entry, not carried a second time — named exactly by its "
+						+ "fingerprint, since versions of a contract coexist (#301)")
+				.hasToString("http://broker:8887/ddsr/rest/catalog/PersonStore?fingerprint="
+						+ ContractAddressing.fingerprint(contract));
 	}
 
 	@Test

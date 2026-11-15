@@ -68,6 +68,72 @@ confirmation, then stop the MQTT dispatcher and the HTTP server.
   `ServiceProxyFactory`) — application code calls
   `payment.charge(10.0, "EUR")` without knowing the transport.
 
+## Tagged: methods and terms
+
+The example is also the tag overlay's ([Tags](TAGS.md), #281). Two
+dimensions, two branches of one tree:
+
+```
+payment
+├── method              → tags on implementations (each provider brings its own)
+│   ├── paypal
+│   └── card
+└── terms               → tags on contracts
+    ├── instant
+    └── installment
+```
+
+| Contract | Tag | Implementations |
+| --- | --- | --- |
+| `Payment` (unchanged, paid at once) | `payment/terms/instant` | PayPal — the Java provider; card |
+| `InstallmentPlan` (`offer(amount, months)`, `accept(planId)`) | `payment/terms/installment` | card only |
+
+- **PayPal** is the Java provider: `PaymentPublisher` gives its
+  implementation `payment.scheme=paypal` and asks for
+  `payment/method/paypal`, and gives the `Payment` contract
+  `payment/terms/instant`.
+- **card** is `card-provider.ts` with `card-provider.xmi`: **one
+  implementation serving two contracts**, `Payment` and `InstallmentPlan`,
+  with `payment.scheme=card`, asking for `payment/method/card`.
+
+`Payment` stays field for field the golden contract — tags are not part
+of the sd1 ([Fingerprints](FINGERPRINTS.md)), and a test holds the card
+provider's copy to the golden hash.
+
+Seeding the tree is what an application does when it is installed; the
+leaves may be given by a provider itself (`selfAssignable`), so the
+providers' own tags are carried at once:
+
+```bash
+B=http://localhost:8887/ddsr/rest
+curl -X PUT "$B/tags/tag?id=payment"
+curl -X PUT "$B/tags/tag?parent=payment&id=method"
+curl -X PUT "$B/tags/tag?parent=payment/method&id=paypal&selfAssignable=true"
+curl -X PUT "$B/tags/tag?parent=payment/method&id=card&selfAssignable=true"
+curl -X PUT "$B/tags/tag?parent=payment&id=terms"
+curl -X PUT "$B/tags/tag?parent=payment/terms&id=instant&selfAssignable=true"
+curl -X PUT "$B/tags/tag?parent=payment/terms&id=installment&selfAssignable=true"
+# a rule: whatever says it is a card scheme is under payment/method/card
+curl -X PUT "$B/tags/rule?path=payment/method/card&kind=implementation&filter=(payment.scheme%3Dcard)"
+
+cd ddsr-ts-client/examples/payment
+BROKER_URL=$B SERVICE_URL=http://localhost:9095/card pnpm exec tsx card-provider.ts
+```
+
+What it shows:
+
+- **The hierarchy**: `find(payment)` over implementations finds PayPal
+  and both of card's; `find(payment/method/card)` card's two — one
+  implementation, two contracts; `find(payment/terms, contract)` both
+  contracts.
+- **A rule**: card carries `payment/method/card` by itself (`SOURCE`)
+  and by the rule (`RULE`).
+- **The facade per tag**: a shop whose broker URL is
+  `$B/scoped/payment/terms/instant` sees `Payment` and no instalments;
+  under `$B/scoped/payment/terms/installment` it finds `InstallmentPlan`.
+  With OPA in front of it (#282), a shop holding the group
+  `/tags/payment/terms/instant` would be allowed only the former.
+
 ## What the harness asserts against this example
 
 Scenario A (Java→TS) and B (TS→Java) prove discovery, typed property

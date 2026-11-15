@@ -538,6 +538,13 @@ for is readable in the component runtime (`scr:info` on
 an unsatisfied reference instead of as an announcement that silently
 never happens.
 
+An announcement that fails — the broker is not up yet, the network
+blinks — leaves the contract served and is **tried again** (#304):
+after one second, doubling up to thirty, until it succeeds or the
+component goes. A provider started before its broker is announced once
+the broker is there, without a restart. A contract the broker refuses
+is reported once at WARNING and asked again only every thirty seconds.
+
 Nobody configures the announcement: the distribution derives its
 configuration (factory PID `…client.announcement`) from its
 own and deletes it again, which is why it needs Configuration Admin.

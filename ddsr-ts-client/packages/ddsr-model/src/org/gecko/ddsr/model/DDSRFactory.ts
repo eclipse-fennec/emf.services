@@ -82,6 +82,8 @@ import type { MutualTlsScheme } from './MutualTlsScheme.js';
 import { MutualTlsSchemeImpl } from './MutualTlsSchemeImpl.js';
 import type { ConnectionScheme } from './ConnectionScheme.js';
 import { ConnectionSchemeImpl } from './ConnectionSchemeImpl.js';
+import type { ApiKeyScheme } from './ApiKeyScheme.js';
+import { ApiKeySchemeImpl } from './ApiKeySchemeImpl.js';
 import type { Principal } from './Principal.js';
 import { PrincipalImpl } from './PrincipalImpl.js';
 import type { ServiceReference } from './ServiceReference.js';
@@ -407,6 +409,13 @@ export class DDSRFactory extends BasicEFactory {
   }
 
   /**
+   * Create a new ApiKeyScheme instance
+   */
+  createApiKeyScheme(): ApiKeyScheme {
+    return new ApiKeySchemeImpl();
+  }
+
+  /**
    * Create a new Principal instance
    */
   createPrincipal(): Principal {
@@ -639,6 +648,8 @@ export class DDSRFactory extends BasicEFactory {
         return this.createMutualTlsScheme();
       case 'ConnectionScheme':
         return this.createConnectionScheme();
+      case 'ApiKeyScheme':
+        return this.createApiKeyScheme();
       case 'Principal':
         return this.createPrincipal();
       case 'ServiceReference':

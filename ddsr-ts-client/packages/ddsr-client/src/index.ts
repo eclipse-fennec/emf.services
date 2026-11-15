@@ -36,7 +36,7 @@ export { BrokerHttp, normalizeDiagnostic, isError } from './internal/broker-http
 // this function's answer rather than something to reassemble by hand.
 export { clientOrigin, ORIGIN_HEADER } from './internal/client-origin.js';
 export { clientCredentials, withBearer, RENEW_BEFORE_SECONDS } from './internal/bearer-token.js';
-export { effectiveRequirement, demandsAuthentication, bearerScheme, mutualTlsScheme } from './internal/security-requirements.js';
+export { effectiveRequirement, demandsAuthentication, bearerScheme, mutualTlsScheme, apiKeyScheme } from './internal/security-requirements.js';
 export { createJwtVerifier, TokenRejectedError } from './internal/jwt-verifier.js';
 export type { JwtVerifier, JwtVerifierOptions, VerifiedPrincipal } from './internal/jwt-verifier.js';
 export type { TokenSupplier, ClientCredentialsOptions } from './internal/bearer-token.js';

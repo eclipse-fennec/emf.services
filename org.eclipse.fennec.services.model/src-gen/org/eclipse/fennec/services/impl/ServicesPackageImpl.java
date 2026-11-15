@@ -12,6 +12,8 @@ import org.eclipse.emf.ecore.EValidator;
 
 import org.eclipse.emf.ecore.impl.EPackageImpl;
 
+import org.eclipse.fennec.services.ApiKeyLocation;
+import org.eclipse.fennec.services.ApiKeyScheme;
 import org.eclipse.fennec.services.ApiType;
 import org.eclipse.fennec.services.Argument;
 import org.eclipse.fennec.services.BearerTokenScheme;
@@ -434,6 +436,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
+	private EClass apiKeySchemeEClass = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
 	private EClass principalEClass = null;
 
 	/**
@@ -792,6 +801,13 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	private EEnum securitySchemeKindEEnum = null;
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	private EEnum apiKeyLocationEEnum = null;
 
 	/**
 	 * <!-- begin-user-doc -->
@@ -2706,6 +2722,36 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EClass getApiKeyScheme() {
+		return apiKeySchemeEClass;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getApiKeyScheme_In() {
+		return (EAttribute)apiKeySchemeEClass.getEStructuralFeatures().get(0);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public EAttribute getApiKeyScheme_ParameterName() {
+		return (EAttribute)apiKeySchemeEClass.getEStructuralFeatures().get(1);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EClass getPrincipal() {
 		return principalEClass;
 	}
@@ -4366,6 +4412,16 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 	 * @generated
 	 */
 	@Override
+	public EEnum getApiKeyLocation() {
+		return apiKeyLocationEEnum;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
 	public EEnum getApiType() {
 		return apiTypeEEnum;
 	}
@@ -4626,6 +4682,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 
 		connectionSchemeEClass = createEClass(CONNECTION_SCHEME);
 
+		apiKeySchemeEClass = createEClass(API_KEY_SCHEME);
+		createEAttribute(apiKeySchemeEClass, API_KEY_SCHEME__IN);
+		createEAttribute(apiKeySchemeEClass, API_KEY_SCHEME__PARAMETER_NAME);
+
 		principalEClass = createEClass(PRINCIPAL);
 		createEAttribute(principalEClass, PRINCIPAL__SUBJECT);
 		createEAttribute(principalEClass, PRINCIPAL__ISSUER);
@@ -4821,6 +4881,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		updatePolicyEEnum = createEEnum(UPDATE_POLICY);
 		connectionStateEEnum = createEEnum(CONNECTION_STATE);
 		securitySchemeKindEEnum = createEEnum(SECURITY_SCHEME_KIND);
+		apiKeyLocationEEnum = createEEnum(API_KEY_LOCATION);
 		apiTypeEEnum = createEEnum(API_TYPE);
 	}
 
@@ -4894,6 +4955,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		bearerTokenSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
 		mutualTlsSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
 		connectionSchemeEClass.getESuperTypes().add(this.getSecurityScheme());
+		apiKeySchemeEClass.getESuperTypes().add(this.getSecurityScheme());
 		componentConfigurationEClass.getESuperTypes().add(this.getNamedElement());
 		serviceRegistryEClass.getESuperTypes().add(this.getNamedElement());
 		localServiceRegistryEClass.getESuperTypes().add(this.getServiceRegistry());
@@ -5130,6 +5192,10 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		initEAttribute(getMutualTlsScheme_TrustedIssuers(), ecorePackage.getEString(), "trustedIssuers", null, 0, -1, MutualTlsScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(connectionSchemeEClass, ConnectionScheme.class, "ConnectionScheme", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+
+		initEClass(apiKeySchemeEClass, ApiKeyScheme.class, "ApiKeyScheme", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
+		initEAttribute(getApiKeyScheme_In(), this.getApiKeyLocation(), "in", null, 1, 1, ApiKeyScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
+		initEAttribute(getApiKeyScheme_ParameterName(), ecorePackage.getEString(), "parameterName", null, 1, 1, ApiKeyScheme.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
 
 		initEClass(principalEClass, Principal.class, "Principal", !IS_ABSTRACT, !IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS);
 		initEAttribute(getPrincipal_Subject(), ecorePackage.getEString(), "subject", null, 1, 1, Principal.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED);
@@ -5496,6 +5562,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		addEEnumLiteral(securitySchemeKindEEnum, SecuritySchemeKind.BEARER_TOKEN);
 		addEEnumLiteral(securitySchemeKindEEnum, SecuritySchemeKind.MUTUAL_TLS);
 		addEEnumLiteral(securitySchemeKindEEnum, SecuritySchemeKind.CONNECTION);
+		addEEnumLiteral(securitySchemeKindEEnum, SecuritySchemeKind.API_KEY);
+
+		initEEnum(apiKeyLocationEEnum, ApiKeyLocation.class, "ApiKeyLocation");
+		addEEnumLiteral(apiKeyLocationEEnum, ApiKeyLocation.HEADER);
+		addEEnumLiteral(apiKeyLocationEEnum, ApiKeyLocation.QUERY);
+		addEEnumLiteral(apiKeyLocationEEnum, ApiKeyLocation.COOKIE);
 
 		initEEnum(apiTypeEEnum, ApiType.class, "ApiType");
 		addEEnumLiteral(apiTypeEEnum, ApiType.PROVIDER);
@@ -5693,6 +5765,12 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Discriminator of SecurityScheme, as FlavorKind is for ServiceFlavor. Projected as the \'kind\' attribute of the implied \'services.security\' capability, so a consumer can require a way of proving itself at lookup time."
+		   });
+		addAnnotation
+		  (apiKeyLocationEEnum,
+		   source,
+		   new String[] {
+			   "documentation", "Where an API key travels on an HTTP call, as OpenAPI\'s \'in\' of an apiKey scheme says."
 		   });
 		addAnnotation
 		  (namedElementEClass,
@@ -6743,6 +6821,24 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 		   source,
 		   new String[] {
 			   "documentation", "Identity is established once per connection and enforced OUTSIDE the service: a messaging broker\'s authentication and ACL on the request and response topic trees (the consumer segment of a response topic is bound to the connection\'s identity, which is why request and response live in separate trees, #98), or a gateway that terminates authentication in front of a REST node. The serving node verifies nothing per call and this scheme says so explicitly, so that a document without any scheme is never mistaken for this one. Scopes cannot be checked per call under this scheme; a requirement that names scopes is therefore not satisfiable by it alone."
+		   });
+		addAnnotation
+		  (apiKeySchemeEClass,
+		   source,
+		   new String[] {
+			   "documentation", "The caller presents a key the endpoint issued to it, in a header, a query parameter or a cookie \u2014 OpenAPI\'s apiKey scheme (#299). Describes endpoints that are not Fennec Services nodes, such as those a bridge announces; a Fennec Services node never serves with it, and a flavor whose only scheme is an API key is refused rather than served open. Which key a caller presents is configuration of the calling node (ApiKeySupplier), never part of a document. A key identifies a caller and carries no scopes: a requirement that names scopes is not satisfiable by it alone, as with a ConnectionScheme."
+		   });
+		addAnnotation
+		  (getApiKeyScheme_In(),
+		   source,
+		   new String[] {
+			   "documentation", "Where the key travels."
+		   });
+		addAnnotation
+		  (getApiKeyScheme_ParameterName(),
+		   source,
+		   new String[] {
+			   "documentation", "The name of the header, query parameter or cookie that carries the key, e.g. \'X-API-Key\' or \'api_key\'. Required: without it a caller cannot tell where to put the key."
 		   });
 		addAnnotation
 		  (principalEClass,
@@ -7938,7 +8034,7 @@ public class ServicesPackageImpl extends EPackageImpl implements ServicesPackage
 			   "operationFlavorsCoverInterfaces", "flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))",
 			   "replacesIsNotSelf", "replaces = null or replaces <> self",
 			   "authenticatedContractsHaveAScheme", "flavors->forAll(f | f.securitySchemes->notEmpty() or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and not op.security.authenticated) or (op.security = null and (si.security = null or not si.security.authenticated)))))",
-			   "scopesNeedAPerCallScheme", "flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() <> \'CONNECTION\') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))",
+			   "scopesNeedAPerCallScheme", "flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() <> \'CONNECTION\' and s.kind.toString() <> \'API_KEY\') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))",
 			   "cutoverGraceNonNegative", "cutoverGraceMillis >= 0"
 		   });
 		addAnnotation

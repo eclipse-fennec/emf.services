@@ -216,6 +216,9 @@ export class DDSRPackage extends BasicEPackage {
     MUTUAL_TLS_SCHEME: null as unknown as EClass,
     MUTUAL_TLS_SCHEME__TRUSTED_ISSUERS: null as unknown as EAttribute | EReference,
     CONNECTION_SCHEME: null as unknown as EClass,
+    API_KEY_SCHEME: null as unknown as EClass,
+    API_KEY_SCHEME__IN: null as unknown as EAttribute | EReference,
+    API_KEY_SCHEME__PARAMETER_NAME: null as unknown as EAttribute | EReference,
     PRINCIPAL: null as unknown as EClass,
     PRINCIPAL__SUBJECT: null as unknown as EAttribute | EReference,
     PRINCIPAL__ISSUER: null as unknown as EAttribute | EReference,
@@ -1901,6 +1904,31 @@ export class DDSRPackage extends BasicEPackage {
     connectionSchemeClass.setEPackage(this);
     DDSRPackage.Literals.CONNECTION_SCHEME = connectionSchemeClass;
 
+    // Create ApiKeyScheme class
+    const apiKeySchemeClass = new BasicEClass();
+    apiKeySchemeClass.setName('ApiKeyScheme');
+    apiKeySchemeClass.setAbstract(false);
+    apiKeySchemeClass.setInterface(false);
+    this.getEClassifiers().push(apiKeySchemeClass);
+    apiKeySchemeClass.setEPackage(this);
+    DDSRPackage.Literals.API_KEY_SCHEME = apiKeySchemeClass;
+
+    // Create in feature
+    const apiKeyScheme_in = new BasicEAttribute();
+    apiKeyScheme_in.setName('in');
+    apiKeyScheme_in.setLowerBound(1);
+    apiKeyScheme_in.setUpperBound(1);
+    apiKeySchemeClass.getEStructuralFeatures().push(apiKeyScheme_in);
+    DDSRPackage.Literals.API_KEY_SCHEME__IN = apiKeyScheme_in;
+
+    // Create parameterName feature
+    const apiKeyScheme_parameterName = new BasicEAttribute();
+    apiKeyScheme_parameterName.setName('parameterName');
+    apiKeyScheme_parameterName.setLowerBound(1);
+    apiKeyScheme_parameterName.setUpperBound(1);
+    apiKeySchemeClass.getEStructuralFeatures().push(apiKeyScheme_parameterName);
+    DDSRPackage.Literals.API_KEY_SCHEME__PARAMETER_NAME = apiKeyScheme_parameterName;
+
     // Create Principal class
     const principalClass = new BasicEClass();
     principalClass.setName('Principal');
@@ -2965,6 +2993,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.BEARER_TOKEN_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
     (DDSRPackage.Literals.MUTUAL_TLS_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
     (DDSRPackage.Literals.CONNECTION_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
+    (DDSRPackage.Literals.API_KEY_SCHEME as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SECURITY_SCHEME);
     (DDSRPackage.Literals.COMPONENT_CONFIGURATION as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.SERVICE_REGISTRY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.NAMED_ELEMENT);
     (DDSRPackage.Literals.LOCAL_SERVICE_REGISTRY as BasicEClass).getESuperTypes().push(DDSRPackage.Literals.SERVICE_REGISTRY);
@@ -3095,6 +3124,7 @@ export class DDSRPackage extends BasicEPackage {
     (DDSRPackage.Literals.BEARER_TOKEN_SCHEME__JWKS_URI as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.BEARER_TOKEN_SCHEME__SCOPE_CLAIM as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.MUTUAL_TLS_SCHEME__TRUSTED_ISSUERS as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
+    (DDSRPackage.Literals.API_KEY_SCHEME__PARAMETER_NAME as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.PRINCIPAL__SUBJECT as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.PRINCIPAL__ISSUER as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);
     (DDSRPackage.Literals.PRINCIPAL__SCOPES as BasicEAttribute).setEType(getEcorePackage().getEClassifier('EString')!);

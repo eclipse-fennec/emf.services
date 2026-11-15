@@ -173,6 +173,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateMutualTlsScheme((MutualTlsScheme)value, diagnostics, context);
 			case ServicesPackage.CONNECTION_SCHEME:
 				return validateConnectionScheme((ConnectionScheme)value, diagnostics, context);
+			case ServicesPackage.API_KEY_SCHEME:
+				return validateApiKeyScheme((ApiKeyScheme)value, diagnostics, context);
 			case ServicesPackage.PRINCIPAL:
 				return validatePrincipal((Principal)value, diagnostics, context);
 			case ServicesPackage.SERVICE_REFERENCE:
@@ -277,6 +279,8 @@ public class ServicesValidator extends EObjectValidator {
 				return validateConnectionState((ConnectionState)value, diagnostics, context);
 			case ServicesPackage.SECURITY_SCHEME_KIND:
 				return validateSecuritySchemeKind((SecuritySchemeKind)value, diagnostics, context);
+			case ServicesPackage.API_KEY_LOCATION:
+				return validateApiKeyLocation((ApiKeyLocation)value, diagnostics, context);
 			case ServicesPackage.API_TYPE:
 				return validateApiType((ApiType)value, diagnostics, context);
 			default:
@@ -1324,7 +1328,7 @@ public class ServicesValidator extends EObjectValidator {
 	 * <!-- end-user-doc -->
 	 * @generated
 	 */
-	protected static final String SERVICE_IMPLEMENTATION__SCOPES_NEED_APER_CALL_SCHEME__EEXPRESSION = "flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() <> 'CONNECTION') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))";
+	protected static final String SERVICE_IMPLEMENTATION__SCOPES_NEED_APER_CALL_SCHEME__EEXPRESSION = "flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() <> 'CONNECTION' and s.kind.toString() <> 'API_KEY') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security <> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))";
 
 	/**
 	 * Validates the scopesNeedAPerCallScheme constraint of '<em>Service Implementation</em>'.
@@ -1660,6 +1664,15 @@ public class ServicesValidator extends EObjectValidator {
 	 */
 	public boolean validateConnectionScheme(ConnectionScheme connectionScheme, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return validate_EveryDefaultConstraint(connectionScheme, diagnostics, context);
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateApiKeyScheme(ApiKeyScheme apiKeyScheme, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return validate_EveryDefaultConstraint(apiKeyScheme, diagnostics, context);
 	}
 
 	/**
@@ -2445,6 +2458,15 @@ public class ServicesValidator extends EObjectValidator {
 	 * @generated
 	 */
 	public boolean validateSecuritySchemeKind(SecuritySchemeKind securitySchemeKind, DiagnosticChain diagnostics, Map<Object, Object> context) {
+		return true;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public boolean validateApiKeyLocation(ApiKeyLocation apiKeyLocation, DiagnosticChain diagnostics, Map<Object, Object> context) {
 		return true;
 	}
 

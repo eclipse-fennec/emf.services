@@ -131,6 +131,9 @@ function schemeLines(flavor: Record<string, unknown>): string[] {
         `|scopeClaim=${esc(str(scheme.scopeClaim))}`;
     } else if (cls === 'MutualTlsScheme') {
       line += `|trustedIssuers=${sortedList(scheme.trustedIssuers)}`;
+    } else if (cls === 'ApiKeyScheme') {
+      // HEADER is the default literal: an XMI that omits it means HEADER (Java parity)
+      line += `|in=${enumText(scheme.in, 'HEADER')}|parameterName=${esc(str(scheme.parameterName))}`;
     }
     return line;
   });

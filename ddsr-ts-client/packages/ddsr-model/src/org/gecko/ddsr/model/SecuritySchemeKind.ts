@@ -12,7 +12,8 @@
 export const SecuritySchemeKind = {
   BEARER_TOKEN: 'BEARER_TOKEN',
   MUTUAL_TLS: 'MUTUAL_TLS',
-  CONNECTION: 'CONNECTION'
+  CONNECTION: 'CONNECTION',
+  API_KEY: 'API_KEY'
 } as const;
 
 export type SecuritySchemeKind = typeof SecuritySchemeKind[keyof typeof SecuritySchemeKind];
@@ -31,5 +32,6 @@ export function getSecuritySchemeKindByLiteral(literal: string): SecuritySchemeK
   if (literal === 'BEARER_TOKEN') return SecuritySchemeKind.BEARER_TOKEN;
   if (literal === 'MUTUAL_TLS') return SecuritySchemeKind.MUTUAL_TLS;
   if (literal === 'CONNECTION') return SecuritySchemeKind.CONNECTION;
+  if (literal === 'API_KEY') return SecuritySchemeKind.API_KEY;
   return undefined;
 }

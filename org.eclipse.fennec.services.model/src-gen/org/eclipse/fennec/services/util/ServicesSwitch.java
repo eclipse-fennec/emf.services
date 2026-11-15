@@ -388,6 +388,14 @@ public class ServicesSwitch<T> extends Switch<T> {
 				if (result == null) result = defaultCase(theEObject);
 				return result;
 			}
+			case ServicesPackage.API_KEY_SCHEME: {
+				ApiKeyScheme apiKeyScheme = (ApiKeyScheme)theEObject;
+				T result = caseApiKeyScheme(apiKeyScheme);
+				if (result == null) result = caseSecurityScheme(apiKeyScheme);
+				if (result == null) result = caseNamedElement(apiKeyScheme);
+				if (result == null) result = defaultCase(theEObject);
+				return result;
+			}
 			case ServicesPackage.PRINCIPAL: {
 				Principal principal = (Principal)theEObject;
 				T result = casePrincipal(principal);
@@ -1230,6 +1238,21 @@ public class ServicesSwitch<T> extends Switch<T> {
 	 * @generated
 	 */
 	public T caseConnectionScheme(ConnectionScheme object) {
+		return null;
+	}
+
+	/**
+	 * Returns the result of interpreting the object as an instance of '<em>Api Key Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * This implementation returns null;
+	 * returning a non-null result will terminate the switch.
+	 * <!-- end-user-doc -->
+	 * @param object the target of the switch.
+	 * @return the result of interpreting the object as an instance of '<em>Api Key Scheme</em>'.
+	 * @see #doSwitch(org.eclipse.emf.ecore.EObject) doSwitch(EObject)
+	 * @generated
+	 */
+	public T caseApiKeyScheme(ApiKeyScheme object) {
 		return null;
 	}
 

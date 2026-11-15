@@ -16,11 +16,17 @@ package org.eclipse.fennec.services.invocation;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.LinkedHashSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EClassifier;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.InternalEObject;
 
 /**
  * What travels with an answer.
@@ -73,16 +79,30 @@ public final class ResultDocument {
 	 *         it does
 	 */
 	public static List<EObject> roots(EObject result) {
-		List<EObject> roots = new ArrayList<>();
-		if (result == null) {
-			return roots;
-		}
-		roots.add(result);
-		Set<EObject> known = new LinkedHashSet<>();
-		known.add(result);
+		return result == null ? new ArrayList<>() : rootsOfAll(List.of(result));
+	}
 
+	/**
+	 * The roots of the document for a many-valued answer (#302): the
+	 * values in their order, followed by whatever any of them needs in
+	 * order to be readable, each object once.
+	 *
+	 * <p>A reader of such an answer takes every root of the return type
+	 * as the values, in document order; the roots of other types are
+	 * context, as they are for a single value.
+	 *
+	 * @param values the values an operation returned
+	 */
+	public static List<EObject> rootsOfAll(Collection<? extends EObject> values) {
+		List<EObject> roots = new ArrayList<>();
+		Set<EObject> known = Collections.newSetFromMap(new IdentityHashMap<>());
 		Deque<EObject> pending = new ArrayDeque<>();
-		pending.add(result);
+		for (EObject value : values) {
+			if (value != null && known.add(value)) {
+				roots.add(value);
+				pending.add(value);
+			}
+		}
 		while (!pending.isEmpty()) {
 			EObject root = pending.poll();
 			for (EObject referenced : referencedBy(root)) {
@@ -94,6 +114,56 @@ public final class ResultDocument {
 			}
 		}
 		return roots;
+	}
+
+	/**
+	 * The values of a many-valued answer, read from its document (#302):
+	 * every root of the return type, in document order. The other roots
+	 * are context.
+	 *
+	 * <p>The type is compared by namespace and name, not by identity: a
+	 * contract names the return type as a cross-document href that a
+	 * reader need not resolve, and an answer's classes come from whatever
+	 * package the reader registered. A root whose class is the type or
+	 * inherits from it is a value.
+	 *
+	 * @param roots the roots of the answer's document
+	 * @param type  the return value's {@code eType}; without one, every
+	 *              root is a value
+	 */
+	public static List<EObject> values(List<EObject> roots, EClassifier type) {
+		if (type == null) {
+			return List.copyOf(roots);
+		}
+		String wanted = typeName(type);
+		List<EObject> values = new ArrayList<>();
+		for (EObject root : roots) {
+			if (isA(root.eClass(), wanted)) {
+				values.add(root);
+			}
+		}
+		return values;
+	}
+
+	private static boolean isA(EClass eClass, String wanted) {
+		if (wanted.equals(typeName(eClass))) {
+			return true;
+		}
+		for (EClass superType : eClass.getEAllSuperTypes()) {
+			if (wanted.equals(typeName(superType))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** {@code <nsURI>#//<Name>}, from a proxy's URI or from the classifier itself. */
+	private static String typeName(EClassifier type) {
+		if (type.eIsProxy()) {
+			return ((InternalEObject) type).eProxyURI().toString();
+		}
+		EPackage ePackage = type.getEPackage();
+		return (ePackage == null ? "" : ePackage.getNsURI()) + "#//" + type.getName();
 	}
 
 	/**

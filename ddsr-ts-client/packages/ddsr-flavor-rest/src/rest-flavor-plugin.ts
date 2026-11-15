@@ -14,7 +14,8 @@
 import type { FlavorPlugin, TokenSupplier } from '@ddsr/client';
 import {
   CE_EXTENSION_CORRELATION_ID, CE_HEADER_PREFIX, CE_TYPE_INVOKE, DdsrClientError, DdsrServiceError,
-  DdsrTransportError, apiKeyScheme, bearerScheme, demandsAuthentication, describing, newEnvelope, toArray, toHeaders,
+  DdsrTransportError, apiKeyScheme, bearerScheme, demandsAuthentication, describing, isEObject, newEnvelope,
+  resultValues, toArray, toHeaders,
 } from '@ddsr/client';
 import type {
   ServiceFlavor,
@@ -274,7 +275,14 @@ export class RestFlavorPlugin implements FlavorPlugin {
     }
 
     try {
-      return await parseResponse(response);
+      const answered = await parseResponse(response);
+      const returned = operation.returnValue as { upperBound?: unknown; eType?: unknown } | undefined;
+      if (returned && manyValued(returned.upperBound)
+        && (isEObject(answered) || (Array.isArray(answered) && answered.every(isEObject)))) {
+        // Many values (#302): every root of the return type, in order.
+        return resultValues(Array.isArray(answered) ? answered : [answered], returned.eType);
+      }
+      return answered;
     } finally {
       span.end();
     }
@@ -342,4 +350,11 @@ function describe(error: unknown): string {
     ? `timeout after the configured limit (${error.name})`
     : `${error.name}: ${error.message}`;
   return String(error);
+}
+
+/** Whether a declared upper bound says more than one value. */
+function manyValued(raw: unknown): boolean {
+  if (raw === undefined || raw === null || raw === '') return false;
+  const bound = typeof raw === 'number' ? raw : Number.parseInt(String(raw), 10);
+  return Number.isFinite(bound) && bound !== 1;
 }

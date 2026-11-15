@@ -15,7 +15,11 @@ package org.eclipse.fennec.services.invocation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EClass;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EcoreFactory;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
@@ -24,6 +28,7 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.fennec.services.CatalogStatus;
 import org.eclipse.fennec.services.LocalServiceRegistry;
 import org.eclipse.fennec.services.RemoteServiceRegistry;
+import org.eclipse.fennec.services.RestFlavor;
 import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServiceInterface;
 import org.eclipse.fennec.services.ServiceProvider;
@@ -155,5 +160,40 @@ class ResultDocumentTest {
 			.as("the common case has to stay byte for byte what it was")
 			.isFalse();
 		assertThat(ResultDocument.roots(null)).isEmpty();
+	}
+
+	@Test
+	void many_values_travel_in_order_followed_by_their_context_once() {
+		ServiceInterface shared = contract("Shared");
+		LocalServiceRegistry first = lookupAnswer(shared);
+		LocalServiceRegistry second = lookupAnswer(shared);
+
+		List<EObject> roots = ResultDocument.rootsOfAll(List.of(first, second));
+
+		assertThat(roots).containsExactly(first, second, shared);
+	}
+
+	@Test
+	void a_reader_takes_every_root_of_the_return_type_as_the_values() {
+		ServiceInterface shared = contract("Shared");
+		LocalServiceRegistry first = lookupAnswer(shared);
+		LocalServiceRegistry second = lookupAnswer(shared);
+		List<EObject> roots = List.of(first, second, shared);
+
+		assertThat(ResultDocument.values(roots, ServicesPackage.eINSTANCE.getLocalServiceRegistry()))
+				.containsExactly(first, second);
+		assertThat(ResultDocument.values(roots, null)).as("without a type every root is a value")
+				.containsExactly(first, second, shared);
+	}
+
+	@Test
+	void the_return_type_may_be_a_proxy_and_a_value_a_subtype() {
+		EClass proxy = EcoreFactory.eINSTANCE.createEClass();
+		((InternalEObject) proxy).eSetProxyURI(URI.createURI(ServicesPackage.eNS_URI + "#//ServiceFlavor"));
+		RestFlavor rest = F.createRestFlavor();
+		ServiceInterface context = contract("Context");
+
+		assertThat(ResultDocument.values(List.of(rest, context), proxy))
+				.as("a RestFlavor is a ServiceFlavor, named by an href nobody resolved").containsExactly(rest);
 	}
 }

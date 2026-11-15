@@ -20,7 +20,10 @@ import type {
   ServiceOperation,
 } from '@ddsr/model';
 import { HttpMethod, ParameterBinding } from '@ddsr/model';
-import { bearerScheme, demandsAuthentication, effectiveRequirement, mutualTlsScheme, raisesDeclared } from '@ddsr/client';
+import {
+  bearerScheme, demandsAuthentication, effectiveRequirement, isEObject, mutualTlsScheme, raisesDeclared, resultRoots,
+  serializeToXmi,
+} from '@ddsr/client';
 import type { CertificateVerifier, ClientCertificate, JwtVerifier } from '@ddsr/client';
 import { RestBroadcast, STREAM_MEDIA_TYPE, framesOf, isAsyncIterable, streams } from './rest-streams.js';
 
@@ -509,8 +512,16 @@ function coerce(value: string | undefined, parameter: Parameter): unknown {
  */
 function answerOf(opFlavor: RestOperationFlavor, answer: unknown): DispatchResult {
   const produces = toArray<string>(opFlavor.produces)[0] ?? 'text/plain';
-  if (answer === undefined || answer === null) {
+  if (answer === undefined || answer === null || (Array.isArray(answer) && answer.length === 0)) {
     return { status: 204, contentType: produces };
+  }
+  // A model answer is one document: the value — or the values in order
+  // (#302) — followed by what they need in order to be readable (#88).
+  const values = Array.isArray(answer) ? answer : [answer];
+  const model = values.every(isEObject);
+  if (model) {
+    const [first, ...rest] = resultRoots(values);
+    answer = serializeToXmi(first, ...rest);
   }
   // `returnCodes` is multi-valued: the flavor may declare 200 and 204
   // for one operation, and the first is the one with a body.
@@ -521,7 +532,7 @@ function answerOf(opFlavor: RestOperationFlavor, answer: unknown): DispatchResul
   return {
     status: Number.isFinite(status) ? status : 200,
     body: typeof answer === 'string' ? answer : String(answer),
-    contentType: produces,
+    contentType: model && !toArray<string>(opFlavor.produces)[0] ? 'application/xml' : produces,
   };
 }
 

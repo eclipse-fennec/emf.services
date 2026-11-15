@@ -60,6 +60,7 @@ export type { CloudEventEnvelope, CloudEventMessage } from './cloudevents/cloud-
 export { attachShutdownHooks } from './lifecycle/shutdown-hooks.js';
 export type { ShutdownHookOptions } from './lifecycle/shutdown-hooks.js';
 export { serializeToXmi, deserializeFromXmi } from './xmi/xmi-support.js';
+export { resultRoots, resultValues, isEObject } from './xmi/result-document.js';
 export {
   encodeInvocation, decodeInvocation, encodeResult, encodeFailure, decodeResult,
   propertyFor, valueOf,

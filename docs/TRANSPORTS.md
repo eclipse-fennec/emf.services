@@ -339,12 +339,23 @@ Factory PID `org.eclipse.fennec.services.provider.messaging`
 | Property | Default | |
 | --- | --- | --- |
 | `service.filter` | — | **required**, usually `(ddsr.contract=<name>)` |
-| `model.bundle` | — | **required**, the bundle carrying the document |
-| `model.entry` | — | **required**, the path inside it |
+| `model.bundle` | `""` | the bundle carrying the document … |
+| `model.entry` | `""` | … and the path inside it |
+| `model.url` | `""` | … or where the document is read from when it is in no bundle (`file:`, `http:`) — a contract made at runtime (#301); exactly one of the two ways |
 | `ddsr.contract` | `""` | the contract's name |
 | `publish` | `false` | announce to a broker as well as serve |
 | `messaging.broker` | `""` | where this instance listens — a URL of the protocol the document's flavor speaks; empty keeps what the document says |
 | `broker.url` | `""` | only used to name the contract in the announcement |
+
+**A service without a method per operation.** Both generic distributions
+call the service behind `service.filter` by a method of the operation's
+name and arity. A service that implements `OperationHandler` (api,
+`invocation`, #301) is called with the operation's name and its arguments
+by parameter name instead — for a contract made at runtime, such as one an
+OpenAPI bridge mapped, which has no Java interface. It returns what a method
+would (a value, a promise holder, a stream) and fails as a method would; a
+`DeclaredFailure` (api, `common`) is the declared error of the code or name
+it carries.
 
 Topics, routing keys and QoS are **not** in that table, and that is the
 point: they are the contract's, read from the same document that is
@@ -497,8 +508,9 @@ Factory PID `org.eclipse.fennec.services.provider.rest`
 | Property | Default | |
 | --- | --- | --- |
 | `service.filter` | — | **required**, usually `(ddsr.contract=<name>)` |
-| `model.bundle` | — | **required**, the bundle carrying the document |
-| `model.entry` | — | **required**, the path inside it |
+| `model.bundle` | `""` | the bundle carrying the document … |
+| `model.entry` | `""` | … and the path inside it |
+| `model.url` | `""` | … or where the document is read from when it is in no bundle (`file:`, `http:`) — a contract made at runtime (#301); exactly one of the two ways |
 | `ddsr.contract` | `""` | the contract's name |
 | `publish` | `false` | announce to a broker as well as serve |
 | `public.url` | `""` | the address to announce |

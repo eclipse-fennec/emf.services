@@ -112,4 +112,19 @@ class DeclaredErrorsTest {
 		assertThat(DeclaredErrors.isFailure(telling)).isFalse();
 		assertThat(DeclaredErrors.isFailure("a value")).isFalse();
 	}
+
+	@Test
+	void aDeclaredFailureIsTheErrorOfItsCodeOrName() {
+		ServiceException full = ServicesFactory.eINSTANCE.createServiceException();
+		full.setName("StoreFull");
+		IntProperty code = ServicesFactory.eINSTANCE.createIntProperty();
+		code.setName("code");
+		code.setValue(507);
+		full.getProperties().add(code);
+
+		assertThat(DeclaredErrors.raises(new DeclaredFailure(507, null, "no room"), full)).isTrue();
+		assertThat(DeclaredErrors.raises(new DeclaredFailure(0, "StoreFull", "no room"), full)).isTrue();
+		assertThat(DeclaredErrors.raises(new DeclaredFailure(404, "StoreFull", "no room"), full))
+				.as("a code that is said wins over the name").isFalse();
+	}
 }

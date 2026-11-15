@@ -64,7 +64,7 @@ class RestDispatcherBodyTest {
 	private static final ServicesFactory F = ServicesFactory.eINSTANCE;
 
 	/** Stand-in for the emf.osgi prototype service. */
-	private static final class ResourceSetObjects implements ComponentServiceObjects<ResourceSet> {
+	static final class ResourceSetObjects implements ComponentServiceObjects<ResourceSet> {
 		@Override
 		public ResourceSet getService() {
 			ResourceSet rs = new ResourceSetImpl();
@@ -95,7 +95,7 @@ class RestDispatcherBodyTest {
 		}
 	}
 
-	private static final class OneService implements ServiceObjects<Object> {
+	static final class OneService implements ServiceObjects<Object> {
 		private final Object service;
 
 		OneService(Object service) {
@@ -125,7 +125,7 @@ class RestDispatcherBodyTest {
 	 * @param modelTyped whether the parameter is typed by an EClass —
 	 *        i.e. whether the body is a model or a value
 	 */
-	private static RestFlavor contract(boolean modelTyped) {
+	static RestFlavor contract(boolean modelTyped) {
 		Parameter payload = F.createParameter();
 		payload.setName("payload");
 		if (modelTyped) {

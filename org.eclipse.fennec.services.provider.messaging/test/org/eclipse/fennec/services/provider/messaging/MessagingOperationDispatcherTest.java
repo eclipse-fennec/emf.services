@@ -61,6 +61,8 @@ import org.eclipse.fennec.services.telemetry.CallTracer;
 import org.eclipse.fennec.services.telemetry.TraceCarrier;
 import org.eclipse.fennec.services.xmi.codec.XmiBundle;
 import org.eclipse.fennec.services.xmi.codec.XmiCodec;
+import org.eclipse.fennec.services.common.DeclaredFailure;
+import org.eclipse.fennec.services.invocation.OperationHandler;
 import org.junit.jupiter.api.Test;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.component.ComponentServiceObjects;
@@ -376,6 +378,26 @@ class MessagingOperationDispatcherTest {
 		assertThat(diagnostic.getMessage())
 			.as("the provider's words, not the name of its exception class")
 			.isEqualTo("only 3.50 left");
+	}
+
+	@Test
+	void a_service_that_answers_by_name_is_called_by_name() throws Exception {
+		MessagingFlavor flavor = paymentsDeclaringInsufficientFunds();
+		OperationHandler handler = (operation, arguments) -> {
+			if ((Double) arguments.get("amount") > 10) {
+				throw new DeclaredFailure(402, null, "only 10 left");
+			}
+			return operation + ":" + arguments.get("amount");
+		};
+
+		new MessagingOperationDispatcher(flavor, () -> handler, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/6", 5), sent::add);
+		new MessagingOperationDispatcher(flavor, () -> handler, "/provider/Payment", resourceSets)
+				.onRequest("ddsr/rpc/payments/charge", call(flavor, "ddsr/rpc/payments/charge/reply/7", 50), sent::add);
+
+		assertThat(Invocations.valueOf(answerIn(sent.get(0)))).isEqualTo("charge:5.0");
+		assertThat(answerIn(sent.get(1)).getDiagnostic().getCode())
+				.as("a DeclaredFailure travels under the code it says (#301)").isEqualTo(402);
 	}
 
 	@Test

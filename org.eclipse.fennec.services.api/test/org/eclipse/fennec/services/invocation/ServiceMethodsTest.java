@@ -16,8 +16,11 @@ package org.eclipse.fennec.services.invocation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -67,5 +70,26 @@ class ServiceMethodsTest {
 				.extracting(Method::getDeclaringClass).isEqualTo(Hidden.class);
 		assertThatThrownBy(() -> ServiceMethods.require(new Hidden(), "greet", 2))
 				.isInstanceOf(NoSuchMethodException.class).hasMessageContaining("'greet' taking 2");
+	}
+
+	@Test
+	void aHandlerIsCalledByName() throws Exception {
+		OperationHandler handler = (operation, arguments) -> operation + arguments;
+		LinkedHashMap<String, Object> arguments = new LinkedHashMap<>();
+		arguments.put("a", 1);
+		arguments.put("b", 2);
+
+		assertThat(ServiceMethods.call(handler, "sum", arguments)).isEqualTo("sum{a=1, b=2}");
+	}
+
+	@Test
+	void whatAHandlerThrowsArrivesAsAMethodsFailure() {
+		OperationHandler failing = (operation, arguments) -> {
+			throw new IllegalStateException("boom");
+		};
+
+		assertThatThrownBy(() -> ServiceMethods.call(failing, "x", Map.of()))
+				.isInstanceOf(InvocationTargetException.class)
+				.cause().hasMessage("boom");
 	}
 }

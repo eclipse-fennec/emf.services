@@ -102,11 +102,17 @@ public class GenericMessagingDistribution {
 
 		@AttributeDefinition(name = "Model bundle",
 				description = "Symbolic name of the bundle carrying the implementation document.")
-		String model_bundle();
+		String model_bundle() default "";
 
 		@AttributeDefinition(name = "Model entry",
 				description = "Path of the document inside that bundle, e.g. model/payment-mqtt.xmi.")
-		String model_entry();
+		String model_entry() default "";
+
+		@AttributeDefinition(
+				name = "Model URL",
+				description = "Where the document is read from when it is in no bundle, e.g. file:/var/lib/bridge/petstore.xmi "
+						+ "— a contract made at runtime (#301). Either this or model.bundle and model.entry.")
+		String model_url() default "";
 
 		@AttributeDefinition(name = "Publish",
 				description = "Whether this component also announces the implementation to the broker.")
@@ -252,6 +258,16 @@ public class GenericMessagingDistribution {
 	}
 
 	private static ServiceImplementation load(BundleContext context, Config config, ResourceSet resourceSet) {
+		boolean fromUrl = config.model_url() != null && !config.model_url().isBlank();
+		boolean fromBundle = config.model_bundle() != null && !config.model_bundle().isBlank();
+		if (fromUrl == fromBundle) {
+			throw new IllegalStateException("say where the document is: model.url, or model.bundle and model.entry — "
+					+ (fromUrl ? "not both" : "neither is set"));
+		}
+		if (fromUrl) {
+			Resource document = resourceSet.getResource(URI.createURI(config.model_url().strip()), true);
+			return ((ServiceProvider) document.getContents().get(0)).getImplementations().get(0);
+		}
 		Bundle owner = null;
 		for (Bundle candidate : context.getBundles()) {
 			if (candidate.getSymbolicName().equals(config.model_bundle())) {

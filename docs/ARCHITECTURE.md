@@ -578,7 +578,7 @@ Currently wired to LAN IPs:
 | client.java | `org.eclipse.fennec.services.client` | `supported.flavors`, `invokers.target`, `consumer.id` | `REST`, `(fennec.invokers=REST)`, — |
 | example.payment | `org.eclipse.fennec.services.examples.payment` | `public.url`, `broker.url`, `provider.name` | `http://192.168.1.6:9091/payments`, `http://192.168.1.6:8887/ddsr/rest`, `payments-java` |
 | example.payment | `org.apache.felix.http~paymentsHttp` | port / context | `9091` / `payments` |
-| provider.rest | `org.eclipse.fennec.services.provider.rest~<name>` (factory) | `ddsr.contract`, `service.filter`, `model.bundle`, `model.entry`, `osgi.jakartars.application.base` | one distribution per contract |
+| provider.rest | `org.eclipse.fennec.services.provider.rest~<name>` (factory) | `ddsr.contract`, `service.filter`, `model.bundle`/`model.url`, `model.entry`, `osgi.jakartars.application.base` | one distribution per contract |
 | provider.rest | the same factory PID | `publish`, `public.url`, `broker.url` | with `publish=true` it also publishes itself |
 
 The three broker values (`public.url`, port, host) are no longer

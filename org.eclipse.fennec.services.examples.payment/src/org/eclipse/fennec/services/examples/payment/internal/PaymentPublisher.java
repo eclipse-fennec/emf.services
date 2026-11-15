@@ -238,6 +238,9 @@ public final class PaymentPublisher {
 		payment.setName("Payment");
 		payment.setVersion("1.0.0");
 		payment.setDescription("Payment processing service — charges accounts and reports balances.");
+		// The tag overlay's Payment example (#281): paying at once. Not part
+		// of the sd1 — the golden fixture stays what it is.
+		payment.getTags().add("payment/terms/instant");
 
 		ServiceOperation charge = ServicesFactory.eINSTANCE.createServiceOperation();
 		charge.setName("charge");
@@ -400,6 +403,15 @@ public final class PaymentPublisher {
 		tags.getValue().add("demo");
 		tags.getValue().add("payments");
 		impl.getProperties().add(tags);
+
+		// The tag overlay's Payment example (#281): this provider is the
+		// PayPal one. The scheme is what a rule can read; the tag is what
+		// it asks for itself.
+		StringProperty scheme = ServicesFactory.eINSTANCE.createStringProperty();
+		scheme.setName("payment.scheme");
+		scheme.setValue("paypal");
+		impl.getProperties().add(scheme);
+		impl.getTags().add("payment/method/paypal");
 	}
 
 	private static RestOperationFlavor opFlavor(String name, HttpMethod method, String path,

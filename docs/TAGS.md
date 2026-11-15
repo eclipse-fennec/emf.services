@@ -14,7 +14,9 @@ the `Tags` contract served beside the broker (#275) and the tags a
 provider brings, with requests for the ones it may not give itself
 (#276), rules over properties (#277), the change broadcast (#278), the
 consumer facade (#279), the announcement of the contract (#287) and its
-TypeScript side (#280). The Payment example follows.
+TypeScript side (#280), and the Payment example, tagged (#281 —
+[the example](EXAMPLE_PAYMENT.md#tagged-methods-and-terms)). OPA with
+Keycloak follows (#282).
 
 ## The tree
 

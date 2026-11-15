@@ -23,6 +23,9 @@
 #             consumers read through the facade /scoped/<tag> (#279), a
 #             TypeScript consumer uses Tags through its stubs (#280), and
 #             the tags survive a restart.
+# Scenario X: the Payment example, tagged (#281): PayPal (Java) and card
+#             (TS, Payment and InstallmentPlan from one implementation)
+#             bring their tags; find, a rule and the facade per tag.
 # Scenario V: a contract alone (#271), from TypeScript: added with
 #             nothing behind it, looked up (none), served later, refused
 #             removal while implemented, withdrawn (contract stays, a
@@ -767,6 +770,93 @@ wait "$TAGS_BROKER_PID" 2>/dev/null || true
 echo "  ✓ tags-survive-a-restart: renamed tree, former paths and assignments kept; only what exists is found"
 echo "Scenario W OK"
 
+# ============================================================ Scenario X
+log "Scenario X: the Payment example, tagged"
+# The tag example (#281): PayPal (the Java provider) and card (a TS
+# provider serving Payment and InstallmentPlan from one implementation)
+# bring their tags; the tree, a rule and the facade per tag do the rest.
+X_URL="http://localhost:8897/ddsr/rest"
+require_port_free 8897
+require_port_free 9091
+require_port_free 9095
+(cd "$WORK" && rm -rf broker-x && mkdir -p broker-x && cd broker-x \
+  && exec env -u DDSR_AUTH_MODE -u DDSR_JWT_ISSUER DDSR_HTTP_PORT=8897 DDSR_PUBLIC_URL="$X_URL" \
+       java -Dgosh.args=--nointeractive -jar "$BROKER_JAR") >"$WORK/broker-x.log" 2>&1 &
+X_BROKER_PID=$!
+PIDS+=("$X_BROKER_PID")
+wait_for_url "$X_URL/catalog" 60
+wait_for_broker_contracts "$X_URL"
+wait_for_url "$X_URL/tags/tree" 60
+x_status() { # expected method path
+  local got
+  got=$(curl -s -o /dev/null -w '%{http_code}' -X "$2" "$X_URL/$3")
+  [ "$got" = "$1" ] || { echo "SCENARIO X FAILED: $2 $3 answered $got, expected $1"; exit 1; }
+}
+# The tree the example works with — what an application seeds when it is
+# installed. Every leaf may be given by a provider itself.
+for tag in "id=payment&name=Payment" "parent=payment&id=method&name=Method" \
+           "parent=payment/method&id=paypal&name=PayPal&selfAssignable=true" \
+           "parent=payment/method&id=card&name=Card&selfAssignable=true" \
+           "parent=payment&id=terms&name=Terms" \
+           "parent=payment/terms&id=instant&name=Instant&selfAssignable=true" \
+           "parent=payment/terms&id=installment&name=Installment&selfAssignable=true"; do
+  x_status 200 PUT "tags/tag?$tag"
+done
+x_status 204 PUT "tags/rule?path=payment/method/card&kind=implementation&filter=(payment.scheme%3Dcard)"
+
+(cd "$WORK" && mkdir -p payment-x && cd payment-x \
+  && exec env -u DDSR_OAUTH_TOKEN_URI -u DDSR_TOKENS DDSR_BROKER_URL="$X_URL" \
+       java -Dgosh.args=--nointeractive -jar "$PROVIDER_JAR") >"$WORK/payment-x.log" 2>&1 &
+X_PAYPAL_PID=$!
+PIDS+=("$X_PAYPAL_PID")
+(cd "$TS/examples/payment" \
+  && exec env -u DDSR_OAUTH_TOKEN_URI BROKER_URL="$X_URL" SERVICE_URL="http://localhost:9095/card" \
+       node --import tsx card-provider.ts) >"$WORK/card-x.log" 2>&1 &
+X_CARD_PID=$!
+PIDS+=("$X_CARD_PID")
+wait_for_line "$WORK/payment-x.log" "published payments-java" 90
+wait_for_line "$WORK/card-x.log" "published as reference" 60
+
+x_keys() { # query → the keys, one per line
+  local answer
+  answer=$(curl -sf "$X_URL/tags/find?$1") || { echo "SCENARIO X FAILED: find?$1 did not answer"; exit 1; }
+  grep -o '<keys>[^<]*</keys>' <<<"$answer" | sed 's/<[^>]*>//g' | sort | tr '\n' ' '
+}
+x_expect() { # what got expected
+  [ "$2" = "$3" ] || { echo "SCENARIO X FAILED: $1 — got '$2', expected '$3'"; exit 1; }
+}
+x_expect "implementations under payment" "$(x_keys 'path=payment&kind=implementation')" \
+  "payments-card/InstallmentPlan payments-card/Payment payments-java/Payment "
+x_expect "implementations under payment/method/card" "$(x_keys 'path=payment/method/card&kind=implementation')" \
+  "payments-card/InstallmentPlan payments-card/Payment "
+x_expect "contracts under payment/terms" "$(x_keys 'path=payment/terms&kind=contract')" "InstallmentPlan Payment "
+x_expect "contracts under payment/terms/installment" "$(x_keys 'path=payment/terms/installment&kind=contract')" \
+  "InstallmentPlan "
+echo "  ✓ x-find: the hierarchy finds both providers under payment, card's two contracts under its method, a contract by its terms"
+OF=$(curl -sf "$X_URL/tags/of?kind=implementation&key=payments-card/Payment")
+grep -Eq 'path="payment/method/card"( origin="SOURCE")?/>' <<<"$OF" && grep -q 'path="payment/method/card" origin="RULE"' <<<"$OF" \
+  || { echo "SCENARIO X FAILED: card's tag is not carried by itself and by the rule"; echo "$OF"; exit 1; }
+echo "  ✓ x-rule: card carries payment/method/card by itself and by the rule (payment.scheme=card)"
+
+x_refs() { # tag interface → how many references the facade answers
+  curl -sf "$X_URL/scoped/$1/references?interface=$2" | grep -c '<references' || true
+}
+x_expect "Payment through /scoped/payment" "$(x_refs payment Payment)" 2
+x_expect "Payment through /scoped/payment/method/paypal" "$(x_refs payment/method/paypal Payment)" 1
+x_expect "InstallmentPlan through /scoped/payment/terms/instant" "$(x_refs payment/terms/instant InstallmentPlan)" 0
+x_expect "InstallmentPlan through /scoped/payment/terms/installment" "$(x_refs payment/terms/installment InstallmentPlan)" 1
+echo "  ✓ x-facade: a shop under payment/terms/instant sees no instalments; under payment/terms/installment it does"
+PLAN=$(curl -sf -X POST "http://localhost:9095/card/installments?amount=1200&months=12") \
+  && AGREED=$(curl -sf -X POST "http://localhost:9095/card/installments/$PLAN/accept") \
+  || { echo "SCENARIO X FAILED: the instalment plan could not be offered or accepted"; exit 1; }
+grep -q "12 x 100.00" <<<"$AGREED" || { echo "SCENARIO X FAILED: accepted '$AGREED'"; exit 1; }
+echo "  ✓ x-installments: offered $PLAN and accepted ($AGREED)"
+kill "$X_CARD_PID" "$X_PAYPAL_PID" 2>/dev/null || true
+wait "$X_CARD_PID" "$X_PAYPAL_PID" 2>/dev/null || true
+kill "$X_BROKER_PID" 2>/dev/null || true
+wait "$X_BROKER_PID" 2>/dev/null || true
+echo "Scenario X OK"
+
 # ============================================================ Scenario L
 log "Scenario L: payload models from the Model Atlas"
 # The broker's other source of payload models (#256): a Model Atlas holds
@@ -1108,4 +1198,4 @@ kill "$MTLS_PID" 2>/dev/null || true
 wait "$MTLS_PID" 2>/dev/null || true
 echo "Scenario M OK: a certificate is the credential — TLS, roles from the mapping, the gateway's header, the Java client$(secured && echo '; discovery by certificate, calls by token')"
 
-log "HARNESS PASSED (A + B + V + F + G + H + T + N + W + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"
+log "HARNESS PASSED (A + B + V + F + G + H + T + N + W + X + ${SCENARIO_L}M, auth: $HARNESS_AUTH)"

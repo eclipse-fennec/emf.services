@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026 Contributors to the Eclipse Foundation.
+
+  This program and the accompanying materials are made
+  available under the terms of the Eclipse Public License 2.0
+  which is available at https://www.eclipse.org/legal/epl-2.0/
+
+  SPDX-License-Identifier: EPL-2.0
+
+  The card provider of the tag example (#281): one implementation that
+  serves two contracts — Payment, paid at once, and InstallmentPlan, paid
+  in instalments. It asks for the tag of its method; each contract asks
+  for the tag of its terms. Payment is field for field the golden one
+  (payment-provider.xmi), so its sd1 does not move.
+-->
+<xmi:XMI xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:services="http://eclipse.org/fennec/services/1.0">
+  <services:ServiceProvider name="payments-card">
+    <implementations name="payments-card-rest" implementationId="ts:payments-card:1.0.0" serviceInterfaces="/1 /2">
+      <flavors xsi:type="services:RestFlavor" name="payments-card-rest" host="http://localhost:9095" basePath="/card">
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="charge" method="POST" path="/charge/{amount}"
+            operation="/1/@operations.0">
+          <parameterBindings parameter="/1/@operations.0/@parameters.0" binding="PATH"/>
+          <parameterBindings parameter="/1/@operations.0/@parameters.1" binding="HEADER" wireName="X-Currency"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="getBalance" method="GET" path="/balance"
+            operation="/1/@operations.1">
+          <parameterBindings parameter="/1/@operations.1/@parameters.0" binding="QUERY"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="offer" method="POST" path="/installments"
+            operation="/2/@operations.0">
+          <parameterBindings parameter="/2/@operations.0/@parameters.0" binding="QUERY"/>
+          <parameterBindings parameter="/2/@operations.0/@parameters.1" binding="QUERY"/>
+        </operationFlavors>
+        <operationFlavors xsi:type="services:RestOperationFlavor" name="accept" method="POST" path="/installments/{planId}/accept"
+            operation="/2/@operations.1">
+          <parameterBindings parameter="/2/@operations.1/@parameters.0" binding="PATH"/>
+        </operationFlavors>
+      </flavors>
+      <properties xsi:type="services:StringProperty" name="ddsr.provider.lang" value="typescript"/>
+      <properties xsi:type="services:StringProperty" name="payment.scheme" value="card"/>
+      <tags>payment/method/card</tags>
+    </implementations>
+  </services:ServiceProvider>
+  <services:ServiceInterface name="Payment" version="1.0.0" description="Payment processing service — charges accounts and reports balances.">
+    <tags>payment/terms/instant</tags>
+    <operations name="charge" description="Charge an amount. Returns the remaining balance.">
+      <parameters name="amount" type="double" description="Amount to charge."/>
+      <parameters name="currency" index="1" type="string" optional="true" defaultValue="EUR" description="ISO 4217 currency code."/>
+      <returnValue name="result" type="double"/>
+    </operations>
+    <operations name="getBalance" description="Get current account balance.">
+      <parameters name="accountId" type="string" description="The account identifier."/>
+      <returnValue name="result" type="double"/>
+    </operations>
+  </services:ServiceInterface>
+  <services:ServiceInterface name="InstallmentPlan" version="1.0.0" description="Paying in instalments: an offer for an amount over a number of months, and accepting it.">
+    <tags>payment/terms/installment</tags>
+    <operations name="offer" description="An instalment plan for an amount over a number of months. Returns the plan's id.">
+      <parameters name="amount" type="double" description="The amount to spread."/>
+      <parameters name="months" index="1" type="int" description="Over how many months."/>
+      <returnValue name="result" type="string"/>
+    </operations>
+    <operations name="accept" description="Accept a plan offered before. Returns what was agreed.">
+      <parameters name="planId" type="string" description="The plan's id, as the offer answered it."/>
+      <returnValue name="result" type="string"/>
+    </operations>
+  </services:ServiceInterface>
+</xmi:XMI>

@@ -23,6 +23,11 @@ broker. Requirements and decisions:
   `Payment` contract outlived the Java provider of A and the lookup
   answers none, the consumer waits, binds when the provider arrives and
   drops its proxy when it goes — the contract stays (#271).
+- **X (host only) — the Payment example, tagged (#281):** a seeded tag
+  tree and a rule; the Java provider (PayPal) and `card-provider.ts`
+  (one implementation, `Payment` and `InstallmentPlan`) bring their tags;
+  `find` over the hierarchy, card carried by itself and by the rule, the
+  facade per tag shows no instalments under `payment/terms/instant`.
 - **V (host only) — a contract on its own (#271):**
   `contract-first-probe.ts` adds a contract with nothing behind it,
   looks it up (none, no error), serves it itself and hears the

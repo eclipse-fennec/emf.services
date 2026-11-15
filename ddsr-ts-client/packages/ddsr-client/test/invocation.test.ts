@@ -93,6 +93,20 @@ describe('invocation as a message', () => {
     expect(decodeResult(encodeResult(undefined))).toEqual({ value: undefined });
   });
 
+  it('carries many models in order, as the list property Java reads', () => {
+    const f = DDSRFactory.eINSTANCE;
+    const first = f.createServiceInterface();
+    first.name = 'First';
+    const second = f.createServiceInterface();
+    second.name = 'Second';
+
+    const document = encodeResult([first, second]);
+
+    expect(document).toContain('EObjectListProperty');
+    const decoded = decodeResult(document) as { value: Array<{ name?: string }> };
+    expect(decoded.value.map(value => value.name)).toEqual(['First', 'Second']);
+  });
+
   it('answers a failure with a diagnostic, not with a missing value', () => {
     const document = encodeFailure('account-1 is not known', 404);
 

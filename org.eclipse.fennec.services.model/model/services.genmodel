@@ -185,6 +185,9 @@
     <genClasses ecoreClass="services.ecore#//EObjectProperty">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//EObjectProperty/value"/>
     </genClasses>
+    <genClasses ecoreClass="services.ecore#//EObjectListProperty">
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//EObjectListProperty/value"/>
+    </genClasses>
     <genClasses ecoreClass="services.ecore#//ServiceOperation">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ServiceOperation/description"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference services.ecore#//ServiceOperation/parameters"/>

@@ -30,7 +30,7 @@ public class ServicesEPackageConfigurator implements EPackageConfigurator {
 	 * service property.
 	 * @generated
 	 */
-	public static final String FINGERPRINT = "fp1:c362c90bcc44002c3e5010ffb42274dd5a230ee60d7e8e6747456a0e63b1b4f8";
+	public static final String FINGERPRINT = "fp1:47655912d2baf7022b500a0c1cf0f56c27b0b4d62c5cb3c87b6aae484c48645a";
 
 	private ServicesPackage ePackage;
 

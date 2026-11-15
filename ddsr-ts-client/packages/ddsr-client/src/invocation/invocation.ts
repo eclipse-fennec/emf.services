@@ -36,7 +36,7 @@
  */
 
 import type {
-  Argument, Diagnostic, EObjectProperty, Parameter, Property,
+  Argument, Diagnostic, EObjectListProperty, EObjectProperty, Parameter, Property,
   ServiceInvocation, ServiceInvocationResult, ServiceOperation,
 } from '@ddsr/model';
 import { DDSRFactory, DiagnosticSeverity } from '@ddsr/model';
@@ -76,6 +76,15 @@ function isEObject(value: unknown): value is EObject {
  * is a double because that is what a JavaScript number is.
  */
 export function propertyFor(name: string, value: unknown, declaredType?: string): Property {
+  if (Array.isArray(value) && value.length > 0 && value.every(isEObject)) {
+    // Many models (a model-typed slot with upperBound other than 1): in
+    // order, contained like a single one. An empty array says nothing
+    // about its element type and stays a string list.
+    const property = factory.createEObjectListProperty();
+    property.name = name;
+    property.value.push(...(value as EObject[]));
+    return property;
+  }
   if (isEObject(value)) {
     const property = factory.createEObjectProperty();
     property.name = name;
@@ -113,6 +122,9 @@ export function valueOf(property: Property | undefined): unknown {
   if (!property) return undefined;
   if (eClassName(property) === 'EObjectProperty') {
     return (property as EObjectProperty).value;
+  }
+  if (eClassName(property) === 'EObjectListProperty') {
+    return toArray<EObject>((property as EObjectListProperty).value);
   }
   return propertyValue(property);
 }

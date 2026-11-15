@@ -17,9 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.impl.ResourceImpl;
 import org.eclipse.fennec.services.DoubleProperty;
+import org.eclipse.fennec.services.EObjectListProperty;
 import org.eclipse.fennec.services.IntProperty;
 import org.eclipse.fennec.services.Parameter;
 import org.eclipse.fennec.services.ServiceInterface;
@@ -151,6 +155,39 @@ class InvocationsTest {
 		assertThat(Invocations.valueOf(failed))
 			.as("a failure has no value, and must not read as one")
 			.isNull();
+	}
+
+	@Test
+	void many_models_travel_in_order_as_one_list_property() {
+		ServiceInterface first = F.createServiceInterface();
+		first.setName("First");
+		ServiceInterface second = F.createServiceInterface();
+		second.setName("Second");
+
+		ServiceInvocationResult result = Invocations.result(List.of(first, second));
+
+		assertThat(result.getValue()).isInstanceOf(EObjectListProperty.class);
+		assertThat(Invocations.valueOf(result)).asList().containsExactly(first, second);
+	}
+
+	@Test
+	void an_empty_list_of_models_is_an_empty_list() {
+		assertThat(Invocations.valueOf(Invocations.result(List.of()))).asList().isEmpty();
+	}
+
+	@Test
+	void a_model_that_belongs_to_someone_travels_as_a_copy() {
+		ServiceInterface owned = F.createServiceInterface();
+		owned.setName("Owned");
+		Resource store = new ResourceImpl();
+		store.getContents().add(owned);
+
+		Object travelled = Invocations.valueOf(Invocations.result(List.of(owned)));
+
+		assertThat(store.getContents()).as("the owner keeps its object").containsExactly(owned);
+		assertThat(travelled).asList().singleElement()
+				.isNotSameAs(owned)
+				.extracting(value -> ((ServiceInterface) value).getName()).isEqualTo("Owned");
 	}
 
 	@Test

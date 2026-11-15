@@ -17,6 +17,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -462,6 +463,11 @@ public final class ReflectiveServiceProxyFactory implements ServiceProxyFactory 
 			Class<?> effective = rt.isPrimitive() ? boxOf(rt) : rt;
 			if (effective.isInstance(result)) {
 				return result;
+			}
+			// A list the other side wrote without knowing its element type —
+			// an empty one from TypeScript travels as a string list.
+			if (List.class.isAssignableFrom(rt) && result instanceof Object[] values) {
+				return new ArrayList<>(Arrays.asList(values));
 			}
 			// Common case from JSON / text responses: result is a String
 			// that needs to be parsed into a primitive.

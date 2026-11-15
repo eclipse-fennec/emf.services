@@ -116,6 +116,10 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createEObjectPropertyAdapter();
 			}
 			@Override
+			public Adapter caseEObjectListProperty(EObjectListProperty object) {
+				return createEObjectListPropertyAdapter();
+			}
+			@Override
 			public Adapter caseServiceOperation(ServiceOperation object) {
 				return createServiceOperationAdapter();
 			}
@@ -544,6 +548,20 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createEObjectPropertyAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.EObjectListProperty <em>EObject List Property</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.EObjectListProperty
+	 * @generated
+	 */
+	public Adapter createEObjectListPropertyAdapter() {
 		return null;
 	}
 

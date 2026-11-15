@@ -376,7 +376,7 @@ public class GenericRestDistribution extends Application {
 			// Registered under the monitor, so a runtime update that lists
 			// it cannot slip in before the field is set and be missed.
 			this.application = context.registerService(Application.class, this,
-					serviceProperties(componentContext.getProperties()));
+					applicationProperties(componentContext.getProperties(), flavor));
 		}
 		if (config.publish()) {
 			this.announcement = announcementFor(pid);
@@ -418,6 +418,26 @@ public class GenericRestDistribution extends Application {
 	 * base, the name, the mode and the extension selector from — minus
 	 * what only the framework may set on a registration.
 	 */
+	/**
+	 * What the application is registered with: the component's properties,
+	 * and the flavor's basePath as the application base when the
+	 * configuration names none — as its documentation says. Registered without
+	 * a base, the whiteboard refuses the application (failure reason 3) and the
+	 * contract is never announced (found by the OpenAPI bridge, #301).
+	 */
+	static Dictionary<String, Object> applicationProperties(Dictionary<String, Object> component, RestFlavor flavor) {
+		Dictionary<String, Object> properties = serviceProperties(component);
+		Object base = properties.get(APPLICATION_BASE);
+		if ((base == null || String.valueOf(base).isBlank()) && flavor.getBasePath() != null
+				&& !flavor.getBasePath().isBlank()) {
+			properties.put(APPLICATION_BASE, flavor.getBasePath());
+		}
+		return properties;
+	}
+
+	/** The whiteboard property an application is mounted by. */
+	static final String APPLICATION_BASE = "osgi.jakartars.application.base";
+
 	static Dictionary<String, Object> serviceProperties(Dictionary<String, Object> component) {
 		Dictionary<String, Object> properties = new Hashtable<>();
 		for (Enumeration<String> keys = component.keys(); keys.hasMoreElements();) {

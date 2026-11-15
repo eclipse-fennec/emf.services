@@ -16,6 +16,7 @@ package org.eclipse.fennec.services.client.rest.internal;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +27,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.fennec.services.ApiKeyLocation;
+import org.eclipse.fennec.services.ApiKeyScheme;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Diagnostic;
 import org.eclipse.fennec.services.HttpMethod;
@@ -238,11 +241,15 @@ public final class RestServiceInvoker implements ServiceInvoker {
 	/** Everything a call needs before it is sent, the same for a single answer and a stream. */
 	private record Call(String url, String subject, CloudEvent envelope, Map<String, String> headers,
 			RestOperationFlavor operationFlavor, WebTarget target, HttpMethod method, RestPlacement placement,
-			String accept, String contentType) {
+			String accept, String contentType, ApiKey apiKey) {
 
 		Response send() {
-			return RestServiceInvoker.send(target, method, placement, accept, contentType, headers);
+			return RestServiceInvoker.send(target, method, placement, accept, contentType, headers, apiKey);
 		}
+	}
+
+	/** An API key and where it travels (#299). */
+	record ApiKey(ApiKeyLocation in, String name, String value) {
 	}
 
 	/**
@@ -307,10 +314,13 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		// the header every instrumented server already extracts.
 		Map<String, String> headers = new LinkedHashMap<>(CloudEventCodec.toHeaders(envelope));
 		String bearer = bearerFor(rf, op, operationName);
+		ApiKey apiKey = null;
 		if (bearer != null) {
 			headers.put(HttpHeaders.AUTHORIZATION, "Bearer " + bearer);
+		} else {
+			apiKey = apiKeyFor(rf, op, operationName, url);
 		}
-		return new Call(url, subject, envelope, headers, op, target, method, placement, accept, contentType);
+		return new Call(url, subject, envelope, headers, op, target, method, placement, accept, contentType, apiKey);
 	}
 
 	/**
@@ -382,7 +392,8 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		// transport's configuration (provider.tokens.target).
 		String audience = scheme.getAudiences().isEmpty() ? null : scheme.getAudiences().get(0);
 		String token = tx.providerToken(audience);
-		if (token == null && SecurityRequirements.demandsAuthentication(op.getOperation())) {
+		if (token == null && SecurityRequirements.demandsAuthentication(op.getOperation())
+				&& SecurityRequirements.apiKeyScheme(flavor) == null) {
 			throw new DdsrException("'" + operationName + "' needs a bearer token of " + scheme.getIssuer()
 					+ ", and this node is configured without tokens for providers — set "
 					+ "provider.tokens.target on its REST transport and configure its client credentials");
@@ -390,8 +401,38 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		return token;
 	}
 
-	private static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept,
-			String contentType, Map<String, String> envelopeHeaders) {
+	/**
+	 * The API key a call to this target presents, when its flavor offers an
+	 * API-key scheme and no bearer token is used (#299): the key the node's
+	 * configuration holds for that endpoint and scheme. A guarded operation
+	 * without one fails here, saying why, rather than as a bare 401.
+	 */
+	ApiKey apiKeyFor(RestFlavor flavor, RestOperationFlavor op, String operationName, String url) {
+		ApiKeyScheme scheme = SecurityRequirements.apiKeyScheme(flavor);
+		if (scheme == null) {
+			return null;
+		}
+		String host = hostOf(url);
+		String key = tx.apiKey(host, scheme.getName());
+		if (key == null) {
+			if (SecurityRequirements.demandsAuthentication(op.getOperation())) {
+				throw new DdsrException("'" + operationName + "' needs an API key (scheme " + scheme.getName()
+						+ ") for " + host + ", and this node holds none — configure "
+						+ ConfiguredApiKey.PID + " with that host and scheme");
+			}
+			return null;
+		}
+		return new ApiKey(scheme.getIn(), scheme.getParameterName(), key);
+	}
+
+	/** {@code scheme://host[:port]} of a URL. */
+	static String hostOf(String url) {
+		URI uri = URI.create(url);
+		return uri.getScheme() + "://" + uri.getRawAuthority();
+	}
+
+	static Response send(WebTarget target, HttpMethod method, RestPlacement placement, String accept,
+			String contentType, Map<String, String> envelopeHeaders, ApiKey apiKey) {
 		// The body first: it decides whether an undeclared argument was
 		// consumed as the payload or still has to travel as a query
 		// parameter.
@@ -405,6 +446,9 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		for (Map.Entry<String, Object> e : placement.query().entrySet()) {
 			target = target.queryParam(e.getKey(), String.valueOf(e.getValue()));
 		}
+		if (apiKey != null && apiKey.in() == ApiKeyLocation.QUERY) {
+			target = target.queryParam(apiKey.name(), apiKey.value());
+		}
 
 		Invocation.Builder request = target.request(accept);
 		for (Map.Entry<String, String> e : envelopeHeaders.entrySet()) {
@@ -415,6 +459,11 @@ public final class RestServiceInvoker implements ServiceInvoker {
 		// the envelope is what carries it.
 		for (Map.Entry<String, Object> e : placement.header().entrySet()) {
 			request = request.header(e.getKey(), e.getValue());
+		}
+		if (apiKey != null && apiKey.in() == ApiKeyLocation.HEADER) {
+			request = request.header(apiKey.name(), apiKey.value());
+		} else if (apiKey != null && apiKey.in() == ApiKeyLocation.COOKIE) {
+			request = request.cookie(apiKey.name(), apiKey.value());
 		}
 
 		switch (method) {

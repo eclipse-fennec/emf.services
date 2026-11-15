@@ -160,6 +160,16 @@ class RestDispatcherSecurityTest {
 	}
 
 	@Test
+	void anApiKeyAloneIsNotServed() {
+		RestFlavor flavor = flavor();
+		flavor.getSecuritySchemes().add(F.createApiKeyScheme());
+
+		assertThatThrownBy(() -> ServedSecurity.enforcedByFlavor("Payment", flavor, new Hashtable<>()))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("only an API key");
+	}
+
+	@Test
 	void aClientCertificateSchemeServesInModeMtls() {
 		RestFlavor flavor = flavor();
 		flavor.getSecuritySchemes().add(F.createMutualTlsScheme());

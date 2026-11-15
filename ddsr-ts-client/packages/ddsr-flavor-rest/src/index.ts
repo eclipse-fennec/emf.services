@@ -12,6 +12,7 @@
  ********************************************************************/
 
 export { RestFlavorPlugin } from './rest-flavor-plugin.js';
+export type { ApiKeySupplier } from './rest-flavor-plugin.js';
 export { serializeToXmi, deserializeFromXmi } from './xmi-support.js';
 export { restDispatcher, writeAnswer } from './operation-dispatch.js';
 export type { AnswerSink } from './operation-dispatch.js';

@@ -139,6 +139,12 @@
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//SecuritySchemeKind/BEARER_TOKEN"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//SecuritySchemeKind/MUTUAL_TLS"/>
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//SecuritySchemeKind/CONNECTION"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//SecuritySchemeKind/API_KEY"/>
+    </genEnums>
+    <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//ApiKeyLocation">
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiKeyLocation/HEADER"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiKeyLocation/QUERY"/>
+      <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiKeyLocation/COOKIE"/>
     </genEnums>
     <genEnums typeSafeEnumCompatible="false" ecoreEnum="services.ecore#//ApiType">
       <genEnumLiterals ecoreEnumLiteral="services.ecore#//ApiType/PROVIDER"/>
@@ -368,6 +374,10 @@
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//MutualTlsScheme/trustedIssuers"/>
     </genClasses>
     <genClasses ecoreClass="services.ecore#//ConnectionScheme"/>
+    <genClasses ecoreClass="services.ecore#//ApiKeyScheme">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ApiKeyScheme/in"/>
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//ApiKeyScheme/parameterName"/>
+    </genClasses>
     <genClasses ecoreClass="services.ecore#//Principal">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Principal/subject"/>
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute services.ecore#//Principal/issuer"/>

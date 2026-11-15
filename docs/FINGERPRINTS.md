@@ -176,8 +176,9 @@ A scheme line is the HOW of security on this endpoint (see
 token is a different endpoint. Schemes are alternatives, a set, so they
 sort by name; `BearerTokenScheme` adds
 `|issuer=|audiences=<sorted list>|jwksUri=|scopeClaim=`,
-`MutualTlsScheme` adds `|trustedIssuers=<sorted list>`, and
-`ConnectionScheme` adds nothing; an unknown subclass renders only its
+`MutualTlsScheme` adds `|trustedIssuers=<sorted list>`, `ApiKeyScheme`
+adds `|in=<literal>|parameterName=` (#299; `in` renders its default
+`HEADER` explicitly), and `ConnectionScheme` adds nothing; an unknown subclass renders only its
 eClass name. The `kind` renders its model default (`BEARER_TOKEN`)
 explicitly. The golden is `secure-payment-impl.{xmi,canonical.txt,im1}`.
 

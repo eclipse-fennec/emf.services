@@ -16,7 +16,7 @@
  * the Java `SecurityRequirements` (SECURITY.md §2): the operation's own
  * requirement where it states one, else the interface's default.
  */
-import type { BearerTokenScheme, MutualTlsScheme, SecurityRequirement, ServiceFlavor, ServiceInterface, ServiceOperation } from '@ddsr/model';
+import type { ApiKeyScheme, BearerTokenScheme, MutualTlsScheme, SecurityRequirement, ServiceFlavor, ServiceInterface, ServiceOperation } from '@ddsr/model';
 
 /** The requirement that applies to the operation, or undefined when neither it nor its interface states one. */
 export function effectiveRequirement(operation: ServiceOperation | undefined): SecurityRequirement | undefined {
@@ -57,6 +57,20 @@ export function mutualTlsScheme(flavor: ServiceFlavor | undefined): MutualTlsSch
     const name = (scheme as unknown as { eClass?: () => { getName?: () => string } }).eClass?.()?.getName?.();
     if (name === 'MutualTlsScheme') {
       return scheme as MutualTlsScheme;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The API-key scheme the flavor offers, or undefined: a caller of it
+ * presents a key the endpoint issued, where the scheme says (#299).
+ */
+export function apiKeyScheme(flavor: ServiceFlavor | undefined): ApiKeyScheme | undefined {
+  for (const scheme of toArray(flavor?.securitySchemes)) {
+    const name = (scheme as unknown as { eClass?: () => { getName?: () => string } }).eClass?.()?.getName?.();
+    if (name === 'ApiKeyScheme' || 'parameterName' in (scheme as object)) {
+      return scheme as ApiKeyScheme;
     }
   }
   return undefined;

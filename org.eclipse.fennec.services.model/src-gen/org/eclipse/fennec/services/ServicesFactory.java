@@ -358,6 +358,15 @@ public interface ServicesFactory extends EFactory {
 	ConnectionScheme createConnectionScheme();
 
 	/**
+	 * Returns a new object of class '<em>Api Key Scheme</em>'.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @return a new object of class '<em>Api Key Scheme</em>'.
+	 * @generated
+	 */
+	ApiKeyScheme createApiKeyScheme();
+
+	/**
 	 * Returns a new object of class '<em>Principal</em>'.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->

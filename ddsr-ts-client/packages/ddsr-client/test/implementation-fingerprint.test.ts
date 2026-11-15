@@ -55,6 +55,23 @@ describe('ServiceImplementationFingerprint (im1) — security schemes are endpoi
     expect(implementationFingerprint(goldenImplementation('secure-payment-impl.xmi'))).toBe(expected);
   });
 
+  it('an API key says where it travels — the same line as Java (#299)', () => {
+    const impl = goldenImplementation();
+    const flavor = toArray<Record<string, unknown>>((impl as Record<string, unknown>).flavors)[0];
+    const key = DDSRFactory.eINSTANCE.createApiKeyScheme();
+    key.name = 'api_key';
+    key.kind = 'API_KEY' as never;
+    key.parameterName = 'api_key';
+    const schemes = flavor.securitySchemes as unknown[] | { add: (v: unknown) => void };
+    if (Array.isArray(schemes)) schemes.push(key); else schemes.add(key);
+
+    expect(implementationCanonicalForm(impl)).toContain(
+      '    sch|ApiKeyScheme|api_key|kind=API_KEY|in=HEADER|parameterName=api_key\n');
+    const inTheHeader = implementationFingerprint(impl);
+    key.in = 'QUERY' as never;
+    expect(implementationFingerprint(impl)).not.toBe(inTheHeader);
+  });
+
   it('an implementation without schemes renders no sch line (extension rule)', () => {
     expect(implementationCanonicalForm(goldenImplementation())).not.toContain('sch|');
   });

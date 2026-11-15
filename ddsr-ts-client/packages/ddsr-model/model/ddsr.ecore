@@ -219,6 +219,15 @@
     <eLiterals name="BEARER_TOKEN"/>
     <eLiterals name="MUTUAL_TLS" value="1"/>
     <eLiterals name="CONNECTION" value="2"/>
+    <eLiterals name="API_KEY" value="3"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ApiKeyLocation">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="Where an API key travels on an HTTP call, as OpenAPI's 'in' of an apiKey scheme says."/>
+    </eAnnotations>
+    <eLiterals name="HEADER"/>
+    <eLiterals name="QUERY" value="1"/>
+    <eLiterals name="COOKIE" value="2"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="NamedElement" abstract="true" interface="true">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
@@ -915,7 +924,7 @@
       <details key="operationFlavorsCoverInterfaces" value="flavors->forAll(f | f.operationFlavors->forAll(of | serviceInterfaces->exists(si | si.operations->includes(of.operation))))"/>
       <details key="replacesIsNotSelf" value="replaces = null or replaces &lt;> self"/>
       <details key="authenticatedContractsHaveAScheme" value="flavors->forAll(f | f.securitySchemes->notEmpty() or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security &lt;> null and not op.security.authenticated) or (op.security = null and (si.security = null or not si.security.authenticated)))))"/>
-      <details key="scopesNeedAPerCallScheme" value="flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() &lt;> 'CONNECTION') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security &lt;> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))"/>
+      <details key="scopesNeedAPerCallScheme" value="flavors->forAll(f | f.securitySchemes->exists(s | s.kind.toString() &lt;> 'CONNECTION' and s.kind.toString() &lt;> 'API_KEY') or serviceInterfaces->forAll(si | si.operations->forAll(op | (op.security &lt;> null and op.security.scopes->isEmpty()) or (op.security = null and (si.security = null or si.security.scopes->isEmpty())))))"/>
       <details key="cutoverGraceNonNegative" value="cutoverGraceMillis >= 0"/>
     </eAnnotations>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
@@ -1262,6 +1271,22 @@
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
       <details key="documentation" value="Identity is established once per connection and enforced OUTSIDE the service: a messaging broker's authentication and ACL on the request and response topic trees (the consumer segment of a response topic is bound to the connection's identity, which is why request and response live in separate trees, #98), or a gateway that terminates authentication in front of a REST node. The serving node verifies nothing per call and this scheme says so explicitly, so that a document without any scheme is never mistaken for this one. Scopes cannot be checked per call under this scheme; a requirement that names scopes is therefore not satisfiable by it alone."/>
     </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ApiKeyScheme" eSuperTypes="#//SecurityScheme">
+    <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+      <details key="documentation" value="The caller presents a key the endpoint issued to it, in a header, a query parameter or a cookie — OpenAPI's apiKey scheme (#299). Describes endpoints that are not Fennec Services nodes, such as those a bridge announces; a Fennec Services node never serves with it, and a flavor whose only scheme is an API key is refused rather than served open. Which key a caller presents is configuration of the calling node (ApiKeySupplier), never part of a document. A key identifies a caller and carries no scopes: a requirement that names scopes is not satisfiable by it alone, as with a ConnectionScheme."/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="in" lowerBound="1" eType="#//ApiKeyLocation">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="Where the key travels."/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="parameterName" lowerBound="1"
+        eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString">
+      <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">
+        <details key="documentation" value="The name of the header, query parameter or cookie that carries the key, e.g. 'X-API-Key' or 'api_key'. Required: without it a caller cannot tell where to put the key."/>
+      </eAnnotations>
+    </eStructuralFeatures>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Principal">
     <eAnnotations source="http://www.eclipse.org/emf/2002/GenModel">

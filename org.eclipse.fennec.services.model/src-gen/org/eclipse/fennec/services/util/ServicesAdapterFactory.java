@@ -244,6 +244,10 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 				return createConnectionSchemeAdapter();
 			}
 			@Override
+			public Adapter caseApiKeyScheme(ApiKeyScheme object) {
+				return createApiKeySchemeAdapter();
+			}
+			@Override
 			public Adapter casePrincipal(Principal object) {
 				return createPrincipalAdapter();
 			}
@@ -988,6 +992,20 @@ public class ServicesAdapterFactory extends AdapterFactoryImpl {
 	 * @generated
 	 */
 	public Adapter createConnectionSchemeAdapter() {
+		return null;
+	}
+
+	/**
+	 * Creates a new adapter for an object of class '{@link org.eclipse.fennec.services.ApiKeyScheme <em>Api Key Scheme</em>}'.
+	 * <!-- begin-user-doc -->
+	 * This default implementation returns null so that we can easily ignore cases;
+	 * it's useful to ignore a case when inheritance will catch all the cases anyway.
+	 * <!-- end-user-doc -->
+	 * @return the new adapter.
+	 * @see org.eclipse.fennec.services.ApiKeyScheme
+	 * @generated
+	 */
+	public Adapter createApiKeySchemeAdapter() {
 		return null;
 	}
 

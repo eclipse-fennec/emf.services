@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.eclipse.fennec.services.ApiKeyScheme;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.MutualTlsScheme;
 import org.eclipse.fennec.services.SecurityRequirement;
@@ -107,6 +108,20 @@ public final class SecurityRequirements {
 		return flavor.getSecuritySchemes().stream()
 				.filter(MutualTlsScheme.class::isInstance)
 				.map(MutualTlsScheme.class::cast)
+				.findFirst().orElse(null);
+	}
+
+	/**
+	 * The API-key scheme a flavor offers, or {@code null}: a caller of it
+	 * presents a key the endpoint issued, where the scheme says (#299).
+	 */
+	public static ApiKeyScheme apiKeyScheme(ServiceFlavor flavor) {
+		if (flavor == null) {
+			return null;
+		}
+		return flavor.getSecuritySchemes().stream()
+				.filter(ApiKeyScheme.class::isInstance)
+				.map(ApiKeyScheme.class::cast)
 				.findFirst().orElse(null);
 	}
 }

@@ -23,6 +23,8 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
+import org.eclipse.fennec.services.ApiKeyLocation;
+import org.eclipse.fennec.services.ApiKeyScheme;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.Capability;
 import org.eclipse.fennec.services.ConnectionScheme;
@@ -125,6 +127,27 @@ class ServiceImplementationFingerprintTest {
 		assertThat(ServiceImplementationFingerprint.fingerprint(open))
 				.as("schemes are alternatives, their order says nothing")
 				.isEqualTo(declaredOneWay);
+	}
+
+	@Test
+	void anApiKeySaysWhereItTravels() throws Exception {
+		ServiceImplementation open = loadFixtureImplementation();
+		RestFlavor flavor = (RestFlavor) open.getFlavors().get(0);
+		ApiKeyScheme key = ServicesFactory.eINSTANCE.createApiKeyScheme();
+		key.setName("api_key");
+		key.setKind(SecuritySchemeKind.API_KEY);
+		key.setParameterName("api_key");
+		flavor.getSecuritySchemes().add(key);
+
+		assertThat(ServiceImplementationFingerprint.canonicalForm(open))
+				.as("the TS twin renders the same line (service-implementation-fingerprint.test.ts)")
+				.contains("    sch|ApiKeyScheme|api_key|kind=API_KEY|in=HEADER|parameterName=api_key\n");
+
+		String inTheHeader = ServiceImplementationFingerprint.fingerprint(open);
+		key.setIn(ApiKeyLocation.QUERY);
+		assertThat(ServiceImplementationFingerprint.fingerprint(open))
+				.as("a key in the query is called differently from one in a header")
+				.isNotEqualTo(inTheHeader);
 	}
 
 	@Test

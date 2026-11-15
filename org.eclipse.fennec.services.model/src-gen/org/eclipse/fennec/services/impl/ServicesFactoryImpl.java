@@ -94,6 +94,7 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 			case ServicesPackage.BEARER_TOKEN_SCHEME: return createBearerTokenScheme();
 			case ServicesPackage.MUTUAL_TLS_SCHEME: return createMutualTlsScheme();
 			case ServicesPackage.CONNECTION_SCHEME: return createConnectionScheme();
+			case ServicesPackage.API_KEY_SCHEME: return createApiKeyScheme();
 			case ServicesPackage.PRINCIPAL: return createPrincipal();
 			case ServicesPackage.SERVICE_REFERENCE: return createServiceReference();
 			case ServicesPackage.SERVICE_REGISTRATION: return createServiceRegistration();
@@ -177,6 +178,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return createConnectionStateFromString(eDataType, initialValue);
 			case ServicesPackage.SECURITY_SCHEME_KIND:
 				return createSecuritySchemeKindFromString(eDataType, initialValue);
+			case ServicesPackage.API_KEY_LOCATION:
+				return createApiKeyLocationFromString(eDataType, initialValue);
 			case ServicesPackage.API_TYPE:
 				return createApiTypeFromString(eDataType, initialValue);
 			default:
@@ -240,6 +243,8 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 				return convertConnectionStateToString(eDataType, instanceValue);
 			case ServicesPackage.SECURITY_SCHEME_KIND:
 				return convertSecuritySchemeKindToString(eDataType, instanceValue);
+			case ServicesPackage.API_KEY_LOCATION:
+				return convertApiKeyLocationToString(eDataType, instanceValue);
 			case ServicesPackage.API_TYPE:
 				return convertApiTypeToString(eDataType, instanceValue);
 			default:
@@ -652,6 +657,17 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	public ConnectionScheme createConnectionScheme() {
 		ConnectionSchemeImpl connectionScheme = new ConnectionSchemeImpl();
 		return connectionScheme;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	@Override
+	public ApiKeyScheme createApiKeyScheme() {
+		ApiKeySchemeImpl apiKeyScheme = new ApiKeySchemeImpl();
+		return apiKeyScheme;
 	}
 
 	/**
@@ -1373,6 +1389,26 @@ public class ServicesFactoryImpl extends EFactoryImpl implements ServicesFactory
 	 * @generated
 	 */
 	public String convertSecuritySchemeKindToString(EDataType eDataType, Object instanceValue) {
+		return instanceValue == null ? null : instanceValue.toString();
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public ApiKeyLocation createApiKeyLocationFromString(EDataType eDataType, String initialValue) {
+		ApiKeyLocation result = ApiKeyLocation.get(initialValue);
+		if (result == null) throw new IllegalArgumentException("The value '" + initialValue + "' is not a valid enumerator of '" + eDataType.getName() + "'");
+		return result;
+	}
+
+	/**
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @generated
+	 */
+	public String convertApiKeyLocationToString(EDataType eDataType, Object instanceValue) {
 		return instanceValue == null ? null : instanceValue.toString();
 	}
 

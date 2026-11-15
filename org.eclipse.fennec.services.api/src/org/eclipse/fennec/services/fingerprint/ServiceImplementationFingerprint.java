@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.eclipse.fennec.services.ApiKeyScheme;
 import org.eclipse.fennec.services.BearerTokenScheme;
 import org.eclipse.fennec.services.MessagingFlavor;
 import org.eclipse.fennec.services.MessagingOperationFlavor;
@@ -180,6 +181,9 @@ public final class ServiceImplementationFingerprint {
 						.append("|scopeClaim=").append(esc(bearer.getScopeClaim()));
 			} else if (scheme instanceof MutualTlsScheme mtls) {
 				line.append("|trustedIssuers=").append(ServiceDescriptionFingerprint.sortedList(mtls.getTrustedIssuers()));
+			} else if (scheme instanceof ApiKeyScheme apiKey) {
+				line.append("|in=").append(apiKey.getIn() != null ? apiKey.getIn().getLiteral() : "")
+						.append("|parameterName=").append(esc(apiKey.getParameterName()));
 			}
 			lines.add(line.toString());
 		}

@@ -52,7 +52,17 @@ public enum SecuritySchemeKind implements Enumerator {
 	 * @generated
 	 * @ordered
 	 */
-	CONNECTION(2, "CONNECTION", "CONNECTION");
+	CONNECTION(2, "CONNECTION", "CONNECTION"),
+
+	/**
+	 * The '<em><b>API KEY</b></em>' literal object.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #API_KEY_VALUE
+	 * @generated
+	 * @ordered
+	 */
+	API_KEY(3, "API_KEY", "API_KEY");
 
 	/**
 	 * The '<em><b>BEARER TOKEN</b></em>' literal value.
@@ -88,6 +98,17 @@ public enum SecuritySchemeKind implements Enumerator {
 	public static final int CONNECTION_VALUE = 2;
 
 	/**
+	 * The '<em><b>API KEY</b></em>' literal value.
+	 * <!-- begin-user-doc -->
+	 * <!-- end-user-doc -->
+	 * @see #API_KEY
+	 * @model
+	 * @generated
+	 * @ordered
+	 */
+	public static final int API_KEY_VALUE = 3;
+
+	/**
 	 * An array of all the '<em><b>Security Scheme Kind</b></em>' enumerators.
 	 * <!-- begin-user-doc -->
 	 * <!-- end-user-doc -->
@@ -98,6 +119,7 @@ public enum SecuritySchemeKind implements Enumerator {
 			BEARER_TOKEN,
 			MUTUAL_TLS,
 			CONNECTION,
+			API_KEY,
 		};
 
 	/**
@@ -157,6 +179,7 @@ public enum SecuritySchemeKind implements Enumerator {
 			case BEARER_TOKEN_VALUE: return BEARER_TOKEN;
 			case MUTUAL_TLS_VALUE: return MUTUAL_TLS;
 			case CONNECTION_VALUE: return CONNECTION;
+			case API_KEY_VALUE: return API_KEY;
 		}
 		return null;
 	}

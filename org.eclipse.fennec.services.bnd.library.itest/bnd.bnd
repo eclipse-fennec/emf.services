@@ -17,7 +17,7 @@ Test-Cases: ${classes;HIERARCHY_INDIRECTLY_ANNOTATED;org.junit.platform.commons.
 # The library's files, and the base version they have to agree with, as
 # resources of this bundle: what the test reads is what is shipped.
 -includeresource: \
-	library=../org.eclipse.fennec.services.bnd.library.project/library,\
+	@../org.eclipse.fennec.services.bnd.library.project/generated/org.eclipse.fennec.services.bnd.library.project.jar!/library/**,\
 	fennec.bnd=${workspace}/cnf/ext/fennec.bnd,\
 	@../org.eclipse.fennec.services.bnd.library.workspace/generated/org.eclipse.fennec.services.bnd.library.workspace.jar!/template/fennecServices.maven
 

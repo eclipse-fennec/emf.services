@@ -20,6 +20,7 @@ which say what a project compiles against and what a launch runs.
 | `enableFennecServicesSecurity` | project | bearer tokens: supply them, verify them |
 | `enableFennecServicesMqtt` | project | the MQTT transport: call, hear events, serve a contract on topics |
 | `enableFennecServicesAmqp` | project | the AMQP transport: call, serve a contract on routing keys |
+| `enableFennecServicesM2T` | project | the code generator's inputs: the m2t templates and `services.ecore`, named by `${fennec.services.templates}` and `${fennec.services.ecore}` ([Code generation](CODE_GENERATION.md#in-your-own-workspace)) |
 
 ## In the workspace
 
@@ -52,6 +53,7 @@ what the four run lists name.
 | `enableFennecServicesSecurity` | `…services.api` (`TokenSupplier`, `CallPrincipal`), `…security.jwt` (`SecurityNames`) |
 | `enableFennecServicesMqtt` | `…flavor.messaging` (channels, where answers go, QoS), for a project that names placements itself |
 | `enableFennecServicesAmqp` | `…flavor.messaging`, the same rules |
+| `enableFennecServicesM2T` | nothing — it only names the generator's inputs; the generated interface compiles against `enableFennecServicesClient` |
 
 ## In a launch
 

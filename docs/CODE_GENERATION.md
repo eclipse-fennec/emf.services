@@ -256,6 +256,54 @@ Not built yet, part of the open issue #25:
   for a template churns on every whitespace change, and what protects
   here is that the generated output is checked in and compiles.
 
+### In your own workspace
+
+A bnd workspace that is not this one generates with the same templates
+through the project library `enableFennecServicesM2T` (#303): it ships
+the templates and the registry model they read (`services.ecore`) and
+names them by macros — `${fennec.services.templates}` and
+`${fennec.services.ecore}` — so nothing is copied and the templates are
+the ones of the release the workspace uses. The generator is the
+workspace library `fennecM2T`; the generated interface compiles against
+`enableFennecServicesClient` (see [bnd libraries](BND_LIBRARIES.md)).
+
+From a contract document to a compiled interface, a project needs the
+contract (`model/my-api.xmi`), the Ecore of its payload
+(`model/my.ecore`, generated to Java by `fennecEMF` as usual) and a
+`JavaBinding` that names the packages (`model/my-java.xmi`, see the
+binding above):
+
+```properties
+src=${^src},src-gen,src-gen-api
+
+-library: enableEMF, enableFennecServicesClient, enableFennecServicesM2T
+
+-generate: \
+	model/my.ecore; \
+		generate = fennecEMF; \
+		ecore    = model/my.ecore; \
+		output   = src-gen,\
+	"model/my-api.xmi,model/my-java.xmi"; \
+		output   = src-gen-api/; \
+		generate = fennecM2T; \
+		ecore    = "${fennec.services.ecore},model/my.ecore"; \
+		model    = "model/my-java.xmi"; \
+		template = "${fennec.services.templates}/service-interface.mtl"; \
+		modules  = "${fennec.services.templates}/java-types.mtl"
+```
+
+Two things to know. The fileset in front of the attributes is the key
+bnd decides "up to date" by, and it must be relative to the project —
+the library's files are absolute paths in the workspace cache, so they
+stay out of it, and a new library version does not by itself regenerate
+(delete the output, or touch the binding). And each generation needs an
+output directory of its own: bnd empties it before it runs.
+
+The first user is the example consumer of the OpenAPI bridge
+(eclipse-fennec/emf.services.bridges), which generates the interface of
+a bridged Swagger Petstore this way and calls it through Remote Service
+Admin.
+
 ### Why the demo provider does not use the generated resource
 
 It did, briefly, and was moved back. Its endpoint is now served by the

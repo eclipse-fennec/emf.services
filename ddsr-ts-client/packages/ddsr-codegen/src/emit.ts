@@ -535,14 +535,23 @@ function eTypeUri(eType: unknown): string | undefined {
   if (!eType) return undefined;
   const proxyURI = (eType as { eProxyURI?: () => { toString(): string } | null }).eProxyURI?.();
   if (proxyURI) return proxyURI.toString();
+  type Pkg = { getNsURI?: () => string | undefined; getName?: () => string | undefined; getESuperPackage?: () => Pkg | null };
   const classifier = eType as {
-    getEPackage?: () => { getNsURI?: () => string | undefined } | null;
+    getEPackage?: () => Pkg | null;
     getName?: () => string | undefined;
   };
-  const nsURI = classifier.getEPackage?.()?.getNsURI?.();
   const name = classifier.getName?.();
   if (!name) return undefined;
-  return nsURI ? `${nsURI}#//${name}` : name;
+  // A class of a nested package is addressed from its root, as EMF does
+  // (`<root nsURI>#//<sub>/<Name>`) - the form a proxy carries, too.
+  let pkg = classifier.getEPackage?.() ?? null;
+  const path: string[] = [];
+  while (pkg?.getESuperPackage?.()) {
+    path.unshift(pkg.getName?.() ?? '');
+    pkg = pkg.getESuperPackage!();
+  }
+  const nsURI = pkg?.getNsURI?.();
+  return nsURI ? `${nsURI}#//${[...path, name].join('/')}` : name;
 }
 
 /**

@@ -155,6 +155,19 @@ describe('ServiceDescriptionFingerprint (sd1) — typed slots and multiplicity (
     );
   });
 
+  it('addresses a resolved class of a nested package from its root, as Java does', () => {
+    // An OpenAPI schema described inline: the codec puts its class into the
+    // sub-package `inline`. EMF (and so Java's sd1) addresses it as
+    // <root nsURI>#//inline/<Name>, and a proxy carries that same URI.
+    const root = { getNsURI: () => 'http://example.org/atlas/1.0', getName: () => 'atlas', getESuperPackage: () => null };
+    const inline = { getNsURI: () => 'http://example.org/atlas/1.0/inline', getName: () => 'inline', getESuperPackage: () => root };
+    const tally = { getName: () => 'Tally', getEPackage: () => inline };
+    const contract = typedInterface();
+    (contract.operations.get(0).returnValue as unknown as { eType: unknown }).eType = tally;
+
+    expect(canonicalForm(contract)).toContain('returnEType=http://example.org/atlas/1.0#//inline/Tally');
+  });
+
   it('separates a single instance from a list of them', () => {
     const canonical = canonicalForm(typedInterface())!;
     const [get, list] = canonical.split('\n').filter(l => l.startsWith('  O|'));

@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.eclipse.emf.ecore.EClassifier;
+import org.eclipse.emf.ecore.EPackage;
 import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.services.ModelReference;
@@ -91,9 +92,22 @@ final class PayloadModels {
 		// A proxy on the broker by design: the payload model is not here,
 		// and its href names the package.
 		String nsURI = type.eIsProxy() ? EcoreUtil.getURI(type).trimFragment().toString()
-				: type.getEPackage() != null ? type.getEPackage().getNsURI() : null;
+				: type.getEPackage() != null ? root(type.getEPackage()).getNsURI() : null;
 		if (nsURI != null && !nsURI.isBlank()) {
 			packages.add(nsURI);
 		}
+	}
+
+	/**
+	 * The package a contract pins: the root, since a pin carries a package
+	 * with its sub-packages — a class of a nested one (an OpenAPI schema
+	 * described inline, the codec's {@code inline}) is pinned with its root.
+	 */
+	private static EPackage root(EPackage ePackage) {
+		EPackage root = ePackage;
+		while (root.getESuperPackage() != null) {
+			root = root.getESuperPackage();
+		}
+		return root;
 	}
 }

@@ -114,6 +114,28 @@ class PayloadModelsTest {
 	}
 
 	@Test
+	void aClassOfANestedPackageIsPinnedWithItsRoot() throws IOException {
+		// An OpenAPI schema described inline: the codec gives it a class of the
+		// sub-package `inline`, and the contract pins the root, which carries it.
+		EPackage inline = EcoreFactory.eINSTANCE.createEPackage();
+		inline.setName("inline");
+		inline.setNsPrefix("inline");
+		inline.setNsURI(readings.getNsURI() + "/inline");
+		EClass tally = EcoreFactory.eINSTANCE.createEClass();
+		tally.setName("Tally");
+		inline.getEClassifiers().add(tally);
+		readings.getESubpackages().add(inline);
+		broker.useModels(store, true);
+		store.store(ecoreOf(readings));
+		ServiceInterface contract = contractPinning(FingerprintHelper.fingerprint(readings));
+		contract.getOperations().get(0).getReturnValue().setEType(tally);
+
+		Diagnostic accepted = broker.addCatalogEntry(contract, "provider-a");
+
+		assertThat(accepted.getSeverity()).as(accepted.getMessage()).isEqualTo(DiagnosticSeverity.OK);
+	}
+
+	@Test
 	void withoutASourceTheGateAsksNothingAboutPayloadModels() {
 		Diagnostic accepted = broker.addCatalogEntry(contractPinning("fp1:nobody-has-it"), "provider-a");
 		assertThat(accepted.getSeverity()).as(accepted.getMessage()).isEqualTo(DiagnosticSeverity.OK);

@@ -138,6 +138,8 @@ jobs:
             trivy/*.json
             bnd-update/*.md
           if-no-files-found: warn
+          # keeps a quarter of weekly reports to compare against
+          retention-days: 90
 
       - name: Fail on fixable HIGH/CRITICAL vulnerabilities
         run: |

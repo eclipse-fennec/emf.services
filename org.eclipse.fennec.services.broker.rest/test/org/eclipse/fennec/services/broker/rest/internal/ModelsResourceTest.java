@@ -14,17 +14,22 @@
 package org.eclipse.fennec.services.broker.rest.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
+import java.lang.annotation.Annotation;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.fennec.services.models.ModelDocument;
 import org.eclipse.fennec.services.models.ModelStore;
+import org.eclipse.fennec.services.xmi.codec.WireBody;
 import org.junit.jupiter.api.Test;
 
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
 /** The payload models on the broker's REST face (#256). */
@@ -84,6 +89,63 @@ class ModelsResourceTest {
 
 		assertThat(resource().get("http://example.org/readings/1.0", "fp1:other").getStatus()).isEqualTo(404);
 		assertThat(resource().get(null, null).getStatus()).isEqualTo(400);
+	}
+
+	@Test
+	void aModelAboveTheBackstopIsRefusedWith413WhenNothingIsConfigured() {
+		byte[] large = model(WireBody.MAX_BYTES + 1);
+
+		assertThatThrownBy(() -> resource().put(new ByteArrayInputStream(large)))
+				.isInstanceOfSatisfying(WebApplicationException.class,
+						refused -> assertThat(refused.getResponse().getStatus()).isEqualTo(413));
+		assertThat(store.kept).isEmpty();
+	}
+
+	@Test
+	void zeroInTheConfigurationKeepsTheBackstop() {
+		ModelsResource resource = resource();
+		resource.activate(limit(0));
+
+		assertThatThrownBy(() -> resource.put(new ByteArrayInputStream(model(WireBody.MAX_BYTES + 1))))
+				.isInstanceOfSatisfying(WebApplicationException.class,
+						refused -> assertThat(refused.getResponse().getStatus()).isEqualTo(413));
+	}
+
+	@Test
+	void theConfiguredLimitLetsALargerModelIn() throws Exception {
+		int limit = 3 * WireBody.MAX_BYTES;
+		ModelsResource resource = resource();
+		resource.activate(limit(limit));
+
+		Response created = resource.put(new ByteArrayInputStream(model(limit)));
+		assertThat(created.getStatus()).as("exactly at the limit").isEqualTo(201);
+
+		assertThatThrownBy(() -> resource.put(new ByteArrayInputStream(model(limit + 1))))
+				.as("one byte above it")
+				.isInstanceOfSatisfying(WebApplicationException.class,
+						refused -> assertThat(refused.getResponse().getStatus()).isEqualTo(413));
+	}
+
+	/** A synthetic model the fake store accepts, padded to exactly {@code size} bytes. */
+	private static byte[] model(int size) {
+		byte[] head = "ecore:http://example.org/large/1.0#".getBytes(StandardCharsets.UTF_8);
+		byte[] body = Arrays.copyOf(head, size);
+		Arrays.fill(body, head.length, size, (byte) 'x');
+		return body;
+	}
+
+	private static ModelsResource.Config limit(long maxBytes) {
+		return new ModelsResource.Config() {
+			@Override
+			public Class<? extends Annotation> annotationType() {
+				return ModelsResource.Config.class;
+			}
+
+			@Override
+			public long models_max_bytes() {
+				return maxBytes;
+			}
+		};
 	}
 
 	@Test

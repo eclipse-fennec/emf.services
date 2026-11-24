@@ -30,7 +30,8 @@
 	{
 		"domain": "$[env:DDSR_DOMAIN;default=]",
 		"models.strict": "$[env:DDSR_MODELS_STRICT;default=false]",
-		"models.target": "(fennec.models=$[env:DDSR_MODELS;default=embedded])"
+		"models.target": "(fennec.models=$[env:DDSR_MODELS;default=embedded])",
+		"models.max.bytes": "$[env:DDSR_MODELS_MAX_BYTES;default=0]"
 	},
 	"org.eclipse.fennec.services.models.atlas":
 	{

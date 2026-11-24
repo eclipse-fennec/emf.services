@@ -36,7 +36,7 @@ Base URL: `http://<host>:8887/ddsr/rest` — everything speaks
 | `GET /consumers/{consumerId}` | what the broker believes | session + acquired reference-id stubs |
 | `DELETE /consumers/{consumerId}` | shutdown-notify | releases all leases |
 | `GET /events` | `BrokerEvents.events()`, a broadcast over SSE (#252) | optional `?consumerId=` ties the connection to that consumer's session |
-| `PUT /models` | hand in a payload model (#256) | body: the Ecore of one package; `201` with the fingerprint the broker computed (`text/plain`, also in `X-Fennec-Model-Fingerprint`); `400` for a document that defines no package; needs `service-provider` |
+| `PUT /models` | hand in a payload model (#256) | body: the Ecore of one package; `201` with the fingerprint the broker computed (`text/plain`, also in `X-Fennec-Model-Fingerprint`); `400` for a document that defines no package; `413` for a document larger than `models.max.bytes` (`DDSR_MODELS_MAX_BYTES`, 1 MiB by default); needs `service-provider` |
 | `GET /models?nsURI=…[&fingerprint=fp1:…]` | fetch a payload model | the Ecore from the broker's model source (its own store, or the Model Atlas with `DDSR_MODELS=atlas`), `404` when it has no such version; needs `service-consumer` |
 
 Governance calls carry the caller identity in the `X-DDSR-Requestor`

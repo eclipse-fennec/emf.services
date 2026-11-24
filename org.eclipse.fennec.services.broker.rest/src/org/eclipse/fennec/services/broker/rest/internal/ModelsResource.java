@@ -23,6 +23,9 @@ import org.eclipse.fennec.services.models.ModelSource;
 import org.eclipse.fennec.services.models.ModelStore;
 import org.eclipse.fennec.services.security.jwt.SecurityNames;
 import org.eclipse.fennec.services.xmi.codec.WireBody;
+import org.eclipse.fennec.services.xmi.codec.XmiCodecException;
+import org.eclipse.fennec.services.xmi.codec.jakartars.XmiHttpErrors;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Reference;
@@ -59,6 +62,12 @@ import jakarta.ws.rs.core.Response;
  * <p>What is fetched comes from the broker's model source - the same one
  * its gate asks, named by {@code models.target} in the broker's
  * configuration; what is handed in goes to the broker's own store.
+ *
+ * <p>How large a model may be handed in is {@code models.max.bytes} in
+ * the same configuration ({@code DDSR_MODELS_MAX_BYTES}): a generated
+ * model of a whole protocol is easily several megabytes, more than the
+ * 1 MiB backstop of the registry's own traffic. Zero or nothing keeps
+ * that backstop; a larger body is refused with 413.
  */
 @RequireHttpWhiteboard
 @RequireJakartarsWhiteboard
@@ -81,6 +90,21 @@ public class ModelsResource {
 	@Reference(name = "models")
 	ModelSource source;
 
+	/** The part of the broker's configuration this resource reads. */
+	@interface Config {
+
+		/** The largest model {@code PUT /models} reads; not positive means {@link WireBody#MAX_BYTES}. */
+		long models_max_bytes() default 0;
+	}
+
+	/** The largest body {@link #put} reads; set on activation, the backstop until then. */
+	long maxBytes = WireBody.MAX_BYTES;
+
+	@Activate
+	void activate(Config config) {
+		maxBytes = WireBody.effective(config.models_max_bytes());
+	}
+
 	@PUT
 	@Consumes({ MediaType.APPLICATION_XML, MediaType.TEXT_XML, "application/xmi+xml", MediaType.APPLICATION_OCTET_STREAM })
 	@Produces(MediaType.TEXT_PLAIN)
@@ -91,7 +115,9 @@ public class ModelsResource {
 		}
 		ModelDocument kept;
 		try {
-			kept = store.store(WireBody.readFully(entityStream));
+			kept = store.store(WireBody.readFully(entityStream, maxBytes));
+		} catch (XmiCodecException refusal) {
+			throw XmiHttpErrors.toHttp(refusal);
 		} catch (IllegalArgumentException unreadable) {
 			return Response.status(Response.Status.BAD_REQUEST).entity(unreadable.getMessage()).build();
 		}

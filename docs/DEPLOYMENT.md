@@ -73,6 +73,7 @@ interpolation plugin. The defaults are the ones
 | `DDSR_HTTP_PORT` | `8887` | Port the broker listens on (inside the container). |
 | `DDSR_HTTP_HOST` | `0.0.0.0` | Interface the broker binds. |
 | `DDSR_MODELS_STRICT` | `false` | Refuse a contract whose slots are typed with a payload model it does not pin in its `models` (#256). Pinned models must resolve in the broker's model source either way; see [Security](SECURITY.md) (the gate). |
+| `DDSR_MODELS_MAX_BYTES` | `0` | The largest payload model `PUT /models` accepts, in bytes (`models.max.bytes`). `0` keeps the 1 MiB that bounds every other broker body; a larger model is refused with `413`. A model generated from a whole protocol can be several megabytes. The model is held in memory, so allow for it in the heap. |
 | `DDSR_MODELS` | `embedded` | The broker's source of payload models (#256): `embedded`, the store in the broker that providers hand their models to, or `atlas`, a Model Atlas that holds the released ones (the next three rows). |
 | `DDSR_MODELS_ATLAS_URI` | *(empty)* | Base URI of the Model Atlas REST API, e.g. `http://atlas:8080/atlas/rest`. Empty means no atlas source, without an error; with `DDSR_MODELS=atlas` the broker then waits for one. |
 | `DDSR_MODELS_ATLAS_SCOPE` | *(empty)* | The atlas scope the payload models are read from. Required with a URI. |

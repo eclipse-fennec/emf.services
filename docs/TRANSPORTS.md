@@ -579,7 +579,11 @@ A body is attacker input, and how much of it a node holds in memory is
 not the sender's decision. Every inbound document is therefore read
 with a bound, and the bound is **1 MiB** wherever nobody says
 otherwise — which is what broker traffic (catalog, publish, lookup)
-needs and stays at.
+needs and stays at. The one broker body that can be larger is a
+payload model handed in with `PUT /models` (#256): its bound is
+`models.max.bytes` in the broker's core configuration
+(`DDSR_MODELS_MAX_BYTES`, see [Deployment](DEPLOYMENT.md)), with the
+same 1 MiB when it is `0` and the same `413` above it.
 
 A deployment that serves an operation taking a large model raises it
 where it configures the serving part, with `max.body.bytes`:

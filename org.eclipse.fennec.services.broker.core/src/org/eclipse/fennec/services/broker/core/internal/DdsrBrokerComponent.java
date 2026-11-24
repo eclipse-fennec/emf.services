@@ -170,6 +170,11 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 		@AttributeDefinition(name = "Payload models: source", description = "Filter selecting the ModelSource: "
 				+ "(fennec.models=embedded) for the broker's own store, (fennec.models=atlas) for the Model Atlas.")
 		String models_target() default "(" + ModelSource.PROPERTY + "=embedded)";
+
+		@AttributeDefinition(name = "Payload models: largest model", description = "How many bytes of a model "
+				+ "PUT /models reads before it refuses the model with 413. Zero leaves the default of one "
+				+ "megabyte.", required = false)
+		long models_max_bytes() default 0;
 	}
 
 	/**

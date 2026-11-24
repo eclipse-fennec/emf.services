@@ -26,11 +26,11 @@
 	junit-platform-engine;version='[1.14.2,1.14.3)',\
 	junit-platform-launcher;version='[1.14.2,1.14.3)',\
 	net.bytebuddy.byte-buddy;version='[1.18.4,1.18.5)',\
-	org.apache.felix.configadmin;version='[1.9.26,1.9.27)',\
+	org.apache.felix.configadmin;version='[1.10.0,1.10.1)',\
 	org.apache.felix.scr;version='[2.3.0,2.3.1)',\
-	org.eclipse.emf.common;version='[2.44.0,2.44.1)',\
-	org.eclipse.emf.ecore;version='[2.41.0,2.41.1)',\
-	org.eclipse.emf.ecore.xmi;version='[2.39.0,2.39.1)',\
+	org.eclipse.emf.common;version='[2.46.0,2.46.1)',\
+	org.eclipse.emf.ecore;version='[2.43.0,2.43.1)',\
+	org.eclipse.emf.ecore.xmi;version='[2.41.0,2.41.1)',\
 	org.eclipse.fennec.emf.osgi.component.minimal;version='[1.1.0,1.1.1)',\
 	org.eclipse.fennec.services.api;version=snapshot,\
 	org.eclipse.fennec.services.client.java;version=snapshot,\

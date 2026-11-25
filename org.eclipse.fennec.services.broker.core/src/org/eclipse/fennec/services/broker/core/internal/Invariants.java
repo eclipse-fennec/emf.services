@@ -14,15 +14,22 @@ package org.eclipse.fennec.services.broker.core.internal;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 import org.eclipse.emf.common.util.Diagnostic;
+import org.eclipse.emf.common.util.DiagnosticChain;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.util.Diagnostician;
+import org.eclipse.emf.ecore.impl.EValidatorRegistryImpl;
 import org.eclipse.emf.ecore.util.EObjectValidator;
+import org.eclipse.fennec.services.SecurityScheme;
+import org.eclipse.fennec.services.SecuritySchemeKind;
+import org.eclipse.fennec.services.ServiceFlavor;
+import org.eclipse.fennec.services.ServiceImplementation;
 import org.eclipse.fennec.services.ServicesPackage;
 import org.eclipse.fennec.services.util.ServicesValidator;
 
@@ -81,6 +88,47 @@ final class Invariants {
 	 * @return the ERROR messages joined, or empty
 	 */
 	static Optional<String> violations(EObject document) {
+		return violations(document, false);
+	}
+
+	/**
+	 * Validates one of the broker's own implementations on an open node
+	 * (#320): every invariant as {@link #violations(EObject)} asks it,
+	 * except {@code scopesNeedAPerCallScheme} — and that one only when
+	 * {@link #onOpenNode(ServiceImplementation)} holds. Otherwise the
+	 * document is asked in full.
+	 *
+	 * @param implementation the broker's own implementation
+	 * @return the ERROR messages joined, or empty
+	 */
+	static Optional<String> violationsOnOpenNode(ServiceImplementation implementation) {
+		return violations(implementation, onOpenNode(implementation));
+	}
+
+	/**
+	 * Whether every flavor of the implementation names a scheme, and only
+	 * {@code CONNECTION} schemes: the model's statement that the node
+	 * checks nothing per call (SECURITY.md §2). A flavor with no scheme,
+	 * or with any other one, is not an open node's announcement.
+	 */
+	static boolean onOpenNode(ServiceImplementation implementation) {
+		if (implementation.getFlavors().isEmpty()) {
+			return false;
+		}
+		for (ServiceFlavor flavor : implementation.getFlavors()) {
+			if (flavor.getSecuritySchemes().isEmpty()) {
+				return false;
+			}
+			for (SecurityScheme scheme : flavor.getSecuritySchemes()) {
+				if (scheme.getKind() != SecuritySchemeKind.CONNECTION) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	private static Optional<String> violations(EObject document, boolean waiveScopesOnOpenNode) {
 		if (!armed()) {
 			return Optional.empty();
 		}
@@ -89,7 +137,7 @@ final class Invariants {
 		// have gone through that path. Idempotent, same thing init()
 		// would have done.
 		EValidator.Registry.INSTANCE.putIfAbsent(ServicesPackage.eINSTANCE, ServicesValidator.INSTANCE);
-		Diagnostic diagnostic = Diagnostician.INSTANCE.validate(document);
+		Diagnostic diagnostic = (waiveScopesOnOpenNode ? OPEN_NODE : Diagnostician.INSTANCE).validate(document);
 		List<String> errors = messages(diagnostic, Diagnostic.ERROR);
 		if (errors.isEmpty()) {
 			List<String> warnings = messages(diagnostic, Diagnostic.WARNING);
@@ -104,6 +152,32 @@ final class Invariants {
 		// whoever looks at the broker rather than at the publisher.
 		LOG.warning("[DDSR] document refused by the model's invariants: " + violations);
 		return Optional.of(violations);
+	}
+
+	/**
+	 * The validator of the model with the one invariant an open broker's
+	 * own announcement is spared (#320). A subclass rather than a filter
+	 * over messages: the delegate's diagnostics carry no code of their
+	 * own, and a constraint not asked cannot be misread.
+	 */
+	private static final class OpenNodeValidator extends ServicesValidator {
+		@Override
+		public boolean validateServiceImplementation_scopesNeedAPerCallScheme(
+				ServiceImplementation serviceImplementation, DiagnosticChain diagnostics,
+				Map<Object, Object> context) {
+			return true;
+		}
+	}
+
+	/**
+	 * A diagnostician that asks {@link OpenNodeValidator} for this model
+	 * and the global registry for everything else.
+	 */
+	private static final Diagnostician OPEN_NODE;
+	static {
+		EValidatorRegistryImpl registry = new EValidatorRegistryImpl(EValidator.Registry.INSTANCE);
+		registry.put(ServicesPackage.eINSTANCE, new OpenNodeValidator());
+		OPEN_NODE = new Diagnostician(registry);
 	}
 
 	private static boolean armed() {

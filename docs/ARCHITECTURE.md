@@ -138,9 +138,10 @@ org.eclipse.fennec.services.broker.rest         # JAX-RS endpoints
                                    #   /events (BrokerEvents.events(), a broadcast
                                    #     over SSE, #252)
                                    #   /registry
-                                   #   BrokerSelfPublisher: reads the four
-                                   #     API documents, puts every contract into
-                                   #     the catalog and publishes the
+                                   #   offers the four API documents as
+                                   #     BrokerApiDocument services; broker.core's
+                                   #     BrokerSelfPublisher puts every contract
+                                   #     into the catalog and publishes the
                                    #     implementation — no flavor in code any more
                                    #   /references is generic too since #88: the
                                    #     rule for what travels with an answer
@@ -430,14 +431,17 @@ inspect `severity` and `code` instead of catching a
 
 ### 3.1 Self-publish (the broker registers itself)
 
-In process — no wire. The `BrokerSelfPublisher` puts four
-ServiceInterfaces (`BrokerCatalog`, `BrokerImplementations`,
-`BrokerLookup`, `BrokerEvents`) into the catalog and publishes the
-provider `ddsr-broker` with a RestFlavor `host=<the public.url authority>`,
-`basePath=<the public.url path>`. A bundle serving another contract
-beside the broker offers its document as a `BrokerApiDocument`, and the
-self-publisher announces it the same way — the tag overlay's `Tags` does
-(#287); it is withdrawn when the service goes.
+In process — no wire. The `BrokerSelfPublisher` (broker.core, private
+package) puts four ServiceInterfaces (`BrokerCatalog`,
+`BrokerImplementations`, `BrokerLookup`, `BrokerEvents`) into the catalog
+and publishes the provider `ddsr-broker` with a RestFlavor
+`host=<the public.url authority>`, `basePath=<the public.url path>`. The
+four documents live in broker.rest, which serves them, and reach the
+publisher as `BrokerApiDocument` services. A bundle serving another
+contract beside the broker offers its document the same way, and the
+self-publisher announces it like the broker's own — the tag overlay's
+`Tags` does (#287); it is withdrawn when the service goes. Its
+configuration PID is still `org.eclipse.fennec.services.broker.rest`.
 
 ### 3.2 A remote publish (`PaymentPublisher` → broker)
 

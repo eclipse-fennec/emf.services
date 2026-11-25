@@ -11,7 +11,7 @@
  *   Data In Motion Consulting - initial implementation
  ********************************************************************/
 
-package org.eclipse.fennec.services.broker.rest.internal;
+package org.eclipse.fennec.services.broker.core.internal;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,10 +64,12 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * implementation index. Eat-your-own-dogfood: the broker becomes the
  * first entry in the registry it provides.
  *
- * <p>At {@code @Activate} it reads the three API documents from the
- * bundle — BrokerCatalog, BrokerImplementations, BrokerLookup — puts each
- * contract in the catalog and announces the implementation that serves
- * it. Nothing about those implementations is written here: which
+ * <p>The broker's own API documents — BrokerCatalog,
+ * BrokerImplementations, BrokerLookup, BrokerEvents — live in broker.rest,
+ * which serves them, and reach this publisher as {@link BrokerApiDocument}
+ * services like any other document offered beside the broker. For each it
+ * puts the contract in the catalog and announces the implementation that
+ * serves it. Nothing about those implementations is written here: which
  * operations, which paths, where every argument travels and which error
  * is which status all live in the documents, and the same documents are
  * what the generic REST distribution answers requests by. That is the
@@ -79,8 +81,13 @@ import org.osgi.service.metatype.annotations.ObjectClassDefinition;
  * it, so a consumer gets a self-contained flavor.
  *
  * <p>A bundle that serves another contract beside the broker offers its
- * document as a {@link BrokerApiDocument}; it is announced the same way,
- * and withdrawn when the service goes (#287).
+ * document the same way; it is announced like the broker's own, and
+ * withdrawn when the service goes (#287).
+ *
+ * <p>The publisher lives in broker.core, in a private package, because in
+ * mode none it announces through a publish that waives one invariant
+ * (#320, {@link DdsrBrokerComponent#publishOnOpenNode}). That publish is
+ * package-private and served to no other bundle and on no transport.
  *
  * <p>Three announcements, one per contract — each is its own
  * implementation with its own base path, which is also how the generic
@@ -155,7 +162,7 @@ public final class BrokerSelfPublisher {
 
 	private volatile Config config;
 
-	/** What other bundles serve beside the broker, as they offered it (#287). */
+	/** What is served beside the broker — its own four and other bundles' — as offered (#287). */
 	private final Map<BrokerApiDocument, Announced> offered = new ConcurrentHashMap<>();
 
 	/** One announcement of an offered document, so it can be withdrawn with it. */
@@ -165,22 +172,15 @@ public final class BrokerSelfPublisher {
 	@Activate
 	void activate(Config config) {
 		this.config = config;
-		for (String document : List.of("broker-catalog-api.xmi", "broker-implementations-api.xmi",
-				"broker-lookup-api.xmi", "broker-events-api.xmi")) {
-			try {
-				announce(readBundle(document), URI.create(config.public_url()));
-			} catch (Throwable failure) {
-				LOG.log(Level.WARNING, "[DDSR] BrokerSelfPublisher: " + document + " failed", failure);
-			}
-		}
 		for (BrokerApiDocument document : List.copyOf(offered.keySet())) {
 			announceOffered(document);
 		}
 	}
 
 	/**
-	 * A contract another bundle serves beside the broker: announced like
-	 * the broker's own, with the same address and scheme (#287).
+	 * A contract served beside the broker — its own four from broker.rest,
+	 * or another bundle's: announced with the broker's address and scheme
+	 * (#287).
 	 */
 	@Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
 	void addDocument(BrokerApiDocument document) {
@@ -274,7 +274,17 @@ public final class BrokerSelfPublisher {
 		}
 
 		provider.setSymbolicName("org.eclipse.fennec.services.broker");
-		Diagnostic published = implementations.publishImplementation(provider, implementation);
+		// In mode none the broker's contracts keep the roles they name in
+		// every mode (sd1 does not change with the deployment), and the
+		// flavor says that this node checks nothing per call. That pairing
+		// is what scopesNeedAPerCallScheme refuses of any other provider;
+		// for the open broker it is the documented state (SECURITY.md §7b,
+		// §7c), so its own announcement is spared that one invariant (#320).
+		// Only through this bundle's own broker: a BrokerImplementations of
+		// another bundle gets the publish every provider gets.
+		Diagnostic published = isOpen(config) && implementations instanceof DdsrBrokerComponent own
+				? own.publishOnOpenNode(provider, implementation)
+				: implementations.publishImplementation(provider, implementation);
 		if (published.getSeverity() == DiagnosticSeverity.ERROR) {
 			LOG.warning("[DDSR] self-publish of " + contract.getName() + " failed: code="
 					+ published.getCode() + " " + published.getMessage());
@@ -355,15 +365,6 @@ public final class BrokerSelfPublisher {
 	 * reference from the flavor into the contract is then intra-document
 	 * and resolves wherever the file is read.
 	 */
-	private List<EObject> readBundle(String resourceName) throws IOException {
-		try (InputStream in = getClass().getClassLoader().getResourceAsStream(resourceName)) {
-			if (in == null) {
-				throw new IOException("bundle resource not found: " + resourceName);
-			}
-			return rootsOf(in, resourceName);
-		}
-	}
-
 	private List<EObject> rootsOf(InputStream in, String name) throws IOException {
 		List<EObject> roots = XmiCodec.readBundle(in, rsObjects).roots();
 		if (roots.size() != 2 || !(roots.get(0) instanceof ServiceProvider)
@@ -371,6 +372,11 @@ public final class BrokerSelfPublisher {
 			throw new IOException(name + " must hold a ServiceProvider and the ServiceInterface it serves, in that order");
 		}
 		return roots;
+	}
+
+	/** Mode none: the deployment's explicit choice of an open broker. */
+	static boolean isOpen(Config config) {
+		return "none".equals(config.auth_mode() == null ? "" : config.auth_mode().strip());
 	}
 
 	/**

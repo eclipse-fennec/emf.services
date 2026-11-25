@@ -548,9 +548,23 @@ Because the documents now demand authentication, the broker's
 self-published flavors name how it is proven: in mode bearer the issuer
 its verifier accepts, in mode none a `ConnectionScheme` — the model's
 statement that this node checks nothing per call. The contracts, and
-their sd1, are the same in both modes. The TypeScript broker stubs
-(`@ddsr/stubs`) are regenerated from a catalog that carries the same
-requirements.
+their sd1, are the same in both modes. A connection scheme cannot check
+the roles those contracts name, which is what `scopesNeedAPerCallScheme`
+refuses of any provider; for the open broker it is the documented state.
+So in mode none the broker's self-publisher announces through a publish
+that waives that one invariant, and only for a document every flavor of
+which is behind `CONNECTION` schemes alone. Every other invariant still
+holds, and every other publisher is held to all of them (#320). That
+publish is no API: it is package-private in a private package of
+broker.core, where the self-publisher lives, and served on no transport.
+What remains is the documents the self-publisher announces: they come
+as `BrokerApiDocument` services, the broker's own four from broker.rest,
+so a bundle in the same framework that registers one gets the waiver
+too. It can only announce endpoints on the broker itself — the
+self-publisher sets host, base path and scheme from its own
+configuration. The TypeScript
+broker stubs (`@ddsr/stubs`) are regenerated from a catalog that carries
+the same requirements.
 
 A deployment gives its clients the roles they need, and points the
 broker's verifier at where they are: `DDSR_JWT_SCOPE_CLAIM=realm_access.roles`

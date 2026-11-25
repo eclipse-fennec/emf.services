@@ -20,9 +20,10 @@ import java.net.URL;
  * A contract served beside the broker that the broker announces as its
  * own (#287).
  *
- * <p>The broker announces its own API from documents in its bundle: each
- * holds the provider that serves a contract and the contract, the same
- * document the generic REST distribution serves it from. A bundle that
+ * <p>The broker announces its own API from documents: each holds the
+ * provider that serves a contract and the contract, the same document the
+ * generic REST distribution serves it from. The broker's REST bundle
+ * offers its four documents as this service too (#320). A bundle that
  * serves another contract beside the broker — the tag overlay, say —
  * offers its document as this service, and the broker announces it the
  * same way: the contract into the catalog, the implementation with the

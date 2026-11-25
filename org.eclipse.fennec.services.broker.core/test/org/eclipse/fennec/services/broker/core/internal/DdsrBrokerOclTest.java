@@ -25,6 +25,7 @@ import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.EValidator;
 import org.eclipse.emf.ecore.util.Diagnostician;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclEngineImpl;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclSettingDelegateFactory;
 import org.eclipse.fennec.m2x.ocl.engine.internal.OclValidationDelegateFactory;
@@ -569,6 +570,87 @@ class DdsrBrokerOclTest {
 				.as("with a scheme the same document is taken")
 				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
 		assertThat(broker.getServiceReferences("Secure", null, null)).hasSize(1);
+	}
+
+	// ------------------------------------------------------------------
+	// The open broker announcing itself (#320)
+	// ------------------------------------------------------------------
+
+	/** A contract whose operation names a role, as the broker's own do. */
+	private ServiceImplementation scopedOnTheCatalog(String name) {
+		ServiceInterface contract = serviceInterface(name, "find");
+		contract.setSecurity(requirement(true, "service-consumer"));
+		assertThat(broker.addCatalogEntry(contract, "test").getSeverity().getValue())
+				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
+		ServiceInterface sent = serviceInterface(name, "find");
+		sent.setSecurity(requirement(true, "service-consumer"));
+		return implementationOf(sent);
+	}
+
+	@Test
+	void theOpenBrokerAnnouncesItsOwnScopedContracts() {
+		ServiceImplementation impl = scopedOnTheCatalog("Lookup");
+		impl.getFlavors().get(0).getSecuritySchemes().add(connection());
+		ServiceProvider provider = (ServiceProvider) impl.eContainer();
+
+		var refusal = broker.publishImplementation(provider, impl);
+		assertThat(refusal.getCode())
+				.as("any other publisher is held to the invariant")
+				.isEqualTo(DdsrDiagnostics.CODE_IMPL_INVALID);
+		assertThat(refusal.getMessage()).contains("scopesNeedAPerCallScheme");
+		assertThat(broker.getServiceReferences("Lookup", null, null)).isEmpty();
+
+		assertThat(broker.publishOnOpenNode(provider, impl).getSeverity().getValue())
+				.as("the open broker's own announcement is spared that one invariant")
+				.isLessThan(DiagnosticSeverity.ERROR_VALUE);
+		assertThat(broker.getServiceReferences("Lookup", null, null)).hasSize(1);
+	}
+
+	@Test
+	void theWaiverHoldsOnlyBehindConnectionSchemes() {
+		ServiceImplementation withKey = scopedOnTheCatalog("Keyed");
+		ApiKeyScheme key = ServicesFactory.eINSTANCE.createApiKeyScheme();
+		key.setName("api_key");
+		key.setKind(SecuritySchemeKind.API_KEY);
+		key.setParameterName("api_key");
+		withKey.getFlavors().get(0).getSecuritySchemes().add(key);
+		assertThat(broker.publishOnOpenNode((ServiceProvider) withKey.eContainer(), withKey).getMessage())
+				.as("an API key is no statement of an open node")
+				.contains("scopesNeedAPerCallScheme");
+
+		ServiceImplementation mixed = scopedOnTheCatalog("Mixed");
+		mixed.getFlavors().get(0).getSecuritySchemes().add(connection());
+		RestFlavor second = ServicesFactory.eINSTANCE.createRestFlavor();
+		second.setName("mixed-key");
+		second.setBasePath("/keyed");
+		ApiKeyScheme secondKey = EcoreUtil.copy(key);
+		second.getSecuritySchemes().add(secondKey);
+		mixed.getFlavors().add(second);
+		assertThat(broker.publishOnOpenNode((ServiceProvider) mixed.eContainer(), mixed).getMessage())
+				.as("every flavor has to be behind a connection scheme, not one of them")
+				.contains("scopesNeedAPerCallScheme");
+
+		ServiceImplementation bare = scopedOnTheCatalog("Bare");
+		assertThat(broker.publishOnOpenNode((ServiceProvider) bare.eContainer(), bare).getMessage())
+				.as("a flavor without a scheme is no open node either")
+				.contains("authenticatedContractsHaveAScheme");
+		assertThat(broker.getServiceReferences("Keyed", null, null)).isEmpty();
+		assertThat(broker.getServiceReferences("Mixed", null, null)).isEmpty();
+		assertThat(broker.getServiceReferences("Bare", null, null)).isEmpty();
+	}
+
+	@Test
+	void theOpenBrokerIsHeldToEveryOtherInvariant() {
+		ServiceImplementation impl = scopedOnTheCatalog("SelfReplacing");
+		impl.getFlavors().get(0).getSecuritySchemes().add(connection());
+		impl.setReplaces(impl);
+
+		var refusal = broker.publishOnOpenNode((ServiceProvider) impl.eContainer(), impl);
+		assertThat(refusal.getCode()).isEqualTo(DdsrDiagnostics.CODE_IMPL_INVALID);
+		assertThat(refusal.getMessage())
+				.contains("replacesIsNotSelf")
+				.doesNotContain("scopesNeedAPerCallScheme");
+		assertThat(broker.getServiceReferences("SelfReplacing", null, null)).isEmpty();
 	}
 
 	@Test

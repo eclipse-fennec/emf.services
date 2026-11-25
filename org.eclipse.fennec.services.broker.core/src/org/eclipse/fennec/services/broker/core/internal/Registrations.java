@@ -137,6 +137,20 @@ final class Registrations implements Retirement, Republication {
 		}
 	}
 	public Diagnostic publishImplementation(ServiceProvider provider, ServiceImplementation implementation) {
+		return publish(provider, implementation, false);
+	}
+
+	/**
+	 * The broker's own implementation on an open node (#320): published
+	 * as any other, with {@code scopesNeedAPerCallScheme} waived when
+	 * every flavor is behind {@code CONNECTION} schemes only — see
+	 * {@link Invariants#violationsOnOpenNode(ServiceImplementation)}.
+	 */
+	Diagnostic publishOnOpenNode(ServiceProvider provider, ServiceImplementation implementation) {
+		return publish(provider, implementation, true);
+	}
+
+	private Diagnostic publish(ServiceProvider provider, ServiceImplementation implementation, boolean ownOnOpenNode) {
 		if (provider == null || implementation == null) {
 			return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_OWNERSHIP_VIOLATION,
 					"provider and implementation must not be null");
@@ -174,7 +188,8 @@ final class Registrations implements Retirement, Republication {
 			// can satisfy what its contract's security requirement
 			// demands. Before any state is touched, so a refusal leaves
 			// nothing behind.
-			Optional<String> violations = Invariants.violations(implementation);
+			Optional<String> violations = ownOnOpenNode ? Invariants.violationsOnOpenNode(implementation)
+					: Invariants.violations(implementation);
 			if (violations.isPresent()) {
 				return DdsrDiagnostics.error(DdsrDiagnostics.CODE_IMPL_INVALID,
 						"implementation violates the model's invariants: " + violations.get());

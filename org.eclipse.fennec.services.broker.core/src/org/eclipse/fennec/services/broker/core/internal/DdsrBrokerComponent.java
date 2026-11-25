@@ -343,6 +343,18 @@ public final class DdsrBrokerComponent implements DdsrBroker {
 		return required().publishImplementation(provider, implementation);
 	}
 
+	/**
+	 * The broker's own announcement on an open node (#320): published as
+	 * {@link #publishImplementation} does, with {@code scopesNeedAPerCallScheme}
+	 * waived when every flavor is behind {@code CONNECTION} schemes only.
+	 * Package-private on purpose: the one caller is
+	 * {@link BrokerSelfPublisher} in this bundle; no other bundle and no
+	 * transport reaches it.
+	 */
+	Diagnostic publishOnOpenNode(ServiceProvider provider, ServiceImplementation implementation) {
+		return required().publishOnOpenNode(provider, implementation);
+	}
+
 	@Override
 	public Diagnostic withdrawImplementation(ServiceProvider provider, ServiceImplementation implementation) {
 		return required().withdrawImplementation(provider, implementation);

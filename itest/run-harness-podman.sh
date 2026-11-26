@@ -659,7 +659,11 @@ wait_for_log ddsr-rsa-export-json "exported .* over AMQP .* encoded as applicati
 run_container ddsr-rsa-import-json ddsr/rsa-consumer $(client_args rsa-example-consumer) \
   -e DDSR_BROKER_URL="$BROKER_URL" \
   -e RSA_FLAVOR=fennec.amqp
-wait_for_log ddsr-rsa-import-json "RSA-Consumer" 150
+# Wait for the answer itself, not for the first RSA-Consumer line: a
+# first call that is retried logs "greet failed …, trying again" under
+# the same prefix (#323). Five attempts of up to 30 s connect each, two
+# seconds apart, fit in 200 s.
+wait_for_log ddsr-rsa-import-json "greetings so far, none of them local" 200
 
 podman logs ddsr-rsa-export-json >"$WORK/rsa-export-json.log" 2>&1
 podman logs ddsr-rsa-import-json >"$WORK/rsa-import-json.log" 2>&1
